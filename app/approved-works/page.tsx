@@ -65,7 +65,7 @@ export default async function ApprovedWorksListPage() {
                                         </tr>
                                     ) : (
                                         works.map((work: IApprovedWork) => (
-                                            <tr key={work._id as string}>
+                                            <tr key={work._id.toString()}>
                                                 <td className="whitespace-normal py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 max-w-xs">
                                                     {work.workName}
                                                 </td>
