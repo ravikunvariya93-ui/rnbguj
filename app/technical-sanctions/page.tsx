@@ -44,7 +44,7 @@ export default async function TechnicalSanctionsListPage() {
                                         <tr><td colSpan={7} className="py-10 text-center text-sm text-gray-500">No technical sanctions found.</td></tr>
                                     ) : (
                                         sanctions.map((ts: ITechnicalSanction) => (
-                                            <tr key={ts._id as string}>
+                                            <tr key={ts._id as unknown as string}>
                                                 <td className="whitespace-normal py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 max-w-xs">{ts.workName}</td>
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{ts.tsAmount?.toLocaleString('en-IN') || '-'}</td>
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{ts.tsNumber}</td>
