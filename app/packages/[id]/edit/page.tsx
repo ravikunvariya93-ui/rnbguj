@@ -28,7 +28,7 @@ export default async function EditPackagePage({ params }: { params: Promise<{ id
     const serializedPackage = {
         ...pkg,
         _id: (pkg._id as any).toString(),
-        approvedWorkId: (pkg.approvedWorkId as any)?.toString(), // Legacy field check
+        approvedWorkId: (pkg as any).approvedWorkId?.toString(), // Legacy field check
         works: works
     };
 
