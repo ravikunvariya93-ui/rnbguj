@@ -5,15 +5,42 @@ import { useRouter } from 'next/navigation';
 import { Save } from 'lucide-react';
 import Link from 'next/link';
 
+interface FormData {
+    circle: string;
+    district: string;
+    taluka: string;
+    constituencyName: string;
+    budgetItemName: string;
+    budgetType: string;
+    wmsItemCode: string;
+    approvalYear: string;
+    jobNumberApprovalDate: string;
+    jobNumberAmount: string;
+    workName: string;
+    proposedLength: string;
+    contractProvision: string;
+    rpmsCode: string;
+    type: string;
+    budgetHead: string;
+    projectType: string;
+    mlaName: string;
+    roadCategory: string;
+    workType: string;
+    parliamentaryConstituency: string;
+    mpName: string;
+    [key: string]: string; // allow dynamic keys from initialData
+}
+
 interface ApprovedWorkFormProps {
-    initialData?: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    initialData?: Record<string, any>;
     isEditing?: boolean;
 }
 
 export default function ApprovedWorkForm({ initialData = {}, isEditing = false }: ApprovedWorkFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<FormData>({
         circle: 'Panchayat R&B Circle, Rajkot',
         district: 'Bhavnagar',
         taluka: '',
@@ -48,9 +75,9 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
                     const day = String(dateObj.getDate()).padStart(2, '0');
                     const month = String(dateObj.getMonth() + 1).padStart(2, '0');
                     const year = dateObj.getFullYear();
-                    setFormData((prev: any) => ({
+                    setFormData((prev) => ({
                         ...prev,
-                        jobNumberApprovalDate: `${day}/${month}/${year}`
+                        jobNumberApprovalDate: `${day}/${month}/${year}`,
                     }));
                 }
             } catch (e) {
@@ -62,7 +89,7 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
