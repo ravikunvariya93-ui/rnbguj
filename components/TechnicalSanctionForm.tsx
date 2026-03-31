@@ -11,6 +11,8 @@ interface TechnicalSanctionFormProps {
     isEditing?: boolean;
 }
 
+import SearchableSelect from './SearchableSelect';
+
 export default function TechnicalSanctionForm({ initialData = {}, isEditing = false }: TechnicalSanctionFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
@@ -77,8 +79,16 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
         setFormData((prev: any) => ({ ...prev, [name]: value }));
     };
 
+    const handleWorkSelect = (name: string) => {
+        setFormData((prev: any) => ({ ...prev, workName: name }));
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!formData.workName) {
+            alert('Please select a Work');
+            return;
+        }
         setLoading(true);
 
         try {
@@ -134,25 +144,27 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
         }
     };
 
+    // Prepare options for SearchableSelect
+    // Using workName as the ID since that's what the model stores
+    const workOptions = approvedWorks.map(w => ({
+        _id: w.workName, 
+        packageName: w.workName
+    }));
+
     return (
         <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-gray-200 bg-white p-8 shadow rounded-lg">
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                 <div className="sm:col-span-6">
-                    <label htmlFor="workName" className="block text-sm font-medium text-gray-700"> Name of Work * </label>
-                    <select
-                        id="workName"
-                        name="workName"
+                    <SearchableSelect 
+                        label="Name of Work"
                         required
+                        options={workOptions}
                         value={formData.workName}
-                        onChange={handleChange}
-                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                    >
-                        <option value="">Select a Work</option>
-                        {approvedWorks.map(work => (
-                            <option key={work._id} value={work.workName}>{work.workName}</option>
-                        ))}
-                    </select>
+                        onChange={handleWorkSelect}
+                        placeholder="Search by work name..."
+                    />
                 </div>
+
 
                 {/* Cost Details */}
                 <div className="sm:col-span-6">

@@ -10,6 +10,8 @@ interface PackageFormProps {
     isEditing?: boolean;
 }
 
+import SearchableSelect from './SearchableSelect';
+
 export default function PackageForm({ initialData = {}, isEditing = false }: PackageFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
@@ -28,6 +30,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
 
     // DTP Details State
     const [dtpDetails, setDtpDetails] = useState({
+        estimatedAmount: initialData.estimatedAmount || '',
         dtpAmount: initialData.dtpAmount || '',
         dtpSubmissionDate: initialData.dtpSubmissionDate || '',
         dtpApprovalLetterNo: initialData.dtpApprovalLetterNo || '',
@@ -37,7 +40,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
 
     // Date formatting for edit mode
     useEffect(() => {
-        if (initialData.dtpSubmissionDate || initialData.dtpApprovalDate) {
+        if (initialData && (initialData.dtpSubmissionDate || initialData.dtpApprovalDate)) {
             const formatDate = (dateString: string) => {
                 if (!dateString) return '';
                 const dateObj = new Date(dateString);
@@ -109,6 +112,10 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
         setSelectedWorks(prev => prev.filter(w => w.workId !== id));
     };
 
+    const handleWorkSelect = (id: string) => {
+        setCurrentSelectionId(id);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (selectedWorks.length === 0) {
@@ -168,6 +175,13 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
         }
     };
 
+    // Prepare options for SearchableSelect
+    const workOptions = availableWorks.map(w => ({
+        _id: w._id,
+        packageName: w.workName,
+        tenderId: `Est: ₹${w.amountPutToTender}`
+    }));
+
     return (
         <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-gray-200 bg-white p-8 shadow rounded-lg">
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
@@ -188,27 +202,27 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Approved Works in Package</h3>
 
                     {/* Selection Area */}
-                    <div className="flex gap-4 mb-4">
-                        <select
-                            value={currentSelectionId}
-                            onChange={(e) => setCurrentSelectionId(e.target.value)}
-                            className="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                        >
-                            <option value="">Select a Work to Add...</option>
-                            {availableWorks.map(work => (
-                                <option key={work._id} value={work._id}>{work.workName} (Est: ₹{work.amountPutToTender})</option>
-                            ))}
-                        </select>
+                    <div className="flex items-end gap-4 mb-4">
+                        <div className="flex-grow">
+                            <SearchableSelect 
+                                label="Select a Work to Add"
+                                options={workOptions}
+                                value={currentSelectionId}
+                                onChange={handleWorkSelect}
+                                placeholder="Search by work name..."
+                            />
+                        </div>
                         <button
                             type="button"
                             onClick={handleAddWork}
                             disabled={!currentSelectionId}
-                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
+                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 h-[42px]"
                         >
                             <Plus className="w-4 h-4 mr-2" />
                             Add
                         </button>
                     </div>
+
 
                     {/* Works List */}
                     <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
@@ -240,6 +254,10 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                 <div className="sm:col-span-6 border-t border-gray-200 pt-6">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">DTP Details</h3>
                     <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                        <div className="sm:col-span-3">
+                            <label htmlFor="estimatedAmount" className="block text-sm font-medium text-gray-700">Estimated Amount (Rupees)</label>
+                            <input type="number" step="0.01" name="estimatedAmount" id="estimatedAmount" value={dtpDetails.estimatedAmount || ''} onChange={handleDtpChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                        </div>
                         <div className="sm:col-span-3">
                             <label htmlFor="dtpAmount" className="block text-sm font-medium text-gray-700">DTP Amount (Rupees) - Auto Calculated</label>
                             <input type="number" step="1" name="dtpAmount" id="dtpAmount" value={dtpDetails.dtpAmount || ''} readOnly className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border bg-gray-50" />

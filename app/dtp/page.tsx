@@ -1,22 +1,45 @@
 import dbConnect from '@/lib/db';
 import DTP from '@/models/DTP';
-import TechnicalSanction from '@/models/TechnicalSanction';
+import Package from '@/models/Package';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, Filter } from 'lucide-react';
+import SearchBar from '@/components/SearchBar';
 
 export const dynamic = 'force-dynamic';
 
-export default async function DTPListPage() {
+interface Props {
+    searchParams: { search?: string };
+}
+
+export default async function DTPListPage({ searchParams }: Props) {
     await dbConnect();
-    // Pre-register TechnicalSanction model
-    await TechnicalSanction.find().limit(1);
-    const dtps = await DTP.find({}).populate('tsId').sort({ createdAt: -1 });
+    
+    let query: any = {};
+    if (searchParams.search) {
+        const matchingPackages = await Package.find({
+            packageName: { $regex: searchParams.search, $options: 'i' }
+        }).distinct('_id');
+        query.tsId = { $in: matchingPackages };
+    }
+
+    const dtpsRaw = await DTP.find(query).populate('tsId').sort({ createdAt: -1 }).lean();
+    const dtps = dtpsRaw.map((dtp: any) => ({
+        ...dtp,
+        _id: dtp._id.toString(),
+    }));
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             <div className="sm:flex sm:items-center">
                 <div className="sm:flex-auto">
-                    <h1 className="text-2xl font-semibold text-gray-900">DTP</h1>
+                    <div className="flex items-center space-x-2">
+                        <h1 className="text-2xl font-semibold text-gray-900">DTP</h1>
+                        {searchParams.search && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                <Filter className="w-3 h-3 mr-1" /> Search Active
+                            </span>
+                        )}
+                    </div>
                     <p className="mt-2 text-sm text-gray-700">List of all Detailed Technical Proposals.</p>
                 </div>
                 <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
@@ -26,6 +49,15 @@ export default async function DTPListPage() {
                 </div>
             </div>
 
+            <div className="mt-6 flex justify-start items-center">
+                <SearchBar placeholder="Search by package name..." />
+                {searchParams.search && (
+                    <Link href="/dtp" className="ml-4 text-sm text-blue-600 hover:text-blue-900">
+                        Clear filters
+                    </Link>
+                )}
+            </div>
+
             <div className="mt-8 flex flex-col">
                 <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
                     <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
@@ -33,33 +65,29 @@ export default async function DTPListPage() {
                             <table className="min-w-full divide-y divide-gray-300">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Work Name (TS)</th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Village</th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">DTP Approval No.</th>
+                                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Package Name</th>
+                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Date of Sending DTP for Approval</th>
                                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">DTP Approval Date</th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">DTP Amount</th>
-                                        <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6"><span className="sr-only">Edit</span></th>
+                                        <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white">
                                     {dtps.length === 0 ? (
-                                        <tr><td colSpan={6} className="py-10 text-center text-sm text-gray-500">No DTP records found.</td></tr>
+                                        <tr><td colSpan={4} className="py-10 text-center text-sm text-gray-500">No DTP records found matching the criteria.</td></tr>
                                     ) : (
                                         dtps.map((dtp: any) => (
                                             <tr key={dtp._id}>
-                                                <td className="whitespace-normal py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-6 max-w-xs">
-                                                    {dtp.tsId?.workName || '-'}
+                                                <td className="whitespace-normal py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-6 max-w-sm">
+                                                    {(dtp.tsId as any)?.packageName || 'Unknown Package'}
                                                 </td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{dtp.villageName || '-'}</td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{dtp.dtpApprovalNo || '-'}</td>
+                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                                    {dtp.dtpSendingDate ? new Date(dtp.dtpSendingDate).toLocaleDateString('en-GB') : '-'}
+                                                </td>
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                                     {dtp.dtpApprovalDate ? new Date(dtp.dtpApprovalDate).toLocaleDateString('en-GB') : '-'}
                                                 </td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                                    {dtp.dtpAmount ? `₹${Number(dtp.dtpAmount).toLocaleString('en-IN')}` : '-'}
-                                                </td>
                                                 <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                                    <Link href={`/dtp/${dtp._id}/edit`} className="text-blue-600 hover:text-blue-900">Edit</Link>
+                                                    <Link href={`/dtp/${dtp._id}/edit`} className="text-blue-600 hover:text-blue-900 transition-colors inline-block p-1">Edit</Link>
                                                 </td>
                                             </tr>
                                         ))

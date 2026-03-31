@@ -1,19 +1,41 @@
 import dbConnect from '@/lib/db';
 import TechnicalSanction, { ITechnicalSanction } from '@/models/TechnicalSanction';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, Filter } from 'lucide-react';
+import SearchBar from '@/components/SearchBar';
 
 export const dynamic = 'force-dynamic';
 
-export default async function TechnicalSanctionsListPage() {
+interface Props {
+    searchParams: { search?: string };
+}
+
+export default async function TechnicalSanctionsListPage({ searchParams }: Props) {
     await dbConnect();
-    const sanctions = await TechnicalSanction.find({}).sort({ createdAt: -1 });
+    
+    let query: any = {};
+    if (searchParams.search) {
+        query.workName = { $regex: searchParams.search, $options: 'i' };
+    }
+
+    const sanctionsRaw = await TechnicalSanction.find(query).sort({ createdAt: -1 }).lean();
+    const sanctions = sanctionsRaw.map((ts: any) => ({
+        ...ts,
+        _id: ts._id.toString(),
+    }));
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             <div className="sm:flex sm:items-center">
                 <div className="sm:flex-auto">
-                    <h1 className="text-2xl font-semibold text-gray-900">TS (Technical Sanction)</h1>
+                    <div className="flex items-center space-x-2">
+                        <h1 className="text-2xl font-semibold text-gray-900">TS (Technical Sanction)</h1>
+                        {searchParams.search && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                <Filter className="w-3 h-3 mr-1" /> Search Active
+                            </span>
+                        )}
+                    </div>
                     <p className="mt-2 text-sm text-gray-700">List of Technical Sanctions.</p>
                 </div>
                 <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
@@ -23,6 +45,15 @@ export default async function TechnicalSanctionsListPage() {
                 </div>
             </div>
 
+            <div className="mt-6 flex justify-start items-center">
+                <SearchBar placeholder="Search by name of work..." />
+                {searchParams.search && (
+                    <Link href="/technical-sanctions" className="ml-4 text-sm text-blue-600 hover:text-blue-900">
+                        Clear filters
+                    </Link>
+                )}
+            </div>
+
             <div className="mt-8 flex flex-col">
                 <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
                     <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
@@ -30,29 +61,23 @@ export default async function TechnicalSanctionsListPage() {
                             <table className="min-w-full divide-y divide-gray-300">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Work Name</th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">T.S. Amount (₹)</th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">T.S. Number</th>
+                                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Name of Work</th>
+                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Total T.S. Amount</th>
                                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">T.S. Date</th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Amt Not Put To Tender</th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Amt Put To Tender</th>
-                                        <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6"><span className="sr-only">Edit</span></th>
+                                        <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white">
                                     {sanctions.length === 0 ? (
-                                        <tr><td colSpan={7} className="py-10 text-center text-sm text-gray-500">No technical sanctions found.</td></tr>
+                                        <tr><td colSpan={4} className="py-10 text-center text-sm text-gray-500">No technical sanctions found matching the search.</td></tr>
                                     ) : (
-                                        sanctions.map((ts: ITechnicalSanction) => (
-                                            <tr key={ts._id as unknown as string}>
+                                        sanctions.map((ts: any) => (
+                                            <tr key={ts._id}>
                                                 <td className="whitespace-normal py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 max-w-xs">{ts.workName}</td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{ts.tsAmount?.toLocaleString('en-IN') || '-'}</td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{ts.tsNumber}</td>
+                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">₹{(ts.tsAmount || 0).toLocaleString('en-IN')}</td>
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{ts.tsDate ? new Date(ts.tsDate).toLocaleDateString('en-GB') : '-'}</td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{ts.amountNotPutToTender ? Number(ts.amountNotPutToTender).toLocaleString('en-IN') : '-'}</td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{ts.amountPutToTender ? Number(ts.amountPutToTender).toLocaleString('en-IN') : '-'}</td>
                                                 <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                                    <Link href={`/technical-sanctions/${ts._id}/edit`} className="text-blue-600 hover:text-blue-900">Edit</Link>
+                                                    <Link href={`/technical-sanctions/${ts._id}/edit`} className="text-blue-600 hover:text-blue-900 transition-colors inline-block p-1">Edit</Link>
                                                 </td>
                                             </tr>
                                         ))

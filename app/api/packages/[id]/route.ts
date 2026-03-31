@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Package from '@/models/Package';
+import DTP from '@/models/DTP';
+import Tender from '@/models/Tender';
+import Approval from '@/models/Approval';
+import LOA from '@/models/LOA';
+import WorkOrder from '@/models/WorkOrder';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -45,6 +50,25 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     try {
         await dbConnect();
         const { id } = await params;
+
+        // DEEP CASCADING DELETES
+        
+        // 1. DTP deletion
+        await DTP.deleteMany({ tsId: id });
+
+        // 2. Tenders & Sub-records deletion (Approval, LOA, WorkOrder)
+        const tenders = await Tender.find({ packageId: id });
+        for (const tender of tenders) {
+            const loas = await LOA.find({ tenderId: tender._id });
+            for (const loa of loas) {
+                await WorkOrder.deleteMany({ loaId: loa._id });
+                await LOA.findByIdAndDelete(loa._id);
+            }
+            await Approval.deleteMany({ tenderId: tender._id });
+            await Tender.findByIdAndDelete(tender._id);
+        }
+
+        // 3. Delete Package itself
         const deletedPkg = await Package.findByIdAndDelete(id);
 
         if (!deletedPkg) {

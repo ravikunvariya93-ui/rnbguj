@@ -10,6 +10,8 @@ interface TenderFormProps {
     isEditing?: boolean;
 }
 
+import SearchableSelect from './SearchableSelect';
+
 export default function TenderForm({ initialData = {}, isEditing = false }: TenderFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
@@ -67,7 +69,7 @@ export default function TenderForm({ initialData = {}, isEditing = false }: Tend
 
     // Initialize dates if editing (converting string/date to YYYY-MM-DD)
     useEffect(() => {
-        if (isEditing) {
+        if (isEditing && initialData) {
             setFormData(prev => ({
                 ...prev,
                 tenderCreationDate: formatDateForInput(initialData.tenderCreationDate),
@@ -115,23 +117,27 @@ export default function TenderForm({ initialData = {}, isEditing = false }: Tend
         } else {
             setFormData((prev: any) => ({ ...prev, [name]: value }));
         }
+    };
 
-        // Auto-update Package Name if Package ID changes
-        if (name === 'packageId') {
-            const selectedPkg = packages.find(p => p._id === value);
-            if (selectedPkg) {
-                setFormData((prev: any) => ({
-                    ...prev,
-                    packageId: value,
-                    packageName: selectedPkg.packageName,
-                    // Optionally auto-fill estimated amount if desired, but user might want to override
-                }));
-            }
+    const handlePackageSelect = (id: string) => {
+        const selectedPkg = packages.find(p => p._id === id);
+        if (selectedPkg) {
+            setFormData((prev: any) => ({
+                ...prev,
+                packageId: id,
+                packageName: selectedPkg.packageName,
+            }));
+        } else if (!id) {
+            setFormData((prev: any) => ({ ...prev, packageId: '', packageName: '' }));
         }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!formData.packageId) {
+            alert('Please select a Package');
+            return;
+        }
         setLoading(true);
 
         try {
@@ -183,21 +189,16 @@ export default function TenderForm({ initialData = {}, isEditing = false }: Tend
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
 
                 <div className="sm:col-span-6">
-                    <label htmlFor="packageId" className="block text-sm font-medium text-gray-700">Select Package *</label>
-                    <select
-                        id="packageId"
-                        name="packageId"
+                    <SearchableSelect 
+                        label="Select Package"
                         required
+                        options={packages}
                         value={formData.packageId}
-                        onChange={handleChange}
-                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                    >
-                        <option value="">-- Select Package --</option>
-                        {packages.map(pkg => (
-                            <option key={pkg._id} value={pkg._id}>{pkg.packageName}</option>
-                        ))}
-                    </select>
+                        onChange={handlePackageSelect}
+                        placeholder="Search by package name..."
+                    />
                 </div>
+
 
                 <div className="sm:col-span-3">
                     <label htmlFor="tenderId" className="block text-sm font-medium text-gray-700">Tender ID *</label>

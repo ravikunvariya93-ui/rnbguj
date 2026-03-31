@@ -42,6 +42,8 @@ function formatDateForInput(dateString: string): string {
     }
 }
 
+import SearchableSelect from './SearchableSelect';
+
 export default function LOAForm({ initialData = {}, isEditing = false }: LOAFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
@@ -78,10 +80,11 @@ export default function LOAForm({ initialData = {}, isEditing = false }: LOAForm
     }, []);
 
     useEffect(() => {
-        if (isEditing) {
+        if (isEditing && initialData) {
             setFormData((prev: any) => ({
                 ...prev,
                 acceptanceLetterDate: formatDateForInput(initialData.acceptanceLetterDate),
+                tenderId: initialData.tenderId?._id || initialData.tenderId || '',
             }));
         }
     }, [initialData, isEditing]);
@@ -91,8 +94,16 @@ export default function LOAForm({ initialData = {}, isEditing = false }: LOAForm
         setFormData((prev: any) => ({ ...prev, [name]: value }));
     };
 
+    const handleTenderSelect = (id: string) => {
+        setFormData((prev: any) => ({ ...prev, tenderId: id }));
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!formData.tenderId) {
+            alert('Please select a Package');
+            return;
+        }
         setLoading(true);
 
         try {
@@ -133,23 +144,16 @@ export default function LOAForm({ initialData = {}, isEditing = false }: LOAForm
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                 
                 <div className="sm:col-span-6">
-                    <label htmlFor="tenderId" className="block text-sm font-medium text-gray-700">Select Package *</label>
-                    <select
-                        id="tenderId"
-                        name="tenderId"
+                    <SearchableSelect 
+                        label="Select Package"
                         required
-                        value={formData.tenderId || ''}
-                        onChange={handleChange}
-                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                    >
-                        <option value="">-- Select Package --</option>
-                        {tenders.map((tender: any) => (
-                            <option key={tender._id} value={tender._id}>
-                                {tender.packageName || 'Unknown Package'}
-                            </option>
-                        ))}
-                    </select>
+                        options={tenders}
+                        value={formData.tenderId}
+                        onChange={handleTenderSelect}
+                        placeholder="Search by package or contractor name..."
+                    />
                 </div>
+
 
                 {selectedTender && (
                     <div className="sm:col-span-6 bg-blue-50 border border-blue-200 rounded-md p-4 text-sm text-blue-800">

@@ -13,7 +13,7 @@ export interface IDTP extends Document {
 }
 
 const DTPSchema: Schema = new Schema({
-    tsId: { type: mongoose.Schema.Types.ObjectId, ref: 'TechnicalSanction', required: true },
+    tsId: { type: mongoose.Schema.Types.ObjectId, ref: 'Package', required: true },
     dtpSendingNo: { type: String },
     dtpSendingDate: { type: Date },
     dtpApprovingAuthority: { type: String },

@@ -42,6 +42,8 @@ function formatDateForInput(dateString: string): string {
     }
 }
 
+import SearchableSelect from './SearchableSelect';
+
 export default function WorkOrderForm({ initialData = {}, isEditing = false }: WorkOrderFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
@@ -90,7 +92,7 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
     }, []);
 
     useEffect(() => {
-        if (isEditing) {
+        if (isEditing && initialData) {
             setFormData((prev: any) => ({
                 ...prev,
                 agreementDate: formatDateForInput(initialData.agreementDate),
@@ -147,8 +149,16 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
         setFormData((prev: any) => ({ ...prev, [name]: value }));
     };
 
+    const handleLoaSelect = (id: string) => {
+        setFormData((prev: any) => ({ ...prev, loaId: id }));
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!formData.loaId) {
+            alert('Please select a Package');
+            return;
+        }
         setLoading(true);
 
         try {
@@ -187,28 +197,28 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
         }
     };
 
+    // Prepare selectable options for the combobox
+    const loaOptions = loas.map((loa: any) => ({
+        _id: loa._id,
+        packageName: loa.tenderId?.packageName || 'Unknown Package',
+        contractorName: loa.tenderId?.contractorName || 'N/A'
+    }));
+
     return (
         <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-gray-200 bg-white p-8 shadow rounded-lg">
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                 
                 <div className="sm:col-span-6">
-                    <label htmlFor="loaId" className="block text-sm font-medium text-gray-700">Select Package *</label>
-                    <select
-                        id="loaId"
-                        name="loaId"
+                    <SearchableSelect 
+                        label="Select Package"
                         required
-                        value={formData.loaId || ''}
-                        onChange={handleChange}
-                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                    >
-                        <option value="">-- Select Package --</option>
-                        {loas.map((loa: any) => (
-                            <option key={loa._id} value={loa._id}>
-                                {loa.tenderId?.packageName || 'Unknown Package'}
-                            </option>
-                        ))}
-                    </select>
+                        options={loaOptions}
+                        value={formData.loaId}
+                        onChange={handleLoaSelect}
+                        placeholder="Search by package name..."
+                    />
                 </div>
+
 
                 <div className="sm:col-span-6 border-t border-gray-200 pt-4 mt-4">
                     <h3 className="text-lg font-medium text-gray-900 mb-1">Agreement Details</h3>

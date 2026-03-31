@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Tender from '@/models/Tender';
+import LOA from '@/models/LOA';
+import Approval from '@/models/Approval';
+import WorkOrder from '@/models/WorkOrder';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -45,6 +48,20 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     try {
         await dbConnect();
         const { id } = await params;
+
+        // CASCADING DELETES
+        
+        // 1. Find and delete LOA(s) and their associated WorkOrders
+        const loas = await LOA.find({ tenderId: id });
+        for (const loa of loas) {
+            await WorkOrder.deleteMany({ loaId: loa._id });
+            await LOA.findByIdAndDelete(loa._id);
+        }
+
+        // 2. Delete associated Approvals
+        await Approval.deleteMany({ tenderId: id });
+
+        // 3. Delete the Tender itself
         const deletedTender = await Tender.findByIdAndDelete(id);
 
         if (!deletedTender) {

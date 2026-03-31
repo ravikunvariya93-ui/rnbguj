@@ -2,22 +2,47 @@ import dbConnect from '@/lib/db';
 import Approval from '@/models/Approval';
 import Tender from '@/models/Tender';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, Filter } from 'lucide-react';
+import SearchBar from '@/components/SearchBar';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ApprovalsListPage() {
+interface Props {
+    searchParams: { search?: string };
+}
+
+export default async function ApprovalsListPage({ searchParams }: Props) {
     await dbConnect();
-    // Pre-register Tender so population works reliably
-    Tender.find().limit(1);
     
-    const approvals = await Approval.find({}).populate('tenderId').sort({ createdAt: -1 });
+    let query: any = {};
+    if (searchParams.search) {
+        const matchingTenders = await Tender.find({
+            $or: [
+                { packageName: { $regex: searchParams.search, $options: 'i' } },
+                { contractorName: { $regex: searchParams.search, $options: 'i' } }
+            ]
+        }).distinct('_id');
+        query.tenderId = { $in: matchingTenders };
+    }
+
+    const approvalsRaw = await Approval.find(query).populate('tenderId').sort({ createdAt: -1 }).lean();
+    const approvals = approvalsRaw.map((approval: any) => ({
+        ...approval,
+        _id: approval._id.toString(),
+    }));
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             <div className="sm:flex sm:items-center">
                 <div className="sm:flex-auto">
-                    <h1 className="text-2xl font-semibold text-gray-900">Approvals</h1>
+                    <div className="flex items-center space-x-2">
+                        <h1 className="text-2xl font-semibold text-gray-900">Approvals</h1>
+                        {searchParams.search && (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                <Filter className="w-3 h-3 mr-1" /> Search Active
+                            </span>
+                        )}
+                    </div>
                     <p className="mt-2 text-sm text-gray-700">List of all tender approvals.</p>
                 </div>
                 <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
@@ -27,6 +52,15 @@ export default async function ApprovalsListPage() {
                 </div>
             </div>
 
+            <div className="mt-6 flex justify-start items-center">
+                <SearchBar placeholder="Search by package or contractor..." />
+                {searchParams.search && (
+                    <Link href="/approvals" className="ml-4 text-sm text-blue-600 hover:text-blue-900">
+                        Clear filters
+                    </Link>
+                )}
+            </div>
+
             <div className="mt-8 flex flex-col">
                 <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
                     <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
@@ -34,37 +68,29 @@ export default async function ApprovalsListPage() {
                             <table className="min-w-full divide-y divide-gray-300">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Tender Details</th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Office</th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Approval No</th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Dates</th>
-                                        <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6"><span className="sr-only">Edit</span></th>
+                                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Package Name</th>
+                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Contractor Name</th>
+                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Tender Approval Date</th>
+                                        <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white">
                                     {approvals.length === 0 ? (
-                                        <tr><td colSpan={5} className="py-10 text-center text-sm text-gray-500">No Approvals found.</td></tr>
+                                        <tr><td colSpan={4} className="py-10 text-center text-sm text-gray-500">No Approvals found matching the criteria.</td></tr>
                                     ) : (
                                         approvals.map((approval: any) => (
                                             <tr key={approval._id}>
-                                                <td className="whitespace-normal py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-6 max-w-xs">
-                                                    {approval.tenderId ? (
-                                                        <div className="flex flex-col">
-                                                            <span className="font-medium text-gray-900">ID: {approval.tenderId.tenderId}</span>
-                                                            <span className="text-xs text-gray-500">{approval.tenderId.packageName}</span>
-                                                        </div>
-                                                    ) : '-'}
+                                                <td className="whitespace-normal py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-6 max-w-sm">
+                                                    {approval.tenderId?.packageName || '-'}
                                                 </td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{approval.tenderApprovalOffice || '-'}</td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{approval.tenderApprovalNo || '-'}</td>
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-xs">Proposal: {approval.proposalDate ? new Date(approval.proposalDate).toLocaleDateString('en-GB') : '-'}</span>
-                                                        <span className="text-xs">Approval: {approval.tenderApprovalDate ? new Date(approval.tenderApprovalDate).toLocaleDateString('en-GB') : '-'}</span>
-                                                    </div>
+                                                    {approval.tenderId?.contractorName || '-'}
+                                                </td>
+                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                                    {approval.tenderApprovalDate ? new Date(approval.tenderApprovalDate).toLocaleDateString('en-GB') : '-'}
                                                 </td>
                                                 <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                                    <Link href={`/approvals/${approval._id}/edit`} className="text-blue-600 hover:text-blue-900">Edit</Link>
+                                                    <Link href={`/approvals/${approval._id}/edit`} className="text-blue-600 hover:text-blue-900 transition-colors inline-block p-1">Edit</Link>
                                                 </td>
                                             </tr>
                                         ))

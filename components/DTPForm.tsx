@@ -37,6 +37,8 @@ function formatDateForInput(dateStr: string): string {
     } catch { return ''; }
 }
 
+import SearchableSelect from './SearchableSelect';
+
 export default function DTPForm({ initialData = {}, isEditing = false }: DTPFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
@@ -71,7 +73,7 @@ export default function DTPForm({ initialData = {}, isEditing = false }: DTPForm
     }, []);
 
     useEffect(() => {
-        if (isEditing) {
+        if (isEditing && initialData) {
             setFormData((prev: any) => ({
                 ...prev,
                 dtpSendingDate: formatDateForInput(initialData.dtpSendingDate),
@@ -86,8 +88,16 @@ export default function DTPForm({ initialData = {}, isEditing = false }: DTPForm
         setFormData((prev: any) => ({ ...prev, [name]: value }));
     };
 
+    const handlePackageSelect = (id: string) => {
+        setFormData((prev: any) => ({ ...prev, tsId: id }));
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!formData.tsId) {
+            alert('Please select a Package');
+            return;
+        }
         setLoading(true);
         try {
             const submissionData = { ...formData };
@@ -121,15 +131,16 @@ export default function DTPForm({ initialData = {}, isEditing = false }: DTPForm
 
                 {/* TS Link */}
                 <div className="sm:col-span-6">
-                    <label htmlFor="tsId" className="block text-sm font-medium text-gray-700">Select Package *</label>
-                    <select id="tsId" name="tsId" required value={formData.tsId || ''} onChange={handleChange}
-                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border">
-                        <option value="">-- Select Package --</option>
-                        {packages.map((pkg: any) => (
-                            <option key={pkg._id} value={pkg._id}>{pkg.packageName || 'Unknown Package'}</option>
-                        ))}
-                    </select>
+                    <SearchableSelect 
+                        label="Select Package"
+                        required
+                        options={packages}
+                        value={formData.tsId}
+                        onChange={handlePackageSelect}
+                        placeholder="Search by package name..."
+                    />
                 </div>
+
 
                 {selectedPackage && (
                     <div className="sm:col-span-6 bg-blue-50 border border-blue-200 rounded-md p-4 text-sm text-blue-800">
