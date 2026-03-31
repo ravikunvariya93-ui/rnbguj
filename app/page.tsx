@@ -150,56 +150,77 @@ export default async function Home() {
                 <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
                     {stats.map((stat) => {
                         const progress = stat.total > 0 ? (stat.count / stat.total) * 100 : 0;
+                        const segments = 5;
+                        const filledSegments = Math.floor((progress / 100) * segments);
+
                         return (
-                            <div key={stat.name} className="relative group p-[1px] rounded-3xl transition-all duration-500 hover:scale-[1.02] active:scale-[0.98]">
-                                {/* Animated border gradient */}
-                                <div className={`absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br ${stat.color.replace('bg-', 'from-')}/40 to-transparent`}></div>
+                            <Link 
+                                key={stat.name} 
+                                href={stat.href}
+                                className="relative group transition-all duration-500 hover:-translate-y-3 aspect-square cursor-pointer"
+                            >
+                                {/* Enhanced Multi-Layer Shadow */}
+                                <div className={`absolute -inset-1 rounded-none opacity-0 group-hover:opacity-40 transition-opacity duration-700 bg-gradient-to-br ${stat.color.replace('bg-', 'from-')} to-transparent blur-2xl -z-10`}></div>
                                 
-                                <div className="relative bg-white/90 backdrop-blur-xl p-8 rounded-[23px] shadow-sm border border-slate-200/60 h-full flex flex-col justify-between overflow-hidden">
-                                    {/* Subtle background icon */}
-                                    <stat.icon className={`absolute -right-6 -bottom-6 w-32 h-32 opacity-[0.03] text-black transform -rotate-12 transition-transform duration-700 group-hover:rotate-0 group-hover:scale-110`} />
+                                <div className="relative h-full bg-white/40 backdrop-blur-3xl p-6 rounded-none border border-white/40 shadow-xl shadow-slate-200/50 flex flex-col justify-between overflow-hidden group-hover:border-white/60 transition-colors duration-500">
+                                    {/* Floating Glowing Icon */}
+                                    <div className={`absolute -top-6 -right-6 p-10 rounded-none ${stat.bgLight} opacity-20 blur-2xl group-hover:opacity-30 transition-opacity duration-700`}></div>
+                                    <div className={`absolute top-4 right-4 p-2.5 rounded-none ${stat.bgLight} ${stat.textColor} shadow-lg shadow-black/5 group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500`}>
+                                        <stat.icon className="h-5 w-5" />
+                                    </div>
 
                                     <div>
-                                        <div className="flex items-start justify-between">
-                                            <div className={`p-3.5 rounded-2xl ${stat.bgLight} ${stat.textColor} shadow-inner`}>
-                                                <stat.icon className="h-6 w-6" />
-                                            </div>
-                                            <div className="text-right flex flex-col items-end">
-                                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Pending</span>
-                                                <h2 className="text-4xl font-black text-slate-900 leading-none">{stat.count}</h2>
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-8 space-y-2">
-                                            <div className="flex justify-between items-end">
-                                               <p className="text-[15px] font-bold text-slate-700">{stat.name}</p>
-                                               <span className="text-xs font-bold text-slate-400">Total {stat.total}</span>
-                                            </div>
-                                            {/* Premium Progress Bar */}
-                                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                                <div 
-                                                    className={`h-full transition-all duration-1000 ease-out rounded-full ${stat.color}`}
-                                                    style={{ width: `${progress}%` }}
-                                                ></div>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 block">Pending Priority</span>
+                                        
+                                        <div className="flex items-end gap-3 mb-6">
+                                            <h2 className={`text-5xl font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-br ${stat.color.replace('bg-', 'from-')} to-slate-900`}>
+                                                {stat.count}
+                                            </h2>
+                                            <div className="pb-1">
+                                                <div className={`text-[9px] font-bold px-1.5 py-0.5 rounded-none ${stat.bgLight} ${stat.textColor} border border-white/20`}>
+                                                    {progress.toFixed(0)}%
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <p className="mt-4 text-sm text-slate-500 font-medium leading-relaxed">
+                                        <div className="space-y-4">
+                                            <div className="flex justify-between items-center">
+                                               <p className="text-lg font-black text-slate-800 tracking-tight">{stat.name}</p>
+                                               <span className="text-[11px] font-bold text-slate-400">OF {stat.total}</span>
+                                            </div>
+
+                                            {/* Segmented Modern Progress Bar */}
+                                            <div className="flex gap-1.5 h-1.5 w-full">
+                                                {[...Array(segments)].map((_, i) => (
+                                                    <div 
+                                                        key={i}
+                                                        className={`flex-1 rounded-full transition-all duration-700 delay-[${i * 100}ms] ${
+                                                            i < filledSegments 
+                                                                ? `${stat.color} shadow-[0_0_8px_rgba(0,0,0,0.1)] group-hover:shadow-[0_0_12px_${stat.color.replace('bg-', 'rgba(')}]` 
+                                                                : 'bg-slate-200/50'
+                                                        }`}
+                                                    ></div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <p className="mt-6 text-sm text-slate-500 font-medium leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity">
                                             {stat.description}
                                         </p>
                                     </div>
 
                                     <div className="mt-8">
-                                        <Link 
-                                            href={stat.href}
-                                            className={`w-full inline-flex items-center justify-center px-6 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${stat.textColor} ${stat.bgLight} hover:bg-white hover:shadow-lg border border-transparent hover:border-slate-100 group/btn`}
-                                        >
-                                            View Detailed Analysis
-                                            <ArrowRight className="ml-2 h-4 w-4 transform transition-transform group-hover/btn:translate-x-1" />
-                                        </Link>
+                                        <div className={`w-full group/btn relative inline-flex items-center justify-center px-6 py-3 rounded-none text-sm font-black transition-all duration-300 overflow-hidden`}>
+                                            <div className={`absolute inset-0 ${stat.bgLight} opacity-50 group-hover/btn:opacity-100 transition-opacity`}></div>
+                                            <span className={`relative flex items-center ${stat.textColor}`}>
+                                                SYSTEM ANALYSIS
+                                                <ArrowRight className="ml-1.5 h-3.5 w-3.5 transform transition-transform group-hover/btn:translate-x-1" />
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            </Link>
+
                         );
                     })}
                 </div>
