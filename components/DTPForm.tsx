@@ -55,7 +55,6 @@ export default function DTPForm({ initialData = {}, isEditing = false }: DTPForm
         dtpApprovingAuthority: '',
         dtpApprovalNo: '',
         dtpApprovalDate: '',
-        dtpAmount: '',
         ...sanitized,
     });
 
@@ -155,7 +154,7 @@ export default function DTPForm({ initialData = {}, isEditing = false }: DTPForm
                 </div>
 
                 <div className="sm:col-span-3">
-                    <label htmlFor="dtpSendingNo" className="block text-sm font-medium text-gray-700">No. of Sending DTP for Approval</label>
+                    <label htmlFor="dtpSendingNo" className="block text-sm font-medium text-gray-700">WS No. of Sending DTP for Approval</label>
                     <input type="text" name="dtpSendingNo" id="dtpSendingNo" value={formData.dtpSendingNo} onChange={handleChange}
                         className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                 </div>
@@ -167,13 +166,22 @@ export default function DTPForm({ initialData = {}, isEditing = false }: DTPForm
 
                 <div className="sm:col-span-4">
                     <label htmlFor="dtpApprovingAuthority" className="block text-sm font-medium text-gray-700">DTP Approving Authority</label>
-                    <input type="text" name="dtpApprovingAuthority" id="dtpApprovingAuthority" value={formData.dtpApprovingAuthority} onChange={handleChange}
-                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                    <select
+                        name="dtpApprovingAuthority"
+                        id="dtpApprovingAuthority"
+                        value={formData.dtpApprovingAuthority}
+                        onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                    >
+                        <option value="">-- Select Authority --</option>
+                        <option value="Executive Engineer (EE)">Executive Engineer (EE)</option>
+                        <option value="Superintending Engineer (SE)">Superintending Engineer (SE)</option>
+                        <option value="Chief Engineer (CE)">Chief Engineer (CE)</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
                 <div className="sm:col-span-2">
-                    <label htmlFor="dtpAmount" className="block text-sm font-medium text-gray-700">DTP Amount (₹)</label>
-                    <input type="number" step="0.01" name="dtpAmount" id="dtpAmount" value={formData.dtpAmount} onChange={handleChange}
-                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                    {/* Empty space for alignment if needed, or adjust spacing */}
                 </div>
 
                 <div className="sm:col-span-3">

@@ -3,6 +3,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export interface IApprovedWork extends Document {
     circle: string;
     district: string;
+    subDivision: string;
     taluka: string;
     constituencyName: string; // Name of Consituancy
     budgetItemName: string; // Name of Budget Item
@@ -23,6 +24,10 @@ export interface IApprovedWork extends Document {
     workType: string; // Type of Work
     parliamentaryConstituency: string;
     mpName: string;
+    workNameGujarati: string;
+    natureOfWork: string;
+    schemeName: string;
+    length: number;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -30,6 +35,7 @@ export interface IApprovedWork extends Document {
 const ApprovedWorkSchema: Schema = new Schema({
     circle: { type: String, default: 'Panchayat R&B Circle, Rajkot' }, // Default based on context usually
     district: { type: String, default: 'Bhavnagar' },
+    subDivision: { type: String },
     taluka: { type: String },
     constituencyName: { type: String },
     budgetItemName: { type: String },
@@ -50,11 +56,21 @@ const ApprovedWorkSchema: Schema = new Schema({
     workType: { type: String },
     parliamentaryConstituency: { type: String },
     mpName: { type: String },
+    workNameGujarati: { type: String },
+    natureOfWork: { type: String },
+    schemeName: { type: String },
+    length: { type: Number },
 }, {
     timestamps: true,
 });
 
 // Avoid recompiling model in watch mode
+if (process.env.NODE_ENV !== 'production') {
+    if (mongoose.models.ApprovedWork) {
+        delete mongoose.models.ApprovedWork;
+    }
+}
+
 const ApprovedWork: Model<IApprovedWork> = mongoose.models.ApprovedWork || mongoose.model<IApprovedWork>('ApprovedWork', ApprovedWorkSchema);
 
 export default ApprovedWork;

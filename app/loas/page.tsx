@@ -3,38 +3,53 @@ import LOA from '@/models/LOA';
 import WorkOrder from '@/models/WorkOrder';
 import Tender from '@/models/Tender';
 import Link from 'next/link';
-import { Plus, Filter } from 'lucide-react';
+import { Plus, Filter, Eye, Edit2 } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
+import Pagination from '@/components/Pagination';
+import GenericDeleteButton from '@/components/GenericDeleteButton';
 
 export const dynamic = 'force-dynamic';
 
 interface Props {
-    searchParams: { filter?: string; search?: string };
+    searchParams: { filter?: string; search?: string; page?: string; limit?: string };
 }
 
 export default async function LOAListPage({ searchParams }: Props) {
     await dbConnect();
+    const params = await searchParams;
     
     let query: any = {};
     let filterLabel = "List of all LOAs issued.";
 
-    if (searchParams.filter === 'pending') {
+    if (params.filter === 'pending') {
         const loasWithWorkOrder = await WorkOrder.find().distinct('loaId');
         query._id = { $nin: loasWithWorkOrder };
         filterLabel = "Showing LOAs awaiting Work Order / Agreement (Pending Work Order).";
     }
 
-    if (searchParams.search) {
+    if (params.search) {
         const matchingTenders = await Tender.find({
             $or: [
-                { packageName: { $regex: searchParams.search, $options: 'i' } },
-                { contractorName: { $regex: searchParams.search, $options: 'i' } }
+                { packageName: { $regex: params.search, $options: 'i' } },
+                { contractorName: { $regex: params.search, $options: 'i' } }
             ]
         }).distinct('_id');
         query.tenderId = { $in: matchingTenders };
     }
 
-    const loasRaw = await LOA.find(query).populate('tenderId').sort({ createdAt: -1 }).lean();
+    const page = parseInt(params.page || '1');
+    const limit = parseInt(params.limit || '10');
+    const skip = (page - 1) * limit;
+
+    const totalItems = await LOA.countDocuments(query);
+    const totalPages = Math.ceil(totalItems / limit);
+
+    const loasRaw = await LOA.find(query)
+        .populate('tenderId')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
     const loas = loasRaw.map((loa: any) => ({
         ...loa,
         _id: loa._id.toString(),
@@ -46,9 +61,9 @@ export default async function LOAListPage({ searchParams }: Props) {
                 <div className="sm:flex-auto">
                     <div className="flex items-center space-x-2">
                         <h1 className="text-2xl font-semibold text-gray-900">Letter of Acceptance (LOA)</h1>
-                        {(searchParams.filter || searchParams.search) && (
+                        {(params.filter || params.search) && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                <Filter className="w-3 h-3 mr-1" /> {searchParams.search ? 'Search Active' : 'Filter Active'}
+                                <Filter className="w-3 h-3 mr-1" /> {params.search ? 'Search Active' : 'Filter Active'}
                             </span>
                         )}
                     </div>
@@ -63,7 +78,7 @@ export default async function LOAListPage({ searchParams }: Props) {
 
             <div className="mt-6 flex justify-start items-center">
                 <SearchBar placeholder="Search by package or contractor..." />
-                {(searchParams.filter || searchParams.search) && (
+                {(params.filter || params.search) && (
                     <Link href="/loas" className="ml-4 text-sm text-blue-600 hover:text-blue-900">
                         Clear all filters
                     </Link>
@@ -92,14 +107,24 @@ export default async function LOAListPage({ searchParams }: Props) {
                                                 <td className="whitespace-normal py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-6 max-w-sm">
                                                     {loa.tenderId?.packageName || '-'}
                                                 </td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                                <td className="whitespace-normal px-3 py-4 text-sm text-gray-500 max-w-xs" style={{ wordBreak: 'break-word' }}>
                                                     {loa.tenderId?.contractorName || '-'}
                                                 </td>
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                                     {loa.acceptanceLetterDate ? new Date(loa.acceptanceLetterDate).toLocaleDateString('en-GB') : '-'}
                                                 </td>
-                                                <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                                    <Link href={`/loas/${loa._id}/edit`} className="text-blue-600 hover:text-blue-900 transition-colors inline-block p-1">Edit</Link>
+                                                <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 flex items-center justify-end space-x-3">
+                                                    <Link href={`/loas/${loa._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
+                                                        <Eye className="w-5 h-5" />
+                                                    </Link>
+                                                    <Link href={`/loas/${loa._id}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Item">
+                                                        <Edit2 className="w-5 h-5" />
+                                                    </Link>
+                                                    <GenericDeleteButton 
+                                                        itemId={loa._id} 
+                                                        itemName={loa.acceptanceLetterWorksheetNo || 'LOA'} 
+                                                        apiPath="/api/loas" 
+                                                    />
                                                 </td>
                                             </tr>
                                         ))
@@ -107,6 +132,7 @@ export default async function LOAListPage({ searchParams }: Props) {
                                 </tbody>
                             </table>
                         </div>
+                        <Pagination currentPage={page} totalPages={totalPages} />
                     </div>
                 </div>
             </div>

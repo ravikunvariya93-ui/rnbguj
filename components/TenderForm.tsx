@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Save } from 'lucide-react';
 import Link from 'next/link';
 
@@ -13,27 +13,36 @@ interface TenderFormProps {
 import SearchableSelect from './SearchableSelect';
 
 export default function TenderForm({ initialData = {}, isEditing = false }: TenderFormProps) {
+    return (
+        <Suspense fallback={<div>Loading form...</div>}>
+            <TenderFormInner initialData={initialData} isEditing={isEditing} />
+        </Suspense>
+    );
+}
+
+function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProps) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [loading, setLoading] = useState(false);
     const [packages, setPackages] = useState<any[]>([]);
 
     const [formData, setFormData] = useState({
-        packageId: '',
-        packageName: '',
-        tenderId: '',
-        tenderNoticeYear: '',
-        noticeNo: '',
-        srNo: '',
-        trialNo: 1,
-        tenderCreationDate: '',
-        lastDateOfSubmission: '',
-        tenderOpeningDate: '',
-        tenderValidityDate: '',
-        reInvite: false,
-        contractorName: '',
-        contractPrice: '',
-        aboveBelowPercentage: '',
-        aboveBelowInWord: 'Above',
+        packageId: initialData.packageId || searchParams.get('packageId') || '',
+        packageName: initialData.packageName || '',
+        tenderId: initialData.tenderId || '',
+        tenderNoticeYear: initialData.tenderNoticeYear || '',
+        noticeNo: initialData.noticeNo || '',
+        srNo: initialData.srNo || '',
+        trialNo: initialData.trialNo || 1,
+        tenderCreationDate: initialData.tenderCreationDate || '',
+        lastDateOfSubmission: initialData.lastDateOfSubmission || '',
+        tenderOpeningDate: initialData.tenderOpeningDate || '',
+        tenderValidityDate: initialData.tenderValidityDate || '',
+        reInvite: initialData.reInvite || searchParams.get('reInvite') === 'true' || false,
+        contractorName: initialData.contractorName || '',
+        contractPrice: initialData.contractPrice || '',
+        aboveBelowPercentage: initialData.aboveBelowPercentage || '',
+        aboveBelowInWord: initialData.aboveBelowInWord || 'Above',
         ...initialData
     });
 
@@ -70,7 +79,7 @@ export default function TenderForm({ initialData = {}, isEditing = false }: Tend
     // Initialize dates if editing (converting string/date to YYYY-MM-DD)
     useEffect(() => {
         if (isEditing && initialData) {
-            setFormData(prev => ({
+            setFormData((prev: any) => ({
                 ...prev,
                 tenderCreationDate: formatDateForInput(initialData.tenderCreationDate),
                 lastDateOfSubmission: formatDateForInput(initialData.lastDateOfSubmission),
@@ -99,7 +108,7 @@ export default function TenderForm({ initialData = {}, isEditing = false }: Tend
                     const month = String(dateObj.getMonth() + 1).padStart(2, '0');
                     const yyyy = dateObj.getFullYear();
 
-                    setFormData(prev => ({ ...prev, tenderValidityDate: `${day}/${month}/${yyyy}` }));
+                    setFormData((prev: any) => ({ ...prev, tenderValidityDate: `${day}/${month}/${yyyy}` }));
                 }
             }
         } catch (e) {
@@ -119,6 +128,19 @@ export default function TenderForm({ initialData = {}, isEditing = false }: Tend
         }
     };
 
+    const fetchLatestTrial = async (packageId: string) => {
+        if (!packageId || isEditing) return;
+        try {
+            const res = await fetch(`/api/tenders/latest-trial/${packageId as any}`);
+            const data = await res.json();
+            if (data.success) {
+                setFormData((prev: any) => ({ ...prev, trialNo: data.latestTrialNo + 1 }));
+            }
+        } catch (error) {
+            console.error("Failed to fetch latest trial", error);
+        }
+    };
+
     const handlePackageSelect = (id: string) => {
         const selectedPkg = packages.find(p => p._id === id);
         if (selectedPkg) {
@@ -127,10 +149,22 @@ export default function TenderForm({ initialData = {}, isEditing = false }: Tend
                 packageId: id,
                 packageName: selectedPkg.packageName,
             }));
+            fetchLatestTrial(id);
         } else if (!id) {
             setFormData((prev: any) => ({ ...prev, packageId: '', packageName: '' }));
         }
     };
+
+    // Auto-fetch trial for pre-selected package
+    useEffect(() => {
+        if (formData.packageId && !isEditing && packages.length > 0) {
+            const pkg = packages.find(p => p._id === formData.packageId);
+            if (pkg && !formData.packageName) {
+                setFormData((prev: any) => ({ ...prev, packageName: pkg.packageName }));
+            }
+            fetchLatestTrial(formData.packageId);
+        }
+    }, [formData.packageId, packages, isEditing]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

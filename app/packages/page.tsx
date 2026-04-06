@@ -3,37 +3,50 @@ import Package from '@/models/Package';
 import DTP from '@/models/DTP';
 import Tender from '@/models/Tender';
 import Link from 'next/link';
-import { Plus, Filter, Edit } from 'lucide-react';
-import DeletePackageButton from '@/components/DeletePackageButton';
+import { Plus, Filter, Eye, Edit2 } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
+import Pagination from '@/components/Pagination';
+import GenericDeleteButton from '@/components/GenericDeleteButton';
 
 export const dynamic = 'force-dynamic';
 
 interface Props {
-    searchParams: { filter?: string; search?: string };
+    searchParams: { filter?: string; search?: string; page?: string; limit?: string };
 }
 
 export default async function PackagesListPage({ searchParams }: Props) {
     await dbConnect();
+    const params = await searchParams;
     
     let query: any = {};
     let filterLabel = "List of all packages containing approved works.";
 
-    if (searchParams.filter === 'pending_dtp') {
+    if (params.filter === 'pending_dtp') {
         const packagesWithDTP = await DTP.find().distinct('tsId'); // tsId in DTP refers to Package
         query._id = { $nin: packagesWithDTP };
         filterLabel = "Showing Packages awaiting Detailed Technical Proposal (Pending DTP).";
-    } else if (searchParams.filter === 'pending_tender') {
+    } else if (params.filter === 'pending_tender') {
         const packagesWithTender = await Tender.find().distinct('packageId');
         query._id = { $nin: packagesWithTender };
         filterLabel = "Showing Packages awaiting Tender publication (Pending Tender).";
     }
 
-    if (searchParams.search) {
-        query.packageName = { $regex: searchParams.search, $options: 'i' };
+    if (params.search) {
+        query.packageName = { $regex: params.search, $options: 'i' };
     }
 
-    const packagesRaw = await Package.find(query).sort({ createdAt: -1 }).lean();
+    const page = parseInt(params.page || '1');
+    const limit = parseInt(params.limit || '10');
+    const skip = (page - 1) * limit;
+
+    const totalItems = await Package.countDocuments(query);
+    const totalPages = Math.ceil(totalItems / limit);
+
+    const packagesRaw = await Package.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
     const packages = packagesRaw.map((p: any) => ({
         ...p,
         _id: p._id.toString(),
@@ -45,9 +58,9 @@ export default async function PackagesListPage({ searchParams }: Props) {
                 <div className="sm:flex-auto">
                     <div className="flex items-center space-x-2">
                         <h1 className="text-2xl font-semibold text-gray-900">Packages</h1>
-                        {(searchParams.filter || searchParams.search) && (
+                        {(params.filter || params.search) && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                <Filter className="w-3 h-3 mr-1" /> {searchParams.search ? 'Search Active' : 'Filter Active'}
+                                <Filter className="w-3 h-3 mr-1" /> {params.search ? 'Search Active' : 'Filter Active'}
                             </span>
                         )}
                     </div>
@@ -62,7 +75,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
 
             <div className="mt-6 flex justify-start items-center">
                 <SearchBar placeholder="Search by package name..." />
-                {(searchParams.filter || searchParams.search) && (
+                {(params.filter || params.search) && (
                     <Link href="/packages" className="ml-4 text-sm text-blue-600 hover:text-blue-900">
                         Clear all filters
                     </Link>
@@ -87,15 +100,22 @@ export default async function PackagesListPage({ searchParams }: Props) {
                                     ) : (
                                         packages.map((pkg: any) => (
                                             <tr key={pkg._id}>
-                                                <td className="whitespace-normal py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 max-w-lg" style={{ wordBreak: 'break-word' }}>{pkg.packageName}</td>
+                                                <td className="whitespace-normal px-3 py-4 text-sm font-medium text-gray-900 sm:pl-6 max-w-md" style={{ wordBreak: 'break-word' }}>{pkg.packageName}</td>
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                                     ₹{(pkg.estimatedAmount || 0).toLocaleString('en-IN')}
                                                 </td>
-                                                <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 flex items-center justify-end space-x-2">
-                                                    <Link href={`/packages/${pkg._id}/edit`} className="text-blue-600 hover:text-blue-900 p-2" title="Edit Package">
-                                                        <Edit className="w-5 h-5" />
+                                                <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 flex items-center justify-end space-x-3">
+                                                    <Link href={`/packages/${pkg._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
+                                                        <Eye className="w-5 h-5" />
                                                     </Link>
-                                                    <DeletePackageButton packageId={pkg._id} packageName={pkg.packageName} />
+                                                    <Link href={`/packages/${pkg._id}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Item">
+                                                        <Edit2 className="w-5 h-5" />
+                                                    </Link>
+                                                    <GenericDeleteButton 
+                                                        itemId={pkg._id} 
+                                                        itemName={pkg.packageName} 
+                                                        apiPath="/api/packages" 
+                                                    />
                                                 </td>
                                             </tr>
                                         ))
@@ -103,6 +123,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
                                 </tbody>
                             </table>
                         </div>
+                        <Pagination currentPage={page} totalPages={totalPages} />
                     </div>
                 </div>
             </div>

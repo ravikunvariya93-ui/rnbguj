@@ -2,38 +2,26 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface ITechnicalSanction extends Document {
     workName: string;
-    civilWorkCost: number; // Rs. In Lacks
-    gstAmount: number; // Rs. In Lacks
-    qcAmount: number; // Rs. In Lacks
-    lsAmount: number; // Rs. In Lacks
-    miscellaneousAmount: number; // Rs. In Lacks
+    wsNoSendingTS: string; // WS No. of Sending TS for Approval
+    dateSendingTS: Date; // Date of Sending TS for Approval
+    tsAuthority: string; // TS Authority
     tsAmount: number; // Rs. In Lacks
     tsNumber: string;
     tsDate: Date;
-    amountNotPutToTender: number;
     amountPutToTender: number;
-    villageName: string;
-    villagePopulation: number;
-    existingSurface: string;
     createdAt: Date;
     updatedAt: Date;
 }
 
 const TechnicalSanctionSchema: Schema = new Schema({
     workName: { type: String, required: true },
-    civilWorkCost: { type: Number },
-    gstAmount: { type: Number },
-    qcAmount: { type: Number },
-    lsAmount: { type: Number },
-    miscellaneousAmount: { type: Number },
+    wsNoSendingTS: { type: String },
+    dateSendingTS: { type: Date },
+    tsAuthority: { type: String },
     tsAmount: { type: Number },
     tsNumber: { type: String },
     tsDate: { type: Date },
-    amountNotPutToTender: { type: Number },
     amountPutToTender: { type: Number },
-    villageName: { type: String },
-    villagePopulation: { type: Number },
-    existingSurface: { type: String },
 }, {
     timestamps: true,
 });

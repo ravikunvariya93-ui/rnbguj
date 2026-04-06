@@ -18,6 +18,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
 
     // Basic info
     const [packageName, setPackageName] = useState(initialData.packageName || '');
+    const [subDivision, setSubDivision] = useState(initialData.subDivision || '');
 
     // Selected works list
     const [selectedWorks, setSelectedWorks] = useState<{ workId: string, workName: string, amount: number }[]>(initialData.works || []);
@@ -128,6 +129,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
         try {
             const submissionData = {
                 packageName,
+                subDivision,
                 works: selectedWorks,
                 ...dtpDetails
             };
@@ -196,6 +198,22 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                         onChange={(e) => setPackageName(e.target.value)}
                         className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
                     />
+                </div>
+
+                <div className="sm:col-span-6">
+                    <label htmlFor="subDivision" className="block text-sm font-medium text-gray-700"> Sub Division </label>
+                    <select
+                        id="subDivision"
+                        value={subDivision}
+                        onChange={(e) => setSubDivision(e.target.value)}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                    >
+                        <option value="">-- Select Sub Division --</option>
+                        <option value="Bhavnagar">Bhavnagar</option>
+                        <option value="Mahuva">Mahuva</option>
+                        <option value="Palitana">Palitana</option>
+                        <option value="Talaja">Talaja</option>
+                    </select>
                 </div>
 
                 <div className="sm:col-span-6">

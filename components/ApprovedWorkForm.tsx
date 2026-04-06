@@ -8,6 +8,7 @@ import Link from 'next/link';
 interface FormData {
     circle: string;
     district: string;
+    subDivision: string;
     taluka: string;
     constituencyName: string;
     budgetItemName: string;
@@ -28,6 +29,10 @@ interface FormData {
     workType: string;
     parliamentaryConstituency: string;
     mpName: string;
+    workNameGujarati: string;
+    natureOfWork: string;
+    schemeName: string;
+    length: string;
     [key: string]: string; // allow dynamic keys from initialData
 }
 
@@ -43,6 +48,7 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
     const [formData, setFormData] = useState<FormData>({
         circle: 'Panchayat R&B Circle, Rajkot',
         district: 'Bhavnagar',
+        subDivision: '',
         taluka: '',
         constituencyName: '',
         budgetItemName: '',
@@ -60,9 +66,13 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
         projectType: '',
         mlaName: '',
         roadCategory: '',
-        workType: '',
+        workType: 'Road',
         parliamentaryConstituency: '',
         mpName: '',
+        workNameGujarati: '',
+        natureOfWork: '',
+        schemeName: '',
+        length: '',
         ...initialData
     });
 
@@ -173,6 +183,24 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
                             value={formData.workName}
                             onChange={handleChange}
                             className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border"
+                            placeholder="Name of work in English"
+                        />
+                    </div>
+                </div>
+
+                <div className="sm:col-span-6">
+                    <label htmlFor="workNameGujarati" className="block text-sm font-medium text-gray-700">
+                        Name of Work in Gujarati
+                    </label>
+                    <div className="mt-1">
+                        <textarea
+                            id="workNameGujarati"
+                            name="workNameGujarati"
+                            rows={3}
+                            value={formData.workNameGujarati}
+                            onChange={handleChange}
+                            className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border"
+                            placeholder="કામનું નામ (ગુજરાતીમાં)"
                         />
                     </div>
                 </div>
@@ -188,8 +216,57 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
                 </div>
 
                 <div className="sm:col-span-2">
+                    <label htmlFor="subDivision" className="block text-sm font-medium text-gray-700">Sub Division</label>
+                    <select
+                        name="subDivision"
+                        id="subDivision"
+                        value={formData.subDivision}
+                        onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                    >
+                        <option value="">-- Select Sub Division --</option>
+                        <option value="Bhavnagar">Bhavnagar</option>
+                        <option value="Mahuva">Mahuva</option>
+                        <option value="Palitana">Palitana</option>
+                        <option value="Talaja">Talaja</option>
+                    </select>
+                </div>
+
+                <div className="sm:col-span-2">
                     <label htmlFor="taluka" className="block text-sm font-medium text-gray-700">Taluka</label>
-                    <input type="text" name="taluka" id="taluka" value={formData.taluka} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                    <select
+                        name="taluka"
+                        id="taluka"
+                        value={formData.taluka}
+                        onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                    >
+                        <option value="">-- Select Taluka --</option>
+                        <option value="Bhavnagar">Bhavnagar</option>
+                        <option value="Shihor">Shihor</option>
+                        <option value="Umrala">Umrala</option>
+                        <option value="Gariyadhar">Gariyadhar</option>
+                        <option value="Palitana">Palitana</option>
+                        <option value="Mahuva">Mahuva</option>
+                        <option value="Talaja">Talaja</option>
+                        <option value="Ghogha">Ghogha</option>
+                        <option value="Jesar">Jesar</option>
+                        <option value="Vallabhipur">Vallabhipur</option>
+                    </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                    <label htmlFor="length" className="block text-sm font-medium text-gray-700">Length (K.M.)</label>
+                    <input
+                        type="number"
+                        step="0.001"
+                        name="length"
+                        id="length"
+                        value={formData.length}
+                        onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                        placeholder="e.g. 2.50"
+                    />
                 </div>
             </div>
 
@@ -203,12 +280,41 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
                     </div>
                     <div className="sm:col-span-3">
                         <label htmlFor="budgetHead" className="block text-sm font-medium text-gray-700">Budget Head</label>
-                        <input type="text" name="budgetHead" id="budgetHead" value={formData.budgetHead} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                        <select
+                            name="budgetHead"
+                            id="budgetHead"
+                            value={formData.budgetHead}
+                            onChange={handleChange}
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                        >
+                            <option value="">-- Select Budget Head --</option>
+                            <option value="5054">5054</option>
+                            <option value="3054">3054</option>
+                            <option value="2215">2215</option>
+                            <option value="2217">2217</option>
+                            <option value="4215">4215</option>
+                            <option value="4217">4217</option>
+                            <option value="Other">Other</option>
+                        </select>
                     </div>
 
                     <div className="sm:col-span-2">
                         <label htmlFor="approvalYear" className="block text-sm font-medium text-gray-700">Year of Approval</label>
-                        <input type="text" name="approvalYear" id="approvalYear" value={formData.approvalYear} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                        <select
+                            name="approvalYear"
+                            id="approvalYear"
+                            value={formData.approvalYear}
+                            onChange={handleChange}
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                        >
+                            <option value="">-- Select Year --</option>
+                            <option value="2021-22">2021-22</option>
+                            <option value="2022-23">2022-23</option>
+                            <option value="2023-24">2023-24</option>
+                            <option value="2024-25">2024-25</option>
+                            <option value="2025-26">2025-26</option>
+                            <option value="2026-27">2026-27</option>
+                        </select>
                     </div>
 
                     <div className="sm:col-span-2">
@@ -241,11 +347,37 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
                     </div>
                     <div className="sm:col-span-2">
                         <label htmlFor="mlaName" className="block text-sm font-medium text-gray-700">MLA Name</label>
-                        <input type="text" name="mlaName" id="mlaName" value={formData.mlaName} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                        <select
+                            name="mlaName"
+                            id="mlaName"
+                            value={formData.mlaName}
+                            onChange={handleChange}
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                        >
+                            <option value="">-- Select MLA --</option>
+                            <option value="Parshottambhai O. Solanki (Bhavnagar Rural)">Parshottambhai O. Solanki (Bhavnagar Rural)</option>
+                            <option value="Jitu Vaghani (Bhavnagar West)">Jitu Vaghani (Bhavnagar West)</option>
+                            <option value="Sejalben Rajivkumar Pandya (Bhavnagar East)">Sejalben Rajivkumar Pandya (Bhavnagar East)</option>
+                            <option value="Bhikhubhai Baraiya (Palitana)">Bhikhubhai Baraiya (Palitana)</option>
+                            <option value="Gautambhai Gopabhai Chauhan (Talaja)">Gautambhai Gopabhai Chauhan (Talaja)</option>
+                            <option value="Shivabhai Jerambhai Gohil (Mahuva)">Shivabhai Jerambhai Gohil (Mahuva)</option>
+                            <option value="Sudhirbhai Vaghani (Gariyadhar)">Sudhirbhai Vaghani (Gariyadhar)</option>
+                            <option value="Other">Other</option>
+                        </select>
                     </div>
                     <div className="sm:col-span-2">
                         <label htmlFor="mpName" className="block text-sm font-medium text-gray-700">MP Name</label>
-                        <input type="text" name="mpName" id="mpName" value={formData.mpName} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                        <select
+                            name="mpName"
+                            id="mpName"
+                            value={formData.mpName}
+                            onChange={handleChange}
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                        >
+                            <option value="">-- Select MP --</option>
+                            <option value="Nimuben Jayantibhai Bambhaniya (Bhavnagar)">Nimuben Jayantibhai Bambhaniya (Bhavnagar)</option>
+                            <option value="Other">Other</option>
+                        </select>
                     </div>
 
                     <div className="sm:col-span-2">
@@ -258,7 +390,72 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
                     </div>
                     <div className="sm:col-span-2">
                         <label htmlFor="roadCategory" className="block text-sm font-medium text-gray-700">Category of Road</label>
-                        <input type="text" name="roadCategory" id="roadCategory" value={formData.roadCategory} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                        <select
+                            name="roadCategory"
+                            id="roadCategory"
+                            value={formData.roadCategory}
+                            onChange={handleChange}
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                        >
+                            <option value="">-- Select Category --</option>
+                            <option value="State Highway (SH)">State Highway (SH)</option>
+                            <option value="Major District Road (MDR)">Major District Road (MDR)</option>
+                            <option value="Other District Road (ODR)">Other District Road (ODR)</option>
+                            <option value="Village Road (VR)">Village Road (VR)</option>
+                            <option value="City Road">City Road</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                        <label htmlFor="workType" className="block text-sm font-medium text-gray-700">Work Type</label>
+                        <select
+                            name="workType"
+                            id="workType"
+                            value={formData.workType}
+                            onChange={handleChange}
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                        >
+                            <option value="Road">Road</option>
+                            <option value="Building">Building</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                        <label htmlFor="natureOfWork" className="block text-sm font-medium text-gray-700">Nature of Work</label>
+                        <select
+                            name="natureOfWork"
+                            id="natureOfWork"
+                            value={formData.natureOfWork}
+                            onChange={handleChange}
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                        >
+                            <option value="">-- Select Nature of Work --</option>
+                            <option value="New Development">New Development</option>
+                            <option value="Resurfacing">Resurfacing</option>
+                            <option value="Widening & Strengthening">Widening & Strengthening</option>
+                            <option value="Bridge Work">Bridge Work</option>
+                            <option value="Maintenance">Maintenance</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                        <label htmlFor="schemeName" className="block text-sm font-medium text-gray-700">Name of Scheme</label>
+                        <select
+                            name="schemeName"
+                            id="schemeName"
+                            value={formData.schemeName}
+                            onChange={handleChange}
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                        >
+                            <option value="">-- Select Name of Scheme --</option>
+                            <option value="Mukhya Mantri Village Road Scheme">Mukhya Mantri Village Road Scheme</option>
+                            <option value="State Highway Development">State Highway Development</option>
+                            <option value="Major District Road Maintenance">Major District Road Maintenance</option>
+                            <option value="Other">Other</option>
+                        </select>
                     </div>
                 </div>
             </div>

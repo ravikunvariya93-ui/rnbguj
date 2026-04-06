@@ -18,18 +18,12 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         workName: '',
-        civilWorkCost: '',
-        gstAmount: '',
-        qcAmount: '',
-        lsAmount: '',
-        miscellaneousAmount: '',
+        wsNoSendingTS: '',
+        dateSendingTS: '',
+        tsAuthority: '',
         tsAmount: '',
         tsNumber: '',
         tsDate: '',
-        villageName: '',
-        villagePopulation: '',
-        existingSurface: '',
-        amountNotPutToTender: '',
         amountPutToTender: '',
         ...initialData
     });
@@ -52,24 +46,37 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
     }, []);
 
     useEffect(() => {
-        // Format date if editing
-        if (initialData.tsDate) {
-            try {
+        // Format dates if editing
+        const updateDates = () => {
+            const newData: any = {};
+            
+            if (initialData.tsDate) {
                 const dateObj = new Date(initialData.tsDate);
                 if (!isNaN(dateObj.getTime())) {
                     const day = String(dateObj.getDate()).padStart(2, '0');
                     const month = String(dateObj.getMonth() + 1).padStart(2, '0');
                     const year = dateObj.getFullYear();
-                    setFormData((prev: any) => ({
-                        ...prev,
-                        tsDate: `${day}/${month}/${year}`
-                    }));
+                    newData.tsDate = `${day}/${month}/${year}`;
                 }
-            } catch (e) {
-                console.error("Error formatting initial date", e);
             }
-        }
-    }, [initialData.tsDate]);
+            
+            if (initialData.dateSendingTS) {
+                const dateObj = new Date(initialData.dateSendingTS);
+                if (!isNaN(dateObj.getTime())) {
+                    const day = String(dateObj.getDate()).padStart(2, '0');
+                    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                    const year = dateObj.getFullYear();
+                    newData.dateSendingTS = `${day}/${month}/${year}`;
+                }
+            }
+
+            if (Object.keys(newData).length > 0) {
+                setFormData((prev: any) => ({ ...prev, ...newData }));
+            }
+        };
+
+        updateDates();
+    }, [initialData.tsDate, initialData.dateSendingTS]);
 
     // Auto-calculate Amount Not Put To Tender removed as per request
     // The user will enter Amount Not Put To Tender manually.
@@ -94,26 +101,37 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
         try {
             const submissionData = { ...formData };
 
-            // Date Parsing
-            if (submissionData.tsDate) {
-                const cleanDate = String(submissionData.tsDate).trim();
+            // Date Parsing helper
+            const parseDate = (dateStr: string) => {
+                const cleanDate = String(dateStr).trim();
                 const parts = cleanDate.split(/[\/\-\.]/);
-
                 if (parts.length === 3) {
                     let year = parts[2];
                     if (year.length === 2) year = '20' + year;
                     const isoDate = `${year}-${parts[1]}-${parts[0]}`;
                     const dateObj = new Date(isoDate);
+                    return !isNaN(dateObj.getTime()) ? dateObj.toISOString() : null;
+                }
+                return null;
+            };
 
-                    if (!isNaN(dateObj.getTime())) {
-                        submissionData.tsDate = dateObj.toISOString();
-                    } else {
-                        alert(`Invalid Date format: "${cleanDate}". Please use DD/MM/YYYY`);
-                        setLoading(false);
-                        return;
-                    }
-                } else if (cleanDate.length > 0) {
-                    alert(`Invalid Date format: "${cleanDate}". Please use DD/MM/YYYY`);
+            if (submissionData.tsDate) {
+                const iso = parseDate(submissionData.tsDate);
+                if (iso) {
+                    submissionData.tsDate = iso;
+                } else if (String(submissionData.tsDate).trim().length > 0) {
+                    alert(`Invalid T.S. Date format: "${submissionData.tsDate}". Please use DD/MM/YYYY`);
+                    setLoading(false);
+                    return;
+                }
+            }
+
+            if (submissionData.dateSendingTS) {
+                const iso = parseDate(submissionData.dateSendingTS as string);
+                if (iso) {
+                    submissionData.dateSendingTS = iso;
+                } else if (String(submissionData.dateSendingTS).trim().length > 0) {
+                    alert(`Invalid Date of Sending TS format: "${submissionData.dateSendingTS}". Please use DD/MM/YYYY`);
                     setLoading(false);
                     return;
                 }
@@ -166,70 +184,63 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
                 </div>
 
 
-                {/* Cost Details */}
+                {/* Tracking Details */}
                 <div className="sm:col-span-6">
-                    <h4 className="text-md font-medium text-gray-900 mb-2">Cost Details (Rupees)</h4>
+                    <h4 className="text-md font-medium text-gray-900 mb-2">Tracking for Approval</h4>
                     <div className="grid grid-cols-1 gap-y-4 gap-x-4 sm:grid-cols-6">
-                        <div className="sm:col-span-2">
-                            <label htmlFor="civilWorkCost" className="block text-sm font-medium text-gray-700">Civil Work Cost</label>
-                            <input type="number" step="0.01" name="civilWorkCost" id="civilWorkCost" value={formData.civilWorkCost} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                        <div className="sm:col-span-3">
+                            <label htmlFor="wsNoSendingTS" className="block text-sm font-medium text-gray-700">WS No. of Sending TS for Approval</label>
+                            <input type="text" name="wsNoSendingTS" id="wsNoSendingTS" value={formData.wsNoSendingTS} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                         </div>
-                        <div className="sm:col-span-2">
-                            <label htmlFor="gstAmount" className="block text-sm font-medium text-gray-700">GST Amount</label>
-                            <input type="number" step="0.01" name="gstAmount" id="gstAmount" value={formData.gstAmount} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                        </div>
-                        <div className="sm:col-span-2">
-                            <label htmlFor="qcAmount" className="block text-sm font-medium text-gray-700">QC Amount</label>
-                            <input type="number" step="0.01" name="qcAmount" id="qcAmount" value={formData.qcAmount} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                        </div>
-                        <div className="sm:col-span-2">
-                            <label htmlFor="lsAmount" className="block text-sm font-medium text-gray-700">LS Amount</label>
-                            <input type="number" step="0.01" name="lsAmount" id="lsAmount" value={formData.lsAmount} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                        </div>
-                        <div className="sm:col-span-2">
-                            <label htmlFor="miscellaneousAmount" className="block text-sm font-medium text-gray-700">Misc. Amount</label>
-                            <input type="number" step="0.01" name="miscellaneousAmount" id="miscellaneousAmount" value={formData.miscellaneousAmount} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                        </div>
-                        <div className="sm:col-span-2">
-                            <label htmlFor="tsAmount" className="block text-sm font-medium text-gray-700">Total T.S. Amount</label>
-                            <input type="number" step="0.01" name="tsAmount" id="tsAmount" value={formData.tsAmount} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                        </div>
-
-                        <div className="sm:col-span-2">
-                            <label htmlFor="amountNotPutToTender" className="block text-sm font-medium text-gray-700">Amount Not Put To Tender</label>
-                            <input type="number" step="0.01" name="amountNotPutToTender" id="amountNotPutToTender" value={formData.amountNotPutToTender} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border bg-yellow-50" />
-                        </div>
-
-                        <div className="sm:col-span-2">
-                            <label htmlFor="amountPutToTender" className="block text-sm font-medium text-gray-700">Amount Put To Tender</label>
-                            <input type="number" step="0.01" name="amountPutToTender" id="amountPutToTender" value={formData.amountPutToTender || ''} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                        <div className="sm:col-span-3">
+                            <label htmlFor="dateSendingTS" className="block text-sm font-medium text-gray-700">Date of Sending TS for Approval (DD/MM/YYYY)</label>
+                            <input type="text" placeholder="20/01/2025" name="dateSendingTS" id="dateSendingTS" value={formData.dateSendingTS} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                         </div>
                     </div>
                 </div>
 
                 {/* T.S. Details */}
-                <div className="sm:col-span-3">
+                <div className="sm:col-span-2">
+                    <label htmlFor="tsAuthority" className="block text-sm font-medium text-gray-700">TS Authority</label>
+                    <select
+                        name="tsAuthority"
+                        id="tsAuthority"
+                        value={formData.tsAuthority}
+                        onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                    >
+                        <option value="">-- Select Authority --</option>
+                        <option value="Executive Engineer (EE)">Executive Engineer (EE)</option>
+                        <option value="Superintending Engineer (SE)">Superintending Engineer (SE)</option>
+                        <option value="Chief Engineer (CE)">Chief Engineer (CE)</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div className="sm:col-span-2">
                     <label htmlFor="tsNumber" className="block text-sm font-medium text-gray-700">T.S. Number</label>
                     <input type="text" name="tsNumber" id="tsNumber" value={formData.tsNumber} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                 </div>
-                <div className="sm:col-span-3">
+                <div className="sm:col-span-2">
                     <label htmlFor="tsDate" className="block text-sm font-medium text-gray-700">T.S. Date (DD/MM/YYYY)</label>
                     <input type="text" placeholder="20/01/2025" name="tsDate" id="tsDate" value={formData.tsDate} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                 </div>
 
-                {/* Village / Site Details */}
-                <div className="sm:col-span-2">
-                    <label htmlFor="villageName" className="block text-sm font-medium text-gray-700">Village Name</label>
-                    <input type="text" name="villageName" id="villageName" value={formData.villageName || ''} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                {/* Cost Details */}
+                <div className="sm:col-span-6">
+                    <h4 className="text-md font-medium text-gray-900 mb-2">Cost Details (Rupees)</h4>
+                    <div className="grid grid-cols-1 gap-y-4 gap-x-4 sm:grid-cols-6">
+                        <div className="sm:col-span-3">
+                            <label htmlFor="tsAmount" className="block text-sm font-medium text-gray-700">TS Amount</label>
+                            <input type="number" step="0.01" name="tsAmount" id="tsAmount" value={formData.tsAmount} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                        </div>
+                        <div className="sm:col-span-3">
+                            <label htmlFor="amountPutToTender" className="block text-sm font-medium text-gray-700">Amount put to Tender</label>
+                            <input type="number" step="0.01" name="amountPutToTender" id="amountPutToTender" value={formData.amountPutToTender} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                        </div>
+                    </div>
                 </div>
-                <div className="sm:col-span-2">
-                    <label htmlFor="villagePopulation" className="block text-sm font-medium text-gray-700">Village Population</label>
-                    <input type="number" name="villagePopulation" id="villagePopulation" value={formData.villagePopulation || ''} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                </div>
-                <div className="sm:col-span-2">
-                    <label htmlFor="existingSurface" className="block text-sm font-medium text-gray-700">Existing Surface</label>
-                    <input type="text" name="existingSurface" id="existingSurface" value={formData.existingSurface || ''} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                </div>
+
+
 
             </div>
 

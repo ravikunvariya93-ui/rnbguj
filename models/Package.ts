@@ -2,6 +2,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IPackage extends Document {
     packageName: string;
+    subDivision?: string;
     works: {
         workId: mongoose.Schema.Types.ObjectId;
         workName: string;
@@ -18,6 +19,7 @@ export interface IPackage extends Document {
 
 const PackageSchema: Schema = new Schema({
     packageName: { type: String, required: true },
+    subDivision: { type: String },
     works: [{
         workId: { type: mongoose.Schema.Types.ObjectId, ref: 'TechnicalSanction' },
         workName: { type: String },

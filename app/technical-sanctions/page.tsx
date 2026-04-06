@@ -1,24 +1,38 @@
 import dbConnect from '@/lib/db';
 import TechnicalSanction, { ITechnicalSanction } from '@/models/TechnicalSanction';
 import Link from 'next/link';
-import { Plus, Filter } from 'lucide-react';
+import { Plus, Filter, Eye, Edit2 } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
+import Pagination from '@/components/Pagination';
+import GenericDeleteButton from '@/components/GenericDeleteButton';
 
 export const dynamic = 'force-dynamic';
 
 interface Props {
-    searchParams: { search?: string };
+    searchParams: { search?: string; page?: string; limit?: string };
 }
 
 export default async function TechnicalSanctionsListPage({ searchParams }: Props) {
     await dbConnect();
+    const params = await searchParams;
     
     let query: any = {};
-    if (searchParams.search) {
-        query.workName = { $regex: searchParams.search, $options: 'i' };
+    if (params.search) {
+        query.workName = { $regex: params.search, $options: 'i' };
     }
 
-    const sanctionsRaw = await TechnicalSanction.find(query).sort({ createdAt: -1 }).lean();
+    const page = parseInt(params.page || '1');
+    const limit = parseInt(params.limit || '10');
+    const skip = (page - 1) * limit;
+
+    const totalItems = await TechnicalSanction.countDocuments(query);
+    const totalPages = Math.ceil(totalItems / limit);
+
+    const sanctionsRaw = await TechnicalSanction.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
     const sanctions = sanctionsRaw.map((ts: any) => ({
         ...ts,
         _id: ts._id.toString(),
@@ -30,7 +44,7 @@ export default async function TechnicalSanctionsListPage({ searchParams }: Props
                 <div className="sm:flex-auto">
                     <div className="flex items-center space-x-2">
                         <h1 className="text-2xl font-semibold text-gray-900">TS (Technical Sanction)</h1>
-                        {searchParams.search && (
+                        {params.search && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                 <Filter className="w-3 h-3 mr-1" /> Search Active
                             </span>
@@ -47,7 +61,7 @@ export default async function TechnicalSanctionsListPage({ searchParams }: Props
 
             <div className="mt-6 flex justify-start items-center">
                 <SearchBar placeholder="Search by name of work..." />
-                {searchParams.search && (
+                {params.search && (
                     <Link href="/technical-sanctions" className="ml-4 text-sm text-blue-600 hover:text-blue-900">
                         Clear filters
                     </Link>
@@ -62,7 +76,7 @@ export default async function TechnicalSanctionsListPage({ searchParams }: Props
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Name of Work</th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Total T.S. Amount</th>
+                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">TS Amount</th>
                                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">T.S. Date</th>
                                         <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right">Actions</th>
                                     </tr>
@@ -76,8 +90,18 @@ export default async function TechnicalSanctionsListPage({ searchParams }: Props
                                                 <td className="whitespace-normal py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 max-w-xs">{ts.workName}</td>
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">₹{(ts.tsAmount || 0).toLocaleString('en-IN')}</td>
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{ts.tsDate ? new Date(ts.tsDate).toLocaleDateString('en-GB') : '-'}</td>
-                                                <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                                    <Link href={`/technical-sanctions/${ts._id}/edit`} className="text-blue-600 hover:text-blue-900 transition-colors inline-block p-1">Edit</Link>
+                                                <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 flex items-center justify-end space-x-3">
+                                                    <Link href={`/technical-sanctions/${ts._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
+                                                        <Eye className="w-5 h-5" />
+                                                    </Link>
+                                                    <Link href={`/technical-sanctions/${ts._id}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Item">
+                                                        <Edit2 className="w-5 h-5" />
+                                                    </Link>
+                                                    <GenericDeleteButton 
+                                                        itemId={ts._id} 
+                                                        itemName={ts.workName} 
+                                                        apiPath="/api/technical-sanctions" 
+                                                    />
                                                 </td>
                                             </tr>
                                         ))
@@ -85,6 +109,7 @@ export default async function TechnicalSanctionsListPage({ searchParams }: Props
                                 </tbody>
                             </table>
                         </div>
+                        <Pagination currentPage={page} totalPages={totalPages} />
                     </div>
                 </div>
             </div>

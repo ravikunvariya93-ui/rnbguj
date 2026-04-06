@@ -1,124 +1,116 @@
 import dbConnect from '@/lib/db';
 import Tender from '@/models/Tender';
 import Link from 'next/link';
+import { ArrowLeft, Edit2 } from 'lucide-react';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, MapPin } from 'lucide-react';
 
 export default async function TenderDetailPage({ params }: { params: Promise<{ id: string }> }) {
     await dbConnect();
     const { id } = await params;
-
-    let tender;
-    try {
-        console.log(`[TenderDetail] Fetching ID: ${id}`);
-        await dbConnect();
-        tender = await Tender.findById(id);
-        console.log(`[TenderDetail] Found: ${tender ? tender._id : 'null'}`);
-    } catch (e) {
-        console.error(`[TenderDetail] Error fetching ID ${id}:`, e);
-        notFound();
-    }
+    const tender = await Tender.findById(id).lean();
 
     if (!tender) {
-        console.log(`[TenderDetail] Tender not found, triggering 404`);
         notFound();
     }
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-        }).format(amount);
-    };
-
-    const formatDate = (date: Date | undefined | null) => {
-        if (!date) return 'N/A';
-        return new Date(date).toLocaleDateString('en-GB');
-    };
+    const sections = [
+        {
+            title: 'Tender Identification',
+            fields: [
+                { label: 'Tender ID', value: tender.tenderId },
+                { label: 'Package Name', value: tender.packageName },
+                { label: 'Trial No.', value: tender.trialNo },
+                { label: 'Re-Invite?', value: tender.reInvite ? 'Yes' : 'No' },
+                { label: 'Tender Notice Year', value: tender.tenderNoticeYear },
+                { label: 'Notice No.', value: tender.noticeNo },
+                { label: 'Sr No.', value: tender.srNo },
+            ]
+        },
+        {
+            title: 'Timeline & Validity',
+            fields: [
+                { label: 'Creation Date', value: tender.tenderCreationDate ? new Date(tender.tenderCreationDate).toLocaleDateString('en-GB') : '-' },
+                { label: 'Last Submission Date', value: tender.lastDateOfSubmission ? new Date(tender.lastDateOfSubmission).toLocaleDateString('en-GB') : '-' },
+                { label: 'Opening Date', value: tender.tenderOpeningDate ? new Date(tender.tenderOpeningDate).toLocaleDateString('en-GB') : '-' },
+                { label: 'Validity Date', value: tender.tenderValidityDate ? new Date(tender.tenderValidityDate).toLocaleDateString('en-GB') : '-' },
+            ]
+        },
+        {
+            title: 'Contract & Pricing',
+            fields: [
+                { label: 'Estimated Amount', value: tender.estimatedAmount ? `₹${tender.estimatedAmount.toLocaleString('en-IN')}` : '-' },
+                { label: 'Contractor Name', value: tender.contractorName },
+                { label: 'Contract Price', value: tender.contractPrice ? `₹${tender.contractPrice.toLocaleString('en-IN')}` : '-' },
+                { label: 'Above/Below (%)', value: tender.aboveBelowPercentage ? `${tender.aboveBelowPercentage}%` : '-' },
+                { label: 'Above/Below (Word)', value: tender.aboveBelowInWord },
+            ]
+        },
+        {
+            title: 'Approval Details',
+            fields: [
+                { label: 'Proposal Date', value: tender.proposalDate ? new Date(tender.proposalDate).toLocaleDateString('en-GB') : '-' },
+                { label: 'Approval Office', value: tender.tenderApprovalOffice },
+                { label: 'Approval No.', value: tender.tenderApprovalNo },
+                { label: 'Approval Date', value: tender.tenderApprovalDate ? new Date(tender.tenderApprovalDate).toLocaleDateString('en-GB') : '-' },
+                { label: 'Duration (Months)', value: tender.workDurationMonths },
+            ]
+        },
+        {
+            title: 'Acceptance & Agreement',
+            fields: [
+                { label: 'LOA Worksheet No.', value: tender.acceptanceLetterWorksheetNo },
+                { label: 'LOA Date', value: tender.acceptanceLetterDate ? new Date(tender.acceptanceLetterDate).toLocaleDateString('en-GB') : '-' },
+                { label: 'Agreement Year', value: tender.agreementYear },
+                { label: 'Agreement No.', value: tender.agreementNo },
+                { label: 'Agreement Date', value: tender.agreementDate ? new Date(tender.agreementDate).toLocaleDateString('en-GB') : '-' },
+            ]
+        }
+    ];
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-            <Link href="/tenders" className="inline-flex items-center text-sm text-blue-600 hover:text-blue-500 mb-6">
-                <ArrowLeft className="w-4 h-4 mr-1" /> Back to Tenders
-            </Link>
-
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-                <div className="px-4 py-5 sm:px-6 flex justify-between items-start">
-                    <div>
-                        <h3 className="text-lg leading-6 font-medium text-gray-900">Tender Details</h3>
-                        <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                            {tender.tenderId ? `ID: ${tender.tenderId}` : `Sr No: ${tender.srNo}`}
-                        </p>
-                    </div>
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${tender.reInvite ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
-                        {tender.reInvite ? 'Re-Invited' : 'Original'}
-                    </span>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <div className="mb-8 flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                    <Link href="/tenders" className="text-gray-500 hover:text-gray-700">
+                        <ArrowLeft className="w-6 h-6" />
+                    </Link>
+                    <h1 className="text-2xl font-bold text-gray-900">Tender Details</h1>
                 </div>
-                <div className="border-t border-gray-200">
-                    <dl>
-                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt className="text-sm font-medium text-gray-500">Package Name</dt>
-                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 flex items-center">
-                                <MapPin className="w-4 h-4 text-gray-400 mr-2" />
-                                {tender.packageName || 'N/A'}
-                            </dd>
-                        </div>
-                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt className="text-sm font-medium text-gray-500">Tender Notice Year</dt>
-                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{tender.tenderNoticeYear || 'N/A'}</dd>
-                        </div>
-                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt className="text-sm font-medium text-gray-500">Notice No.</dt>
-                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{tender.noticeNo || 'N/A'}</dd>
-                        </div>
-                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt className="text-sm font-medium text-gray-500">Sr No.</dt>
-                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{tender.srNo || 'N/A'}</dd>
-                        </div>
-                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt className="text-sm font-medium text-gray-500">Trial No.</dt>
-                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{tender.trialNo ?? 1}</dd>
-                        </div>
-                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt className="text-sm font-medium text-gray-500">Contractor Name</dt>
-                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{tender.contractorName || 'N/A'}</dd>
-                        </div>
-                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt className="text-sm font-medium text-gray-500">Contract Price</dt>
-                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 font-medium">
-                                {tender.contractPrice ? formatCurrency(tender.contractPrice) : 'N/A'}
-                            </dd>
-                        </div>
-                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt className="text-sm font-medium text-gray-500">Above / Below %</dt>
-                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                {tender.aboveBelowPercentage != null ? `${tender.aboveBelowPercentage}% ${tender.aboveBelowInWord}` : 'N/A'}
-                            </dd>
-                        </div>
-                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt className="text-sm font-medium text-gray-500">Tender Creation Date</dt>
-                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{formatDate(tender.tenderCreationDate)}</dd>
-                        </div>
-                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt className="text-sm font-medium text-gray-500">Last Date of Submission</dt>
-                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{formatDate(tender.lastDateOfSubmission)}</dd>
-                        </div>
-                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt className="text-sm font-medium text-gray-500">Tender Opening Date</dt>
-                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{formatDate(tender.tenderOpeningDate)}</dd>
-                        </div>
-                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt className="text-sm font-medium text-gray-500">Tender Validity Date</dt>
-                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{formatDate(tender.tenderValidityDate)}</dd>
-                        </div>
-                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                            <dt className="text-sm font-medium text-gray-500">Created At</dt>
-                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{formatDate(tender.createdAt)}</dd>
-                        </div>
+                <Link
+                    href={`/tenders/${id}/edit`}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                >
+                    <Edit2 className="w-4 h-4 mr-2" /> Edit Tender
+                </Link>
+            </div>
+
+            <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
+                <div className="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900">{tender.tenderId} - {tender.packageName}</h3>
+                    <p className="mt-1 max-w-2xl text-sm text-gray-500 italic">Full procurement record and contract award details.</p>
+                </div>
+                <div className="px-4 py-5 sm:p-0">
+                    <dl className="sm:divide-y sm:divide-gray-200">
+                        {sections.map((section) => (
+                            <div key={section.title} className="py-4 sm:py-5">
+                                <dt className="text-sm font-semibold text-blue-600 px-4 sm:px-6 mb-4 uppercase tracking-wider">
+                                    {section.title}
+                                </dt>
+                                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-6 px-4 sm:px-6">
+                                        {section.fields.map((field) => (
+                                            <div key={field.label} className="sm:col-span-1">
+                                                <dt className="text-sm font-medium text-gray-500">{field.label}</dt>
+                                                <dd className="mt-1 text-sm text-gray-900">{field.value?.toString() || '-'}</dd>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </dd>
+                            </div>
+                        ))}
                     </dl>
                 </div>
             </div>
         </div>
     );
 }
-

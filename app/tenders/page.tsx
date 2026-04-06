@@ -3,41 +3,54 @@ import Tender from '@/models/Tender';
 import LOA from '@/models/LOA';
 import Approval from '@/models/Approval';
 import Link from 'next/link';
-import { Plus, Filter, Edit } from 'lucide-react';
-import DeleteTenderButton from '@/components/DeleteTenderButton';
+import { Plus, Filter, Eye, Edit2 } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
+import Pagination from '@/components/Pagination';
+import GenericDeleteButton from '@/components/GenericDeleteButton';
 
 export const dynamic = 'force-dynamic';
 
 interface Props {
-    searchParams: { filter?: string; search?: string };
+    searchParams: { filter?: string; search?: string; page?: string; limit?: string };
 }
 
 export default async function TendersListPage({ searchParams }: Props) {
     await dbConnect();
+    const params = await searchParams;
     
     let query: any = {};
     let filterLabel = "List of all tenders.";
 
-    if (searchParams.filter === 'pending_loa') {
+    if (params.filter === 'pending_loa') {
         const tendersWithLoa = await LOA.find().distinct('tenderId');
         query._id = { $nin: tendersWithLoa };
         filterLabel = "Showing Tenders awaiting Letter of Acceptance (Pending LOA).";
-    } else if (searchParams.filter === 'pending_approval') {
+    } else if (params.filter === 'pending_approval') {
         const tendersWithApproval = await Approval.find().distinct('tenderId');
         query._id = { $nin: tendersWithApproval };
         filterLabel = "Showing Tenders awaiting Technical Approval (Pending Approval).";
     }
 
-    if (searchParams.search) {
+    if (params.search) {
         query.$or = [
-            { tenderId: { $regex: searchParams.search, $options: 'i' } },
-            { packageName: { $regex: searchParams.search, $options: 'i' } },
-            { contractorName: { $regex: searchParams.search, $options: 'i' } }
+            { tenderId: { $regex: params.search, $options: 'i' } },
+            { packageName: { $regex: params.search, $options: 'i' } },
+            { contractorName: { $regex: params.search, $options: 'i' } }
         ];
     }
 
-    const tendersRaw = await Tender.find(query).sort({ createdAt: -1 }).lean();
+    const page = parseInt(params.page || '1');
+    const limit = parseInt(params.limit || '10');
+    const skip = (page - 1) * limit;
+
+    const totalItems = await Tender.countDocuments(query);
+    const totalPages = Math.ceil(totalItems / limit);
+
+    const tendersRaw = await Tender.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean();
     const tenders = tendersRaw.map((t: any) => ({
         ...t,
         _id: t._id.toString(),
@@ -49,9 +62,9 @@ export default async function TendersListPage({ searchParams }: Props) {
                 <div className="sm:flex-auto">
                     <div className="flex items-center space-x-2">
                         <h1 className="text-2xl font-semibold text-gray-900">Tenders</h1>
-                        {(searchParams.filter || searchParams.search) && (
+                        {(params.filter || params.search) && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                <Filter className="w-3 h-3 mr-1" /> {searchParams.search ? 'Search Active' : 'Filter Active'}
+                                <Filter className="w-3 h-3 mr-1" /> {params.search ? 'Search Active' : 'Filter Active'}
                             </span>
                         )}
                     </div>
@@ -66,7 +79,7 @@ export default async function TendersListPage({ searchParams }: Props) {
 
             <div className="mt-6 flex justify-start items-center">
                 <SearchBar placeholder="Search by Tender ID, Package, or Contractor..." />
-                {(searchParams.filter || searchParams.search) && (
+                {(params.filter || params.search) && (
                     <Link href="/tenders" className="ml-4 text-sm text-blue-600 hover:text-blue-900">
                         Clear all filters
                     </Link>
@@ -82,6 +95,7 @@ export default async function TendersListPage({ searchParams }: Props) {
                                     <tr>
                                         <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Tender ID</th>
                                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Package Name</th>
+                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Trial</th>
                                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Contractor Name</th>
                                         <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right">Actions</th>
                                     </tr>
@@ -94,12 +108,23 @@ export default async function TendersListPage({ searchParams }: Props) {
                                             <tr key={tender._id}>
                                                 <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">{tender.tenderId}</td>
                                                 <td className="whitespace-normal px-3 py-4 text-sm text-gray-500 max-w-xs " style={{ wordBreak: 'break-word' }}>{tender.packageName}</td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{tender.contractorName || '-'}</td>
+                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{tender.trialNo || 1}</td>
+                                                <td className="whitespace-normal px-3 py-4 text-sm text-gray-500 max-w-xs" style={{ wordBreak: 'break-word' }}>{tender.contractorName || '-'}</td>
                                                 <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 flex items-center justify-end space-x-2">
-                                                    <Link href={`/tenders/${tender._id}/edit`} className="text-blue-600 hover:text-blue-900 p-2" title="Edit Tender">
-                                                        <Edit className="w-5 h-5" />
+                                                    <Link href={`/tenders/${tender._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
+                                                        <Eye className="w-5 h-5" />
                                                     </Link>
-                                                    <DeleteTenderButton tenderId={tender._id} tenderName={tender.packageName} />
+                                                    <Link href={`/tenders/new?packageId=${tender.packageId}&reInvite=true`} className="text-green-600 hover:text-green-900 p-1" title="Re-tender this package">
+                                                        <Plus className="w-5 h-5" />
+                                                    </Link>
+                                                    <Link href={`/tenders/${tender._id}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Tender">
+                                                        <Edit2 className="w-5 h-5" />
+                                                    </Link>
+                                                    <GenericDeleteButton 
+                                                        itemId={tender._id} 
+                                                        itemName={tender.tenderId} 
+                                                        apiPath="/api/tenders" 
+                                                    />
                                                 </td>
                                             </tr>
                                         ))
@@ -107,6 +132,7 @@ export default async function TendersListPage({ searchParams }: Props) {
                                 </tbody>
                             </table>
                         </div>
+                        <Pagination currentPage={page} totalPages={totalPages} />
                     </div>
                 </div>
             </div>

@@ -3,27 +3,28 @@ import WorkOrder from '@/models/WorkOrder';
 import LOA from '@/models/LOA';
 import Tender from '@/models/Tender';
 import Link from 'next/link';
-import { Plus, Filter } from 'lucide-react';
+import { Plus, Filter, Eye, Edit2 } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
+import Pagination from '@/components/Pagination';
+import GenericDeleteButton from '@/components/GenericDeleteButton';
 
 export const dynamic = 'force-dynamic';
 
 interface Props {
-    searchParams: { search?: string };
+    searchParams: { search?: string; page?: string; limit?: string };
 }
-
-import DeleteWorkOrderButton from '@/components/DeleteWorkOrderButton';
 
 export default async function WorkOrderListPage({ searchParams }: Props) {
     await dbConnect();
+    const params = await searchParams;
     
     let query: any = {};
-    if (searchParams.search) {
+    if (params.search) {
         // Find matching Tenders
         const matchingTenders = await Tender.find({
             $or: [
-                { packageName: { $regex: searchParams.search, $options: 'i' } },
-                { contractorName: { $regex: searchParams.search, $options: 'i' } }
+                { packageName: { $regex: params.search, $options: 'i' } },
+                { contractorName: { $regex: params.search, $options: 'i' } }
             ]
         }).distinct('_id');
 
@@ -36,12 +37,21 @@ export default async function WorkOrderListPage({ searchParams }: Props) {
         query.loaId = { $in: matchingLOAs };
     }
 
+    const page = parseInt(params.page || '1');
+    const limit = parseInt(params.limit || '10');
+    const skip = (page - 1) * limit;
+
+    const totalItems = await WorkOrder.countDocuments(query);
+    const totalPages = Math.ceil(totalItems / limit);
+
     const workOrdersRaw = await WorkOrder.find(query)
         .populate({
             path: 'loaId',
             populate: { path: 'tenderId' }
         })
         .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
         .lean();
 
     const workOrders = workOrdersRaw.map((wo: any) => ({
@@ -55,7 +65,7 @@ export default async function WorkOrderListPage({ searchParams }: Props) {
                 <div className="sm:flex-auto">
                     <div className="flex items-center space-x-2">
                         <h1 className="text-2xl font-semibold text-gray-900">Work Orders</h1>
-                        {searchParams.search && (
+                        {params.search && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                 <Filter className="w-3 h-3 mr-1" /> Search Active
                             </span>
@@ -72,7 +82,7 @@ export default async function WorkOrderListPage({ searchParams }: Props) {
 
             <div className="mt-6 flex justify-start items-center">
                 <SearchBar placeholder="Search by package or contractor..." />
-                {searchParams.search && (
+                {params.search && (
                     <Link href="/work-orders" className="ml-4 text-sm text-blue-600 hover:text-blue-900">
                         Clear filters
                     </Link>
@@ -103,17 +113,23 @@ export default async function WorkOrderListPage({ searchParams }: Props) {
                                                     <td className="whitespace-normal py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-6 max-w-sm">
                                                         {tender?.packageName || '-'}
                                                     </td>
-                                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                                    <td className="whitespace-normal px-3 py-4 text-sm text-gray-500 max-w-xs" style={{ wordBreak: 'break-word' }}>
                                                         {tender?.contractorName || '-'}
                                                     </td>
                                                     <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                                         {wo.workOrderDate ? new Date(wo.workOrderDate).toLocaleDateString('en-GB') : '-'}
                                                     </td>
-                                                    <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 space-x-2">
-                                                        <Link href={`/work-orders/${wo._id}/edit`} className="text-blue-600 hover:text-blue-900 transition-colors inline-block p-1 mt-1">Edit</Link>
-                                                        <DeleteWorkOrderButton 
-                                                            workOrderId={wo._id} 
-                                                            packageName={tender?.packageName || 'Work Order'} 
+                                                    <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 flex items-center justify-end space-x-3">
+                                                        <Link href={`/work-orders/${wo._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
+                                                            <Eye className="w-5 h-5" />
+                                                        </Link>
+                                                        <Link href={`/work-orders/${wo._id}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Item">
+                                                            <Edit2 className="w-5 h-5" />
+                                                        </Link>
+                                                        <GenericDeleteButton 
+                                                            itemId={wo._id} 
+                                                            itemName={wo.workOrderWorksheetNo || 'Work Order'} 
+                                                            apiPath="/api/work-orders" 
                                                         />
                                                     </td>
                                                 </tr>
@@ -123,6 +139,7 @@ export default async function WorkOrderListPage({ searchParams }: Props) {
                                 </tbody>
                             </table>
                         </div>
+                        <Pagination currentPage={page} totalPages={totalPages} />
                     </div>
                 </div>
             </div>
