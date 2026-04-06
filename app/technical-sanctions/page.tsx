@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import dbConnect from '@/lib/db';
 import TechnicalSanction, { ITechnicalSanction } from '@/models/TechnicalSanction';
 import Link from 'next/link';
@@ -60,7 +61,9 @@ export default async function TechnicalSanctionsListPage({ searchParams }: Props
             </div>
 
             <div className="mt-6 flex justify-start items-center">
-                <SearchBar placeholder="Search by name of work..." />
+                <Suspense fallback={<div className="h-10 w-full max-w-lg bg-gray-100 animate-pulse rounded-md" />}>
+                    <SearchBar placeholder="Search by name of work..." />
+                </Suspense>
                 {params.search && (
                     <Link href="/technical-sanctions" className="ml-4 text-sm text-blue-600 hover:text-blue-900">
                         Clear filters
@@ -109,7 +112,9 @@ export default async function TechnicalSanctionsListPage({ searchParams }: Props
                                 </tbody>
                             </table>
                         </div>
-                        <Pagination currentPage={page} totalPages={totalPages} />
+                        <Suspense fallback={<div className="h-10 w-full bg-gray-50 animate-pulse mt-4 rounded-md" />}>
+                            <Pagination currentPage={page} totalPages={totalPages} />
+                        </Suspense>
                     </div>
                 </div>
             </div>

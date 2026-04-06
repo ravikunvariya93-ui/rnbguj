@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import dbConnect from '@/lib/db';
 import Package from '@/models/Package';
 import DTP from '@/models/DTP';
@@ -74,7 +75,9 @@ export default async function PackagesListPage({ searchParams }: Props) {
             </div>
 
             <div className="mt-6 flex justify-start items-center">
-                <SearchBar placeholder="Search by package name..." />
+                <Suspense fallback={<div className="h-10 w-full max-w-lg bg-gray-100 animate-pulse rounded-md" />}>
+                    <SearchBar placeholder="Search by package name..." />
+                </Suspense>
                 {(params.filter || params.search) && (
                     <Link href="/packages" className="ml-4 text-sm text-blue-600 hover:text-blue-900">
                         Clear all filters
@@ -123,7 +126,9 @@ export default async function PackagesListPage({ searchParams }: Props) {
                                 </tbody>
                             </table>
                         </div>
-                        <Pagination currentPage={page} totalPages={totalPages} />
+                        <Suspense fallback={<div className="h-10 w-full bg-gray-50 animate-pulse mt-4 rounded-md" />}>
+                            <Pagination currentPage={page} totalPages={totalPages} />
+                        </Suspense>
                     </div>
                 </div>
             </div>
