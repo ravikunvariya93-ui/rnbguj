@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { 
     Building2, FileText, Home, CheckCircle, 
-    Package, Layers, X, User, LogOut 
+    Package, Layers, X, User, LogOut, Users 
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -29,6 +29,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         { name: 'LOA', href: '/loas', icon: CheckCircle, roles: ['ADMIN', 'SUPERVISOR'] },
         { name: 'Work Order', href: '/work-orders', icon: CheckCircle, roles: ['ADMIN', 'SUPERVISOR'] },
         { name: 'Bill', href: '/bills', icon: FileText, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
+        { name: 'User Management', href: '/admin/users', icon: Users, roles: ['ADMIN'] },
     ];
 
     const filteredNavigation = navigation.filter(item => 
