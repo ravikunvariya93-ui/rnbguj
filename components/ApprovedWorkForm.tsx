@@ -1,9 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save } from 'lucide-react';
+import { Save, Loader2, CheckCircle2, XCircle, X } from 'lucide-react';
 import Link from 'next/link';
+
+type ToastType = 'success' | 'error' | null;
+
+interface ToastState {
+    visible: boolean;
+    type: ToastType;
+    message: string;
+}
 
 interface FormData {
     circle: string;
@@ -45,6 +53,24 @@ interface ApprovedWorkFormProps {
 export default function ApprovedWorkForm({ initialData = {}, isEditing = false }: ApprovedWorkFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const [toast, setToast] = useState<ToastState>({
+        visible: false,
+        type: null,
+        message: '',
+    });
+
+    const showToast = useCallback((type: 'success' | 'error', message: string) => {
+        setToast({ visible: true, type, message });
+        if (type === 'success') {
+            setTimeout(() => {
+                setToast(prev => ({ ...prev, visible: false }));
+            }, 2500);
+        } else {
+            setTimeout(() => {
+                setToast(prev => ({ ...prev, visible: false }));
+            }, 5000);
+        }
+    }, []);
     const [formData, setFormData] = useState<FormData>({
         circle: 'Panchayat R&B Circle, Rajkot',
         district: 'Bhavnagar',
@@ -128,13 +154,12 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
                         submissionData.jobNumberApprovalDate = dateObj.toISOString();
                     } else {
                         console.error('Date parse failed for:', isoDate);
-                        alert(`Invalid Date format: "${cleanDate}". parsed as ${isoDate}. Please use DD/MM/YYYY`);
+                        showToast('error', `Invalid Date format: "${cleanDate}". Please use DD/MM/YYYY`);
                         setLoading(false);
                         return;
                     }
                 } else if (cleanDate.length > 0) {
-                    // If they entered something that isn't 3 parts but logic triggers
-                    alert(`Invalid Date format: "${cleanDate}". Please use DD/MM/YYYY`);
+                    showToast('error', `Invalid Date format: "${cleanDate}". Please use DD/MM/YYYY`);
                     setLoading(false);
                     return;
                 }
@@ -152,20 +177,73 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
             });
 
             if (!res.ok) {
-                throw new Error('Failed to save work');
+                const errorData = await res.json().catch(() => null);
+                throw new Error(errorData?.error || 'Failed to save work');
             }
 
-            router.push('/approved-works');
-            router.refresh();
+            setLoading(false);
+            showToast('success', isEditing ? 'Work updated successfully!' : 'Work saved successfully!');
+            setTimeout(() => {
+                router.push('/approved-works');
+                router.refresh();
+            }, 1500);
         } catch (error) {
             console.error(error);
-            alert('Error saving work');
-        } finally {
             setLoading(false);
+            showToast('error', error instanceof Error ? error.message : 'Error saving work. Please try again.');
         }
     };
 
     return (
+        <>
+        {/* Loading Overlay */}
+        {loading && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" style={{ transition: 'opacity 0.3s' }}>
+                <div className="bg-white rounded-2xl shadow-2xl px-8 py-6 flex flex-col items-center gap-3">
+                    <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+                    <p className="text-sm font-medium text-gray-700">Saving work...</p>
+                </div>
+            </div>
+        )}
+
+        {/* Toast Notification */}
+        {toast.visible && (
+            <div
+                className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-xl shadow-lg border transition-all duration-300 ${
+                    toast.type === 'success'
+                        ? 'bg-green-50 border-green-200 text-green-800'
+                        : 'bg-red-50 border-red-200 text-red-800'
+                }`}
+                style={{ minWidth: '320px', animation: 'slideInRight 0.4s ease-out' }}
+            >
+                {toast.type === 'success' ? (
+                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                ) : (
+                    <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                )}
+                <span className="text-sm font-medium flex-1">{toast.message}</span>
+                <button
+                    onClick={() => setToast(prev => ({ ...prev, visible: false }))}
+                    className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                >
+                    <X className="w-4 h-4" />
+                </button>
+            </div>
+        )}
+
+        <style jsx global>{`
+            @keyframes slideInRight {
+                from {
+                    opacity: 0;
+                    transform: translateX(100%);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(0);
+                }
+            }
+        `}</style>
+
         <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-gray-200 bg-white p-8 shadow rounded-lg">
 
             {/* Basic Information */}
@@ -229,6 +307,8 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
                         <option value="Mahuva">Mahuva</option>
                         <option value="Palitana">Palitana</option>
                         <option value="Talaja">Talaja</option>
+                        <option value="Shihor">Shihor</option>
+                        <option value="Vallabhipur">Vallabhipur</option>
                     </select>
                 </div>
 
@@ -288,12 +368,10 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
                             className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
                         >
                             <option value="">-- Select Budget Head --</option>
-                            <option value="5054">5054</option>
-                            <option value="3054">3054</option>
-                            <option value="2215">2215</option>
-                            <option value="2217">2217</option>
-                            <option value="4215">4215</option>
-                            <option value="4217">4217</option>
+                            <option value="5054 MMGSY Normal">5054 MMGSY Normal</option>
+                            <option value="5054 MMGSY SCSP">5054 MMGSY SCSP</option>
+                            <option value="Suvidhapath">Suvidhapath</option>
+                            <option value="BUJ">BUJ</option>
                             <option value="Other">Other</option>
                         </select>
                     </div>
@@ -318,7 +396,7 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
                     </div>
 
                     <div className="sm:col-span-2">
-                        <label htmlFor="jobNumberAmount" className="block text-sm font-medium text-gray-700">Job Number Amount</label>
+                        <label htmlFor="jobNumberAmount" className="block text-sm font-medium text-gray-700">Job Number Amount (in Lakh)</label>
                         <input type="number" step="1" name="jobNumberAmount" id="jobNumberAmount" value={formData.jobNumberAmount} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                     </div>
 
@@ -376,6 +454,7 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
                         >
                             <option value="">-- Select MP --</option>
                             <option value="Nimuben Jayantibhai Bambhaniya (Bhavnagar)">Nimuben Jayantibhai Bambhaniya (Bhavnagar)</option>
+                            <option value="Bharatbhai Manubhai Sutariya (Amreli)">Bharatbhai Manubhai Sutariya (Amreli)</option>
                             <option value="Other">Other</option>
                         </select>
                     </div>
@@ -398,11 +477,10 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
                             className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
                         >
                             <option value="">-- Select Category --</option>
-                            <option value="State Highway (SH)">State Highway (SH)</option>
                             <option value="Major District Road (MDR)">Major District Road (MDR)</option>
                             <option value="Other District Road (ODR)">Other District Road (ODR)</option>
                             <option value="Village Road (VR)">Village Road (VR)</option>
-                            <option value="City Road">City Road</option>
+                            <option value="VR NP">VR NP</option>
                             <option value="Other">Other</option>
                         </select>
                     </div>
@@ -418,6 +496,7 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
                         >
                             <option value="Road">Road</option>
                             <option value="Building">Building</option>
+                            <option value="Structure">Structure</option>
                             <option value="Other">Other</option>
                         </select>
                     </div>
@@ -432,11 +511,14 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
                             className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
                         >
                             <option value="">-- Select Nature of Work --</option>
-                            <option value="New Development">New Development</option>
                             <option value="Resurfacing">Resurfacing</option>
                             <option value="Widening & Strengthening">Widening & Strengthening</option>
-                            <option value="Bridge Work">Bridge Work</option>
                             <option value="Maintenance">Maintenance</option>
+                            <option value="EBT">EBT</option>
+                            <option value="Major Bridge">Major Bridge</option>
+                            <option value="Minor Bridge">Minor Bridge</option>
+                            <option value="CWB">CWB</option>
+                            <option value="CCR">CCR</option>
                             <option value="Other">Other</option>
                         </select>
                     </div>
@@ -451,9 +533,11 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
                             className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
                         >
                             <option value="">-- Select Name of Scheme --</option>
-                            <option value="Mukhya Mantri Village Road Scheme">Mukhya Mantri Village Road Scheme</option>
-                            <option value="State Highway Development">State Highway Development</option>
-                            <option value="Major District Road Maintenance">Major District Road Maintenance</option>
+                            <option value="MMGSY">MMGSY</option>
+                            <option value="Suvidhapath">Suvidhapath</option>
+                            <option value="SR">SR</option>
+                            <option value="BUJ">BUJ</option>
+                            <option value="EMRI - MMGSY">EMRI - MMGSY</option>
                             <option value="Other">Other</option>
                         </select>
                     </div>
@@ -471,13 +555,18 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
                     <button
                         type="submit"
                         disabled={loading}
-                        className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                        className="ml-3 inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                     >
-                        <Save className="w-4 h-4 mr-2" />
+                        {loading ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                            <Save className="w-4 h-4 mr-2" />
+                        )}
                         {loading ? 'Saving...' : 'Save Work'}
                     </button>
                 </div>
             </div>
         </form>
+        </>
     );
 }
