@@ -1,0 +1,26 @@
+# AI Focus Configuration
+# Use this file to prevent AI indexing of large/irrelevant files
+
+# Build Artifacts
+.next/
+out/
+build/
+.vercel/
+
+# Heavy Documentation/Assets
+*.xlsm
+*.xlsx
+*.csv
+public/images/
+error.log
+
+# Redundant Dependency Info
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Temporary Files
+tmp/
+temp_ts.json
+next-env.d.ts.txt
+*.tsbuildinfo

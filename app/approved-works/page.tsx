@@ -33,6 +33,12 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
         query.workName = { $regex: params.search, $options: 'i' };
     }
 
+    // New "Nature of Work" filter
+    if (params.nature) {
+        query.natureOfWork = params.nature;
+        filterLabel = `Showing Approved Works with nature of work: "${params.nature}".`;
+    }
+
     const page = parseInt(params.page || '1');
     const limit = parseInt(params.limit || '10');
     const skip = (page - 1) * limit;
@@ -98,6 +104,9 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
                                             Name of Work
                                         </th>
                                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                                            Approval Date
+                                        </th>
+                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                                             Job Number Amount
                                         </th>
                                         <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right">
@@ -108,7 +117,7 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
                                 <tbody className="divide-y divide-gray-200 bg-white">
                                     {serializedWorks.length === 0 ? (
                                         <tr>
-                                            <td colSpan={3} className="py-10 text-center text-sm text-gray-500">
+                                            <td colSpan={4} className="py-10 text-center text-sm text-gray-500">
                                                 No works found matching the criteria.
                                             </td>
                                         </tr>
@@ -117,6 +126,9 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
                                             <tr key={work._id}>
                                                 <td className="whitespace-normal py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 max-w-sm">
                                                     {work.workName}
+                                                </td>
+                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                                    {work.jobNumberApprovalDate ? new Date(work.jobNumberApprovalDate).toLocaleDateString('en-GB') : '-'}
                                                 </td>
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                                     {work.jobNumberAmount}

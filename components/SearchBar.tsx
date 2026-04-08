@@ -6,9 +6,10 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 
 interface Props {
     placeholder?: string;
+    targetPath?: string;
 }
 
-export default function SearchBar({ placeholder = 'Search...' }: Props) {
+export default function SearchBar({ placeholder = 'Search...', targetPath }: Props) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -29,7 +30,8 @@ export default function SearchBar({ placeholder = 'Search...' }: Props) {
             // Only push if the search term actually changed in the URL
             const currentSearch = searchParams.get('search') || '';
             if (searchTerm !== currentSearch) {
-                router.push(`${pathname}?${params.toString()}`);
+                const finalPath = targetPath || pathname;
+                router.push(`${finalPath}?${params.toString()}`);
             }
         }, 500); // 500ms debounce to prevent excessive server requests
 
@@ -42,7 +44,7 @@ export default function SearchBar({ placeholder = 'Search...' }: Props) {
     }, []);
 
     return (
-        <div className="relative max-w-md w-full">
+        <div className="relative w-full">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-gray-400" aria-hidden="true" />
             </div>

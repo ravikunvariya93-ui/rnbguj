@@ -1,0 +1,148 @@
+'use client';
+
+interface ClassificationSectionProps {
+    formData: {
+        constituencyName: string;
+        mlaName: string;
+        mpName: string;
+        wmsItemCode: string;
+        rpmsCode: string;
+        roadCategory: string;
+        workType: string;
+        natureOfWork: string;
+        schemeName: string;
+    };
+    handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
+}
+
+export default function ClassificationSection({ formData, handleChange }: ClassificationSectionProps) {
+    return (
+        <div className="pt-8">
+            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Classification Details</h3>
+            <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                <div className="sm:col-span-2">
+                    <label htmlFor="constituencyName" className="block text-sm font-medium text-gray-700">Constituency Name</label>
+                    <input type="text" name="constituencyName" id="constituencyName" value={formData.constituencyName} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                </div>
+                <div className="sm:col-span-2">
+                    <label htmlFor="mlaName" className="block text-sm font-medium text-gray-700">MLA Name</label>
+                    <select
+                        name="mlaName"
+                        id="mlaName"
+                        value={formData.mlaName}
+                        onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                    >
+                        <option value="">-- Select MLA --</option>
+                        <option value="Parshottambhai O. Solanki (Bhavnagar Rural)">Parshottambhai O. Solanki (Bhavnagar Rural)</option>
+                        <option value="Jitu Vaghani (Bhavnagar West)">Jitu Vaghani (Bhavnagar West)</option>
+                        <option value="Sejalben Rajivkumar Pandya (Bhavnagar East)">Sejalben Rajivkumar Pandya (Bhavnagar East)</option>
+                        <option value="Bhikhubhai Baraiya (Palitana)">Bhikhubhai Baraiya (Palitana)</option>
+                        <option value="Gautambhai Gopabhai Chauhan (Talaja)">Gautambhai Gopabhai Chauhan (Talaja)</option>
+                        <option value="Shivabhai Jerambhai Gohil (Mahuva)">Shivabhai Jerambhai Gohil (Mahuva)</option>
+                        <option value="Sudhirbhai Vaghani (Gariyadhar)">Sudhirbhai Vaghani (Gariyadhar)</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div className="sm:col-span-2">
+                    <label htmlFor="mpName" className="block text-sm font-medium text-gray-700">MP Name</label>
+                    <select
+                        name="mpName"
+                        id="mpName"
+                        value={formData.mpName}
+                        onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                    >
+                        <option value="">-- Select MP --</option>
+                        <option value="Nimuben Jayantibhai Bambhaniya (Bhavnagar)">Nimuben Jayantibhai Bambhaniya (Bhavnagar)</option>
+                        <option value="Bharatbhai Manubhai Sutariya (Amreli)">Bharatbhai Manubhai Sutariya (Amreli)</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                    <label htmlFor="wmsItemCode" className="block text-sm font-medium text-gray-700">WMS Item Code</label>
+                    <input type="text" name="wmsItemCode" id="wmsItemCode" value={formData.wmsItemCode} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                </div>
+                <div className="sm:col-span-2">
+                    <label htmlFor="rpmsCode" className="block text-sm font-medium text-gray-700">RPMS Code</label>
+                    <input type="text" name="rpmsCode" id="rpmsCode" value={formData.rpmsCode} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                </div>
+                <div className="sm:col-span-2">
+                    <label htmlFor="roadCategory" className="block text-sm font-medium text-gray-700">Category of Road</label>
+                    <select
+                        name="roadCategory"
+                        id="roadCategory"
+                        value={formData.roadCategory}
+                        onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                    >
+                        <option value="">-- Select Category --</option>
+                        <option value="Major District Road (MDR)">Major District Road (MDR)</option>
+                        <option value="Other District Road (ODR)">Other District Road (ODR)</option>
+                        <option value="Village Road (VR)">Village Road (VR)</option>
+                        <option value="VR NP">VR NP</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                    <label htmlFor="workType" className="block text-sm font-medium text-gray-700">Work Type</label>
+                    <select
+                        name="workType"
+                        id="workType"
+                        value={formData.workType}
+                        onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                    >
+                        <option value="Road">Road</option>
+                        <option value="Building">Building</option>
+                        <option value="Structure">Structure</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                    <label htmlFor="natureOfWork" className="block text-sm font-medium text-gray-700">Nature of Work</label>
+                    <select
+                        name="natureOfWork"
+                        id="natureOfWork"
+                        value={formData.natureOfWork}
+                        onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                    >
+                        <option value="">-- Select Nature of Work --</option>
+                        <option value="Resurfacing">Resurfacing</option>
+                        <option value="Widening & Strengthening">Widening & Strengthening</option>
+                        <option value="Maintenance">Maintenance</option>
+                        <option value="EBT">EBT</option>
+                        <option value="Major Bridge">Major Bridge</option>
+                        <option value="Minor Bridge">Minor Bridge</option>
+                        <option value="CWB">CWB</option>
+                        <option value="CCR">CCR</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                    <label htmlFor="schemeName" className="block text-sm font-medium text-gray-700">Name of Scheme</label>
+                    <select
+                        name="schemeName"
+                        id="schemeName"
+                        value={formData.schemeName}
+                        onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                    >
+                        <option value="">-- Select Name of Scheme --</option>
+                        <option value="MMGSY">MMGSY</option>
+                        <option value="Suvidhapath">Suvidhapath</option>
+                        <option value="SR">SR</option>
+                        <option value="BUJ">BUJ</option>
+                        <option value="EMRI - MMGSY">EMRI - MMGSY</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    );
+}

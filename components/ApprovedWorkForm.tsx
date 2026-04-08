@@ -5,6 +5,11 @@ import { useRouter } from 'next/navigation';
 import { Save, Loader2, CheckCircle2, XCircle, X } from 'lucide-react';
 import Link from 'next/link';
 
+// Sub-components for token efficiency
+import BasicInfoSection from './forms/approved-work/BasicInfoSection';
+import BudgetSection from './forms/approved-work/BudgetSection';
+import ClassificationSection from './forms/approved-work/ClassificationSection';
+
 type ToastType = 'success' | 'error' | null;
 
 interface ToastState {
@@ -71,6 +76,7 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
             }, 5000);
         }
     }, []);
+
     const [formData, setFormData] = useState<FormData>({
         circle: 'Panchayat R&B Circle, Rajkot',
         district: 'Bhavnagar',
@@ -122,7 +128,6 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
         }
     }, [initialData.jobNumberApprovalDate]);
 
-
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
@@ -138,22 +143,17 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
 
             if (submissionData.jobNumberApprovalDate) {
                 const cleanDate = String(submissionData.jobNumberApprovalDate).trim();
-                // Match DD/MM or DD/MM/YYYY or DD-MM-YYYY
                 const parts = cleanDate.split(/[\/\-\.]/);
 
                 if (parts.length === 3) {
-                    // DD/MM/YYYY -> YYYY-MM-DD
-                    // Ensure 4 digit year
                     let year = parts[2];
                     if (year.length === 2) year = '20' + year;
-
                     const isoDate = `${year}-${parts[1]}-${parts[0]}`;
                     const dateObj = new Date(isoDate);
 
                     if (!isNaN(dateObj.getTime())) {
                         submissionData.jobNumberApprovalDate = dateObj.toISOString();
                     } else {
-                        console.error('Date parse failed for:', isoDate);
                         showToast('error', `Invalid Date format: "${cleanDate}". Please use DD/MM/YYYY`);
                         setLoading(false);
                         return;
@@ -170,9 +170,7 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
 
             const res = await fetch(url, {
                 method: method,
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(submissionData),
             });
 
@@ -245,304 +243,12 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
         `}</style>
 
         <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-gray-200 bg-white p-8 shadow rounded-lg">
+            
+            <BasicInfoSection formData={formData} handleChange={handleChange} />
 
-            {/* Basic Information */}
-            <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                <div className="sm:col-span-6">
-                    <label htmlFor="workName" className="block text-sm font-medium text-gray-700">
-                        Name of Work *
-                    </label>
-                    <div className="mt-1">
-                        <textarea
-                            id="workName"
-                            name="workName"
-                            rows={3}
-                            required
-                            value={formData.workName}
-                            onChange={handleChange}
-                            className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border"
-                            placeholder="Name of work in English"
-                        />
-                    </div>
-                </div>
+            <BudgetSection formData={formData} handleChange={handleChange} />
 
-                <div className="sm:col-span-6">
-                    <label htmlFor="workNameGujarati" className="block text-sm font-medium text-gray-700">
-                        Name of Work in Gujarati
-                    </label>
-                    <div className="mt-1">
-                        <textarea
-                            id="workNameGujarati"
-                            name="workNameGujarati"
-                            rows={3}
-                            value={formData.workNameGujarati}
-                            onChange={handleChange}
-                            className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border"
-                            placeholder="કામનું નામ (ગુજરાતીમાં)"
-                        />
-                    </div>
-                </div>
-
-                <div className="sm:col-span-2">
-                    <label htmlFor="circle" className="block text-sm font-medium text-gray-700">Circle</label>
-                    <input type="text" name="circle" id="circle" value={formData.circle} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                </div>
-
-                <div className="sm:col-span-2">
-                    <label htmlFor="district" className="block text-sm font-medium text-gray-700">District</label>
-                    <input type="text" name="district" id="district" value={formData.district} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                </div>
-
-                <div className="sm:col-span-2">
-                    <label htmlFor="subDivision" className="block text-sm font-medium text-gray-700">Sub Division</label>
-                    <select
-                        name="subDivision"
-                        id="subDivision"
-                        value={formData.subDivision}
-                        onChange={handleChange}
-                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                    >
-                        <option value="">-- Select Sub Division --</option>
-                        <option value="Bhavnagar">Bhavnagar</option>
-                        <option value="Mahuva">Mahuva</option>
-                        <option value="Palitana">Palitana</option>
-                        <option value="Talaja">Talaja</option>
-                        <option value="Shihor">Shihor</option>
-                        <option value="Vallabhipur">Vallabhipur</option>
-                    </select>
-                </div>
-
-                <div className="sm:col-span-2">
-                    <label htmlFor="taluka" className="block text-sm font-medium text-gray-700">Taluka</label>
-                    <select
-                        name="taluka"
-                        id="taluka"
-                        value={formData.taluka}
-                        onChange={handleChange}
-                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                    >
-                        <option value="">-- Select Taluka --</option>
-                        <option value="Bhavnagar">Bhavnagar</option>
-                        <option value="Shihor">Shihor</option>
-                        <option value="Umrala">Umrala</option>
-                        <option value="Gariyadhar">Gariyadhar</option>
-                        <option value="Palitana">Palitana</option>
-                        <option value="Mahuva">Mahuva</option>
-                        <option value="Talaja">Talaja</option>
-                        <option value="Ghogha">Ghogha</option>
-                        <option value="Jesar">Jesar</option>
-                        <option value="Vallabhipur">Vallabhipur</option>
-                    </select>
-                </div>
-
-                <div className="sm:col-span-2">
-                    <label htmlFor="length" className="block text-sm font-medium text-gray-700">Length (K.M.)</label>
-                    <input
-                        type="number"
-                        step="0.001"
-                        name="length"
-                        id="length"
-                        value={formData.length}
-                        onChange={handleChange}
-                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                        placeholder="e.g. 2.50"
-                    />
-                </div>
-            </div>
-
-            {/* Budget & Approval Details */}
-            <div className="pt-8">
-                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Budget & Approval</h3>
-                <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                    <div className="sm:col-span-3">
-                        <label htmlFor="budgetItemName" className="block text-sm font-medium text-gray-700">Name of Budget Item</label>
-                        <input type="text" name="budgetItemName" id="budgetItemName" value={formData.budgetItemName} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                    </div>
-                    <div className="sm:col-span-3">
-                        <label htmlFor="budgetHead" className="block text-sm font-medium text-gray-700">Budget Head</label>
-                        <select
-                            name="budgetHead"
-                            id="budgetHead"
-                            value={formData.budgetHead}
-                            onChange={handleChange}
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                        >
-                            <option value="">-- Select Budget Head --</option>
-                            <option value="5054 MMGSY Normal">5054 MMGSY Normal</option>
-                            <option value="5054 MMGSY SCSP">5054 MMGSY SCSP</option>
-                            <option value="Suvidhapath">Suvidhapath</option>
-                            <option value="BUJ">BUJ</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-
-                    <div className="sm:col-span-2">
-                        <label htmlFor="approvalYear" className="block text-sm font-medium text-gray-700">Year of Approval</label>
-                        <select
-                            name="approvalYear"
-                            id="approvalYear"
-                            value={formData.approvalYear}
-                            onChange={handleChange}
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                        >
-                            <option value="">-- Select Year --</option>
-                            <option value="2021-22">2021-22</option>
-                            <option value="2022-23">2022-23</option>
-                            <option value="2023-24">2023-24</option>
-                            <option value="2024-25">2024-25</option>
-                            <option value="2025-26">2025-26</option>
-                            <option value="2026-27">2026-27</option>
-                        </select>
-                    </div>
-
-                    <div className="sm:col-span-2">
-                        <label htmlFor="jobNumberAmount" className="block text-sm font-medium text-gray-700">Job Number Amount (in Lakh)</label>
-                        <input type="number" step="1" name="jobNumberAmount" id="jobNumberAmount" value={formData.jobNumberAmount} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                        <label htmlFor="jobNumberApprovalDate" className="block text-sm font-medium text-gray-700">Approval Date (DD/MM/YYYY)</label>
-                        <input
-                            type="text"
-                            placeholder="20/01/2025"
-                            name="jobNumberApprovalDate"
-                            id="jobNumberApprovalDate"
-                            value={formData.jobNumberApprovalDate}
-                            onChange={handleChange}
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* Classification */}
-            <div className="pt-8">
-                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Classification Details</h3>
-                <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                    <div className="sm:col-span-2">
-                        <label htmlFor="constituencyName" className="block text-sm font-medium text-gray-700">Constituency Name</label>
-                        <input type="text" name="constituencyName" id="constituencyName" value={formData.constituencyName} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                    </div>
-                    <div className="sm:col-span-2">
-                        <label htmlFor="mlaName" className="block text-sm font-medium text-gray-700">MLA Name</label>
-                        <select
-                            name="mlaName"
-                            id="mlaName"
-                            value={formData.mlaName}
-                            onChange={handleChange}
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                        >
-                            <option value="">-- Select MLA --</option>
-                            <option value="Parshottambhai O. Solanki (Bhavnagar Rural)">Parshottambhai O. Solanki (Bhavnagar Rural)</option>
-                            <option value="Jitu Vaghani (Bhavnagar West)">Jitu Vaghani (Bhavnagar West)</option>
-                            <option value="Sejalben Rajivkumar Pandya (Bhavnagar East)">Sejalben Rajivkumar Pandya (Bhavnagar East)</option>
-                            <option value="Bhikhubhai Baraiya (Palitana)">Bhikhubhai Baraiya (Palitana)</option>
-                            <option value="Gautambhai Gopabhai Chauhan (Talaja)">Gautambhai Gopabhai Chauhan (Talaja)</option>
-                            <option value="Shivabhai Jerambhai Gohil (Mahuva)">Shivabhai Jerambhai Gohil (Mahuva)</option>
-                            <option value="Sudhirbhai Vaghani (Gariyadhar)">Sudhirbhai Vaghani (Gariyadhar)</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div className="sm:col-span-2">
-                        <label htmlFor="mpName" className="block text-sm font-medium text-gray-700">MP Name</label>
-                        <select
-                            name="mpName"
-                            id="mpName"
-                            value={formData.mpName}
-                            onChange={handleChange}
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                        >
-                            <option value="">-- Select MP --</option>
-                            <option value="Nimuben Jayantibhai Bambhaniya (Bhavnagar)">Nimuben Jayantibhai Bambhaniya (Bhavnagar)</option>
-                            <option value="Bharatbhai Manubhai Sutariya (Amreli)">Bharatbhai Manubhai Sutariya (Amreli)</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-
-                    <div className="sm:col-span-2">
-                        <label htmlFor="wmsItemCode" className="block text-sm font-medium text-gray-700">WMS Item Code</label>
-                        <input type="text" name="wmsItemCode" id="wmsItemCode" value={formData.wmsItemCode} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                    </div>
-                    <div className="sm:col-span-2">
-                        <label htmlFor="rpmsCode" className="block text-sm font-medium text-gray-700">RPMS Code</label>
-                        <input type="text" name="rpmsCode" id="rpmsCode" value={formData.rpmsCode} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                    </div>
-                    <div className="sm:col-span-2">
-                        <label htmlFor="roadCategory" className="block text-sm font-medium text-gray-700">Category of Road</label>
-                        <select
-                            name="roadCategory"
-                            id="roadCategory"
-                            value={formData.roadCategory}
-                            onChange={handleChange}
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                        >
-                            <option value="">-- Select Category --</option>
-                            <option value="Major District Road (MDR)">Major District Road (MDR)</option>
-                            <option value="Other District Road (ODR)">Other District Road (ODR)</option>
-                            <option value="Village Road (VR)">Village Road (VR)</option>
-                            <option value="VR NP">VR NP</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-
-                    <div className="sm:col-span-2">
-                        <label htmlFor="workType" className="block text-sm font-medium text-gray-700">Work Type</label>
-                        <select
-                            name="workType"
-                            id="workType"
-                            value={formData.workType}
-                            onChange={handleChange}
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                        >
-                            <option value="Road">Road</option>
-                            <option value="Building">Building</option>
-                            <option value="Structure">Structure</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-
-                    <div className="sm:col-span-2">
-                        <label htmlFor="natureOfWork" className="block text-sm font-medium text-gray-700">Nature of Work</label>
-                        <select
-                            name="natureOfWork"
-                            id="natureOfWork"
-                            value={formData.natureOfWork}
-                            onChange={handleChange}
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                        >
-                            <option value="">-- Select Nature of Work --</option>
-                            <option value="Resurfacing">Resurfacing</option>
-                            <option value="Widening & Strengthening">Widening & Strengthening</option>
-                            <option value="Maintenance">Maintenance</option>
-                            <option value="EBT">EBT</option>
-                            <option value="Major Bridge">Major Bridge</option>
-                            <option value="Minor Bridge">Minor Bridge</option>
-                            <option value="CWB">CWB</option>
-                            <option value="CCR">CCR</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-
-                    <div className="sm:col-span-2">
-                        <label htmlFor="schemeName" className="block text-sm font-medium text-gray-700">Name of Scheme</label>
-                        <select
-                            name="schemeName"
-                            id="schemeName"
-                            value={formData.schemeName}
-                            onChange={handleChange}
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                        >
-                            <option value="">-- Select Name of Scheme --</option>
-                            <option value="MMGSY">MMGSY</option>
-                            <option value="Suvidhapath">Suvidhapath</option>
-                            <option value="SR">SR</option>
-                            <option value="BUJ">BUJ</option>
-                            <option value="EMRI - MMGSY">EMRI - MMGSY</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
+            <ClassificationSection formData={formData} handleChange={handleChange} />
 
             <div className="pt-5">
                 <div className="flex justify-end">
