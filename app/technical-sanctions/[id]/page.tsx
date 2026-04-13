@@ -18,9 +18,9 @@ export default async function TechnicalSanctionDetailPage({ params }: { params: 
             title: 'General Information',
             fields: [
                 { label: 'Name of Work', value: sanction.workName },
-                { label: 'WS No. of Sending TS', value: sanction.wsNoSendingTS },
                 { label: 'Date of Sending TS', value: sanction.dateSendingTS ? new Date(sanction.dateSendingTS).toLocaleDateString('en-GB') : '-' },
                 { label: 'TS Authority', value: sanction.tsAuthority },
+                { label: 'TS Consultant', value: (sanction as any).tsConsultant },
             ]
         },
         {

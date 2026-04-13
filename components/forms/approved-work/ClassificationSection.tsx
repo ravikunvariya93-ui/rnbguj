@@ -41,7 +41,6 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                         <option value="Gautambhai Gopabhai Chauhan (Talaja)">Gautambhai Gopabhai Chauhan (Talaja)</option>
                         <option value="Shivabhai Jerambhai Gohil (Mahuva)">Shivabhai Jerambhai Gohil (Mahuva)</option>
                         <option value="Sudhirbhai Vaghani (Gariyadhar)">Sudhirbhai Vaghani (Gariyadhar)</option>
-                        <option value="Other">Other</option>
                     </select>
                 </div>
                 <div className="sm:col-span-2">
@@ -56,7 +55,6 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                         <option value="">-- Select MP --</option>
                         <option value="Nimuben Jayantibhai Bambhaniya (Bhavnagar)">Nimuben Jayantibhai Bambhaniya (Bhavnagar)</option>
                         <option value="Bharatbhai Manubhai Sutariya (Amreli)">Bharatbhai Manubhai Sutariya (Amreli)</option>
-                        <option value="Other">Other</option>
                     </select>
                 </div>
 
@@ -82,7 +80,6 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                         <option value="Other District Road (ODR)">Other District Road (ODR)</option>
                         <option value="Village Road (VR)">Village Road (VR)</option>
                         <option value="VR NP">VR NP</option>
-                        <option value="Other">Other</option>
                     </select>
                 </div>
 
@@ -98,7 +95,6 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                         <option value="Road">Road</option>
                         <option value="Building">Building</option>
                         <option value="Structure">Structure</option>
-                        <option value="Other">Other</option>
                     </select>
                 </div>
 
@@ -120,7 +116,6 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                         <option value="Minor Bridge">Minor Bridge</option>
                         <option value="CWB">CWB</option>
                         <option value="CCR">CCR</option>
-                        <option value="Other">Other</option>
                     </select>
                 </div>
 
@@ -139,7 +134,6 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                         <option value="SR">SR</option>
                         <option value="BUJ">BUJ</option>
                         <option value="EMRI - MMGSY">EMRI - MMGSY</option>
-                        <option value="Other">Other</option>
                     </select>
                 </div>
             </div>

@@ -35,7 +35,16 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
 
     // New "Nature of Work" filter
     if (params.nature) {
-        query.natureOfWork = params.nature;
+        if (params.nature === 'Unclassified') {
+            // Match documents where natureOfWork is missing, null, or empty
+            query.$or = [
+                { natureOfWork: { $exists: false } },
+                { natureOfWork: null },
+                { natureOfWork: '' }
+            ];
+        } else {
+            query.natureOfWork = params.nature;
+        }
         filterLabel = `Showing Approved Works with nature of work: "${params.nature}".`;
     }
 

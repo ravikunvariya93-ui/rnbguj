@@ -18,13 +18,13 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         workName: '',
-        wsNoSendingTS: '',
         dateSendingTS: '',
         tsAuthority: '',
         tsAmount: '',
         tsNumber: '',
         tsDate: '',
         amountPutToTender: '',
+        tsConsultant: '',
         ...initialData
     });
 
@@ -189,12 +189,23 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
                     <h4 className="text-md font-medium text-gray-900 mb-2">Tracking for Approval</h4>
                     <div className="grid grid-cols-1 gap-y-4 gap-x-4 sm:grid-cols-6">
                         <div className="sm:col-span-3">
-                            <label htmlFor="wsNoSendingTS" className="block text-sm font-medium text-gray-700">WS No. of Sending TS for Approval</label>
-                            <input type="text" name="wsNoSendingTS" id="wsNoSendingTS" value={formData.wsNoSendingTS} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                        </div>
-                        <div className="sm:col-span-3">
                             <label htmlFor="dateSendingTS" className="block text-sm font-medium text-gray-700">Date of Sending TS for Approval (DD/MM/YYYY)</label>
                             <input type="text" placeholder="20/01/2025" name="dateSendingTS" id="dateSendingTS" value={formData.dateSendingTS} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                        </div>
+                        <div className="sm:col-span-3">
+                            <label htmlFor="tsConsultant" className="block text-sm font-medium text-gray-700">TS Consultant</label>
+                            <select
+                                name="tsConsultant"
+                                id="tsConsultant"
+                                value={formData.tsConsultant}
+                                onChange={handleChange}
+                                className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                            >
+                                <option value="">-- Select Consultant --</option>
+                                <option value="Umiya">Umiya</option>
+                                <option value="Trisha">Trisha</option>
+                                <option value="Pramukh">Pramukh</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -213,7 +224,6 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
                         <option value="Executive Engineer (EE)">Executive Engineer (EE)</option>
                         <option value="Superintending Engineer (SE)">Superintending Engineer (SE)</option>
                         <option value="Chief Engineer (CE)">Chief Engineer (CE)</option>
-                        <option value="Other">Other</option>
                     </select>
                 </div>
                 <div className="sm:col-span-2">

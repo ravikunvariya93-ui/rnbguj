@@ -12,7 +12,7 @@ import GenericDeleteButton from '@/components/GenericDeleteButton';
 export const dynamic = 'force-dynamic';
 
 interface Props {
-    searchParams: { filter?: string; search?: string; page?: string; limit?: string };
+    searchParams: Promise<{ filter?: string; search?: string; page?: string; limit?: string; nature?: string }>;
 }
 
 export default async function PackagesListPage({ searchParams }: Props) {
@@ -34,6 +34,29 @@ export default async function PackagesListPage({ searchParams }: Props) {
 
     if (params.search) {
         query.packageName = { $regex: params.search, $options: 'i' };
+    }
+
+    if (params.nature) {
+        const { default: ApprovedWork } = await import('@/models/ApprovedWork');
+        let natureQuery: any;
+        if (params.nature === 'Unclassified') {
+            natureQuery = { $or: [{ natureOfWork: { $exists: false } }, { natureOfWork: null }, { natureOfWork: '' }] };
+        } else {
+            natureQuery = { natureOfWork: params.nature };
+        }
+        const worksWithNature = await ApprovedWork.find(natureQuery).select('workName').lean();
+        const validWorkNames = worksWithNature.map((w: any) => w.workName);
+        
+        const { default: TechnicalSanction } = await import('@/models/TechnicalSanction');
+        const tsWithNature = await TechnicalSanction.find({ workName: { $in: validWorkNames } }).select('_id').lean();
+        const tsIds = tsWithNature.map((ts: any) => ts._id);
+
+        query.$or = [
+            { "works.workName": { $in: validWorkNames } },
+            { "works.workId": { $in: tsIds } }
+        ];
+        
+        filterLabel += ` Filtering by nature: ${params.nature}.`;
     }
 
     const page = parseInt(params.page || '1');

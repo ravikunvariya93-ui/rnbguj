@@ -14,7 +14,14 @@ import {
     Briefcase,
     Building2,
     Construction,
-    FileText
+    FileText,
+    ClipboardCheck,
+    FolderKanban,
+    Megaphone,
+    ShieldCheck,
+    FileSignature,
+    Hammer,
+    ChevronRight
 } from 'lucide-react';
 import { Suspense } from 'react';
 import SearchBar from '@/components/SearchBar';
@@ -195,13 +202,22 @@ export default async function Home({ searchParams }: Props) {
     }
 
     const stats = [
-        { name: 'Pending TS', count: pendingTSWorks.length, href: '/approved-works?filter=pending', bifurcation: pendingTSBifurcation },
-        { name: 'Pending DTP', count: pendingDTPPackages.length, href: '/packages?filter=pending_dtp', bifurcation: pendingDTPBifurcation },
-        { name: 'Pending Tender', count: pendingTenderPackages.length, href: '/packages?filter=pending_tender', bifurcation: pendingTenderBifurcation },
-        { name: 'Pending Approval', count: pendingApprovalTenders.length, href: '/tenders?filter=pending_approval', bifurcation: pendingApprovalBifurcation },
-        { name: 'Pending LOA', count: pendingLOATenders.length, href: '/tenders?filter=pending_loa', bifurcation: pendingLOABifurcation },
-        { name: 'Pending Work Order', count: pendingWOLoas.length, href: '/loas?filter=pending', bifurcation: pendingWOBifurcation }
+        { name: 'Pending TS', count: pendingTSWorks.length, href: '/approved-works?filter=pending', bifurcation: pendingTSBifurcation, step: 1, icon: ClipboardCheck, color: 'blue' },
+        { name: 'Pending DTP', count: pendingDTPPackages.length, href: '/packages?filter=pending_dtp', bifurcation: pendingDTPBifurcation, step: 2, icon: FolderKanban, color: 'violet' },
+        { name: 'Pending Tender', count: pendingTenderPackages.length, href: '/packages?filter=pending_tender', bifurcation: pendingTenderBifurcation, step: 3, icon: Megaphone, color: 'amber' },
+        { name: 'Pending Approval', count: pendingApprovalTenders.length, href: '/tenders?filter=pending_approval', bifurcation: pendingApprovalBifurcation, step: 4, icon: ShieldCheck, color: 'emerald' },
+        { name: 'Pending LOA', count: pendingLOATenders.length, href: '/tenders?filter=pending_loa', bifurcation: pendingLOABifurcation, step: 5, icon: FileSignature, color: 'rose' },
+        { name: 'Pending Work Order', count: pendingWOLoas.length, href: '/loas?filter=pending', bifurcation: pendingWOBifurcation, step: 6, icon: Hammer, color: 'cyan' }
     ];
+
+    const colorMap: Record<string, { border: string; bg: string; text: string; badge: string; hoverBg: string }> = {
+        blue:    { border: 'border-l-blue-500',    bg: 'bg-blue-50',    text: 'text-blue-600',    badge: 'from-blue-500 to-blue-600',       hoverBg: 'group-hover:bg-blue-50' },
+        violet:  { border: 'border-l-violet-500',  bg: 'bg-violet-50',  text: 'text-violet-600',  badge: 'from-violet-500 to-violet-600',   hoverBg: 'group-hover:bg-violet-50' },
+        amber:   { border: 'border-l-amber-500',   bg: 'bg-amber-50',   text: 'text-amber-600',   badge: 'from-amber-500 to-amber-600',     hoverBg: 'group-hover:bg-amber-50' },
+        emerald: { border: 'border-l-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-600', badge: 'from-emerald-500 to-emerald-600', hoverBg: 'group-hover:bg-emerald-50' },
+        rose:    { border: 'border-l-rose-500',    bg: 'bg-rose-50',    text: 'text-rose-600',    badge: 'from-rose-500 to-rose-600',       hoverBg: 'group-hover:bg-rose-50' },
+        cyan:    { border: 'border-l-cyan-500',    bg: 'bg-cyan-50',    text: 'text-cyan-600',    badge: 'from-cyan-500 to-cyan-600',       hoverBg: 'group-hover:bg-cyan-50' },
+    };
 
     return (
         <div className="min-h-screen bg-[#f8fafc] pb-12">
@@ -288,38 +304,61 @@ export default async function Home({ searchParams }: Props) {
                         <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></div>
                         <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest leading-none">Process Pipeline</h2>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {stats.map((stat) => (
-                            <Link 
-                                key={stat.name} 
-                                href={stat.href}
-                                className="group bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:shadow-blue-900/5 hover:-translate-y-1 transition-all duration-300"
-                            >
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">{stat.name}</h3>
-                                    <span className="text-2xl font-black text-slate-900 tabular-nums">{stat.count}</span>
-                                </div>
-                                <div className="space-y-1.5">
-                                    {stat.bifurcation.length > 0 ? (
-                                        <>
-                                            {stat.bifurcation.slice(0, 4).map(b => (
-                                                <div key={b.name} className="flex justify-between items-center text-[10px]">
-                                                    <span className="font-bold text-slate-400 uppercase tracking-tight line-clamp-1">{b.name}</span>
-                                                    <span className="font-black text-slate-900 ml-2">{b.count}</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5 items-stretch">
+                        {stats.map((stat) => {
+                            const c = colorMap[stat.color];
+                            const Icon = stat.icon;
+                            return (
+                                <div 
+                                    key={stat.name} 
+                                    className={`group bg-white border border-slate-200/80 border-l-4 ${c.border} rounded-2xl shadow-sm hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300 flex flex-col h-full overflow-hidden`}
+                                >
+                                    {/* Card Header */}
+                                    <div className={`px-5 pt-5 pb-4 transition-colors duration-300 ${c.hoverBg}`}>
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-9 h-9 rounded-xl ${c.bg} flex items-center justify-center flex-shrink-0`}>
+                                                    <Icon className={`w-[18px] h-[18px] ${c.text}`} />
                                                 </div>
-                                            ))}
-                                            {stat.bifurcation.length > 4 && (
-                                                <div className="text-[9px] font-bold text-slate-300 italic pt-1">
-                                                    + {stat.bifurcation.length - 4} more categories
+                                                <div>
+                                                    <Link href={stat.href} className="block text-sm font-extrabold text-slate-800 hover:text-slate-900 tracking-tight leading-tight">
+                                                        {stat.name}
+                                                    </Link>
                                                 </div>
+                                            </div>
+                                            <Link href={stat.href} className={`inline-flex items-center justify-center min-w-[44px] h-9 px-3 rounded-xl bg-gradient-to-br ${c.badge} text-white text-lg font-black tabular-nums shadow-sm hover:scale-105 transition-transform duration-200`}>
+                                                {stat.count}
+                                            </Link>
+                                        </div>
+                                    </div>
+
+                                    {/* Bifurcation Rows */}
+                                    <div className="px-5 pb-4 flex-1">
+                                        <div className="border-t border-dashed border-slate-200 pt-3">
+                                            {stat.bifurcation.length > 0 ? (
+                                                <div className="space-y-0.5">
+                                                    {stat.bifurcation.map(b => (
+                                                        <Link 
+                                                            key={b.name}
+                                                            href={`${stat.href}${stat.href.includes('?') ? '&' : '?'}nature=${encodeURIComponent(b.name)}`}
+                                                            className="flex justify-between items-center text-[11px] hover:bg-slate-50 py-1.5 px-2 -mx-2 rounded-lg transition-all duration-150 group/link"
+                                                        >
+                                                            <span className="flex items-center gap-1.5 font-semibold text-slate-500 group-hover/link:text-slate-700 uppercase tracking-tight line-clamp-1">
+                                                                <ChevronRight className={`w-3 h-3 ${c.text} opacity-0 -ml-1 group-hover/link:opacity-100 group-hover/link:ml-0 transition-all duration-150`} />
+                                                                {b.name}
+                                                            </span>
+                                                            <span className="font-extrabold text-slate-700 tabular-nums ml-2 group-hover/link:text-slate-900">{b.count}</span>
+                                                        </Link>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="text-[11px] font-medium text-slate-300 italic py-1">No pending items</div>
                                             )}
-                                        </>
-                                    ) : (
-                                        <div className="text-[10px] font-bold text-slate-300 italic">No pending items</div>
-                                    )}
+                                        </div>
+                                    </div>
                                 </div>
-                            </Link>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             </div>

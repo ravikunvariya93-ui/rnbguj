@@ -34,7 +34,6 @@ export default function BudgetSection({ formData, handleChange }: BudgetSectionP
                         <option value="5054 MMGSY SCSP">5054 MMGSY SCSP</option>
                         <option value="Suvidhapath">Suvidhapath</option>
                         <option value="BUJ">BUJ</option>
-                        <option value="Other">Other</option>
                     </select>
                 </div>
 

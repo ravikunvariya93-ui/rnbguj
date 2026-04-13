@@ -177,7 +177,6 @@ export default function DTPForm({ initialData = {}, isEditing = false }: DTPForm
                         <option value="Executive Engineer (EE)">Executive Engineer (EE)</option>
                         <option value="Superintending Engineer (SE)">Superintending Engineer (SE)</option>
                         <option value="Chief Engineer (CE)">Chief Engineer (CE)</option>
-                        <option value="Other">Other</option>
                     </select>
                 </div>
                 <div className="sm:col-span-2">

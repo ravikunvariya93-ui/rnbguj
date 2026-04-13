@@ -54,7 +54,7 @@ function LoginForm() {
             Panchayat R&B Division
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Bhavnagar - Tender Management System
+            Bhavnagar
           </p>
         </div>
         
@@ -126,7 +126,7 @@ function LoginForm() {
         
         <div className="mt-6 text-center">
           <p className="text-xs text-gray-400">
-            Authorized access only. All activities are logged.
+            Authorized access only.
           </p>
         </div>
       </div>

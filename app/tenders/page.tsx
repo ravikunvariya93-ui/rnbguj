@@ -12,7 +12,7 @@ import GenericDeleteButton from '@/components/GenericDeleteButton';
 export const dynamic = 'force-dynamic';
 
 interface Props {
-    searchParams: { filter?: string; search?: string; page?: string; limit?: string };
+    searchParams: Promise<{ filter?: string; search?: string; page?: string; limit?: string; nature?: string }>;
 }
 
 export default async function TendersListPage({ searchParams }: Props) {
@@ -38,6 +38,37 @@ export default async function TendersListPage({ searchParams }: Props) {
             { packageName: { $regex: params.search, $options: 'i' } },
             { contractorName: { $regex: params.search, $options: 'i' } }
         ];
+    }
+
+    if (params.nature) {
+        const { default: ApprovedWork } = await import('@/models/ApprovedWork');
+        let natureQuery: any;
+        if (params.nature === 'Unclassified') {
+            natureQuery = { $or: [{ natureOfWork: { $exists: false } }, { natureOfWork: null }, { natureOfWork: '' }] };
+        } else {
+            natureQuery = { natureOfWork: params.nature };
+        }
+        const worksWithNature = await ApprovedWork.find(natureQuery).select('workName').lean();
+        const validWorkNames = worksWithNature.map((w: any) => w.workName);
+        
+        const { default: TechnicalSanction } = await import('@/models/TechnicalSanction');
+        const tsWithNature = await TechnicalSanction.find({ workName: { $in: validWorkNames } }).select('_id').lean();
+        const tsIds = tsWithNature.map((ts: any) => ts._id);
+
+        const { default: Package } = await import('@/models/Package');
+        const pkgsWithNature = await Package.find({
+            $or: [
+                { "works.workName": { $in: validWorkNames } },
+                { "works.workId": { $in: tsIds } }
+            ]
+        }).select('_id').lean();
+        const pkgIds = pkgsWithNature.map((p: any) => p._id);
+
+        // If search already put something in $or, this logic might override or get merged.
+        // It's safer to use $and if both are present, but for simplicity of mongoose merging we can just use packageId.
+        // Usually, mixing fields like packageId { $in: [] } with $or is perfectly fine.
+        query.packageId = { $in: pkgIds };
+        filterLabel += ` Filtering by nature: ${params.nature}.`;
     }
 
     const page = parseInt(params.page || '1');

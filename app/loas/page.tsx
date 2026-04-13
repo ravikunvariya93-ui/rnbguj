@@ -12,7 +12,7 @@ import GenericDeleteButton from '@/components/GenericDeleteButton';
 export const dynamic = 'force-dynamic';
 
 interface Props {
-    searchParams: { filter?: string; search?: string; page?: string; limit?: string };
+    searchParams: Promise<{ filter?: string; search?: string; page?: string; limit?: string; nature?: string }>;
 }
 
 export default async function LOAListPage({ searchParams }: Props) {
@@ -36,6 +36,47 @@ export default async function LOAListPage({ searchParams }: Props) {
             ]
         }).distinct('_id');
         query.tenderId = { $in: matchingTenders };
+    }
+
+    if (params.nature) {
+        const { default: ApprovedWork } = await import('@/models/ApprovedWork');
+        let natureQuery: any;
+        if (params.nature === 'Unclassified') {
+            natureQuery = { $or: [{ natureOfWork: { $exists: false } }, { natureOfWork: null }, { natureOfWork: '' }] };
+        } else {
+            natureQuery = { natureOfWork: params.nature };
+        }
+        const worksWithNature = await ApprovedWork.find(natureQuery).select('workName').lean();
+        const validWorkNames = worksWithNature.map((w: any) => w.workName);
+        
+        const { default: TechnicalSanction } = await import('@/models/TechnicalSanction');
+        const tsWithNature = await TechnicalSanction.find({ workName: { $in: validWorkNames } }).select('_id').lean();
+        const tsIds = tsWithNature.map((ts: any) => ts._id);
+
+        const { default: Package } = await import('@/models/Package');
+        const pkgsWithNature = await Package.find({
+            $or: [
+                { "works.workName": { $in: validWorkNames } },
+                { "works.workId": { $in: tsIds } }
+            ]
+        }).select('_id').lean();
+        const pkgIds = pkgsWithNature.map((p: any) => p._id);
+
+        const tendersWithNature = await Tender.find({ packageId: { $in: pkgIds } }).select('_id').lean();
+        const tenderIds = tendersWithNature.map((t: any) => t._id);
+
+        // if tenderId was already set by search, we should intersect the sets or use $and. Usually $and is safer.
+        if (query.tenderId) {
+            query.$and = [
+                { tenderId: query.tenderId },
+                { tenderId: { $in: tenderIds } }
+            ];
+            delete query.tenderId;
+        } else {
+            query.tenderId = { $in: tenderIds };
+        }
+        
+        filterLabel += ` Filtering by nature: ${params.nature}.`;
     }
 
     const page = parseInt(params.page || '1');
