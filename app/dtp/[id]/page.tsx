@@ -22,6 +22,8 @@ export default async function DTPDetailPage({ params }: { params: Promise<{ id: 
                 { label: 'DTP Approving Authority', value: dtp.dtpApprovingAuthority },
                 { label: 'DTP Approval No.', value: dtp.dtpApprovalNo },
                 { label: 'DTP Approval Date', value: dtp.dtpApprovalDate ? new Date(dtp.dtpApprovalDate).toLocaleDateString('en-GB') : '-' },
+                { label: 'Tender Amount', value: dtp.tenderAmount ? `₹${dtp.tenderAmount.toLocaleString('en-IN')}` : '-' },
+                { label: 'DTP Consultant', value: (dtp as any).dtpConsultant },
             ]
         },
         {

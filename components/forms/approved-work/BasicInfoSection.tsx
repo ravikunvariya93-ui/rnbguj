@@ -9,6 +9,7 @@ interface BasicInfoSectionProps {
         subDivision: string;
         taluka: string;
         length: string;
+        chainage: string;
     };
     handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
 }
@@ -114,6 +115,19 @@ export default function BasicInfoSection({ formData, handleChange }: BasicInfoSe
                     onChange={handleChange}
                     className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
                     placeholder="e.g. 2.50"
+                />
+            </div>
+
+            <div className="sm:col-span-2">
+                <label htmlFor="chainage" className="block text-sm font-medium text-gray-700">Chainage</label>
+                <input
+                    type="text"
+                    name="chainage"
+                    id="chainage"
+                    value={formData.chainage}
+                    onChange={handleChange}
+                    className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                    placeholder="e.g. 4/800"
                 />
             </div>
         </div>

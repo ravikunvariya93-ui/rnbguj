@@ -21,16 +21,6 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
                 { label: 'Sub Division', value: pkg.subDivision },
                 { label: 'Estimated Amount', value: pkg.estimatedAmount ? `₹${pkg.estimatedAmount.toLocaleString('en-IN')}` : '-' },
             ]
-        },
-        {
-            title: 'Detailed Technical Proposal (DTP) Details',
-            fields: [
-                { label: 'DTP Submission Date', value: pkg.dtpSubmissionDate ? new Date(pkg.dtpSubmissionDate).toLocaleDateString('en-GB') : '-' },
-                { label: 'DTP Approval Letter No', value: pkg.dtpApprovalLetterNo },
-                { label: 'DTP Approval Date', value: pkg.dtpApprovalDate ? new Date(pkg.dtpApprovalDate).toLocaleDateString('en-GB') : '-' },
-                { label: 'Approval Authority', value: pkg.approvalAuthority },
-            ]
-        }
     ];
 
     return (

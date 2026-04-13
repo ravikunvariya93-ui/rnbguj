@@ -34,6 +34,7 @@ export default async function ApprovedWorkDetailPage({ params }: { params: Promi
                 { label: 'Approval Year', value: work.approvalYear },
                 { label: 'Nature of Work', value: work.natureOfWork },
                 { label: 'Length (km)', value: work.length },
+                { label: 'Chainage', value: (work as any).chainage },
                 { label: 'Amount Approved (Lakhs)', value: work.jobNumberAmount ? `₹${work.jobNumberAmount.toLocaleString('en-IN')}` : '-' },
                 { label: 'WMS Code', value: work.wmsItemCode },
                 { label: 'Approval Date', value: work.jobNumberApprovalDate ? new Date(work.jobNumberApprovalDate).toLocaleDateString('en-GB') : '-' },

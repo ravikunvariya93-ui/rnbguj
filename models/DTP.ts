@@ -7,6 +7,8 @@ export interface IDTP extends Document {
     dtpApprovingAuthority: string;
     dtpApprovalNo: string;
     dtpApprovalDate: Date;
+    tenderAmount: number;
+    dtpConsultant: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -18,6 +20,8 @@ const DTPSchema: Schema = new Schema({
     dtpApprovingAuthority: { type: String },
     dtpApprovalNo: { type: String },
     dtpApprovalDate: { type: Date },
+    tenderAmount: { type: Number },
+    dtpConsultant: { type: String },
 }, {
     timestamps: true,
 });

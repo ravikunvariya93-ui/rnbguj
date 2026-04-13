@@ -6,7 +6,6 @@ export interface IApprovedWork extends Document {
     subDivision: string;
     taluka: string;
     constituencyName: string; // Name of Consituancy
-    budgetItemName: string; // Name of Budget Item
     budgetType: string; // Type of Budget
     wmsItemCode: string;
     approvalYear: string; // Year of Approval
@@ -28,6 +27,7 @@ export interface IApprovedWork extends Document {
     natureOfWork: string;
     schemeName: string;
     length: number;
+    chainage: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -38,7 +38,6 @@ const ApprovedWorkSchema: Schema = new Schema({
     subDivision: { type: String },
     taluka: { type: String },
     constituencyName: { type: String },
-    budgetItemName: { type: String },
     budgetType: { type: String },
     wmsItemCode: { type: String },
     approvalYear: { type: String },
@@ -60,6 +59,7 @@ const ApprovedWorkSchema: Schema = new Schema({
     natureOfWork: { type: String },
     schemeName: { type: String },
     length: { type: Number },
+    chainage: { type: String },
 }, {
     timestamps: true,
 });

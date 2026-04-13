@@ -2,7 +2,6 @@
 
 interface BudgetSectionProps {
     formData: {
-        budgetItemName: string;
         budgetHead: string;
         approvalYear: string;
         jobNumberAmount: string;
@@ -16,10 +15,6 @@ export default function BudgetSection({ formData, handleChange }: BudgetSectionP
         <div className="pt-8">
             <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Budget & Approval</h3>
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                <div className="sm:col-span-3">
-                    <label htmlFor="budgetItemName" className="block text-sm font-medium text-gray-700">Name of Budget Item</label>
-                    <input type="text" name="budgetItemName" id="budgetItemName" value={formData.budgetItemName} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                </div>
                 <div className="sm:col-span-3">
                     <label htmlFor="budgetHead" className="block text-sm font-medium text-gray-700">Budget Head</label>
                     <select

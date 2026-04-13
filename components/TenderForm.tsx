@@ -25,6 +25,8 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
     const searchParams = useSearchParams();
     const [loading, setLoading] = useState(false);
     const [packages, setPackages] = useState<any[]>([]);
+    const [dtps, setDtps] = useState<any[]>([]);
+    const [tenderAmount, setTenderAmount] = useState<number | ''>('');
 
     const [formData, setFormData] = useState({
         packageId: initialData.packageId || searchParams.get('packageId') || '',
@@ -47,18 +49,25 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
     });
 
     useEffect(() => {
-        const fetchPackages = async () => {
+        const fetchData = async () => {
             try {
-                const res = await fetch('/api/packages');
-                const data = await res.json();
-                if (data.success) {
-                    setPackages(data.data);
+                const [pkgRes, dtpRes] = await Promise.all([
+                    fetch('/api/packages'),
+                    fetch('/api/dtps')
+                ]);
+                const pkgData = await pkgRes.json();
+                const dtpData = await dtpRes.json();
+                if (pkgData.success) {
+                    setPackages(pkgData.data);
+                }
+                if (dtpData.success) {
+                    setDtps(dtpData.data);
                 }
             } catch (error) {
-                console.error("Failed to fetch packages", error);
+                console.error("Failed to fetch data", error);
             }
         };
-        fetchPackages();
+        fetchData();
     }, []);
 
     // Helper to format dates for input fields (DD/MM/YYYY)
@@ -115,6 +124,37 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
             // ignore
         }
     }, [formData.lastDateOfSubmission]);
+
+    // Set tender amount when package or dtps load
+    useEffect(() => {
+        if (formData.packageId && dtps.length > 0) {
+            const relatedDtp = dtps.find(d => d.tsId?._id === formData.packageId || d.tsId === formData.packageId);
+            setTenderAmount(relatedDtp?.tenderAmount || '');
+        } else if (!formData.packageId) {
+            setTenderAmount('');
+        }
+    }, [formData.packageId, dtps]);
+
+    // Calculate contract price automatically
+    useEffect(() => {
+        if (tenderAmount === '') return;
+        const base = Number(tenderAmount);
+        if (isNaN(base)) return;
+
+        if (formData.aboveBelowInWord === 'At Par') {
+            setFormData((prev: any) => ({ ...prev, contractPrice: base.toFixed(2), aboveBelowPercentage: 0 }));
+            return;
+        }
+
+        const pct = Number(formData.aboveBelowPercentage);
+        if (!isNaN(pct)) {
+            if (formData.aboveBelowInWord === 'Above') {
+                setFormData((prev: any) => ({ ...prev, contractPrice: (base + (base * pct / 100)).toFixed(2) }));
+            } else if (formData.aboveBelowInWord === 'Below') {
+                setFormData((prev: any) => ({ ...prev, contractPrice: (base - (base * pct / 100)).toFixed(2) }));
+            }
+        }
+    }, [tenderAmount, formData.aboveBelowPercentage, formData.aboveBelowInWord]);
 
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -292,6 +332,16 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
 
                 <div className="sm:col-span-6 border-t border-gray-200 pt-4 mt-4">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Contract Details</h3>
+                </div>
+
+                <div className="sm:col-span-3">
+                    <label className="block text-sm font-medium text-gray-700">Tender Amount</label>
+                    <input type="text" readOnly value={tenderAmount} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border bg-gray-50" />
+                </div>
+                <div className="sm:col-span-3 flex items-end">
+                    <div className="text-xs text-gray-500 pb-2">
+                        Fetched automatically from linked DTP module
+                    </div>
                 </div>
 
                 <div className="sm:col-span-full">

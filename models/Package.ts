@@ -8,11 +8,6 @@ export interface IPackage extends Document {
         workName: string;
         amount: number; // Snapshot of amount
     }[];
-    estimatedAmount?: number;
-    dtpSubmissionDate?: Date;
-    dtpApprovalLetterNo?: string;
-    dtpApprovalDate?: Date;
-    approvalAuthority?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -25,12 +20,6 @@ const PackageSchema: Schema = new Schema({
         workName: { type: String },
         amount: { type: Number },
     }],
-    estimatedAmount: { type: Number },
-    dtpAmount: { type: Number },
-    dtpSubmissionDate: { type: Date },
-    dtpApprovalLetterNo: { type: String },
-    dtpApprovalDate: { type: Date },
-    approvalAuthority: { type: String },
 }, {
     timestamps: true,
 });

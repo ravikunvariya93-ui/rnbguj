@@ -24,7 +24,6 @@ interface FormData {
     subDivision: string;
     taluka: string;
     constituencyName: string;
-    budgetItemName: string;
     budgetType: string;
     wmsItemCode: string;
     approvalYear: string;
@@ -46,6 +45,7 @@ interface FormData {
     natureOfWork: string;
     schemeName: string;
     length: string;
+    chainage: string;
     [key: string]: string; // allow dynamic keys from initialData
 }
 
@@ -83,7 +83,6 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
         subDivision: '',
         taluka: '',
         constituencyName: '',
-        budgetItemName: '',
         budgetType: '',
         wmsItemCode: '',
         approvalYear: '2025-26',
@@ -105,6 +104,7 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
         natureOfWork: '',
         schemeName: '',
         length: '',
+        chainage: '',
         ...initialData
     });
 

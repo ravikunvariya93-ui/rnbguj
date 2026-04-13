@@ -55,6 +55,8 @@ export default function DTPForm({ initialData = {}, isEditing = false }: DTPForm
         dtpApprovingAuthority: '',
         dtpApprovalNo: '',
         dtpApprovalDate: '',
+        tenderAmount: '',
+        dtpConsultant: '',
         ...sanitized,
     });
 
@@ -164,7 +166,13 @@ export default function DTPForm({ initialData = {}, isEditing = false }: DTPForm
                         className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                 </div>
 
-                <div className="sm:col-span-4">
+                <div className="sm:col-span-3">
+                    <label htmlFor="tenderAmount" className="block text-sm font-medium text-gray-700">Tender Amount</label>
+                    <input type="number" step="0.01" name="tenderAmount" id="tenderAmount" value={formData.tenderAmount} onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                </div>
+
+                <div className="sm:col-span-3">
                     <label htmlFor="dtpApprovingAuthority" className="block text-sm font-medium text-gray-700">DTP Approving Authority</label>
                     <select
                         name="dtpApprovingAuthority"
@@ -179,8 +187,21 @@ export default function DTPForm({ initialData = {}, isEditing = false }: DTPForm
                         <option value="Chief Engineer (CE)">Chief Engineer (CE)</option>
                     </select>
                 </div>
-                <div className="sm:col-span-2">
-                    {/* Empty space for alignment if needed, or adjust spacing */}
+                
+                <div className="sm:col-span-6">
+                    <label htmlFor="dtpConsultant" className="block text-sm font-medium text-gray-700">DTP Consultant</label>
+                    <select
+                        name="dtpConsultant"
+                        id="dtpConsultant"
+                        value={formData.dtpConsultant}
+                        onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                    >
+                        <option value="">-- Select Consultant --</option>
+                        <option value="Umiya">Umiya</option>
+                        <option value="Trisha">Trisha</option>
+                        <option value="Pramukh">Pramukh</option>
+                    </select>
                 </div>
 
                 <div className="sm:col-span-3">

@@ -160,9 +160,7 @@ export default function LOAForm({ initialData = {}, isEditing = false }: LOAForm
                         <strong>Tender Info:</strong>&nbsp;
                         Contract Price: ₹{selectedTender.contractPrice?.toLocaleString('en-IN') ?? '-'} &nbsp;|&nbsp;
                         {selectedTender.aboveBelowInWord} {selectedTender.aboveBelowPercentage}% &nbsp;|&nbsp;
-                        Amount Put To Tender: ₹{(selectedTender.packageId?.dtpAmount
-                            || selectedTender.packageId?.works?.reduce((s: number, w: any) => s + (Number(w.amount) || 0), 0)
-                            || 0).toLocaleString('en-IN')}
+                        Amount Put To Tender: ₹{(selectedTender.packageId?.works?.reduce((s: number, w: any) => s + (Number(w.amount) || 0), 0) || 0).toLocaleString('en-IN')}
                     </div>
                 )}
 

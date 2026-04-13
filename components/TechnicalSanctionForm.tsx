@@ -23,8 +23,7 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
         tsAmount: '',
         tsNumber: '',
         tsDate: '',
-        amountPutToTender: '',
-        tsConsultant: '',
+        estimateConsultant: '',
         ...initialData
     });
 
@@ -193,11 +192,11 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
                             <input type="text" placeholder="20/01/2025" name="dateSendingTS" id="dateSendingTS" value={formData.dateSendingTS} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                         </div>
                         <div className="sm:col-span-3">
-                            <label htmlFor="tsConsultant" className="block text-sm font-medium text-gray-700">TS Consultant</label>
+                            <label htmlFor="estimateConsultant" className="block text-sm font-medium text-gray-700">Estimate Consultant</label>
                             <select
-                                name="tsConsultant"
-                                id="tsConsultant"
-                                value={formData.tsConsultant}
+                                name="estimateConsultant"
+                                id="estimateConsultant"
+                                value={formData.estimateConsultant}
                                 onChange={handleChange}
                                 className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
                             >
@@ -242,10 +241,6 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
                         <div className="sm:col-span-3">
                             <label htmlFor="tsAmount" className="block text-sm font-medium text-gray-700">TS Amount</label>
                             <input type="number" step="0.01" name="tsAmount" id="tsAmount" value={formData.tsAmount} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                        </div>
-                        <div className="sm:col-span-3">
-                            <label htmlFor="amountPutToTender" className="block text-sm font-medium text-gray-700">Amount put to Tender</label>
-                            <input type="number" step="0.01" name="amountPutToTender" id="amountPutToTender" value={formData.amountPutToTender} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                         </div>
                     </div>
                 </div>

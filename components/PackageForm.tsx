@@ -24,56 +24,12 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
     const [selectedWorks, setSelectedWorks] = useState<{ workId: string, workName: string, amount: number }[]>(initialData.works || []);
 
     // Available works from DB (Technical Sanctions)
-    const [availableWorks, setAvailableWorks] = useState<{ _id: string, workName: string, amountPutToTender: number }[]>([]);
+    const [availableWorks, setAvailableWorks] = useState<{ _id: string, workName: string, tsAmount: number }[]>([]);
 
     // Temporary selection state for the dropdown
     const [currentSelectionId, setCurrentSelectionId] = useState('');
 
-    // DTP Details State
-    const [dtpDetails, setDtpDetails] = useState({
-        estimatedAmount: initialData.estimatedAmount || '',
-        dtpAmount: initialData.dtpAmount || '',
-        dtpSubmissionDate: initialData.dtpSubmissionDate || '',
-        dtpApprovalLetterNo: initialData.dtpApprovalLetterNo || '',
-        dtpApprovalDate: initialData.dtpApprovalDate || '',
-        approvalAuthority: initialData.approvalAuthority || ''
-    });
-
-    // Date formatting for edit mode
-    useEffect(() => {
-        if (initialData && (initialData.dtpSubmissionDate || initialData.dtpApprovalDate)) {
-            const formatDate = (dateString: string) => {
-                if (!dateString) return '';
-                const dateObj = new Date(dateString);
-                if (isNaN(dateObj.getTime())) return '';
-                const day = String(dateObj.getDate()).padStart(2, '0');
-                const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                const year = dateObj.getFullYear();
-                return `${day}/${month}/${year}`;
-            };
-
-            setDtpDetails(prev => ({
-                ...prev,
-                dtpSubmissionDate: formatDate(initialData.dtpSubmissionDate),
-                dtpApprovalDate: formatDate(initialData.dtpApprovalDate)
-            }));
-        }
-    }, [initialData]);
-
-    const handleDtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setDtpDetails(prev => ({ ...prev, [name]: value }));
-    };
-
-    // Auto-calculate DTP Amount based on sum of works' amount Put To Tender
-    useEffect(() => {
-        const totalAmount = selectedWorks.reduce((sum, work) => sum + (Number(work.amount) || 0), 0);
-        setDtpDetails(prev => ({
-            ...prev,
-            dtpAmount: totalAmount > 0 ? String(totalAmount) : ''
-        }));
-    }, [selectedWorks]);
-
+    // Auto-calculate DTP Amount logic removed
     useEffect(() => {
         const fetchAvailableWorks = async () => {
             try {
@@ -103,7 +59,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
             setSelectedWorks(prev => [...prev, {
                 workId: workToAdd._id,
                 workName: workToAdd.workName,
-                amount: workToAdd.amountPutToTender || 0
+                amount: (workToAdd.tsAmount || 0) * 100000
             }]);
             setCurrentSelectionId(''); // Reset selection
         }
@@ -130,27 +86,8 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
             const submissionData = {
                 packageName,
                 subDivision,
-                works: selectedWorks,
-                ...dtpDetails
+                works: selectedWorks
             };
-
-            // Date Parsing Logic for DTP Dates
-            const parseDate = (dateStr: string) => {
-                if (!dateStr) return undefined;
-                const cleanDate = String(dateStr).trim();
-                const parts = cleanDate.split(/[\/\-\.]/);
-                if (parts.length === 3) {
-                    let year = parts[2];
-                    if (year.length === 2) year = '20' + year;
-                    const isoDate = `${year}-${parts[1]}-${parts[0]}`;
-                    const dateObj = new Date(isoDate);
-                    return !isNaN(dateObj.getTime()) ? dateObj.toISOString() : undefined;
-                }
-                return undefined; // Or throw error/alert
-            };
-
-            if (submissionData.dtpSubmissionDate) submissionData.dtpSubmissionDate = parseDate(submissionData.dtpSubmissionDate) as any;
-            if (submissionData.dtpApprovalDate) submissionData.dtpApprovalDate = parseDate(submissionData.dtpApprovalDate) as any;
 
             const url = isEditing ? `/api/packages/${initialData._id}` : '/api/packages';
             const method = isEditing ? 'PUT' : 'POST';
@@ -180,8 +117,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
     // Prepare options for SearchableSelect
     const workOptions = availableWorks.map(w => ({
         _id: w._id,
-        packageName: w.workName,
-        tenderId: `Est: ₹${w.amountPutToTender}`
+        packageName: w.workName
     }));
 
     return (
@@ -213,6 +149,8 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                         <option value="Mahuva">Mahuva</option>
                         <option value="Palitana">Palitana</option>
                         <option value="Talaja">Talaja</option>
+                        <option value="Shihor">Shihor</option>
+                        <option value="Vallabhipur">Vallabhipur</option>
                     </select>
                 </div>
 
@@ -252,7 +190,6 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                                     <li key={work.workId} className="py-3 flex justify-between items-center">
                                         <div>
                                             <p className="text-sm font-medium text-gray-900">{work.workName}</p>
-                                            <p className="text-xs text-gray-500">Amount: ₹{work.amount}</p>
                                         </div>
                                         <button
                                             type="button"
@@ -265,40 +202,6 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                                 ))}
                             </ul>
                         )}
-                    </div>
-                </div>
-
-                {/* DTP Details */}
-                <div className="sm:col-span-6 border-t border-gray-200 pt-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">DTP Details</h3>
-                    <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                        <div className="sm:col-span-3">
-                            <label htmlFor="estimatedAmount" className="block text-sm font-medium text-gray-700">Estimated Amount (Rupees)</label>
-                            <input type="number" step="0.01" name="estimatedAmount" id="estimatedAmount" value={dtpDetails.estimatedAmount || ''} onChange={handleDtpChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                        </div>
-                        <div className="sm:col-span-3">
-                            <label htmlFor="dtpAmount" className="block text-sm font-medium text-gray-700">DTP Amount (Rupees) - Auto Calculated</label>
-                            <input type="number" step="1" name="dtpAmount" id="dtpAmount" value={dtpDetails.dtpAmount || ''} readOnly className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border bg-gray-50" />
-                        </div>
-
-                        <div className="sm:col-span-3">
-                            <label htmlFor="dtpSubmissionDate" className="block text-sm font-medium text-gray-700">DTP Submission Date (DD/MM/YYYY)</label>
-                            <input type="text" placeholder="20/01/2025" name="dtpSubmissionDate" id="dtpSubmissionDate" value={dtpDetails.dtpSubmissionDate || ''} onChange={handleDtpChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                        </div>
-
-                        <div className="sm:col-span-3">
-                            <label htmlFor="approvalAuthority" className="block text-sm font-medium text-gray-700">Approval Authority</label>
-                            <input type="text" name="approvalAuthority" id="approvalAuthority" value={dtpDetails.approvalAuthority || ''} onChange={handleDtpChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                        </div>
-
-                        <div className="sm:col-span-3">
-                            <label htmlFor="dtpApprovalLetterNo" className="block text-sm font-medium text-gray-700">DTP Approval Letter No</label>
-                            <input type="text" name="dtpApprovalLetterNo" id="dtpApprovalLetterNo" value={dtpDetails.dtpApprovalLetterNo || ''} onChange={handleDtpChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                        </div>
-                        <div className="sm:col-span-3">
-                            <label htmlFor="dtpApprovalDate" className="block text-sm font-medium text-gray-700">DTP Approval Date (DD/MM/YYYY)</label>
-                            <input type="text" placeholder="20/01/2025" name="dtpApprovalDate" id="dtpApprovalDate" value={dtpDetails.dtpApprovalDate || ''} onChange={handleDtpChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                        </div>
                     </div>
                 </div>
 
