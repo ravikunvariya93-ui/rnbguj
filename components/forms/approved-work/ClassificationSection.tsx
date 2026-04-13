@@ -35,7 +35,7 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                     >
                         <option value="">-- Select MLA --</option>
                         <option value="Parshottambhai O. Solanki (Bhavnagar Rural)">Parshottambhai O. Solanki (Bhavnagar Rural)</option>
-                        <option value="Jitu Vaghani (Bhavnagar West)">Jitu Vaghani (Bhavnagar West)</option>
+                        <option value="Mahant Shambhunath Tundiya (Gadhada)">Mahant Shambhunath Tundiya (Gadhada)</option>
                         <option value="Sejalben Rajivkumar Pandya (Bhavnagar East)">Sejalben Rajivkumar Pandya (Bhavnagar East)</option>
                         <option value="Bhikhubhai Baraiya (Palitana)">Bhikhubhai Baraiya (Palitana)</option>
                         <option value="Gautambhai Gopabhai Chauhan (Talaja)">Gautambhai Gopabhai Chauhan (Talaja)</option>
