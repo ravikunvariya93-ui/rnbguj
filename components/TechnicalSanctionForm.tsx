@@ -201,9 +201,11 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
                                 className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
                             >
                                 <option value="">-- Select Consultant --</option>
-                                <option value="Umiya">Umiya</option>
-                                <option value="Trisha">Trisha</option>
-                                <option value="Pramukh">Pramukh</option>
+                                <option value="Umiya Engineers and Project Management Consultancy">Umiya Engineers and Project Management Consultancy</option>
+                                <option value="Trisha Engineers Consultancy">Trisha Engineers Consultancy</option>
+                                <option value="Pramukham Engineers Consultancy">Pramukham Engineers Consultancy</option>
+                                <option value="Kalyan Computers">Kalyan Computers</option>
+                                <option value="Karansinh Janaksinh Rana">Karansinh Janaksinh Rana</option>
                             </select>
                         </div>
                     </div>
