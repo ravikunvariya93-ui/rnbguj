@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { 
     Building2, FileText, Home, CheckCircle, 
-    Package, Layers, X, User, LogOut, Users, StickyNote 
+    Package, Layers, X, User, LogOut, Users, StickyNote, ClipboardList 
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -25,6 +25,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         { name: 'Package', href: '/packages', icon: Package, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
         { name: 'DTP', href: '/dtp', icon: Layers, roles: ['ADMIN', 'SUPERVISOR'] },
         { name: 'Tender', href: '/tenders', icon: FileText, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
+        { name: 'BOQ', href: '/boqs', icon: ClipboardList, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
         { name: 'Approval', href: '/approvals', icon: CheckCircle, roles: ['ADMIN', 'SUPERVISOR'] },
         { name: 'LOA', href: '/loas', icon: CheckCircle, roles: ['ADMIN', 'SUPERVISOR'] },
         { name: 'Work Order', href: '/work-orders', icon: CheckCircle, roles: ['ADMIN', 'SUPERVISOR'] },

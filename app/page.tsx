@@ -7,6 +7,8 @@ import Tender from '@/models/Tender';
 import Approval from '@/models/Approval';
 import LOA from '@/models/LOA';
 import WorkOrder from '@/models/WorkOrder';
+import Note from '@/models/Note';
+import BOQ from '@/models/BOQ';
 import Link from 'next/link';
 import { 
     ArrowRight,
@@ -21,7 +23,9 @@ import {
     ShieldCheck,
     FileSignature,
     Hammer,
-    ChevronRight
+    ChevronRight,
+    StickyNote,
+    ClipboardList
 } from 'lucide-react';
 import { Suspense } from 'react';
 import SearchBar from '@/components/SearchBar';
@@ -44,7 +48,9 @@ export default async function Home({ searchParams }: Props) {
         allTenders,
         allApprovals,
         allLOAs,
-        allWorkOrders
+        allWorkOrders,
+        allNotes,
+        allBOQs
     ] = await Promise.all([
         ApprovedWork.find({}).lean(),
         TechnicalSanction.find({}).lean(),
@@ -52,7 +58,9 @@ export default async function Home({ searchParams }: Props) {
         Tender.find({}).lean(),
         Approval.find({}).lean(),
         LOA.find({}).lean(),
-        WorkOrder.find({}).lean()
+        WorkOrder.find({}).lean(),
+        Note.find({}).lean(),
+        BOQ.find({}).lean()
     ]);
 
     const workNameToNature: Record<string, string> = {};
@@ -207,7 +215,25 @@ export default async function Home({ searchParams }: Props) {
         { name: 'Pending Tender', count: pendingTenderPackages.length, href: '/packages?filter=pending_tender', bifurcation: pendingTenderBifurcation, step: 3, icon: Megaphone, color: 'amber' },
         { name: 'Pending Approval', count: pendingApprovalTenders.length, href: '/tenders?filter=pending_approval', bifurcation: pendingApprovalBifurcation, step: 4, icon: ShieldCheck, color: 'emerald' },
         { name: 'Pending LOA', count: pendingLOATenders.length, href: '/tenders?filter=pending_loa', bifurcation: pendingLOABifurcation, step: 5, icon: FileSignature, color: 'rose' },
-        { name: 'Pending Work Order', count: pendingWOLoas.length, href: '/loas?filter=pending', bifurcation: pendingWOBifurcation, step: 6, icon: Hammer, color: 'cyan' }
+        { name: 'Pending Work Order', count: pendingWOLoas.length, href: '/loas?filter=pending', bifurcation: pendingWOBifurcation, step: 6, icon: Hammer, color: 'cyan' },
+        { 
+            name: 'Open Notes', 
+            count: allNotes.filter((n: any) => n.status !== 'Closed').length, 
+            href: '/notes', 
+            bifurcation: getBifurcation(allNotes.filter((n: any) => n.status !== 'Closed').map((n: any) => n.priority || 'Normal')), 
+            step: 7, 
+            icon: StickyNote, 
+            color: 'indigo' 
+        },
+        { 
+            name: 'BOQ Records', 
+            count: allBOQs.length, 
+            href: '/boqs', 
+            bifurcation: [], 
+            step: 8, 
+            icon: ClipboardList, 
+            color: 'slate' 
+        }
     ];
 
     const colorMap: Record<string, { border: string; bg: string; text: string; badge: string; hoverBg: string }> = {
@@ -217,6 +243,8 @@ export default async function Home({ searchParams }: Props) {
         emerald: { border: 'border-l-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-600', badge: 'from-emerald-500 to-emerald-600', hoverBg: 'group-hover:bg-emerald-50' },
         rose:    { border: 'border-l-rose-500',    bg: 'bg-rose-50',    text: 'text-rose-600',    badge: 'from-rose-500 to-rose-600',       hoverBg: 'group-hover:bg-rose-50' },
         cyan:    { border: 'border-l-cyan-500',    bg: 'bg-cyan-50',    text: 'text-cyan-600',    badge: 'from-cyan-500 to-cyan-600',       hoverBg: 'group-hover:bg-cyan-50' },
+        indigo:  { border: 'border-l-indigo-500',  bg: 'bg-indigo-50',  text: 'text-indigo-600',  badge: 'from-indigo-500 to-indigo-600',   hoverBg: 'group-hover:bg-indigo-50' },
+        slate:   { border: 'border-l-slate-500',   bg: 'bg-slate-50',   text: 'text-slate-600',   badge: 'from-slate-500 to-slate-600',     hoverBg: 'group-hover:bg-slate-50' },
     };
 
     return (

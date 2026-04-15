@@ -21,6 +21,7 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
                 { label: 'Sub Division', value: pkg.subDivision },
                 { label: 'Estimated Amount', value: pkg.estimatedAmount ? `₹${pkg.estimatedAmount.toLocaleString('en-IN')}` : '-' },
             ]
+        }
     ];
 
     return (
