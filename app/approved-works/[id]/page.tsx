@@ -24,6 +24,7 @@ export default async function ApprovedWorkDetailPage({ params }: { params: Promi
                 { label: 'MLA Name', value: work.mlaName },
                 { label: 'MP Name', value: work.mpName },
                 { label: 'Road Category', value: work.roadCategory },
+                { label: 'Estimate Consultant', value: (work as any).estimateConsultant },
             ]
         },
         {

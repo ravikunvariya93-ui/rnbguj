@@ -7,7 +7,6 @@ import Tender from '@/models/Tender';
 import Approval from '@/models/Approval';
 import LOA from '@/models/LOA';
 import WorkOrder from '@/models/WorkOrder';
-import Note from '@/models/Note';
 import BOQ from '@/models/BOQ';
 import Link from 'next/link';
 import { 
@@ -24,7 +23,6 @@ import {
     FileSignature,
     Hammer,
     ChevronRight,
-    StickyNote,
     ClipboardList
 } from 'lucide-react';
 import { Suspense } from 'react';
@@ -49,7 +47,6 @@ export default async function Home({ searchParams }: Props) {
         allApprovals,
         allLOAs,
         allWorkOrders,
-        allNotes,
         allBOQs
     ] = await Promise.all([
         ApprovedWork.find({}).lean(),
@@ -59,7 +56,6 @@ export default async function Home({ searchParams }: Props) {
         Approval.find({}).lean(),
         LOA.find({}).lean(),
         WorkOrder.find({}).lean(),
-        Note.find({}).lean(),
         BOQ.find({}).lean()
     ]);
 
@@ -217,20 +213,11 @@ export default async function Home({ searchParams }: Props) {
         { name: 'Pending LOA', count: pendingLOATenders.length, href: '/tenders?filter=pending_loa', bifurcation: pendingLOABifurcation, step: 5, icon: FileSignature, color: 'rose' },
         { name: 'Pending Work Order', count: pendingWOLoas.length, href: '/loas?filter=pending', bifurcation: pendingWOBifurcation, step: 6, icon: Hammer, color: 'cyan' },
         { 
-            name: 'Open Notes', 
-            count: allNotes.filter((n: any) => n.status !== 'Closed').length, 
-            href: '/notes', 
-            bifurcation: getBifurcation(allNotes.filter((n: any) => n.status !== 'Closed').map((n: any) => n.priority || 'Normal')), 
-            step: 7, 
-            icon: StickyNote, 
-            color: 'indigo' 
-        },
-        { 
             name: 'BOQ Records', 
             count: allBOQs.length, 
             href: '/boqs', 
             bifurcation: [], 
-            step: 8, 
+            step: 7, 
             icon: ClipboardList, 
             color: 'slate' 
         }

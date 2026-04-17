@@ -28,6 +28,7 @@ export interface IApprovedWork extends Document {
     schemeName: string;
     length: number;
     chainage: string;
+    estimateConsultant: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -60,6 +61,7 @@ const ApprovedWorkSchema: Schema = new Schema({
     schemeName: { type: String },
     length: { type: Number },
     chainage: { type: String },
+    estimateConsultant: { type: String },
 }, {
     timestamps: true,
 });

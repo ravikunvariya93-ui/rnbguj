@@ -10,6 +10,7 @@ interface BasicInfoSectionProps {
         taluka: string;
         length: string;
         chainage: string;
+        estimateConsultant: string;
     };
     handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
 }
@@ -129,6 +130,24 @@ export default function BasicInfoSection({ formData, handleChange }: BasicInfoSe
                     className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
                     placeholder="e.g. 4/800"
                 />
+            </div>
+
+            <div className="sm:col-span-6">
+                <label htmlFor="estimateConsultant" className="block text-sm font-medium text-gray-700">Estimate Consultant</label>
+                <select
+                    name="estimateConsultant"
+                    id="estimateConsultant"
+                    value={formData.estimateConsultant}
+                    onChange={handleChange}
+                    className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                >
+                    <option value="">-- Select Consultant --</option>
+                    <option value="Umiya Engineers and Project Management Consultancy">Umiya Engineers and Project Management Consultancy</option>
+                    <option value="Trisha Engineers Consultancy">Trisha Engineers Consultancy</option>
+                    <option value="Pramukham Engineers Consultancy">Pramukham Engineers Consultancy</option>
+                    <option value="Kalyan Computers">Kalyan Computers</option>
+                    <option value="Karansinh Janaksinh Rana">Karansinh Janaksinh Rana</option>
+                </select>
             </div>
         </div>
     );

@@ -1,4 +1,6 @@
 'use client';
+import { useState } from 'react';
+import { Plus, X, Check } from 'lucide-react';
 
 interface ClassificationSectionProps {
     formData: {
@@ -16,6 +18,50 @@ interface ClassificationSectionProps {
 }
 
 export default function ClassificationSection({ formData, handleChange }: ClassificationSectionProps) {
+    const [isAddingNew, setIsAddingNew] = useState(false);
+    const [newOptionValue, setNewOptionValue] = useState('');
+    const [natureOfWorkOptions, setNatureOfWorkOptions] = useState([
+        "Resurfacing",
+        "Widening & Strengthening",
+        "Maintenance",
+        "EBT",
+        "Major Bridge",
+        "Minor Bridge",
+        "CWB",
+        "CCR"
+    ]);
+
+    const handleNatureOfWorkChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        if (e.target.value === 'ADD_NEW') {
+            setIsAddingNew(true);
+        } else {
+            handleChange(e);
+        }
+    };
+
+    const handleAddNewOption = () => {
+        if (newOptionValue.trim()) {
+            if (!natureOfWorkOptions.includes(newOptionValue.trim())) {
+                setNatureOfWorkOptions(prev => [...prev, newOptionValue.trim()]);
+            }
+            // Mock a change event to update parent state
+            const mockEvent = {
+                target: {
+                    name: 'natureOfWork',
+                    value: newOptionValue.trim()
+                }
+            } as any;
+            handleChange(mockEvent);
+            setIsAddingNew(false);
+            setNewOptionValue('');
+        }
+    };
+
+    const cancelAddNew = () => {
+        setIsAddingNew(false);
+        setNewOptionValue('');
+    };
+
     return (
         <div className="pt-8">
             <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Classification Details</h3>
@@ -99,24 +145,59 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                 </div>
 
                 <div className="sm:col-span-2">
-                    <label htmlFor="natureOfWork" className="block text-sm font-medium text-gray-700">Nature of Work</label>
-                    <select
-                        name="natureOfWork"
-                        id="natureOfWork"
-                        value={formData.natureOfWork}
-                        onChange={handleChange}
-                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                    >
-                        <option value="">-- Select Nature of Work --</option>
-                        <option value="Resurfacing">Resurfacing</option>
-                        <option value="Widening & Strengthening">Widening & Strengthening</option>
-                        <option value="Maintenance">Maintenance</option>
-                        <option value="EBT">EBT</option>
-                        <option value="Major Bridge">Major Bridge</option>
-                        <option value="Minor Bridge">Minor Bridge</option>
-                        <option value="CWB">CWB</option>
-                        <option value="CCR">CCR</option>
-                    </select>
+                    <label htmlFor="natureOfWork" className="block text-sm font-medium text-gray-700 font-bold mb-1 flex justify-between items-center">
+                        Nature of Work
+                    </label>
+                    {isAddingNew ? (
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                autoFocus
+                                value={newOptionValue}
+                                onChange={(e) => setNewOptionValue(e.target.value)}
+                                className="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Enter new nature..."
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleAddNewOption();
+                                    } else if (e.key === 'Escape') {
+                                        cancelAddNew();
+                                    }
+                                }}
+                            />
+                            <button
+                                type="button"
+                                onClick={handleAddNewOption}
+                                className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                title="Add"
+                            >
+                                <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={cancelAddNew}
+                                className="p-2 bg-gray-200 text-gray-600 rounded-md hover:bg-gray-300 transition-colors"
+                                title="Cancel"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    ) : (
+                        <select
+                            name="natureOfWork"
+                            id="natureOfWork"
+                            value={formData.natureOfWork}
+                            onChange={handleNatureOfWorkChange}
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        >
+                            <option value="">-- Select Nature of Work --</option>
+                            {natureOfWorkOptions.map(option => (
+                                <option key={option} value={option}>{option}</option>
+                            ))}
+                            <option value="ADD_NEW" className="text-blue-600 font-bold italic">+ Add New...</option>
+                        </select>
+                    )}
                 </div>
 
                 <div className="sm:col-span-2">

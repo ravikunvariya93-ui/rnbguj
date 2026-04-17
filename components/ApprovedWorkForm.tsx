@@ -46,6 +46,7 @@ interface FormData {
     schemeName: string;
     length: string;
     chainage: string;
+    estimateConsultant: string;
     [key: string]: string; // allow dynamic keys from initialData
 }
 
@@ -105,6 +106,7 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
         schemeName: '',
         length: '',
         chainage: '',
+        estimateConsultant: '',
         ...initialData
     });
 

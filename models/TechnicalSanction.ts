@@ -6,7 +6,6 @@ export interface ITechnicalSanction extends Document {
     tsAuthority: string; // TS Authority
     tsAmount: number; // Rs. In Lacks
     tsDate: Date;
-    estimateConsultant: string; // Estimate Consultant
     createdAt: Date;
     updatedAt: Date;
 }
@@ -18,7 +17,7 @@ const TechnicalSanctionSchema: Schema = new Schema({
     tsAmount: { type: Number },
     tsNumber: { type: String },
     tsDate: { type: Date },
-    estimateConsultant: { type: String },
+    tsDate: { type: Date },
 }, {
     timestamps: true,
 });
