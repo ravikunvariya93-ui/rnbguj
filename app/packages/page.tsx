@@ -12,7 +12,19 @@ import GenericDeleteButton from '@/components/GenericDeleteButton';
 export const dynamic = 'force-dynamic';
 
 interface Props {
-    searchParams: Promise<{ filter?: string; search?: string; page?: string; limit?: string; nature?: string }>;
+    searchParams: Promise<{ 
+        filter?: string; 
+        search?: string; 
+        page?: string; 
+        limit?: string; 
+        natureOfWork?: string;
+        subDivision?: string;
+        estimateConsultant?: string;
+        approvalYear?: string;
+        roadCategory?: string;
+        workType?: string;
+        schemeName?: string;
+    }>;
 }
 
 export default async function PackagesListPage({ searchParams }: Props) {
@@ -20,44 +32,65 @@ export default async function PackagesListPage({ searchParams }: Props) {
     const params = await searchParams;
     
     let query: any = {};
-    let filterLabel = "List of all packages containing approved works.";
+    let filterLabels: string[] = [];
 
-    if (params.filter === 'pending_dtp') {
-        const packagesWithDTP = await DTP.find().distinct('tsId'); // tsId in DTP refers to Package
-        query._id = { $nin: packagesWithDTP };
-        filterLabel = "Showing Packages awaiting Detailed Technical Proposal (Pending DTP).";
-    } else if (params.filter === 'pending_tender') {
-        const packagesWithTender = await Tender.find().distinct('packageId');
-        query._id = { $nin: packagesWithTender };
-        filterLabel = "Showing Packages awaiting Tender publication (Pending Tender).";
+    // Dashboard Filters Integration
+    if (params.subDivision) {
+        query.subDivision = params.subDivision;
+        filterLabels.push(`Sub Division: ${params.subDivision}`);
     }
 
-    if (params.search) {
-        query.packageName = { $regex: params.search, $options: 'i' };
-    }
-
-    if (params.nature) {
-        const { default: ApprovedWork } = await import('@/models/ApprovedWork');
-        let natureQuery: any;
-        if (params.nature === 'Unclassified') {
-            natureQuery = { $or: [{ natureOfWork: { $exists: false } }, { natureOfWork: null }, { natureOfWork: '' }] };
+    // Filters for metadata that exists in ApprovedWork but not in Package
+    const metadataFiltersArr: any = [];
+    if (params.estimateConsultant) metadataFiltersArr.push({ estimateConsultant: params.estimateConsultant });
+    if (params.approvalYear) metadataFiltersArr.push({ approvalYear: params.approvalYear });
+    if (params.roadCategory) metadataFiltersArr.push({ roadCategory: params.roadCategory });
+    if (params.workType) metadataFiltersArr.push({ workType: params.workType });
+    if (params.schemeName) metadataFiltersArr.push({ schemeName: params.schemeName });
+    if (params.natureOfWork) {
+        if (params.natureOfWork === 'Unclassified') {
+            metadataFiltersArr.push({ $or: [{ natureOfWork: { $exists: false } }, { natureOfWork: null }, { natureOfWork: '' }] });
         } else {
-            natureQuery = { natureOfWork: params.nature };
+            metadataFiltersArr.push({ natureOfWork: params.natureOfWork });
         }
-        const worksWithNature = await ApprovedWork.find(natureQuery).select('workName').lean();
-        const validWorkNames = worksWithNature.map((w: any) => w.workName);
+    }
+
+    if (metadataFiltersArr.length > 0) {
+        const { default: ApprovedWork } = await import('@/models/ApprovedWork');
+        const workQuery = metadataFiltersArr.length > 1 ? { $and: metadataFiltersArr } : metadataFiltersArr[0];
+        const matchingWorks = await ApprovedWork.find(workQuery).select('workName').lean();
+        const validWorkNames = matchingWorks.map((w: any) => w.workName);
         
         const { default: TechnicalSanction } = await import('@/models/TechnicalSanction');
-        const tsWithNature = await TechnicalSanction.find({ workName: { $in: validWorkNames } }).select('_id').lean();
-        const tsIds = tsWithNature.map((ts: any) => ts._id);
+        const matchingTS = await TechnicalSanction.find({ workName: { $in: validWorkNames } }).select('_id').lean();
+        const tsIds = matchingTS.map((ts: any) => ts._id);
 
         query.$or = [
             { "works.workName": { $in: validWorkNames } },
             { "works.workId": { $in: tsIds } }
         ];
         
-        filterLabel += ` Filtering by nature: ${params.nature}.`;
+        filterLabels.push("Metadata Filters Applied");
     }
+
+    // Process State Filters
+    if (params.filter === 'pending_dtp') {
+        const packagesWithDTP = await DTP.find().distinct('tsId');
+        query._id = { ...query._id, $nin: packagesWithDTP };
+        filterLabels.push("Pending DTP");
+    } else if (params.filter === 'pending_tender') {
+        const packagesWithTender = await Tender.find().distinct('packageId');
+        query._id = { ...query._id, $nin: packagesWithTender };
+        filterLabels.push("Pending Tender");
+    }
+
+    if (params.search) {
+        query.packageName = { $regex: params.search, $options: 'i' };
+    }
+
+    const filterLabel = filterLabels.length > 0
+        ? `Filtered by: ${filterLabels.join(' | ')}`
+        : "List of all packages containing approved works.";
 
     const page = parseInt(params.page || '1');
     const limit = parseInt(params.limit || '10');

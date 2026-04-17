@@ -27,11 +27,21 @@ import {
 } from 'lucide-react';
 import { Suspense } from 'react';
 import SearchBar from '@/components/SearchBar';
+import DashboardFilters from '@/components/DashboardFilters';
 
 export const dynamic = 'force-dynamic';
 
 interface Props {
-    searchParams: Promise<{ search?: string }>;
+    searchParams: Promise<{ 
+        search?: string;
+        subDivision?: string;
+        estimateConsultant?: string;
+        approvalYear?: string;
+        roadCategory?: string;
+        workType?: string;
+        natureOfWork?: string;
+        schemeName?: string;
+    }>;
 }
 
 export default async function Home({ searchParams }: Props) {
@@ -40,14 +50,14 @@ export default async function Home({ searchParams }: Props) {
     const search = params.search;
 
     const [
-        allApprovedWorks,
-        allTS,
-        allPackages,
-        allTenders,
-        allApprovals,
-        allLOAs,
-        allWorkOrders,
-        allBOQs
+        rawApprovedWorks,
+        rawTS,
+        rawPackages,
+        rawTenders,
+        rawApprovals,
+        rawLOAs,
+        rawWorkOrders,
+        rawBOQs
     ] = await Promise.all([
         ApprovedWork.find({}).lean(),
         TechnicalSanction.find({}).lean(),
@@ -58,6 +68,60 @@ export default async function Home({ searchParams }: Props) {
         WorkOrder.find({}).lean(),
         BOQ.find({}).lean()
     ]);
+
+    // Extract Filter Options
+    const filterOptions = {
+        subDivisions: [...new Set(rawApprovedWorks.map(w => w.subDivision).filter(Boolean))].sort(),
+        contractors: [...new Set(rawApprovedWorks.map(w => w.estimateConsultant).filter(Boolean))].sort(),
+        years: [...new Set(rawApprovedWorks.map(w => w.approvalYear).filter(Boolean))].sort(),
+        roadCategories: [...new Set(rawApprovedWorks.map(w => w.roadCategory).filter(Boolean))].sort(),
+        workTypes: [...new Set(rawApprovedWorks.map(w => w.workType).filter(Boolean))].sort(),
+        natures: [...new Set(rawApprovedWorks.map(w => w.natureOfWork).filter(Boolean))].sort(),
+        schemes: [...new Set(rawApprovedWorks.map(w => w.schemeName).filter(Boolean))].sort(),
+    } as any;
+
+    // Apply Filters
+    const filteredApprovedWorks = rawApprovedWorks.filter((w: any) => {
+        if (params.subDivision && w.subDivision !== params.subDivision) return false;
+        if (params.estimateConsultant && w.estimateConsultant !== params.estimateConsultant) return false;
+        if (params.approvalYear && w.approvalYear !== params.approvalYear) return false;
+        if (params.roadCategory && w.roadCategory !== params.roadCategory) return false;
+        if (params.workType && w.workType !== params.workType) return false;
+        if (params.natureOfWork && w.natureOfWork !== params.natureOfWork) return false;
+        if (params.schemeName && w.schemeName !== params.schemeName) return false;
+        return true;
+    });
+
+    const filteredWorkNames = new Set(filteredApprovedWorks.map(w => (w.workName || '').trim().toLowerCase()));
+    const filteredWorkIds = new Set(filteredApprovedWorks.map(w => w._id.toString()));
+
+    const allTS = rawTS.filter(ts => filteredWorkNames.has((ts.workName || '').trim().toLowerCase()));
+    
+    const allPackages = rawPackages.filter(p => {
+        // If filtering by subDivision, apply to package directly
+        if (params.subDivision && p.subDivision !== params.subDivision) return false;
+        
+        // Check if package contains any of the filtered works
+        const works = p.works || (p as any).selectedWorks;
+        if (!works || !Array.isArray(works)) return false;
+        return works.some(w => filteredWorkIds.has(w.workId?.toString()) || filteredWorkNames.has((w.workName || '').trim().toLowerCase()));
+    });
+
+    const filteredPackageIds = new Set(allPackages.map(p => p._id.toString()));
+    const allTenders = rawTenders.filter(t => filteredPackageIds.has(t.packageId?.toString()));
+    
+    const filteredTenderIds = new Set(allTenders.map(t => t._id.toString()));
+    const allApprovals = rawApprovals.filter(a => filteredTenderIds.has(a.tenderId?.toString()));
+    const allLOAs = rawLOAs.filter(l => filteredTenderIds.has(l.tenderId?.toString()));
+    
+    const filteredLoaIds = new Set(allLOAs.map(l => l._id.toString()));
+    const allWorkOrders = rawWorkOrders.filter(wo => filteredLoaIds.has(wo.loaId?.toString()));
+    
+    // BOQs are linked to tenders. 
+    const allBOQs = rawBOQs.filter(boq => filteredTenderIds.has(boq.tenderId?.toString())); 
+
+    // Use filteredApprovedWorks as allApprovedWorks for stats
+    const allApprovedWorks = filteredApprovedWorks;
 
     const workNameToNature: Record<string, string> = {};
     allApprovedWorks.forEach(w => {
@@ -205,17 +269,34 @@ export default async function Home({ searchParams }: Props) {
         }
     }
 
+    const currentFilterParams = new URLSearchParams();
+    if (params.subDivision) currentFilterParams.set('subDivision', params.subDivision);
+    if (params.estimateConsultant) currentFilterParams.set('estimateConsultant', params.estimateConsultant);
+    if (params.approvalYear) currentFilterParams.set('approvalYear', params.approvalYear);
+    if (params.roadCategory) currentFilterParams.set('roadCategory', params.roadCategory);
+    if (params.workType) currentFilterParams.set('workType', params.workType);
+    if (params.natureOfWork) currentFilterParams.set('natureOfWork', params.natureOfWork);
+    if (params.schemeName) currentFilterParams.set('schemeName', params.schemeName);
+
+    const getFilterUrl = (baseUrl: string) => {
+        const url = new URL(baseUrl, 'http://localhost');
+        currentFilterParams.forEach((value, key) => {
+            url.searchParams.set(key, value);
+        });
+        return url.pathname + url.search;
+    };
+
     const stats = [
-        { name: 'Pending TS', count: pendingTSWorks.length, href: '/approved-works?filter=pending', bifurcation: pendingTSBifurcation, step: 1, icon: ClipboardCheck, color: 'blue' },
-        { name: 'Pending DTP', count: pendingDTPPackages.length, href: '/packages?filter=pending_dtp', bifurcation: pendingDTPBifurcation, step: 2, icon: FolderKanban, color: 'violet' },
-        { name: 'Pending Tender', count: pendingTenderPackages.length, href: '/packages?filter=pending_tender', bifurcation: pendingTenderBifurcation, step: 3, icon: Megaphone, color: 'amber' },
-        { name: 'Pending Approval', count: pendingApprovalTenders.length, href: '/tenders?filter=pending_approval', bifurcation: pendingApprovalBifurcation, step: 4, icon: ShieldCheck, color: 'emerald' },
-        { name: 'Pending LOA', count: pendingLOATenders.length, href: '/tenders?filter=pending_loa', bifurcation: pendingLOABifurcation, step: 5, icon: FileSignature, color: 'rose' },
-        { name: 'Pending Work Order', count: pendingWOLoas.length, href: '/loas?filter=pending', bifurcation: pendingWOBifurcation, step: 6, icon: Hammer, color: 'cyan' },
+        { name: 'Pending TS', count: pendingTSWorks.length, href: getFilterUrl('/approved-works?filter=pending'), bifurcation: pendingTSBifurcation, step: 1, icon: ClipboardCheck, color: 'blue' },
+        { name: 'Pending DTP', count: pendingDTPPackages.length, href: getFilterUrl('/packages?filter=pending_dtp'), bifurcation: pendingDTPBifurcation, step: 2, icon: FolderKanban, color: 'violet' },
+        { name: 'Pending Tender', count: pendingTenderPackages.length, href: getFilterUrl('/packages?filter=pending_tender'), bifurcation: pendingTenderBifurcation, step: 3, icon: Megaphone, color: 'amber' },
+        { name: 'Pending Approval', count: pendingApprovalTenders.length, href: getFilterUrl('/tenders?filter=pending_approval'), bifurcation: pendingApprovalBifurcation, step: 4, icon: ShieldCheck, color: 'emerald' },
+        { name: 'Pending LOA', count: pendingLOATenders.length, href: getFilterUrl('/tenders?filter=pending_loa'), bifurcation: pendingLOABifurcation, step: 5, icon: FileSignature, color: 'rose' },
+        { name: 'Pending Work Order', count: pendingWOLoas.length, href: getFilterUrl('/loas?filter=pending'), bifurcation: pendingWOBifurcation, step: 6, icon: Hammer, color: 'cyan' },
         { 
             name: 'BOQ Records', 
             count: allBOQs.length, 
-            href: '/boqs', 
+            href: getFilterUrl('/boqs'), 
             bifurcation: [], 
             step: 7, 
             icon: ClipboardList, 
@@ -258,6 +339,8 @@ export default async function Home({ searchParams }: Props) {
                         )}
                     </div>
                 </div>
+
+                <DashboardFilters options={filterOptions} />
 
                 {search && (
                     <div className="mb-12 space-y-4 animate-in fade-in slide-in-from-top-4 duration-500">
@@ -355,7 +438,7 @@ export default async function Home({ searchParams }: Props) {
                                                     {stat.bifurcation.map(b => (
                                                         <Link 
                                                             key={b.name}
-                                                            href={`${stat.href}${stat.href.includes('?') ? '&' : '?'}nature=${encodeURIComponent(b.name)}`}
+                                                            href={getFilterUrl(`${stat.href}${stat.href.includes('?') ? '&' : '?'}natureOfWork=${encodeURIComponent(b.name)}`)}
                                                             className="flex justify-between items-center text-[11px] hover:bg-slate-50 py-1.5 px-2 -mx-2 rounded-lg transition-all duration-150 group/link"
                                                         >
                                                             <span className="flex items-center gap-1.5 font-semibold text-slate-500 group-hover/link:text-slate-700 uppercase tracking-tight line-clamp-1">

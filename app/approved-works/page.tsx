@@ -11,7 +11,19 @@ import GenericDeleteButton from '@/components/GenericDeleteButton';
 export const dynamic = 'force-dynamic';
 
 interface Props {
-    searchParams: { filter?: string; search?: string; page?: string; limit?: string };
+    searchParams: Promise<{ 
+        filter?: string; 
+        search?: string; 
+        page?: string; 
+        limit?: string;
+        natureOfWork?: string;
+        subDivision?: string;
+        estimateConsultant?: string;
+        approvalYear?: string;
+        roadCategory?: string;
+        workType?: string;
+        schemeName?: string;
+    }>;
 }
 
 export default async function ApprovedWorksListPage({ searchParams }: Props) {
@@ -19,34 +31,61 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
     const params = await searchParams;
     
     let query: any = {};
-    let filterLabel = "A list of all approved works including budget details, approval dates, amounts, and classifications.";
+    let filterLabels: string[] = [];
 
     // Existing "Pending" filter
     if (params.filter === 'pending') {
         const worksWithTS = await TechnicalSanction.find().distinct('workId');
         query._id = { $nin: worksWithTS };
-        filterLabel = "Showing Approved Works awaiting Technical Sanction (Pending TS).";
+        filterLabels.push("Awaiting Technical Sanction (Pending TS)");
     }
 
-    // New "Search" filter
+    // Standard Filters
     if (params.search) {
         query.workName = { $regex: params.search, $options: 'i' };
     }
+    if (params.subDivision) {
+        query.subDivision = params.subDivision;
+        filterLabels.push(`Sub Division: ${params.subDivision}`);
+    }
+    if (params.estimateConsultant) {
+        query.estimateConsultant = params.estimateConsultant;
+        filterLabels.push(`Consultant: ${params.estimateConsultant}`);
+    }
+    if (params.approvalYear) {
+        query.approvalYear = params.approvalYear;
+        filterLabels.push(`Year: ${params.approvalYear}`);
+    }
+    if (params.roadCategory) {
+        query.roadCategory = params.roadCategory;
+        filterLabels.push(`Road Category: ${params.roadCategory}`);
+    }
+    if (params.workType) {
+        query.workType = params.workType;
+        filterLabels.push(`Work Type: ${params.workType}`);
+    }
+    if (params.schemeName) {
+        query.schemeName = params.schemeName;
+        filterLabels.push(`Scheme: ${params.schemeName}`);
+    }
 
-    // New "Nature of Work" filter
-    if (params.nature) {
-        if (params.nature === 'Unclassified') {
-            // Match documents where natureOfWork is missing, null, or empty
+    // Nature of Work filter (handled specifically for Unclassified)
+    if (params.natureOfWork) {
+        if (params.natureOfWork === 'Unclassified') {
             query.$or = [
                 { natureOfWork: { $exists: false } },
                 { natureOfWork: null },
                 { natureOfWork: '' }
             ];
         } else {
-            query.natureOfWork = params.nature;
+            query.natureOfWork = params.natureOfWork;
         }
-        filterLabel = `Showing Approved Works with nature of work: "${params.nature}".`;
+        filterLabels.push(`Nature: ${params.natureOfWork}`);
     }
+
+    const filterLabel = filterLabels.length > 0 
+        ? `Filtered by: ${filterLabels.join(' | ')}`
+        : "A list of all approved works including budget details, approval dates, amounts, and classifications.";
 
     const page = parseInt(params.page || '1');
     const limit = parseInt(params.limit || '10');

@@ -1,6 +1,6 @@
 'use client';
-import { useState } from 'react';
-import { Plus, X, Check } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, X, Check, Loader2 } from 'lucide-react';
 
 interface ClassificationSectionProps {
     formData: {
@@ -20,7 +20,8 @@ interface ClassificationSectionProps {
 export default function ClassificationSection({ formData, handleChange }: ClassificationSectionProps) {
     const [isAddingNew, setIsAddingNew] = useState(false);
     const [newOptionValue, setNewOptionValue] = useState('');
-    const [natureOfWorkOptions, setNatureOfWorkOptions] = useState([
+    const [isLoading, setIsLoading] = useState(false);
+    const DEFAULT_NATURES = [
         "Resurfacing",
         "Widening & Strengthening",
         "Maintenance",
@@ -29,7 +30,29 @@ export default function ClassificationSection({ formData, handleChange }: Classi
         "Minor Bridge",
         "CWB",
         "CCR"
-    ]);
+    ];
+    const [natureOfWorkOptions, setNatureOfWorkOptions] = useState(DEFAULT_NATURES);
+
+    useEffect(() => {
+        const fetchNatures = async () => {
+            setIsLoading(true);
+            try {
+                const response = await fetch('/api/metadata/natures');
+                if (response.ok) {
+                    const dbNatures = await response.json();
+                    // Merge defaults with DB values and ensure uniqueness
+                    const combined = Array.from(new Set([...DEFAULT_NATURES, ...dbNatures])).sort();
+                    setNatureOfWorkOptions(combined);
+                }
+            } catch (error) {
+                console.error("Error fetching natures:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchNatures();
+    }, []);
 
     const handleNatureOfWorkChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         if (e.target.value === 'ADD_NEW') {
@@ -184,19 +207,27 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                             </button>
                         </div>
                     ) : (
-                        <select
-                            name="natureOfWork"
-                            id="natureOfWork"
-                            value={formData.natureOfWork}
-                            onChange={handleNatureOfWorkChange}
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500 bg-white"
-                        >
-                            <option value="">-- Select Nature of Work --</option>
-                            {natureOfWorkOptions.map(option => (
-                                <option key={option} value={option}>{option}</option>
-                            ))}
-                            <option value="ADD_NEW" className="text-blue-600 font-bold italic">+ Add New...</option>
-                        </select>
+                        <div className="relative">
+                            <select
+                                name="natureOfWork"
+                                id="natureOfWork"
+                                value={formData.natureOfWork}
+                                onChange={handleNatureOfWorkChange}
+                                disabled={isLoading}
+                                className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500 bg-white disabled:bg-gray-50"
+                            >
+                                <option value="">{isLoading ? 'Loading categories...' : '-- Select Nature of Work --'}</option>
+                                {natureOfWorkOptions.map(option => (
+                                    <option key={option} value={option}>{option}</option>
+                                ))}
+                                <option value="ADD_NEW" className="text-blue-600 font-bold italic">+ Add New...</option>
+                            </select>
+                            {isLoading && (
+                                <div className="absolute right-8 top-1/2 -translate-y-1/2">
+                                    <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
 

@@ -12,7 +12,19 @@ import GenericDeleteButton from '@/components/GenericDeleteButton';
 export const dynamic = 'force-dynamic';
 
 interface Props {
-    searchParams: Promise<{ filter?: string; search?: string; page?: string; limit?: string; nature?: string }>;
+    searchParams: Promise<{ 
+        filter?: string; 
+        search?: string; 
+        page?: string; 
+        limit?: string; 
+        natureOfWork?: string;
+        subDivision?: string;
+        estimateConsultant?: string;
+        approvalYear?: string;
+        roadCategory?: string;
+        workType?: string;
+        schemeName?: string;
+    }>;
 }
 
 export default async function TendersListPage({ searchParams }: Props) {
@@ -20,16 +32,61 @@ export default async function TendersListPage({ searchParams }: Props) {
     const params = await searchParams;
     
     let query: any = {};
-    let filterLabel = "List of all tenders.";
+    let filterLabels: string[] = [];
+
+    // Dashboard Filters / Nature Logic
+    const metadataFiltersArr: any = [];
+    if (params.estimateConsultant) metadataFiltersArr.push({ estimateConsultant: params.estimateConsultant });
+    if (params.approvalYear) metadataFiltersArr.push({ approvalYear: params.approvalYear });
+    if (params.roadCategory) metadataFiltersArr.push({ roadCategory: params.roadCategory });
+    if (params.workType) metadataFiltersArr.push({ workType: params.workType });
+    if (params.schemeName) metadataFiltersArr.push({ schemeName: params.schemeName });
+    if (params.natureOfWork) {
+        if (params.natureOfWork === 'Unclassified') {
+            metadataFiltersArr.push({ $or: [{ natureOfWork: { $exists: false } }, { natureOfWork: null }, { natureOfWork: '' }] });
+        } else {
+            metadataFiltersArr.push({ natureOfWork: params.natureOfWork });
+        }
+    }
+
+    if (metadataFiltersArr.length > 0 || params.subDivision) {
+        let validWorkNames: string[] = [];
+        let tsIds: any[] = [];
+        
+        if (metadataFiltersArr.length > 0) {
+            const { default: ApprovedWork } = await import('@/models/ApprovedWork');
+            const workQuery = metadataFiltersArr.length > 1 ? { $and: metadataFiltersArr } : metadataFiltersArr[0];
+            const matchingWorks = await ApprovedWork.find(workQuery).select('workName').lean();
+            validWorkNames = matchingWorks.map((w: any) => w.workName);
+            
+            const { default: TechnicalSanction } = await import('@/models/TechnicalSanction');
+            const matchingTS = await TechnicalSanction.find({ workName: { $in: validWorkNames } }).select('_id').lean();
+            tsIds = matchingTS.map((ts: any) => ts._id);
+        }
+
+        const { default: Package } = await import('@/models/Package');
+        let pkgQuery: any = {};
+        if (params.subDivision) pkgQuery.subDivision = params.subDivision;
+        if (metadataFiltersArr.length > 0) {
+            pkgQuery.$or = [
+                { "works.workName": { $in: validWorkNames } },
+                { "works.workId": { $in: tsIds } }
+            ];
+        }
+        
+        const matchingPkgs = await Package.find(pkgQuery).select('_id').lean();
+        query.packageId = { $in: matchingPkgs.map((p: any) => p._id) };
+        filterLabels.push("Dashboard Filters Applied");
+    }
 
     if (params.filter === 'pending_loa') {
         const tendersWithLoa = await LOA.find().distinct('tenderId');
-        query._id = { $nin: tendersWithLoa };
-        filterLabel = "Showing Tenders awaiting Letter of Acceptance (Pending LOA).";
+        query._id = { ...query._id, $nin: tendersWithLoa };
+        filterLabels.push("Pending LOA");
     } else if (params.filter === 'pending_approval') {
         const tendersWithApproval = await Approval.find().distinct('tenderId');
-        query._id = { $nin: tendersWithApproval };
-        filterLabel = "Showing Tenders awaiting Technical Approval (Pending Approval).";
+        query._id = { ...query._id, $nin: tendersWithApproval };
+        filterLabels.push("Pending Technical Approval");
     }
 
     if (params.search) {
@@ -40,36 +97,9 @@ export default async function TendersListPage({ searchParams }: Props) {
         ];
     }
 
-    if (params.nature) {
-        const { default: ApprovedWork } = await import('@/models/ApprovedWork');
-        let natureQuery: any;
-        if (params.nature === 'Unclassified') {
-            natureQuery = { $or: [{ natureOfWork: { $exists: false } }, { natureOfWork: null }, { natureOfWork: '' }] };
-        } else {
-            natureQuery = { natureOfWork: params.nature };
-        }
-        const worksWithNature = await ApprovedWork.find(natureQuery).select('workName').lean();
-        const validWorkNames = worksWithNature.map((w: any) => w.workName);
-        
-        const { default: TechnicalSanction } = await import('@/models/TechnicalSanction');
-        const tsWithNature = await TechnicalSanction.find({ workName: { $in: validWorkNames } }).select('_id').lean();
-        const tsIds = tsWithNature.map((ts: any) => ts._id);
-
-        const { default: Package } = await import('@/models/Package');
-        const pkgsWithNature = await Package.find({
-            $or: [
-                { "works.workName": { $in: validWorkNames } },
-                { "works.workId": { $in: tsIds } }
-            ]
-        }).select('_id').lean();
-        const pkgIds = pkgsWithNature.map((p: any) => p._id);
-
-        // If search already put something in $or, this logic might override or get merged.
-        // It's safer to use $and if both are present, but for simplicity of mongoose merging we can just use packageId.
-        // Usually, mixing fields like packageId { $in: [] } with $or is perfectly fine.
-        query.packageId = { $in: pkgIds };
-        filterLabel += ` Filtering by nature: ${params.nature}.`;
-    }
+    const filterLabel = filterLabels.length > 0 
+        ? `Filtered by: ${filterLabels.join(' | ')}`
+        : "List of all tenders.";
 
     const page = parseInt(params.page || '1');
     const limit = parseInt(params.limit || '10');
