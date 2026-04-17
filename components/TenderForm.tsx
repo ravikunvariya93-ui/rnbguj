@@ -26,6 +26,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
     const [loading, setLoading] = useState(false);
     const [packages, setPackages] = useState<any[]>([]);
     const [dtps, setDtps] = useState<any[]>([]);
+    const [agencies, setAgencies] = useState<any[]>([]);
     const [tenderAmount, setTenderAmount] = useState<number | ''>('');
 
     const [formData, setFormData] = useState({
@@ -51,17 +52,22 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [pkgRes, dtpRes] = await Promise.all([
+                const [pkgRes, dtpRes, agencyRes] = await Promise.all([
                     fetch('/api/packages'),
-                    fetch('/api/dtps')
+                    fetch('/api/dtps'),
+                    fetch('/api/agencies')
                 ]);
                 const pkgData = await pkgRes.json();
                 const dtpData = await dtpRes.json();
+                const agencyData = await agencyRes.json();
                 if (pkgData.success) {
                     setPackages(pkgData.data);
                 }
                 if (dtpData.success) {
                     setDtps(dtpData.data);
+                }
+                if (agencyData.success) {
+                    setAgencies(agencyData.data);
                 }
             } catch (error) {
                 console.error("Failed to fetch data", error);
@@ -192,6 +198,21 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
             fetchLatestTrial(id);
         } else if (!id) {
             setFormData((prev: any) => ({ ...prev, packageId: '', packageName: '' }));
+        }
+    };
+
+    const handleAgencySelect = (id: string) => {
+        const selectedAgency = agencies.find(a => a._id === id);
+        if (selectedAgency) {
+            setFormData((prev: any) => ({
+                ...prev,
+                contractorName: selectedAgency.name,
+            }));
+        } else {
+            setFormData((prev: any) => ({
+                ...prev,
+                contractorName: '',
+            }));
         }
     };
 
@@ -345,8 +366,15 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                 </div>
 
                 <div className="sm:col-span-full">
-                    <label htmlFor="contractorName" className="block text-sm font-medium text-gray-700">Contractor Name</label>
-                    <input type="text" name="contractorName" id="contractorName" value={formData.contractorName} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                    <SearchableSelect
+                        label="Contractor Name"
+                        placeholder="Search for agency/contractor..."
+                        options={agencies}
+                        value={agencies.find(a => a.name === formData.contractorName)?._id || ''}
+                        onChange={handleAgencySelect}
+                        displayField="name"
+                        helperField="address"
+                    />
                 </div>
 
                 <div className="sm:col-span-2">

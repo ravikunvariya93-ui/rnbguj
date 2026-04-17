@@ -42,3 +42,6 @@ next-env.d.ts
 
 # python virtual environment
 .venv/
+
+# Office temporary files
+~$*

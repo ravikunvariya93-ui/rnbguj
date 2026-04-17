@@ -8,6 +8,8 @@ interface Option {
     packageName?: string;
     contractorName?: string;
     tenderId?: string;
+    name?: string; // Generic name field
+    [key: string]: any; // Allow other fields
 }
 
 interface Props {
@@ -17,6 +19,8 @@ interface Props {
     placeholder?: string;
     required?: boolean;
     label?: string;
+    displayField?: string;
+    helperField?: string;
 }
 
 export default function SearchableSelect({
@@ -26,38 +30,50 @@ export default function SearchableSelect({
     placeholder = '-- Select --',
     required = false,
     label,
+    displayField,
+    helperField,
 }: Props) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const dropdownRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
+    const getDisplayValue = useCallback((opt: Option) => {
+        if (displayField) return opt[displayField];
+        return opt.packageName || opt.name || opt.tenderId || '';
+    }, [displayField]);
+
+    const getHelperValue = useCallback((opt: Option) => {
+        if (helperField) return opt[helperField];
+        return opt.contractorName || '';
+    }, [helperField]);
+
     // Sync search term with initial value if selected
     useEffect(() => {
         if (value) {
             const selected = options.find((opt) => opt._id === value);
             if (selected) {
-                setSearchTerm(selected.packageName || selected.tenderId || '');
+                setSearchTerm(getDisplayValue(selected));
             }
         } else {
             setSearchTerm('');
         }
-    }, [value, options]);
+    }, [value, options, getDisplayValue]);
 
     const filteredOptions = options.filter((opt) => {
         const search = searchTerm.toLowerCase();
-        return (
-            (opt.packageName?.toLowerCase().includes(search)) ||
-            (opt.contractorName?.toLowerCase().includes(search)) ||
-            (opt.tenderId?.toLowerCase().includes(search))
-        );
+        const display = (getDisplayValue(opt) || '').toLowerCase();
+        const helper = (getHelperValue(opt) || '').toLowerCase();
+        const tid = (opt.tenderId || '').toLowerCase();
+        
+        return display.includes(search) || helper.includes(search) || tid.includes(search);
     });
 
     const handleSelect = (id: string) => {
         onChange(id);
         const selected = options.find((opt) => opt._id === id);
         if (selected) {
-            setSearchTerm(selected.packageName || selected.tenderId || '');
+            setSearchTerm(getDisplayValue(selected));
         }
         setIsOpen(false);
     };
@@ -68,12 +84,12 @@ export default function SearchableSelect({
             // Revert search term to selected value on close
             const selected = options.find((opt) => opt._id === value);
             if (selected) {
-                setSearchTerm(selected.packageName || selected.tenderId || '');
+                setSearchTerm(getDisplayValue(selected));
             } else if (!value) {
                 setSearchTerm('');
             }
         }
-    }, [options, value]);
+    }, [options, value, getDisplayValue]);
 
     useEffect(() => {
         document.addEventListener('mousedown', handleClickOutside);
@@ -149,10 +165,10 @@ export default function SearchableSelect({
                                 }`}
                             >
                                 <div className="flex flex-col">
-                                    <span className="block truncate">{opt.packageName || opt.tenderId}</span>
-                                    {opt.contractorName && (
+                                    <span className="block truncate">{getDisplayValue(opt)}</span>
+                                    {getHelperValue(opt) && (
                                         <span className={`block truncate text-xs ${value === opt._id ? 'text-blue-700 font-normal' : 'text-gray-500 group-hover:text-blue-100'}`}>
-                                            Contractor: {opt.contractorName}
+                                            {helperField || 'Contractor'}: {getHelperValue(opt)}
                                         </span>
                                     )}
                                 </div>
