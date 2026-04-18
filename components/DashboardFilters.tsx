@@ -1,8 +1,12 @@
 'use client';
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { X, Filter } from 'lucide-react';
-import { useCallback } from 'react';
+import { 
+    X, Filter, Map, User, Calendar, 
+    Route, Construction, Briefcase, LayoutGrid,
+    ChevronDown, RotateCcw, ChevronUp
+} from 'lucide-react';
+import { useCallback, useState } from 'react';
 
 interface FilterOptions {
     subDivisions: string[];
@@ -22,6 +26,7 @@ export default function DashboardFilters({ options }: Props) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const [isCollapsed, setIsCollapsed] = useState(true);
 
     const createQueryString = useCallback(
         (name: string, value: string) => {
@@ -47,54 +52,86 @@ export default function DashboardFilters({ options }: Props) {
     const hasFilters = searchParams.size > 0 && !searchParams.has('search');
 
     const filterFields = [
-        { name: 'subDivision', label: 'Sub Division', options: options.subDivisions },
-        { name: 'estimateConsultant', label: 'Consultant', options: options.contractors },
-        { name: 'approvalYear', label: 'Year', options: options.years },
-        { name: 'roadCategory', label: 'Road Category', options: options.roadCategories },
-        { name: 'workType', label: 'Work Type', options: options.workTypes },
-        { name: 'natureOfWork', label: 'Nature', options: options.natures },
-        { name: 'schemeName', label: 'Scheme', options: options.schemes },
+        { name: 'subDivision', label: 'Sub Division', options: options.subDivisions, icon: Map },
+        { name: 'estimateConsultant', label: 'Consultant', options: options.contractors, icon: User },
+        { name: 'approvalYear', label: 'Year of Approval', options: options.years, icon: Calendar },
+        { name: 'roadCategory', label: 'Road Category', options: options.roadCategories, icon: Route },
+        { name: 'workType', label: 'Work Type', options: options.workTypes, icon: Construction },
+        { name: 'natureOfWork', label: 'Nature of Work', options: options.natures, icon: Briefcase },
+        { name: 'schemeName', label: 'Name of Scheme', options: options.schemes, icon: LayoutGrid },
     ];
 
     return (
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                    <Filter className="w-4 h-4 text-blue-600" />
-                    <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">Dashaboard Filters</h2>
-                </div>
-                {hasFilters && (
+        <div className={`bg-white border border-slate-200 rounded-[24px] shadow-sm flex flex-col transition-all ${isCollapsed ? 'px-4 py-3 gap-0' : 'p-6 gap-6'}`}>
+            <div className="flex items-center justify-between">
+                <button 
+                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                    title={isCollapsed ? "Expand Filters" : "Collapse Filters"}
+                >
+                    <div className="bg-blue-600 p-1.5 rounded-lg flex items-center justify-center relative">
+                        <Filter className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-xs font-black text-slate-800 uppercase tracking-widest">Dashboard Filters</h2>
+                        <div className="p-0.5 rounded-full bg-slate-100 text-slate-500">
+                            {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+                        </div>
+                    </div>
+                </button>
+                <div className="flex items-center gap-3">
+                    {hasFilters && (
                     <button
                         onClick={clearFilters}
-                        className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 transition-colors"
+                        className="flex items-center gap-2 px-3 py-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-all text-xs font-bold"
+                        title="Clear all filters"
                     >
-                        <X className="w-3 h-3" /> Clear All
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        Reset All
                     </button>
-                )}
+                    )}
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {filterFields.map((field) => (
-                    <div key={field.name}>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 px-1">
-                            {field.label}
-                        </label>
-                        <select
-                            value={searchParams.get(field.name) || ''}
-                            onChange={(e) => handleChange(field.name, e.target.value)}
-                            className="block w-full text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent focus:bg-white transition-all outline-none appearance-none"
-                            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1rem' }}
-                        >
-                            <option value="">All {field.label}s</option>
-                            {field.options.map((opt) => (
-                                <option key={opt} value={opt}>
-                                    {opt}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                ))}
-            </div>
+            {!isCollapsed && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+                    {filterFields.map((field) => {
+                    const Icon = field.icon;
+                    const value = searchParams.get(field.name) || '';
+                    const isActive = !!value;
+
+                    return (
+                        <div key={field.name} className="space-y-2">
+                            <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
+                                <Icon className={`w-3 h-3 ${isActive ? 'text-blue-500' : 'text-slate-300'}`} />
+                                {field.label}
+                            </label>
+                            <div className="relative group">
+                                <select
+                                    value={value}
+                                    onChange={(e) => handleChange(field.name, e.target.value)}
+                                    className={`block w-full text-xs font-bold rounded-xl px-4 py-3 appearance-none outline-none transition-all cursor-pointer border ${
+                                        isActive 
+                                            ? 'bg-blue-50/50 border-blue-200 text-blue-700 ring-2 ring-blue-500/5' 
+                                            : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-white hover:border-slate-300'
+                                    }`}
+                                >
+                                    <option value="">All {field.label}s</option>
+                                    {field.options.map((opt) => (
+                                        <option key={opt} value={opt} className="font-medium text-slate-900 bg-white py-2">
+                                            {opt}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-slate-600 transition-colors">
+                                    <ChevronDown className="w-4 h-4" />
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+                </div>
+            )}
         </div>
     );
 }
