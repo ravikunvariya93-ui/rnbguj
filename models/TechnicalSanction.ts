@@ -17,7 +17,7 @@ const TechnicalSanctionSchema: Schema = new Schema({
     tsAmount: { type: Number },
     tsNumber: { type: String },
     tsDate: { type: Date },
-    tsDate: { type: Date },
+    remarks: { type: String },
 }, {
     timestamps: true,
 });

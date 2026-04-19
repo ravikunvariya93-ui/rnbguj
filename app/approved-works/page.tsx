@@ -2,6 +2,8 @@ import { Suspense } from 'react';
 import dbConnect from '@/lib/db';
 import ApprovedWork from '@/models/ApprovedWork';
 import TechnicalSanction from '@/models/TechnicalSanction';
+import Package from '@/models/Package';
+import DTP from '@/models/DTP';
 import Link from 'next/link';
 import { Plus, Filter, Eye, Edit2 } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
@@ -29,58 +31,91 @@ interface Props {
 export default async function ApprovedWorksListPage({ searchParams }: Props) {
     await dbConnect();
     const params = await searchParams;
-    
+    const normalizeString = (str: string) => (str || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
     let query: any = {};
     let filterLabels: string[] = [];
 
-    // Existing "Pending" filter
+    const allTS = await TechnicalSanction.find({}).select('workName').lean();
+    const tsCountMap: Record<string, number> = {};
+    allTS.forEach(ts => {
+        const name = normalizeString(ts.workName);
+        tsCountMap[name] = (tsCountMap[name] || 0) + 1;
+    });
+    
+    
+    // Consumption logic for Pending TS is handled in-memory during result processing
     if (params.filter === 'pending') {
-        const worksWithTS = await TechnicalSanction.find().distinct('workId');
-        query._id = { $nin: worksWithTS };
         filterLabels.push("Awaiting Technical Sanction (Pending TS)");
+    } else if (params.filter === 'pendingDTP') {
+        // ... keeping DTP logic as is for now as it's less prioritized but available
+        const worksWithTSNames = await TechnicalSanction.find().distinct('workName');
+        const allDTPs = await DTP.find({ dtpApprovalDate: { $exists: true, $ne: null } }).select('tsId').lean();
+        const approvedPkgIds = new Set(allDTPs.map(d => d.tsId?.toString()));
+        const allPackages = await Package.find({}).select('works').lean();
+        const approvedDTPWorkNames = new Set<string>();
+        allPackages.forEach(pkg => {
+            if (approvedPkgIds.has(pkg._id.toString()) && pkg.works && Array.isArray(pkg.works)) {
+                pkg.works.forEach(w => {
+                    if (w.workName) approvedDTPWorkNames.add(w.workName.trim().toLowerCase().replace(/\s+/g, ' '));
+                });
+            }
+        });
+        const pendingDTPWorkNames = worksWithTSNames.filter(name => {
+            if (!name) return false;
+            return !approvedDTPWorkNames.has(name.trim().toLowerCase().replace(/\s+/g, ' '));
+        });
+        const finalRegexPatterns = pendingDTPWorkNames.map((name: string) => {
+            const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').trim();
+            const flexibleSpace = escaped.split(/\s+/).join('\\s+');
+            return new RegExp(`^\\s*${flexibleSpace}\\s*$`, 'i');
+        });
+        query.workName = { $in: finalRegexPatterns };
+        filterLabels.push("Awaiting DTP Approval (Pending DTP)");
     }
 
     // Standard Filters
     if (params.search) {
         query.workName = { $regex: params.search, $options: 'i' };
     }
-    if (params.subDivision) {
-        query.subDivision = params.subDivision;
-        filterLabels.push(`Sub Division: ${params.subDivision}`);
-    }
-    if (params.estimateConsultant) {
-        query.estimateConsultant = params.estimateConsultant;
-        filterLabels.push(`Consultant: ${params.estimateConsultant}`);
-    }
-    if (params.approvalYear) {
-        query.approvalYear = params.approvalYear;
-        filterLabels.push(`Year: ${params.approvalYear}`);
-    }
-    if (params.roadCategory) {
-        query.roadCategory = params.roadCategory;
-        filterLabels.push(`Road Category: ${params.roadCategory}`);
-    }
-    if (params.workType) {
-        query.workType = params.workType;
-        filterLabels.push(`Work Type: ${params.workType}`);
-    }
-    if (params.schemeName) {
-        query.schemeName = params.schemeName;
-        filterLabels.push(`Scheme: ${params.schemeName}`);
-    }
 
-    // Nature of Work filter (handled specifically for Unclassified)
-    if (params.natureOfWork) {
-        if (params.natureOfWork === 'Unclassified') {
-            query.$or = [
-                { natureOfWork: { $exists: false } },
-                { natureOfWork: null },
-                { natureOfWork: '' }
-            ];
-        } else {
-            query.natureOfWork = params.natureOfWork;
+    const filterFields: Record<string, { label: string, val: string | undefined }> = {
+        subDivision: { label: 'Sub Division', val: params.subDivision },
+        estimateConsultant: { label: 'Consultant', val: params.estimateConsultant },
+        approvalYear: { label: 'Year', val: params.approvalYear },
+        roadCategory: { label: 'Road Category', val: params.roadCategory },
+        workType: { label: 'Work Type', val: params.workType },
+        schemeName: { label: 'Scheme', val: params.schemeName },
+        natureOfWork: { label: 'Nature', val: params.natureOfWork }
+    };
+
+    const emptyQuery = (field: string) => ({
+        $or: [
+            { [field]: { $exists: false } },
+            { [field]: null },
+            { [field]: '' }
+        ]
+    });
+
+    // We collect global Unspecified conditions to combine them using $and
+    const andConditions: any[] = [];
+
+    Object.entries(filterFields).forEach(([field, config]) => {
+        if (config.val) {
+            // Dashboard sends 'Unspecified' when the property is empty/missing
+            // (Also catch 'Unclassified' for backwards compatibility if needed)
+            if (config.val === 'Unspecified' || config.val === 'Unclassified') {
+                andConditions.push(emptyQuery(field));
+                filterLabels.push(`${config.label}: Unspecified`);
+            } else {
+                query[field] = config.val;
+                filterLabels.push(`${config.label}: ${config.val}`);
+            }
         }
-        filterLabels.push(`Nature: ${params.natureOfWork}`);
+    });
+
+    if (andConditions.length > 0) {
+        query.$and = andConditions;
     }
 
     const filterLabel = filterLabels.length > 0 
@@ -91,16 +126,34 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
     const limit = parseInt(params.limit || '10');
     const skip = (page - 1) * limit;
 
-    const totalItems = await ApprovedWork.countDocuments(query);
+    let finalWorks: any[] = [];
+    let totalItems = 0;
+
+    if (params.filter === 'pending') {
+        // Fetch ALL works matching categories/search, then filter by consumption in memory
+        const allPotentialWorks = await ApprovedWork.find(query).sort({ createdAt: -1 }).lean();
+        const filtered = allPotentialWorks.filter(w => {
+            const safeName = normalizeString(w.workName);
+            if (tsCountMap[safeName] > 0) {
+                tsCountMap[safeName]--;
+                return false;
+            }
+            return true;
+        });
+        totalItems = filtered.length;
+        finalWorks = filtered.slice(skip, skip + limit);
+    } else {
+        totalItems = await ApprovedWork.countDocuments(query);
+        finalWorks = await ApprovedWork.find(query)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean();
+    }
+
     const totalPages = Math.ceil(totalItems / limit);
 
-    const works = await ApprovedWork.find(query)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean();
-
-    const serializedWorks = works.map((w: any) => ({
+    const serializedWorks = finalWorks.map((w: any) => ({
         ...w,
         _id: w._id.toString(),
     }));
@@ -148,16 +201,16 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
                             <table className="min-w-full divide-y divide-gray-300">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
+                                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 max-w-xs sm:max-w-sm md:max-w-md">
                                             Name of Work
                                         </th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 whitespace-normal">
                                             Approval Date
                                         </th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                                            Job Number Amount
+                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 whitespace-normal">
+                                            Job Number / Amount
                                         </th>
-                                        <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right">
+                                        <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right whitespace-normal">
                                             Actions
                                         </th>
                                     </tr>
@@ -172,27 +225,31 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
                                     ) : (
                                         serializedWorks.map((work: any) => (
                                             <tr key={work._id}>
-                                                <td className="whitespace-normal py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 max-w-sm">
-                                                    {work.workName}
+                                                <td className="whitespace-normal py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 max-w-xs sm:max-w-sm md:max-w-md break-words">
+                                                    <div className="line-clamp-3" title={work.workName}>
+                                                        {work.workName}
+                                                    </div>
                                                 </td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                                <td className="whitespace-normal px-3 py-4 text-sm text-gray-500 break-words">
                                                     {work.jobNumberApprovalDate ? new Date(work.jobNumberApprovalDate).toLocaleDateString('en-GB') : '-'}
                                                 </td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                                <td className="whitespace-normal px-3 py-4 text-sm text-gray-500 break-words">
                                                     {work.jobNumberAmount}
                                                 </td>
-                                                <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 flex items-center justify-end space-x-2">
-                                                    <Link href={`/approved-works/${work._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
-                                                        <Eye className="w-5 h-5" />
-                                                    </Link>
-                                                    <Link href={`/approved-works/${work._id}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Item">
-                                                        <Edit2 className="w-5 h-5" />
-                                                    </Link>
-                                                    <GenericDeleteButton 
-                                                        itemId={work._id} 
-                                                        itemName={work.workName} 
-                                                        apiPath="/api/approved-works" 
-                                                    />
+                                                <td className="relative whitespace-normal py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                                                    <div className="flex flex-wrap items-center justify-end gap-2">
+                                                        <Link href={`/approved-works/${work._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
+                                                            <Eye className="w-5 h-5" />
+                                                        </Link>
+                                                        <Link href={`/approved-works/${work._id}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Item">
+                                                            <Edit2 className="w-5 h-5" />
+                                                        </Link>
+                                                        <GenericDeleteButton 
+                                                            itemId={work._id} 
+                                                            itemName={work.workName} 
+                                                            apiPath="/api/approved-works" 
+                                                        />
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))

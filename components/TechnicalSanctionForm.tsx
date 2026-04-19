@@ -23,24 +23,35 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
         tsAmount: '',
         tsNumber: '',
         tsDate: '',
+        remarks: '',
         ...initialData
     });
 
     const [approvedWorks, setApprovedWorks] = useState<any[]>([]);
+    const [existingTSNames, setExistingTSNames] = useState<string[]>([]);
 
     useEffect(() => {
-        const fetchApprovedWorks = async () => {
+        const fetchData = async () => {
             try {
-                const res = await fetch('/api/approved-works');
-                const data = await res.json();
-                if (data.success) {
-                    setApprovedWorks(data.data);
+                // Fetch Approved Works
+                const resWorks = await fetch('/api/approved-works');
+                const dataWorks = await resWorks.json();
+                if (dataWorks.success) {
+                    setApprovedWorks(dataWorks.data);
+                }
+
+                // Fetch Existing Technical Sanctions to filter duplicates
+                const resTS = await fetch('/api/technical-sanctions');
+                const dataTS = await resTS.json();
+                if (dataTS.success) {
+                    const names = dataTS.data.map((ts: any) => ts.workName);
+                    setExistingTSNames(names);
                 }
             } catch (error) {
-                console.error("Failed to fetch approved works", error);
+                console.error("Failed to fetch data for form", error);
             }
         };
-        fetchApprovedWorks();
+        fetchData();
     }, []);
 
     useEffect(() => {
@@ -161,11 +172,16 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
     };
 
     // Prepare options for SearchableSelect
-    // Using workName as the ID since that's what the model stores
-    const workOptions = approvedWorks.map(w => ({
-        _id: w.workName, 
-        packageName: w.workName
-    }));
+    // Hide works that already have a TS, unless we are currently editing that specific work
+    const workOptions = approvedWorks
+        .filter(w => {
+            if (isEditing && w.workName === initialData.workName) return true;
+            return !existingTSNames.includes(w.workName);
+        })
+        .map(w => ({
+            _id: w.workName, 
+            packageName: w.workName
+        }));
 
     return (
         <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-gray-200 bg-white p-8 shadow rounded-lg">
@@ -225,6 +241,10 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
                         <div className="sm:col-span-3">
                             <label htmlFor="tsAmount" className="block text-sm font-medium text-gray-700">TS Amount</label>
                             <input type="number" step="0.01" name="tsAmount" id="tsAmount" value={formData.tsAmount} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                        </div>
+                        <div className="sm:col-span-6">
+                            <label htmlFor="remarks" className="block text-sm font-medium text-gray-700">Remarks</label>
+                            <textarea name="remarks" id="remarks" rows={3} value={formData.remarks || ''} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" placeholder="Enter any additional remarks..." />
                         </div>
                     </div>
                 </div>

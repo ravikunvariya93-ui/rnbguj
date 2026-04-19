@@ -56,16 +56,21 @@ export default async function Home({ searchParams }: Props) {
     // Fetch matching works to evaluate aggregates
     const works = await ApprovedWork.find(query).lean();
 
-    // Fetch related docs to determine pending statuses
+    const normalizeString = (str: string) => (str || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
     const allTS = await TechnicalSanction.find({}).select('workName').lean();
-    const tsNames = new Set(allTS.map(ts => (ts.workName || '').trim().toLowerCase()));
+    const tsCountMap: Record<string, number> = {};
+    allTS.forEach(ts => {
+        const name = normalizeString(ts.workName);
+        tsCountMap[name] = (tsCountMap[name] || 0) + 1;
+    });
 
     const allPackages = await Package.find({}).select('works').lean();
     const workNameToPackageId = new Map<string, string>();
     allPackages.forEach(pkg => {
         if (pkg.works && Array.isArray(pkg.works)) {
             pkg.works.forEach(w => {
-                if (w.workName) workNameToPackageId.set(w.workName.trim().toLowerCase(), pkg._id.toString());
+                if (w.workName) workNameToPackageId.set(normalizeString(w.workName), pkg._id.toString());
             });
         }
     });
@@ -75,7 +80,6 @@ export default async function Home({ searchParams }: Props) {
 
     const totalWorks = works.length;
     let overallPendingTS = 0;
-    let overallPendingDTP = 0;
 
     // Build base query string for links
     const searchParamsObj = new URLSearchParams();
@@ -90,7 +94,7 @@ export default async function Home({ searchParams }: Props) {
     
     const queryString = searchParamsObj.toString() ? `?${searchParamsObj.toString()}` : '';
 
-    const groupByField = params.groupBy || 'natureOfWork';
+    const groupByField = params.groupBy || 'estimateConsultant';
     const groupLabels: Record<string, string> = {
         natureOfWork: 'Nature of Work',
         subDivision: 'Sub Division',
@@ -107,34 +111,31 @@ export default async function Home({ searchParams }: Props) {
         const rawVal = (work as any)[groupByField];
         const category = rawVal ? rawVal.toString().trim() : 'Unspecified';
         
-        if (!acc[category]) acc[category] = { count: 0, pendingTS: 0, pendingDTP: 0 };
+        if (!acc[category]) acc[category] = { count: 0, pendingTS: 0 };
         
         acc[category].count += 1;
 
-        const safeName = (work.workName || '').trim().toLowerCase();
+        const safeName = normalizeString(work.workName);
         
-        // Tracking Pending TS/DTP
-        const hasTS = tsNames.has(safeName);
-        if (!hasTS) {
+        // Tracking Pending TS (Consumption Model)
+        if (tsCountMap[safeName] > 0) {
+            tsCountMap[safeName]--;
+        } else {
             acc[category].pendingTS += 1;
             overallPendingTS += 1;
-        } else {
-            const pkgId = workNameToPackageId.get(safeName);
-            if (!pkgId || !dtpPackageIds.has(pkgId)) {
-                acc[category].pendingDTP += 1;
-                overallPendingDTP += 1;
-            }
         }
 
         return acc;
-    }, {} as Record<string, { count: number; pendingTS: number; pendingDTP: number; }>);
+    }, {} as Record<string, { count: number; pendingTS: number; }>);
 
     const reportRows = Object.entries(groupedData).map(([category, data]) => ({
         category,
         count: data.count,
-        pendingTS: data.pendingTS,
-        pendingDTP: data.pendingDTP
+        pendingTS: data.pendingTS
     })).sort((a, b) => b.count - a.count);
+
+    const totalMatchedTS = totalWorks - overallPendingTS;
+    const isDataMismatched = allTS.length > totalMatchedTS;
 
     return (
         <div className="min-h-screen bg-[#f8fafc] flex flex-col">
@@ -152,6 +153,21 @@ export default async function Home({ searchParams }: Props) {
                             {/* Filter Bar */}
                             <DashboardFilters options={filterOptions} />
 
+                            {isDataMismatched && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
+                                    <div className="bg-amber-500 text-white p-1 rounded-full">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="text-sm font-bold text-amber-900">Data Discrepancy Detected</h4>
+                                        <p className="text-xs text-amber-800 mt-1">
+                                            You have <strong>{allTS.length}</strong> TS records but only <strong>{totalMatchedTS}</strong> matches in your Approved Works list. 
+                                            This usually means there are <strong>{allTS.length - totalMatchedTS}</strong> duplicate or typoed Technical Sanction records that are not "spent" properly.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
                                 <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
@@ -159,8 +175,14 @@ export default async function Home({ searchParams }: Props) {
                                         <tr className="bg-slate-50 border-b border-slate-200">
                                             <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">Report Category ({groupByLabel})</th>
                                             <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap text-center">Total Approved Works</th>
-                                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap text-center">Pending TS</th>
-                                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap text-center">Pending DTP</th>
+                                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap text-center">
+                                                Pending TS
+                                                {isDataMismatched && (
+                                                    <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[8px] bg-amber-100 text-amber-800 border border-amber-200" title="Warning: Data Mismatch Detected. Some TS records have no match in the current work list.">
+                                                        (!)
+                                                    </span>
+                                                )}
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -168,9 +190,17 @@ export default async function Home({ searchParams }: Props) {
                                             <>
                                                 {reportRows.map(row => {
                                                     const rowParams = new URLSearchParams(searchParamsObj);
-                                                    rowParams.set(groupByField, row.category !== 'Unspecified' ? row.category : '');
+                                                    rowParams.set(groupByField, row.category);
                                                     rowParams.delete('groupBy');
                                                     const rowQuery = `?${rowParams.toString()}`;
+
+                                                    const tsParams = new URLSearchParams(rowParams);
+                                                    tsParams.set('filter', 'pending');
+                                                    const tsQuery = `?${tsParams.toString()}`;
+
+                                                    const dtpParams = new URLSearchParams(rowParams);
+                                                    dtpParams.set('filter', 'pendingDTP');
+                                                    const dtpQuery = `?${dtpParams.toString()}`;
 
                                                     return (
                                                         <tr key={row.category} className="hover:bg-blue-50/50 transition-colors group">
@@ -185,10 +215,15 @@ export default async function Home({ searchParams }: Props) {
                                                                 </Link>
                                                             </td>
                                                             <td className="px-6 py-4 text-center text-sm font-black text-rose-600 font-mono">
-                                                                {row.pendingTS > 0 ? row.pendingTS : '-'}
-                                                            </td>
-                                                            <td className="px-6 py-4 text-center text-sm font-black text-amber-600 font-mono">
-                                                                {row.pendingDTP > 0 ? row.pendingDTP : '-'}
+                                                                {row.pendingTS > 0 ? (
+                                                                    <Link 
+                                                                        href={`/approved-works${tsQuery}`} 
+                                                                        className="hover:underline hover:text-rose-800 transition-colors px-2 py-1 rounded hover:bg-rose-50 inline-block focus:outline-none"
+                                                                        title="View Pending TS List"
+                                                                    >
+                                                                        {row.pendingTS}
+                                                                    </Link>
+                                                                ) : '-'}
                                                             </td>
                                                         </tr>
                                                     );
@@ -205,10 +240,20 @@ export default async function Home({ searchParams }: Props) {
                                                         </Link>
                                                     </td>
                                                     <td className="px-6 py-4 text-center text-sm font-black text-rose-600 font-mono">
-                                                        {overallPendingTS > 0 ? overallPendingTS : '-'}
-                                                    </td>
-                                                    <td className="px-6 py-4 text-center text-sm font-black text-amber-600 font-mono">
-                                                        {overallPendingDTP > 0 ? overallPendingDTP : '-'}
+                                                        {overallPendingTS > 0 ? (() => {
+                                                            const p = new URLSearchParams(searchParamsObj);
+                                                            p.set('filter', 'pending');
+                                                            p.delete('groupBy');
+                                                            return (
+                                                                <Link 
+                                                                    href={`/approved-works?${p.toString()}`} 
+                                                                    className="hover:underline hover:text-rose-800 transition-colors px-2 py-1 rounded hover:bg-rose-50 inline-block focus:outline-none"
+                                                                    title="View All Pending TS"
+                                                                >
+                                                                    {overallPendingTS}
+                                                                </Link>
+                                                            );
+                                                        })() : '-'}
                                                     </td>
                                                 </tr>
                                             </>

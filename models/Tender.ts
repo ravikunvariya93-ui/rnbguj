@@ -111,6 +111,8 @@ const TenderSchema: Schema = new Schema({
     // Work Order
     workOrderWorksheetNo: { type: String },
     workOrderDate: { type: Date },
+    
+    remarks: { type: String },
 }, {
     timestamps: true,
 });

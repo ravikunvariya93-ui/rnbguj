@@ -25,6 +25,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
     const searchParams = useSearchParams();
     const [loading, setLoading] = useState(false);
     const [packages, setPackages] = useState<any[]>([]);
+    const [existingTenderPkgIds, setExistingTenderPkgIds] = useState<string[]>([]);
     const [dtps, setDtps] = useState<any[]>([]);
     const [agencies, setAgencies] = useState<any[]>([]);
     const [tenderAmount, setTenderAmount] = useState<number | ''>('');
@@ -46,20 +47,23 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
         contractPrice: initialData.contractPrice || '',
         aboveBelowPercentage: initialData.aboveBelowPercentage || '',
         aboveBelowInWord: initialData.aboveBelowInWord || 'Above',
+        remarks: initialData.remarks || '',
         ...initialData
     });
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [pkgRes, dtpRes, agencyRes] = await Promise.all([
+                const [pkgRes, dtpRes, agencyRes, tenderRes] = await Promise.all([
                     fetch('/api/packages'),
                     fetch('/api/dtps'),
-                    fetch('/api/agencies')
+                    fetch('/api/agencies'),
+                    fetch('/api/tenders')
                 ]);
                 const pkgData = await pkgRes.json();
                 const dtpData = await dtpRes.json();
                 const agencyData = await agencyRes.json();
+                const tenderData = await tenderRes.json();
                 if (pkgData.success) {
                     setPackages(pkgData.data);
                 }
@@ -68,6 +72,10 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                 }
                 if (agencyData.success) {
                     setAgencies(agencyData.data);
+                }
+                if (tenderData.success) {
+                    const ids = tenderData.data.map((t: any) => t.packageId?._id || t.packageId);
+                    setExistingTenderPkgIds(ids);
                 }
             } catch (error) {
                 console.error("Failed to fetch data", error);
@@ -287,7 +295,10 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                     <SearchableSelect 
                         label="Select Package"
                         required
-                        options={packages}
+                        options={packages.filter(p => {
+                            if (isEditing && (p._id === initialData.packageId?._id || p._id === initialData.packageId)) return true;
+                            return !existingTenderPkgIds.includes(p._id);
+                        })}
                         value={formData.packageId}
                         onChange={handlePackageSelect}
                         placeholder="Search by package name..."
@@ -400,6 +411,12 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                         <option value="Below">Below</option>
                         <option value="At Par">At Par</option>
                     </select>
+                </div>
+
+                <div className="sm:col-span-6">
+                    <label htmlFor="remarks" className="block text-sm font-medium text-gray-700">Remarks</label>
+                    <textarea name="remarks" id="remarks" rows={3} value={formData.remarks || ''} onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" placeholder="Enter any additional remarks..." />
                 </div>
 
             </div>

@@ -8,6 +8,7 @@ export interface IPackage extends Document {
         workName: string;
         amount: number; // Snapshot of amount
     }[];
+    dtpConsultant?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -20,6 +21,7 @@ const PackageSchema: Schema = new Schema({
         workName: { type: String },
         amount: { type: Number },
     }],
+    dtpConsultant: { type: String },
 }, {
     timestamps: true,
 });

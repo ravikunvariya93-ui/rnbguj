@@ -56,23 +56,42 @@ export default function Pagination({ currentPage, totalPages }: PaginationProps)
                             <ChevronLeft className="h-5 w-5" aria-hidden="true" />
                         </button>
                         
-                        {[...Array(totalPages)].map((_, i) => {
-                            const page = i + 1;
-                            const isCurrent = page === currentPage;
-                            return (
-                                <button
-                                    key={page}
-                                    onClick={() => router.push(createPageURL(page))}
-                                    className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
-                                        isCurrent
-                                            ? 'z-10 bg-blue-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600'
-                                            : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0'
-                                    }`}
-                                >
-                                    {page}
-                                </button>
-                            );
-                        })}
+                        {(() => {
+                            const getVisiblePages = (current: number, total: number) => {
+                                if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+                                if (current <= 4) return [1, 2, 3, 4, 5, '...', total];
+                                if (current >= total - 3) return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+                                return [1, '...', current - 1, current, current + 1, '...', total];
+                            };
+
+                            return getVisiblePages(currentPage, totalPages).map((page, index) => {
+                                if (page === '...') {
+                                    return (
+                                        <span
+                                            key={`ellipsis-${index}`}
+                                            className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:outline-offset-0"
+                                        >
+                                            ...
+                                        </span>
+                                    );
+                                }
+
+                                const isCurrent = page === currentPage;
+                                return (
+                                    <button
+                                        key={page}
+                                        onClick={() => router.push(createPageURL(page))}
+                                        className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+                                            isCurrent
+                                                ? 'z-10 bg-blue-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600'
+                                                : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0'
+                                        }`}
+                                    >
+                                        {page}
+                                    </button>
+                                );
+                            });
+                        })()}
 
                         <button
                             onClick={() => router.push(createPageURL(currentPage + 1))}

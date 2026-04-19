@@ -62,6 +62,7 @@ const ApprovedWorkSchema: Schema = new Schema({
     length: { type: Number },
     chainage: { type: String },
     estimateConsultant: { type: String },
+    remarks: { type: String },
 }, {
     timestamps: true,
 });

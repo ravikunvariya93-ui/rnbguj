@@ -43,6 +43,7 @@ export default function DTPForm({ initialData = {}, isEditing = false }: DTPForm
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [packages, setPackages] = useState<any[]>([]);
+    const [existingDTPIds, setExistingDTPIds] = useState<string[]>([]);
 
     const sanitized = Object.fromEntries(
         Object.entries(initialData).map(([k, v]) => [k, v == null ? '' : v])
@@ -56,21 +57,31 @@ export default function DTPForm({ initialData = {}, isEditing = false }: DTPForm
         dtpApprovalNo: '',
         dtpApprovalDate: '',
         tenderAmount: '',
-        dtpConsultant: '',
+        remarks: '',
         ...sanitized,
     });
 
     useEffect(() => {
-        const fetchPackages = async () => {
+        const fetchData = async () => {
             try {
-                const res = await fetch('/api/packages');
-                const data = await res.json();
-                if (data.success) setPackages(data.data);
+                const [resPackages, resDTPs] = await Promise.all([
+                    fetch('/api/packages'),
+                    fetch('/api/dtps')
+                ]);
+                
+                const dataPackages = await resPackages.json();
+                if (dataPackages.success) setPackages(dataPackages.data);
+
+                const dataDTPs = await resDTPs.json();
+                if (dataDTPs.success) {
+                    const ids = dataDTPs.data.map((d: any) => d.tsId?._id || d.tsId);
+                    setExistingDTPIds(ids);
+                }
             } catch (error) {
-                console.error('Failed to fetch packages', error);
+                console.error('Failed to fetch data for form', error);
             }
         };
-        fetchPackages();
+        fetchData();
     }, []);
 
     useEffect(() => {
@@ -135,7 +146,10 @@ export default function DTPForm({ initialData = {}, isEditing = false }: DTPForm
                     <SearchableSelect 
                         label="Select Package"
                         required
-                        options={packages}
+                        options={packages.filter(p => {
+                            if (isEditing && (p._id === initialData.tsId?._id || p._id === initialData.tsId)) return true;
+                            return !existingDTPIds.includes(p._id);
+                        })}
                         value={formData.tsId}
                         onChange={handlePackageSelect}
                         placeholder="Search by package name..."
@@ -187,24 +201,6 @@ export default function DTPForm({ initialData = {}, isEditing = false }: DTPForm
                         <option value="Chief Engineer (CE)">Chief Engineer (CE)</option>
                     </select>
                 </div>
-                
-                <div className="sm:col-span-6">
-                    <label htmlFor="dtpConsultant" className="block text-sm font-medium text-gray-700">DTP Consultant</label>
-                    <select
-                        name="dtpConsultant"
-                        id="dtpConsultant"
-                        value={formData.dtpConsultant}
-                        onChange={handleChange}
-                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                    >
-                        <option value="">-- Select Consultant --</option>
-                        <option value="Umiya Engineers and Project Management Consultancy">Umiya Engineers and Project Management Consultancy</option>
-                        <option value="Trisha Engineers Consultancy">Trisha Engineers Consultancy</option>
-                        <option value="Pramukham Engineers Consultancy">Pramukham Engineers Consultancy</option>
-                        <option value="Kalyan Computers">Kalyan Computers</option>
-                        <option value="Karansinh Janaksinh Rana">Karansinh Janaksinh Rana</option>
-                    </select>
-                </div>
 
                 <div className="sm:col-span-3">
                     <label htmlFor="dtpApprovalNo" className="block text-sm font-medium text-gray-700">DTP Approval No.</label>
@@ -215,6 +211,12 @@ export default function DTPForm({ initialData = {}, isEditing = false }: DTPForm
                     <label htmlFor="dtpApprovalDate" className="block text-sm font-medium text-gray-700">DTP Approval Date (DD/MM/YYYY)</label>
                     <input type="text" placeholder="20/01/2025" name="dtpApprovalDate" id="dtpApprovalDate" value={formData.dtpApprovalDate} onChange={handleChange}
                         className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                </div>
+
+                <div className="sm:col-span-6">
+                    <label htmlFor="remarks" className="block text-sm font-medium text-gray-700">Remarks</label>
+                    <textarea name="remarks" id="remarks" rows={3} value={formData.remarks || ''} onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" placeholder="Enter any additional remarks..." />
                 </div>
 
             </div>

@@ -107,6 +107,7 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
         length: '',
         chainage: '',
         estimateConsultant: '',
+        remarks: '',
         ...initialData
     });
 

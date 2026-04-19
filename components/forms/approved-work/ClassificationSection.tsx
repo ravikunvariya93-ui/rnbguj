@@ -13,6 +13,7 @@ interface ClassificationSectionProps {
         workType: string;
         natureOfWork: string;
         schemeName: string;
+        remarks?: string;
     };
     handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
 }
@@ -247,6 +248,19 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                         <option value="BUJ">BUJ</option>
                         <option value="EMRI - MMGSY">EMRI - MMGSY</option>
                     </select>
+                </div>
+
+                <div className="sm:col-span-6">
+                    <label htmlFor="remarks" className="block text-sm font-medium text-gray-700">Remarks</label>
+                    <textarea 
+                        name="remarks" 
+                        id="remarks" 
+                        rows={3} 
+                        value={formData.remarks || ''} 
+                        onChange={handleChange} 
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" 
+                        placeholder="Enter any additional remarks..."
+                    />
                 </div>
             </div>
         </div>

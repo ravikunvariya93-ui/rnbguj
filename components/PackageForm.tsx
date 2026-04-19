@@ -19,6 +19,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
     // Basic info
     const [packageName, setPackageName] = useState(initialData.packageName || '');
     const [subDivision, setSubDivision] = useState(initialData.subDivision || '');
+    const [dtpConsultant, setDtpConsultant] = useState(initialData.dtpConsultant || '');
 
     // Selected works list
     const [selectedWorks, setSelectedWorks] = useState<{ workId: string, workName: string, amount: number }[]>(initialData.works || []);
@@ -86,6 +87,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
             const submissionData = {
                 packageName,
                 subDivision,
+                dtpConsultant,
                 works: selectedWorks
             };
 
@@ -151,6 +153,24 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                         <option value="Talaja">Talaja</option>
                         <option value="Shihor">Shihor</option>
                         <option value="Vallabhipur">Vallabhipur</option>
+                    </select>
+                </div>
+
+                <div className="sm:col-span-6">
+                    <label htmlFor="dtpConsultant" className="block text-sm font-medium text-gray-700">DTP Consultant</label>
+                    <select
+                        name="dtpConsultant"
+                        id="dtpConsultant"
+                        value={dtpConsultant}
+                        onChange={(e) => setDtpConsultant(e.target.value)}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                    >
+                        <option value="">-- Select Consultant --</option>
+                        <option value="Umiya Engineers and Project Management Consultancy">Umiya Engineers and Project Management Consultancy</option>
+                        <option value="Trisha Engineers Consultancy">Trisha Engineers Consultancy</option>
+                        <option value="Pramukham Engineers Consultancy">Pramukham Engineers Consultancy</option>
+                        <option value="Kalyan Computers">Kalyan Computers</option>
+                        <option value="Karansinh Janaksinh Rana">Karansinh Janaksinh Rana</option>
                     </select>
                 </div>
 
