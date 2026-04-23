@@ -93,7 +93,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
         : "List of all packages containing approved works.";
 
     const page = parseInt(params.page || '1');
-    const limit = parseInt(params.limit || '10');
+    const limit = parseInt(params.limit || '100');
     const skip = (page - 1) * limit;
 
     const totalItems = await Package.countDocuments(query);
@@ -148,6 +148,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
                             <table className="min-w-full divide-y divide-gray-300">
                                 <thead className="bg-gray-50">
                                     <tr>
+                                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 w-16">Sr. No.</th>
                                         <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Package Name</th>
                                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Estimated Amount</th>
                                         <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right">Actions</th>
@@ -155,10 +156,11 @@ export default async function PackagesListPage({ searchParams }: Props) {
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white">
                                     {packages.length === 0 ? (
-                                        <tr><td colSpan={3} className="py-10 text-center text-sm text-gray-500">No packages found matching the criteria.</td></tr>
+                                        <tr><td colSpan={4} className="py-10 text-center text-sm text-gray-500">No packages found matching the criteria.</td></tr>
                                     ) : (
-                                        packages.map((pkg: any) => (
+                                        packages.map((pkg: any, index: number) => (
                                             <tr key={pkg._id}>
+                                                <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500 sm:pl-6">{skip + index + 1}</td>
                                                 <td className="whitespace-normal px-3 py-4 text-sm font-medium text-gray-900 sm:pl-6 max-w-md" style={{ wordBreak: 'break-word' }}>{pkg.packageName}</td>
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                                     ₹{(pkg.estimatedAmount || 0).toLocaleString('en-IN')}

@@ -27,7 +27,7 @@ export default async function DTPListPage({ searchParams }: Props) {
     }
 
     const page = parseInt(params.page || '1');
-    const limit = parseInt(params.limit || '10');
+    const limit = parseInt(params.limit || '100');
     const skip = (page - 1) * limit;
 
     const totalItems = await DTP.countDocuments(query);
@@ -83,6 +83,7 @@ export default async function DTPListPage({ searchParams }: Props) {
                             <table className="min-w-full divide-y divide-gray-300">
                                 <thead className="bg-gray-50">
                                     <tr>
+                                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 w-16">Sr. No.</th>
                                         <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Package Name</th>
                                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Date of Sending DTP for Approval</th>
                                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">DTP Approval Date</th>
@@ -91,10 +92,11 @@ export default async function DTPListPage({ searchParams }: Props) {
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white">
                                     {dtps.length === 0 ? (
-                                        <tr><td colSpan={4} className="py-10 text-center text-sm text-gray-500">No DTP records found matching the criteria.</td></tr>
+                                        <tr><td colSpan={5} className="py-10 text-center text-sm text-gray-500">No DTP records found matching the criteria.</td></tr>
                                     ) : (
-                                        dtps.map((dtp: any) => (
+                                        dtps.map((dtp: any, index: number) => (
                                             <tr key={dtp._id}>
+                                                <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500 sm:pl-6">{skip + index + 1}</td>
                                                 <td className="whitespace-normal py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-6 max-w-sm">
                                                     {(dtp.tsId as any)?.packageName || 'Unknown Package'}
                                                 </td>

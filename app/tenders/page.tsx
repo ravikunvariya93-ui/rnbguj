@@ -102,7 +102,7 @@ export default async function TendersListPage({ searchParams }: Props) {
         : "List of all tenders.";
 
     const page = parseInt(params.page || '1');
-    const limit = parseInt(params.limit || '10');
+    const limit = parseInt(params.limit || '100');
     const skip = (page - 1) * limit;
 
     const totalItems = await Tender.countDocuments(query);
@@ -157,6 +157,7 @@ export default async function TendersListPage({ searchParams }: Props) {
                             <table className="min-w-full divide-y divide-gray-300">
                                 <thead className="bg-gray-50">
                                     <tr>
+                                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 w-16">Sr. No.</th>
                                         <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Tender ID</th>
                                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Package Name</th>
                                         <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Trial</th>
@@ -166,10 +167,11 @@ export default async function TendersListPage({ searchParams }: Props) {
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white">
                                     {tenders.length === 0 ? (
-                                        <tr><td colSpan={4} className="py-10 text-center text-sm text-gray-500">No tenders found matching the criteria.</td></tr>
+                                        <tr><td colSpan={6} className="py-10 text-center text-sm text-gray-500">No tenders found matching the criteria.</td></tr>
                                     ) : (
-                                        tenders.map((tender: any) => (
+                                        tenders.map((tender: any, index: number) => (
                                             <tr key={tender._id}>
+                                                <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500 sm:pl-6">{skip + index + 1}</td>
                                                 <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">{tender.tenderId}</td>
                                                 <td className="whitespace-normal px-3 py-4 text-sm text-gray-500 max-w-xs " style={{ wordBreak: 'break-word' }}>{tender.packageName}</td>
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{tender.trialNo || 1}</td>
