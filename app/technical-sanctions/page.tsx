@@ -6,11 +6,12 @@ import { Plus, Filter, Eye, Edit2 } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import Pagination from '@/components/Pagination';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
+import SortableHeader from '@/components/SortableHeader';
 
 export const dynamic = 'force-dynamic';
 
 interface Props {
-    searchParams: { search?: string; page?: string; limit?: string };
+    searchParams: { search?: string; page?: string; limit?: string ; sort?: string; order?: string }
 }
 
 export default async function TechnicalSanctionsListPage({ searchParams }: Props) {
@@ -26,11 +27,17 @@ export default async function TechnicalSanctionsListPage({ searchParams }: Props
     const limit = parseInt(params.limit || '100');
     const skip = (page - 1) * limit;
 
+    let sortObj: any = { createdAt: -1 };
+    if (params.sort && params.order) {
+        sortObj = { [params.sort]: params.order === 'asc' ? 1 : -1 };
+    }
+
+
     const totalItems = await TechnicalSanction.countDocuments(query);
     const totalPages = Math.ceil(totalItems / limit);
 
     const sanctionsRaw = await TechnicalSanction.find(query)
-        .sort({ createdAt: -1 })
+        .sort(sortObj)
         .skip(skip)
         .limit(limit)
         .lean();
@@ -79,9 +86,9 @@ export default async function TechnicalSanctionsListPage({ searchParams }: Props
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 w-16">Sr. No.</th>
-                                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Name of Work</th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">TS Amount</th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">T.S. Date</th>
+                                        <SortableHeader field="workName" label="Name of Work" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6" />
+                                        <SortableHeader field="tsAmount" label="TS Amount" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900" />
+                                        <SortableHeader field="tsDate" label="T.S. Date" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900" />
                                         <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right">Actions</th>
                                     </tr>
                                 </thead>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Plus, Search, FileText, Trash2, ExternalLink } from 'lucide-react';
+import SortableHeader from '@/components/SortableHeader';
 
 export default function BOQListPage() {
     const [boqs, setBoqs] = useState<any[]>([]);
@@ -74,10 +75,10 @@ export default function BOQListPage() {
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tender</th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Items Count</th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Total Amount</th>
-                            <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Last Updated</th>
+                            <SortableHeader field="tender" label="Tender" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider" />
+                            <SortableHeader field="itemscount" label="Items Count" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider" />
+                            <SortableHeader field="totalAmount" label="Total Amount" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider" />
+                            <SortableHeader field="lastupdated" label="Last Updated" className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider" />
                             <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>

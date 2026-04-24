@@ -2,8 +2,16 @@ import dbConnect from '@/lib/db';
 import Bill from '@/models/Bill';
 import Link from 'next/link';
 import { Plus, Edit2, Eye } from 'lucide-react';
+import SortableHeader from '@/components/SortableHeader';
 
-export default async function BillsPage() {
+export default async function BillsPage(props: { searchParams?: Promise<any> }) {
+    const searchParams = props.searchParams || Promise.resolve({});
+    const params = await searchParams;
+    let sortObj: any = { createdAt: -1 };
+    if (params.sort && params.order) {
+        sortObj = { [params.sort]: params.order === 'asc' ? 1 : -1 };
+    }
+
     await dbConnect();
     const bills = await Bill.find({})
         .populate({
@@ -13,7 +21,7 @@ export default async function BillsPage() {
                 populate: { path: 'tenderId' }
             }
         })
-        .sort({ createdAt: -1 })
+        .sort(sortObj)
         .lean();
 
     return (
@@ -40,10 +48,10 @@ export default async function BillsPage() {
                             <table className="min-w-full divide-y divide-gray-300">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider sm:pl-6">Bill Type / No.</th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Package / Work Order</th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Gross Amount</th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Bill Date</th>
+                                        <SortableHeader field="billtype/no." label="Bill Type / No." className="py-3.5 pl-4 pr-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider sm:pl-6" />
+                                        <SortableHeader field="package/workorder" label="Package / Work Order" className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider" />
+                                        <SortableHeader field="grossamount" label="Gross Amount" className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider" />
+                                        <SortableHeader field="billdate" label="Bill Date" className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider" />
                                         <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
                                             <span className="sr-only">Actions</span>
                                         </th>

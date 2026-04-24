@@ -12,6 +12,7 @@ const options = [
     { value: 'roadCategory', label: 'Road Category' },
     { value: 'workType', label: 'Work Type' },
     { value: 'schemeName', label: 'Scheme Name' },
+    { value: 'jobNumberApprovalDate', label: 'Date' },
 ];
 
 export default function ReportGrouping() {

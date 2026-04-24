@@ -5,6 +5,7 @@ import Package from '@/models/Package';
 import DTP from '@/models/DTP';
 import DashboardFilters from '@/components/DashboardFilters';
 import ReportGrouping from '@/components/ReportGrouping';
+import SortableHeader from '@/components/SortableHeader';
 import { 
     FileText, Search
 } from 'lucide-react';
@@ -22,6 +23,8 @@ interface Props {
         natureOfWork?: string;
         schemeName?: string;
         groupBy?: string;
+        sort?: string;
+        order?: string;
     }>;
 }
 
@@ -102,14 +105,23 @@ export default async function Home({ searchParams }: Props) {
         approvalYear: 'Approval Year',
         roadCategory: 'Road Category',
         workType: 'Work Type',
-        schemeName: 'Scheme Name'
+        schemeName: 'Scheme Name',
+        jobNumberApprovalDate: 'Date'
     };
     const groupByLabel = groupLabels[groupByField] || 'Category';
 
     // Grouping dynamically
     const groupedData = works.reduce((acc, work) => {
         const rawVal = (work as any)[groupByField];
-        const category = rawVal ? rawVal.toString().trim() : 'Unspecified';
+        let category = 'Unspecified';
+        
+        if (rawVal) {
+            if (rawVal instanceof Date) {
+                category = rawVal.toLocaleDateString('en-GB');
+            } else {
+                category = rawVal.toString().trim();
+            }
+        }
         
         if (!acc[category]) acc[category] = { count: 0, pendingTS: 0 };
         
@@ -128,11 +140,40 @@ export default async function Home({ searchParams }: Props) {
         return acc;
     }, {} as Record<string, { count: number; pendingTS: number; }>);
 
-    const reportRows = Object.entries(groupedData).map(([category, data]) => ({
+    let reportRows = Object.entries(groupedData).map(([category, data]) => ({
         category,
         count: data.count,
         pendingTS: data.pendingTS
-    })).sort((a, b) => b.count - a.count);
+    }));
+
+    // Dashboard Sorting Logic
+    const sortField = params.sort || 'count';
+    const sortOrder = params.order || 'desc';
+
+    reportRows.sort((a, b) => {
+        let valA = (a as any)[sortField];
+        let valB = (b as any)[sortField];
+
+        // Chronological sorting for Date categories
+        if (sortField === 'category' && groupByField === 'jobNumberApprovalDate') {
+            if (valA === 'Unspecified') return sortOrder === 'asc' ? 1 : -1;
+            if (valB === 'Unspecified') return sortOrder === 'asc' ? -1 : 1;
+            
+            const [d1, m1, y1] = valA.split('/').map(Number);
+            const [d2, m2, y2] = valB.split('/').map(Number);
+            const dateA = new Date(y1, m1 - 1, d1).getTime();
+            const dateB = new Date(y2, m2 - 1, d2).getTime();
+            
+            return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+        }
+
+        if (typeof valA === 'string') valA = valA.toLowerCase();
+        if (typeof valB === 'string') valB = valB.toLowerCase();
+
+        if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+        if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+        return 0;
+    });
 
     const totalMatchedTS = totalWorks - overallPendingTS;
     const isDataMismatched = allTS.length > totalMatchedTS;
@@ -163,6 +204,8 @@ export default async function Home({ searchParams }: Props) {
                                         <p className="text-xs text-amber-800 mt-1">
                                             You have <strong>{allTS.length}</strong> TS records but only <strong>{totalMatchedTS}</strong> matches in your Approved Works list. 
                                             This usually means there are <strong>{allTS.length - totalMatchedTS}</strong> duplicate or typoed Technical Sanction records that are not "spent" properly.
+                                            <br />
+                                            <Link href="/unmatched-ts" className="font-bold underline hover:text-amber-950 mt-2 inline-block">Click here to view these orphaned TS records and fix them.</Link>
                                         </p>
                                     </div>
                                 </div>
@@ -173,16 +216,9 @@ export default async function Home({ searchParams }: Props) {
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="bg-slate-50 border-b border-slate-200">
-                                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">Report Category ({groupByLabel})</th>
-                                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap text-center">Total Approved Works</th>
-                                            <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap text-center">
-                                                Pending TS
-                                                {isDataMismatched && (
-                                                    <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[8px] bg-amber-100 text-amber-800 border border-amber-200" title="Warning: Data Mismatch Detected. Some TS records have no match in the current work list.">
-                                                        (!)
-                                                    </span>
-                                                )}
-                                            </th>
+                                            <SortableHeader field="category" label={`Report Category (${groupByLabel})`} className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap" />
+                                            <SortableHeader field="count" label="Total Approved Works" className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap text-center" />
+                                            <SortableHeader field="pendingTS" label="Pending TS" className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap text-center" />
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">

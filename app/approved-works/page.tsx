@@ -9,6 +9,7 @@ import { Plus, Filter, Eye, Edit2 } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import Pagination from '@/components/Pagination';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
+import SortableHeader from '@/components/SortableHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,7 @@ interface Props {
         roadCategory?: string;
         workType?: string;
         schemeName?: string;
+        jobNumberApprovalDate?: string;
     }>;
 }
 
@@ -86,7 +88,8 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
         roadCategory: { label: 'Road Category', val: params.roadCategory },
         workType: { label: 'Work Type', val: params.workType },
         schemeName: { label: 'Scheme', val: params.schemeName },
-        natureOfWork: { label: 'Nature', val: params.natureOfWork }
+        natureOfWork: { label: 'Nature', val: params.natureOfWork },
+        jobNumberApprovalDate: { label: 'Date', val: params.jobNumberApprovalDate }
     };
 
     const emptyQuery = (field: string) => ({
@@ -107,6 +110,12 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
             if (config.val === 'Unspecified' || config.val === 'Unclassified') {
                 andConditions.push(emptyQuery(field));
                 filterLabels.push(`${config.label}: Unspecified`);
+            } else if (field === 'jobNumberApprovalDate') {
+                const [day, month, year] = config.val.split('/').map(Number);
+                const startDate = new Date(year, month - 1, day);
+                const endDate = new Date(year, month - 1, day, 23, 59, 59, 999);
+                query[field] = { $gte: startDate, $lte: endDate };
+                filterLabels.push(`${config.label}: ${config.val}`);
             } else {
                 query[field] = config.val;
                 filterLabels.push(`${config.label}: ${config.val}`);
@@ -126,12 +135,17 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
     const limit = parseInt(params.limit || '100');
     const skip = (page - 1) * limit;
 
+    let sortObj: any = { createdAt: -1 };
+    if (params.sort && params.order) {
+        sortObj = { [params.sort]: params.order === 'asc' ? 1 : -1 };
+    }
+
     let finalWorks: any[] = [];
     let totalItems = 0;
 
     if (params.filter === 'pending') {
         // Fetch ALL works matching categories/search, then filter by consumption in memory
-        const allPotentialWorks = await ApprovedWork.find(query).sort({ createdAt: -1 }).lean();
+        const allPotentialWorks = await ApprovedWork.find(query).sort(sortObj).lean();
         const filtered = allPotentialWorks.filter(w => {
             const safeName = normalizeString(w.workName);
             if (tsCountMap[safeName] > 0) {
@@ -145,7 +159,7 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
     } else {
         totalItems = await ApprovedWork.countDocuments(query);
         finalWorks = await ApprovedWork.find(query)
-            .sort({ createdAt: -1 })
+            .sort(sortObj)
             .skip(skip)
             .limit(limit)
             .lean();
@@ -204,15 +218,9 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
                                         <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 w-16">
                                             Sr. No.
                                         </th>
-                                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 max-w-xs sm:max-w-sm md:max-w-md">
-                                            Name of Work
-                                        </th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 whitespace-normal">
-                                            Approval Date
-                                        </th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 whitespace-normal">
-                                            Job Number / Amount
-                                        </th>
+                                        <SortableHeader field="workName" label="Name of Work" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 max-w-xs sm:max-w-sm md:max-w-md" />
+                                        <SortableHeader field="jobNumberApprovalDate" label="Approval Date" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 whitespace-normal" />
+                                        <SortableHeader field="jobNumberAmount" label="Job Number / Amount" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 whitespace-normal" />
                                         <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right whitespace-normal">
                                             Actions
                                         </th>
