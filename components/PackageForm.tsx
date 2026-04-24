@@ -171,6 +171,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                         <option value="Pramukham Engineers Consultancy">Pramukham Engineers Consultancy</option>
                         <option value="Kalyan Computers">Kalyan Computers</option>
                         <option value="Karansinh Janaksinh Rana">Karansinh Janaksinh Rana</option>
+                        <option value="MCWAY MANAGEMENTS LIMITED">MCWAY MANAGEMENTS LIMITED</option>
                     </select>
                 </div>
 
