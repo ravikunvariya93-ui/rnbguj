@@ -148,6 +148,7 @@ export default function BasicInfoSection({ formData, handleChange }: BasicInfoSe
                     <option value="Kalyan Computers">Kalyan Computers</option>
                     <option value="Karansinh Janaksinh Rana">Karansinh Janaksinh Rana</option>
                     <option value="MCWAY MANAGEMENTS LIMITED">MCWAY MANAGEMENTS LIMITED</option>
+                    <option value="Infinizy Civil Consultant">Infinizy Civil Consultant</option>
                 </select>
             </div>
         </div>

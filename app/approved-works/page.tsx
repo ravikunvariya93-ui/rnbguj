@@ -4,6 +4,10 @@ import ApprovedWork from '@/models/ApprovedWork';
 import TechnicalSanction from '@/models/TechnicalSanction';
 import Package from '@/models/Package';
 import DTP from '@/models/DTP';
+import Tender from '@/models/Tender';
+import Approval from '@/models/Approval';
+import LOA from '@/models/LOA';
+import WorkOrder from '@/models/WorkOrder';
 import Link from 'next/link';
 import { Plus, Filter, Eye, Edit2 } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
@@ -49,31 +53,53 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
     // Consumption logic for Pending TS is handled in-memory during result processing
     if (params.filter === 'pending') {
         filterLabels.push("Awaiting Technical Sanction (Pending TS)");
-    } else if (params.filter === 'pendingDTP') {
-        // ... keeping DTP logic as is for now as it's less prioritized but available
-        const worksWithTSNames = await TechnicalSanction.find().distinct('workName');
-        const allDTPs = await DTP.find({ dtpApprovalDate: { $exists: true, $ne: null } }).select('tsId').lean();
-        const approvedPkgIds = new Set(allDTPs.map(d => d.tsId?.toString()));
+    } else if (['pendingDTP', 'pendingTender', 'pendingApproval', 'pendingLOA', 'pendingWorkOrder'].includes(params.filter || '')) {
         const allPackages = await Package.find({}).select('works').lean();
-        const approvedDTPWorkNames = new Set<string>();
+        const allDTPs = await DTP.find({}).select('tsId').lean();
+        const allTenders = await Tender.find({}).select('packageId').lean();
+        const allApprovals = await Approval.find({}).select('tenderId').lean();
+        const allLOAs = await LOA.find({}).select('tenderId').lean();
+        const allWorkOrders = await WorkOrder.find({}).select('loaId').lean();
+
+        const dtpPkgIds = new Set(allDTPs.map(d => d.tsId?.toString()));
+        const tenderPkgIds = new Set(allTenders.map(t => t.packageId?.toString()));
+        const approvalTenderIds = new Set(allApprovals.map(a => a.tenderId?.toString()));
+        const loaTenderIds = new Set(allLOAs.map(l => l.tenderId?.toString()));
+        const woLoaIds = new Set(allWorkOrders.map(wo => wo.loaId?.toString()));
+
+        const targetNames = new Set<string>();
+
         allPackages.forEach(pkg => {
-            if (approvedPkgIds.has(pkg._id.toString()) && pkg.works && Array.isArray(pkg.works)) {
-                pkg.works.forEach(w => {
-                    if (w.workName) approvedDTPWorkNames.add(w.workName.trim().toLowerCase().replace(/\s+/g, ' '));
+            const pkgId = pkg._id.toString();
+            let isPending = false;
+
+            if (params.filter === 'pendingDTP') {
+                isPending = !dtpPkgIds.has(pkgId);
+            } else if (params.filter === 'pendingTender') {
+                isPending = !tenderPkgIds.has(pkgId);
+            } else if (params.filter === 'pendingApproval') {
+                const tender = allTenders.find(t => t.packageId?.toString() === pkgId);
+                isPending = tender ? !approvalTenderIds.has(tender._id.toString()) : false;
+            } else if (params.filter === 'pendingLOA') {
+                const tender = allTenders.find(t => t.packageId?.toString() === pkgId);
+                isPending = tender ? !loaTenderIds.has(tender._id.toString()) : false;
+            } else if (params.filter === 'pendingWorkOrder') {
+                const tender = allTenders.find(t => t.packageId?.toString() === pkgId);
+                if (tender) {
+                    const loa = allLOAs.find(l => l.tenderId?.toString() === tender._id.toString());
+                    isPending = loa ? !woLoaIds.has(loa._id.toString()) : false;
+                }
+            }
+
+            if (isPending && pkg.works) {
+                pkg.works.forEach((w: any) => {
+                    if (w.workName) targetNames.add(normalizeString(w.workName));
                 });
             }
         });
-        const pendingDTPWorkNames = worksWithTSNames.filter(name => {
-            if (!name) return false;
-            return !approvedDTPWorkNames.has(name.trim().toLowerCase().replace(/\s+/g, ' '));
-        });
-        const finalRegexPatterns = pendingDTPWorkNames.map((name: string) => {
-            const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').trim();
-            const flexibleSpace = escaped.split(/\s+/).join('\\s+');
-            return new RegExp(`^\\s*${flexibleSpace}\\s*$`, 'i');
-        });
-        query.workName = { $in: finalRegexPatterns };
-        filterLabels.push("Awaiting DTP Approval (Pending DTP)");
+
+        // We use a custom in-memory filter later, so we just set a flag here or use a dummy query
+        // Actually, let's just use the same in-memory filtering approach as 'pending TS'
     }
 
     // Standard Filters
@@ -143,17 +169,90 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
     let finalWorks: any[] = [];
     let totalItems = 0;
 
-    if (params.filter === 'pending') {
-        // Fetch ALL works matching categories/search, then filter by consumption in memory
+    if (params.filter && params.filter !== 'none') {
+        // Fetch ALL potential stage data for in-memory filtering
+        const allPackages = await Package.find({}).select('works').lean();
+        const allDTPs = await DTP.find({}).select('tsId').lean();
+        const allTenders = await Tender.find({}).sort({ trialNo: 1 }).select('packageId tenderApprovalDate').lean();
+        const allApprovals = await Approval.find({ tenderApprovalDate: { $exists: true, $ne: null } }).select('tenderId').lean();
+        const allLOAs = await LOA.find({}).select('tenderId').lean();
+        const allWorkOrders = await WorkOrder.find({}).select('loaId').lean();
+
+        const dtpPkgIds = new Set(allDTPs.map(d => d.tsId?.toString()));
+        const tenderPkgIds = new Set(allTenders.map(t => t.packageId?.toString()));
+        const approvalTenderIds = new Set(allApprovals.map(a => a.tenderId?.toString()));
+        const loaTenderIds = new Set(allLOAs.map(l => l.tenderId?.toString()));
+        const woLoaIds = new Set(allWorkOrders.map(wo => wo.loaId?.toString()));
+
+        const workNameToPkgId = new Map<string, string>();
+        allPackages.forEach(pkg => {
+            if (pkg.works) {
+                pkg.works.forEach((w: any) => {
+                    if (w.workName) workNameToPkgId.set(normalizeString(w.workName), pkg._id.toString());
+                });
+            }
+        });
+
+        const tenderByPkgId = new Map(allTenders.map(t => [t.packageId?.toString(), t]));
+        const loaByTenderId = new Map(allLOAs.map(l => [l.tenderId?.toString(), l]));
+
         const allPotentialWorks = await ApprovedWork.find(query).sort(sortObj).lean();
         const filtered = allPotentialWorks.filter(w => {
             const safeName = normalizeString(w.workName);
-            if (tsCountMap[safeName] > 0) {
-                tsCountMap[safeName]--;
-                return false;
+            const pkgId = workNameToPkgId.get(safeName);
+            
+            if (params.filter === 'pending') {
+                if (tsCountMap[safeName] > 0) {
+                    tsCountMap[safeName]--;
+                    return false;
+                }
+                return true;
             }
+
+            if (params.filter === 'pendingPackage') {
+                const isPendingTS = tsCountMap[safeName] <= 0;
+                if (!isPendingTS) {
+                    tsCountMap[safeName]--; // consume TS
+                }
+                return !isPendingTS && !pkgId;
+            }
+
+            if (!pkgId) return false;
+
+            if (params.filter === 'pendingDTP') return !dtpPkgIds.has(pkgId);
+            
+            const hasDTP = dtpPkgIds.has(pkgId);
+            if (!hasDTP) return false;
+
+            if (params.filter === 'pendingTender') return !tenderPkgIds.has(pkgId);
+
+            const hasTender = tenderPkgIds.has(pkgId);
+            if (!hasTender) return false;
+            
+            const tender = tenderByPkgId.get(pkgId);
+            if (!tender) return false;
+            const tId = tender._id.toString();
+
+            const hasApproval = approvalTenderIds.has(tId) || Boolean(tender.tenderApprovalDate);
+
+            if (params.filter === 'pendingApproval') return !hasApproval;
+            
+            if (!hasApproval) return false;
+
+            const hasLOA = loaTenderIds.has(tId);
+
+            if (params.filter === 'pendingLOA') return !hasLOA;
+            
+            if (!hasLOA) return false;
+            
+            if (params.filter === 'pendingWorkOrder') {
+                const loa = loaByTenderId.get(tId);
+                return loa ? !woLoaIds.has(loa._id.toString()) : false;
+            }
+
             return true;
         });
+
         totalItems = filtered.length;
         finalWorks = filtered.slice(skip, skip + limit);
     } else {
@@ -221,6 +320,7 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
                                         <SortableHeader field="workName" label="Name of Work" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 max-w-xs sm:max-w-sm md:max-w-md" />
                                         <SortableHeader field="jobNumberApprovalDate" label="Approval Date" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 whitespace-normal" />
                                         <SortableHeader field="jobNumberAmount" label="Job Number / Amount" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 whitespace-normal" />
+                                        <SortableHeader field="remarks" label="Remarks" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 whitespace-normal" />
                                         <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right whitespace-normal">
                                             Actions
                                         </th>
@@ -229,7 +329,7 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
                                 <tbody className="divide-y divide-gray-200 bg-white">
                                     {serializedWorks.length === 0 ? (
                                         <tr>
-                                            <td colSpan={5} className="py-10 text-center text-sm text-gray-500">
+                                            <td colSpan={6} className="py-10 text-center text-sm text-gray-500">
                                                 No works found matching the criteria.
                                             </td>
                                         </tr>
@@ -247,6 +347,11 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
                                                 </td>
                                                 <td className="whitespace-normal px-3 py-4 text-sm text-gray-500 break-words">
                                                     {work.jobNumberAmount}
+                                                </td>
+                                                <td className="whitespace-normal px-3 py-4 text-sm text-gray-500 break-words max-w-xs">
+                                                    <div className="line-clamp-2" title={work.remarks}>
+                                                        {work.remarks || '-'}
+                                                    </div>
                                                 </td>
                                                 <td className="relative whitespace-normal py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                                                     <div className="flex flex-wrap items-center justify-end gap-2">

@@ -175,7 +175,18 @@ export default function ApprovalForm({ initialData = {}, isEditing = false }: Ap
 
                 <div className="sm:col-span-4">
                     <label htmlFor="tenderApprovalOffice" className="block text-sm font-medium text-gray-700">Tender Approval Office</label>
-                    <input type="text" name="tenderApprovalOffice" id="tenderApprovalOffice" value={formData.tenderApprovalOffice} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                    <select
+                        name="tenderApprovalOffice"
+                        id="tenderApprovalOffice"
+                        value={formData.tenderApprovalOffice}
+                        onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                    >
+                        <option value="">-- Select Office --</option>
+                        <option value="Executive Engineer (EE)">Executive Engineer (EE)</option>
+                        <option value="Superintending Engineer (SE)">Superintending Engineer (SE)</option>
+                        <option value="Chief Engineer (CE)">Chief Engineer (CE)</option>
+                    </select>
                 </div>
 
                 <div className="sm:col-span-3">

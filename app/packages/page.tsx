@@ -96,7 +96,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
     const page = parseInt(params.page || '1');
     const limit = parseInt(params.limit || '100');
     const skip = (page - 1) * limit;
-
+    
     let sortObj: any = { createdAt: -1 };
     if (params.sort && params.order) {
         sortObj = { [params.sort]: params.order === 'asc' ? 1 : -1 };
@@ -157,21 +157,21 @@ export default async function PackagesListPage({ searchParams }: Props) {
                                     <tr>
                                         <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 w-16">Sr. No.</th>
                                         <SortableHeader field="packageName" label="Package Name" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6" />
-                                        <SortableHeader field="estimatedamount" label="Estimated Amount" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900" />
+
                                         <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white">
                                     {packages.length === 0 ? (
-                                        <tr><td colSpan={4} className="py-10 text-center text-sm text-gray-500">No packages found matching the criteria.</td></tr>
+                                        <tr><td colSpan={3} className="py-10 text-center text-sm text-gray-500">No packages found matching the criteria.</td></tr>
                                     ) : (
                                         packages.map((pkg: any, index: number) => (
                                             <tr key={pkg._id}>
                                                 <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500 sm:pl-6">{skip + index + 1}</td>
                                                 <td className="whitespace-normal px-3 py-4 text-sm font-medium text-gray-900 sm:pl-6 max-w-md" style={{ wordBreak: 'break-word' }}>{pkg.packageName}</td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                                    ₹{(pkg.estimatedAmount || 0).toLocaleString('en-IN')}
-                                                </td>
+
+
+
                                                 <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 flex items-center justify-end space-x-3">
                                                     <Link href={`/packages/${pkg._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
                                                         <Eye className="w-5 h-5" />

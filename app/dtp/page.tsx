@@ -92,14 +92,14 @@ export default async function DTPListPage({ searchParams }: Props) {
                                     <tr>
                                         <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 w-16">Sr. No.</th>
                                         <SortableHeader field="packageName" label="Package Name" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6" />
-                                        <SortableHeader field="dateofsendingdtpforapproval" label="Date of Sending DTP for Approval" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900" />
+
                                         <SortableHeader field="dtpapprovaldate" label="DTP Approval Date" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900" />
                                         <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white">
                                     {dtps.length === 0 ? (
-                                        <tr><td colSpan={5} className="py-10 text-center text-sm text-gray-500">No DTP records found matching the criteria.</td></tr>
+                                        <tr><td colSpan={4} className="py-10 text-center text-sm text-gray-500">No DTP records found matching the criteria.</td></tr>
                                     ) : (
                                         dtps.map((dtp: any, index: number) => (
                                             <tr key={dtp._id}>
@@ -107,9 +107,9 @@ export default async function DTPListPage({ searchParams }: Props) {
                                                 <td className="whitespace-normal py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-6 max-w-sm">
                                                     {(dtp.tsId as any)?.packageName || 'Unknown Package'}
                                                 </td>
-                                                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                                    {dtp.dtpSendingDate ? new Date(dtp.dtpSendingDate).toLocaleDateString('en-GB') : '-'}
-                                                </td>
+
+
+
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                                     {dtp.dtpApprovalDate ? new Date(dtp.dtpApprovalDate).toLocaleDateString('en-GB') : '-'}
                                                 </td>

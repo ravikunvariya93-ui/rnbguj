@@ -23,7 +23,7 @@ export default function ReportGrouping() {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const value = searchParams.get('groupBy') || 'estimateConsultant';
+    const value = searchParams.get('groupBy') || 'subDivision';
     const selectedOption = options.find(opt => opt.value === value) || options[0];
 
     const handleChange = (newVal: string) => {

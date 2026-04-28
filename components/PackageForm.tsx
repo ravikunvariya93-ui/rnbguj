@@ -37,7 +37,9 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                 const res = await fetch('/api/technical-sanctions');
                 const data = await res.json();
                 if (data.success) {
-                    setAvailableWorks(data.data);
+                    // Only include works where TS has been given (must have tsDate and tsAmount)
+                    const givenTS = data.data.filter((ts: any) => ts.tsDate && ts.tsAmount);
+                    setAvailableWorks(givenTS);
                 }
             } catch (error) {
                 console.error("Failed to fetch available works", error);
@@ -119,7 +121,8 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
     // Prepare options for SearchableSelect
     const workOptions = availableWorks.map(w => ({
         _id: w._id,
-        packageName: w.workName
+        packageName: w.workName,
+        'TS Amount': w.tsAmount ? `₹${w.tsAmount} Lacs` : 'N/A'
     }));
 
     return (
@@ -172,6 +175,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                         <option value="Kalyan Computers">Kalyan Computers</option>
                         <option value="Karansinh Janaksinh Rana">Karansinh Janaksinh Rana</option>
                         <option value="MCWAY MANAGEMENTS LIMITED">MCWAY MANAGEMENTS LIMITED</option>
+                        <option value="Infinizy Civil Consultant">Infinizy Civil Consultant</option>
                     </select>
                 </div>
 
@@ -187,6 +191,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                                 value={currentSelectionId}
                                 onChange={handleWorkSelect}
                                 placeholder="Search by work name..."
+                                helperField="TS Amount"
                             />
                         </div>
                         <button
@@ -211,6 +216,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                                     <li key={work.workId} className="py-3 flex justify-between items-center">
                                         <div>
                                             <p className="text-sm font-medium text-gray-900">{work.workName}</p>
+                                            <p className="text-xs text-gray-500">TS Amount: ₹{(work.amount / 100000).toFixed(2)} Lacs</p>
                                         </div>
                                         <button
                                             type="button"

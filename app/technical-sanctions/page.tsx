@@ -89,12 +89,13 @@ export default async function TechnicalSanctionsListPage({ searchParams }: Props
                                         <SortableHeader field="workName" label="Name of Work" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6" />
                                         <SortableHeader field="tsAmount" label="TS Amount" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900" />
                                         <SortableHeader field="tsDate" label="T.S. Date" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900" />
+                                        <SortableHeader field="remarks" label="Remarks" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900" />
                                         <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white">
                                     {sanctions.length === 0 ? (
-                                        <tr><td colSpan={5} className="py-10 text-center text-sm text-gray-500">No technical sanctions found matching the search.</td></tr>
+                                        <tr><td colSpan={6} className="py-10 text-center text-sm text-gray-500">No technical sanctions found matching the search.</td></tr>
                                     ) : (
                                         sanctions.map((ts: any, index: number) => (
                                             <tr key={ts._id}>
@@ -102,6 +103,11 @@ export default async function TechnicalSanctionsListPage({ searchParams }: Props
                                                 <td className="whitespace-normal py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 max-w-xs">{ts.workName}</td>
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">₹{(ts.tsAmount || 0).toLocaleString('en-IN')}</td>
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{ts.tsDate ? new Date(ts.tsDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                <td className="whitespace-normal px-3 py-4 text-sm text-gray-500 max-w-xs">
+                                                    <div className="line-clamp-2" title={ts.remarks}>
+                                                        {ts.remarks || '-'}
+                                                    </div>
+                                                </td>
                                                 <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 flex items-center justify-end space-x-3">
                                                     <Link href={`/technical-sanctions/${ts._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
                                                         <Eye className="w-5 h-5" />

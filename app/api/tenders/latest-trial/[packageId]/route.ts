@@ -5,11 +5,11 @@ import { Types } from 'mongoose';
 
 export async function GET(
     request: Request,
-    { params }: { params: { packageId: string } }
+    { params }: { params: Promise<{ packageId: string }> }
 ) {
     try {
         await dbConnect();
-        const { packageId } = params;
+        const { packageId } = await params;
 
         const latestTender = await Tender.findOne({ packageId: packageId as any })
             .sort({ trialNo: -1 })
