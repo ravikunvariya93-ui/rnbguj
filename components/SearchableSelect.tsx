@@ -48,17 +48,25 @@ export default function SearchableSelect({
         return opt.contractorName || '';
     }, [helperField]);
 
+    // Track previous value to only sync when value changes or dropdown is closed
+    const prevValueRef = useRef(value);
+
     // Sync search term with initial value if selected
     useEffect(() => {
-        if (value) {
-            const selected = options.find((opt) => opt._id === value);
-            if (selected) {
-                setSearchTerm(getDisplayValue(selected));
+        const valueChanged = prevValueRef.current !== value;
+        prevValueRef.current = value;
+
+        if (valueChanged || !isOpen) {
+            if (value) {
+                const selected = options.find((opt) => opt._id === value);
+                if (selected) {
+                    setSearchTerm(getDisplayValue(selected));
+                }
+            } else {
+                setSearchTerm('');
             }
-        } else {
-            setSearchTerm('');
         }
-    }, [value, options, getDisplayValue]);
+    }, [value, options, isOpen, getDisplayValue]);
 
     const filteredOptions = options.filter((opt) => {
         const search = searchTerm.toLowerCase();

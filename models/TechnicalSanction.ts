@@ -2,10 +2,12 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface ITechnicalSanction extends Document {
     workName: string;
-    dateSendingTS: Date; // Date of Sending TS for Approval
+    dateSendingTS?: Date; // Date of Sending TS for Approval
     tsAuthority: string; // TS Authority
     tsAmount: number; // Rs. In Lacks
+    tsNumber?: string;
     tsDate: Date;
+    remarks?: string;
     createdAt: Date;
     updatedAt: Date;
 }

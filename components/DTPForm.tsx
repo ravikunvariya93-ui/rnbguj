@@ -147,6 +147,10 @@ export default function DTPForm({ initialData = {}, isEditing = false }: DTPForm
                         label="Select Package"
                         required
                         options={packages.filter(p => {
+                            const currentTsId = typeof formData.tsId === 'object' && formData.tsId !== null
+                                ? formData.tsId._id
+                                : formData.tsId;
+                            if (p._id === currentTsId) return true;
                             if (isEditing && (p._id === initialData.tsId?._id || p._id === initialData.tsId)) return true;
                             return !existingDTPIds.includes(p._id);
                         })}
@@ -198,7 +202,7 @@ export default function DTPForm({ initialData = {}, isEditing = false }: DTPForm
                         <option value="">-- Select Authority --</option>
                         <option value="Executive Engineer (EE)">Executive Engineer (EE)</option>
                         <option value="Superintending Engineer (SE)">Superintending Engineer (SE)</option>
-                        <option value="Chief Engineer (CE)">Chief Engineer (CE)</option>
+                        <option value="Road and Building Department">Road and Building Department</option>
                     </select>
                 </div>
 

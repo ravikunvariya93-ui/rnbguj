@@ -18,7 +18,6 @@ export default async function TechnicalSanctionDetailPage({ params }: { params: 
             title: 'General Information',
             fields: [
                 { label: 'Name of Work', value: sanction.workName },
-                { label: 'Date of Sending TS', value: sanction.dateSendingTS ? new Date(sanction.dateSendingTS).toLocaleDateString('en-GB') : '-' },
                 { label: 'TS Authority', value: sanction.tsAuthority },
             ]
         },
@@ -27,7 +26,7 @@ export default async function TechnicalSanctionDetailPage({ params }: { params: 
             fields: [
                 { label: 'TS Number', value: sanction.tsNumber },
                 { label: 'TS Date', value: sanction.tsDate ? new Date(sanction.tsDate).toLocaleDateString('en-GB') : '-' },
-                { label: 'TS Amount (Lakhs)', value: sanction.tsAmount ? `₹${sanction.tsAmount.toLocaleString('en-IN')}` : '-' },
+                { label: 'TS Amount in Lacs', value: sanction.tsAmount ? `₹${sanction.tsAmount.toLocaleString('en-IN')}` : '-' },
             ]
         }
     ];

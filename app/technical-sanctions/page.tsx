@@ -87,7 +87,7 @@ export default async function TechnicalSanctionsListPage({ searchParams }: Props
                                     <tr>
                                         <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 w-16">Sr. No.</th>
                                         <SortableHeader field="workName" label="Name of Work" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6" />
-                                        <SortableHeader field="tsAmount" label="TS Amount" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900" />
+                                        <SortableHeader field="tsAmount" label="TS Amount in Lacs" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900" />
                                         <SortableHeader field="tsDate" label="T.S. Date" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900" />
                                         <SortableHeader field="remarks" label="Remarks" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900" />
                                         <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right">Actions</th>

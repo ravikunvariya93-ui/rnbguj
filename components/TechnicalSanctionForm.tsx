@@ -18,7 +18,6 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         workName: '',
-        dateSendingTS: '',
         tsAuthority: '',
         tsAmount: '',
         tsNumber: '',
@@ -68,16 +67,7 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
                     newData.tsDate = `${day}/${month}/${year}`;
                 }
             }
-            
-            if (initialData.dateSendingTS) {
-                const dateObj = new Date(initialData.dateSendingTS);
-                if (!isNaN(dateObj.getTime())) {
-                    const day = String(dateObj.getDate()).padStart(2, '0');
-                    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                    const year = dateObj.getFullYear();
-                    newData.dateSendingTS = `${day}/${month}/${year}`;
-                }
-            }
+
 
             if (Object.keys(newData).length > 0) {
                 setFormData((prev: any) => ({ ...prev, ...newData }));
@@ -85,7 +75,7 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
         };
 
         updateDates();
-    }, [initialData.tsDate, initialData.dateSendingTS]);
+    }, [initialData.tsDate]);
 
     // Auto-calculate Amount Not Put To Tender removed as per request
     // The user will enter Amount Not Put To Tender manually.
@@ -135,16 +125,6 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
                 }
             }
 
-            if (submissionData.dateSendingTS) {
-                const iso = parseDate(submissionData.dateSendingTS as string);
-                if (iso) {
-                    submissionData.dateSendingTS = iso;
-                } else if (String(submissionData.dateSendingTS).trim().length > 0) {
-                    alert(`Invalid Date of Sending TS format: "${submissionData.dateSendingTS}". Please use DD/MM/YYYY`);
-                    setLoading(false);
-                    return;
-                }
-            }
 
             const url = isEditing ? `/api/technical-sanctions/${initialData._id}` : '/api/technical-sanctions';
             const method = isEditing ? 'PUT' : 'POST';
@@ -198,16 +178,7 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
                 </div>
 
 
-                {/* Tracking Details */}
-                <div className="sm:col-span-6">
-                    <h4 className="text-md font-medium text-gray-900 mb-2">Tracking for Approval</h4>
-                    <div className="grid grid-cols-1 gap-y-4 gap-x-4 sm:grid-cols-6">
-                        <div className="sm:col-span-3">
-                            <label htmlFor="dateSendingTS" className="block text-sm font-medium text-gray-700">Date of Sending TS for Approval (DD/MM/YYYY)</label>
-                            <input type="text" placeholder="20/01/2025" name="dateSendingTS" id="dateSendingTS" value={formData.dateSendingTS} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                        </div>
-                    </div>
-                </div>
+
 
                 {/* T.S. Details */}
                 <div className="sm:col-span-2">
@@ -239,7 +210,7 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
                     <h4 className="text-md font-medium text-gray-900 mb-2">Cost Details (Rupees)</h4>
                     <div className="grid grid-cols-1 gap-y-4 gap-x-4 sm:grid-cols-6">
                         <div className="sm:col-span-3">
-                            <label htmlFor="tsAmount" className="block text-sm font-medium text-gray-700">TS Amount</label>
+                            <label htmlFor="tsAmount" className="block text-sm font-medium text-gray-700">TS Amount in Lacs</label>
                             <input type="number" step="0.01" name="tsAmount" id="tsAmount" value={formData.tsAmount} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                         </div>
                         <div className="sm:col-span-6">

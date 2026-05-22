@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Save, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
@@ -34,11 +34,36 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
     useEffect(() => {
         const fetchAvailableWorks = async () => {
             try {
-                const res = await fetch('/api/technical-sanctions');
-                const data = await res.json();
-                if (data.success) {
-                    // Only include works where TS has been given (must have tsDate and tsAmount)
-                    const givenTS = data.data.filter((ts: any) => ts.tsDate && ts.tsAmount);
+                const [resTS, resPackages] = await Promise.all([
+                    fetch('/api/technical-sanctions'),
+                    fetch('/api/packages')
+                ]);
+                const dataTS = await resTS.json();
+                const dataPackages = await resPackages.json();
+
+                if (dataTS.success && dataPackages.success) {
+                    // Extract all workIds that are already in any OTHER package in the database
+                    const otherPackages = isEditing 
+                        ? dataPackages.data.filter((p: any) => p._id !== initialData._id)
+                        : dataPackages.data;
+                    
+                    const assignedWorkIds = new Set<string>();
+                    otherPackages.forEach((p: any) => {
+                        if (p.works && Array.isArray(p.works)) {
+                            p.works.forEach((w: any) => {
+                                if (w.workId) {
+                                    assignedWorkIds.add(String(w.workId));
+                                }
+                            });
+                        }
+                    });
+
+                    // Only include works where TS has been given AND is not assigned to any other package
+                    const givenTS = dataTS.data.filter((ts: any) => 
+                        ts.tsDate && 
+                        ts.tsAmount && 
+                        !assignedWorkIds.has(String(ts._id))
+                    );
                     setAvailableWorks(givenTS);
                 }
             } catch (error) {
@@ -46,7 +71,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
             }
         };
         fetchAvailableWorks();
-    }, []);
+    }, [isEditing, initialData]);
 
     const handleAddWork = () => {
         if (!currentSelectionId) return;
@@ -119,11 +144,15 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
     };
 
     // Prepare options for SearchableSelect
-    const workOptions = availableWorks.map(w => ({
-        _id: w._id,
-        packageName: w.workName,
-        'TS Amount': w.tsAmount ? `₹${w.tsAmount} Lacs` : 'N/A'
-    }));
+    const workOptions = useMemo(() => {
+        return availableWorks
+            .filter(w => !selectedWorks.some(sw => sw.workId === w._id))
+            .map(w => ({
+                _id: w._id,
+                packageName: w.workName,
+                'TS Amount': w.tsAmount ? `₹${w.tsAmount} Lacs` : 'N/A'
+            }));
+    }, [availableWorks, selectedWorks]);
 
     return (
         <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-gray-200 bg-white p-8 shadow rounded-lg">
