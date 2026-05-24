@@ -85,12 +85,21 @@ export default async function Home({ searchParams }: Props) {
     const allDTPs = await DTP.find({}).select('tsId').lean();
     const dtpPackageIds = new Set(allDTPs.map(d => d.tsId?.toString()));
 
-    const allTenders = await Tender.find({}).sort({ trialNo: 1 }).select('packageId tenderApprovalDate').lean();
+    const allTenders = await Tender.find({}).sort({ trialNo: 1 }).select('packageId proposalDate tenderApprovalDate').lean();
     const tenderPackageIds = new Set(allTenders.map(t => t.packageId?.toString()));
     const tenderByPkgId = new Map(allTenders.map(t => [t.packageId?.toString(), t]));
 
-    const allApprovals = await Approval.find({ tenderApprovalDate: { $exists: true, $ne: null } }).select('tenderId').lean();
-    const approvalTenderIds = new Set(allApprovals.map(a => a.tenderId?.toString()));
+    const allApprovals = await Approval.find({}).select('tenderId proposalDate tenderApprovalDate').lean();
+    const approvalByTenderId = new Map<string, any>();
+    allApprovals.forEach(a => {
+        if (a.tenderId) {
+            const tIdStr = a.tenderId.toString();
+            const existing = approvalByTenderId.get(tIdStr);
+            if (!existing || (!existing.tenderApprovalDate && a.tenderApprovalDate)) {
+                approvalByTenderId.set(tIdStr, a);
+            }
+        }
+    });
 
     const allLOAs = await LOA.find({}).select('tenderId').lean();
     const loaTenderIds = new Set(allLOAs.map(l => l.tenderId?.toString()));
@@ -147,6 +156,7 @@ export default async function Home({ searchParams }: Props) {
             pendingPackage: 0,
             pendingDTP: 0, 
             pendingTender: 0, 
+            pendingProposal: 0, 
             pendingApproval: 0, 
             pendingLOA: 0, 
             pendingWorkOrder: 0 
@@ -184,25 +194,31 @@ export default async function Home({ searchParams }: Props) {
                 const tender = tenderByPkgId.get(pkgId);
                 if (tender) {
                     const tId = tender._id.toString();
-                    const hasApproval = approvalTenderIds.has(tId) || Boolean(tender.tenderApprovalDate);
+                    const approval = approvalByTenderId.get(tId);
+                    const hasProposalDate = Boolean(tender.proposalDate) || Boolean(approval);
+                    const hasApproval = Boolean(tender.tenderApprovalDate) || Boolean(approval?.tenderApprovalDate);
                     const hasLOA = loaTenderIds.has(tId);
 
-                    if (!hasApproval) {
-                        acc[category].pendingApproval += 1;
-                    } else if (!hasLOA) {
-                        acc[category].pendingLOA += 1;
-                    } else {
-                        const loa = loaByTenderId.get(tId);
-                        if (loa && !workOrderLoaIds.has(loa._id.toString())) {
-                            acc[category].pendingWorkOrder += 1;
+                    if (hasApproval) {
+                        if (!hasLOA) {
+                            acc[category].pendingLOA += 1;
+                        } else {
+                            const loa = loaByTenderId.get(tId);
+                            if (loa && !workOrderLoaIds.has(loa._id.toString())) {
+                                acc[category].pendingWorkOrder += 1;
+                            }
                         }
+                    } else if (!hasProposalDate) {
+                        acc[category].pendingProposal += 1;
+                    } else {
+                        acc[category].pendingApproval += 1;
                     }
                 }
             }
         }
 
         return acc;
-    }, {} as Record<string, { count: number; pendingTS: number; }>);
+    }, {} as Record<string, any>);
 
     let reportRows = Object.entries(groupedData).map(([category, data]) => ({
         category,
@@ -211,6 +227,7 @@ export default async function Home({ searchParams }: Props) {
         pendingPackage: data.pendingPackage,
         pendingDTP: data.pendingDTP,
         pendingTender: data.pendingTender,
+        pendingProposal: data.pendingProposal,
         pendingApproval: data.pendingApproval,
         pendingLOA: data.pendingLOA,
         pendingWorkOrder: data.pendingWorkOrder
@@ -249,6 +266,7 @@ export default async function Home({ searchParams }: Props) {
         acc.pendingPackage += row.pendingPackage;
         acc.pendingDTP += row.pendingDTP;
         acc.pendingTender += row.pendingTender;
+        acc.pendingProposal += row.pendingProposal;
         acc.pendingApproval += row.pendingApproval;
         acc.pendingLOA += row.pendingLOA;
         acc.pendingWorkOrder += row.pendingWorkOrder;
@@ -257,6 +275,7 @@ export default async function Home({ searchParams }: Props) {
         pendingPackage: 0,
         pendingDTP: 0,
         pendingTender: 0,
+        pendingProposal: 0,
         pendingApproval: 0,
         pendingLOA: 0,
         pendingWorkOrder: 0
@@ -309,6 +328,7 @@ export default async function Home({ searchParams }: Props) {
                                             <SortableHeader field="pendingPackage" label="Pending Package" className="px-3 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-normal text-center" />
                                             <SortableHeader field="pendingDTP" label="Pending DTP" className="px-3 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-normal text-center" />
                                             <SortableHeader field="pendingTender" label="Pending Tender" className="px-3 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-normal text-center" />
+                                            <SortableHeader field="pendingProposal" label="Pending Proposal" className="px-3 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-normal text-center" />
                                             <SortableHeader field="pendingApproval" label="Pending Approval" className="px-3 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-normal text-center" />
                                             <SortableHeader field="pendingLOA" label="Pending LOA" className="px-3 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-normal text-center" />
                                             <SortableHeader field="pendingWorkOrder" label="Pending Work Order" className="px-3 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-normal text-center" />
@@ -338,6 +358,10 @@ export default async function Home({ searchParams }: Props) {
                                                     const tenderParams = new URLSearchParams(rowParams);
                                                     tenderParams.set('filter', 'pendingTender');
                                                     const tenderQuery = `?${tenderParams.toString()}`;
+
+                                                    const proposalParams = new URLSearchParams(rowParams);
+                                                    proposalParams.set('filter', 'pendingProposal');
+                                                    const proposalQuery = `?${proposalParams.toString()}`;
 
                                                     const approvalParams = new URLSearchParams(rowParams);
                                                     approvalParams.set('filter', 'pendingApproval');
@@ -404,6 +428,17 @@ export default async function Home({ searchParams }: Props) {
                                                                         title="View Pending Tender List"
                                                                     >
                                                                         {row.pendingTender}
+                                                                    </Link>
+                                                                ) : '-'}
+                                                            </td>
+                                                            <td className="px-3 py-2.5 text-center text-[11px] font-black text-amber-500 font-mono">
+                                                                {row.pendingProposal > 0 ? (
+                                                                    <Link 
+                                                                        href={`/approved-works${proposalQuery}`} 
+                                                                        className="hover:underline hover:text-amber-800 transition-colors px-1.5 py-0.5 rounded hover:bg-amber-50 inline-block focus:outline-none"
+                                                                        title="View Pending Proposal List"
+                                                                    >
+                                                                        {row.pendingProposal}
                                                                     </Link>
                                                                 ) : '-'}
                                                             </td>
@@ -514,6 +549,22 @@ export default async function Home({ searchParams }: Props) {
                                                                     title="View All Pending Tender"
                                                                 >
                                                                     {totals.pendingTender}
+                                                                </Link>
+                                                            );
+                                                        })() : '-'}
+                                                    </td>
+                                                    <td className="px-3 py-3 text-center text-[11px] font-black text-amber-500 font-mono">
+                                                        {totals.pendingProposal > 0 ? (() => {
+                                                            const p = new URLSearchParams(searchParamsObj);
+                                                            p.set('filter', 'pendingProposal');
+                                                            p.delete('groupBy');
+                                                            return (
+                                                                <Link 
+                                                                    href={`/approved-works?${p.toString()}`} 
+                                                                    className="hover:underline hover:text-amber-800 transition-colors px-1.5 py-0.5 rounded hover:bg-amber-50 inline-block focus:outline-none"
+                                                                    title="View All Pending Proposal"
+                                                                >
+                                                                    {totals.pendingProposal}
                                                                 </Link>
                                                             );
                                                         })() : '-'}

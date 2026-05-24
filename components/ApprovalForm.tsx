@@ -65,7 +65,9 @@ export default function ApprovalForm({ initialData = {}, isEditing = false }: Ap
     useEffect(() => {
         const fetchTenders = async () => {
             try {
-                const res = await fetch('/api/tenders');
+                const targetId = initialData.tenderId?._id || initialData.tenderId || '';
+                const url = targetId ? `/api/tenders?includeId=${targetId}` : '/api/tenders';
+                const res = await fetch(url);
                 const data = await res.json();
                 if (data.success) {
                     setTenders(data.data);
@@ -75,7 +77,7 @@ export default function ApprovalForm({ initialData = {}, isEditing = false }: Ap
             }
         };
         fetchTenders();
-    }, []);
+    }, [initialData]);
 
     useEffect(() => {
         if (isEditing && initialData) {
@@ -185,7 +187,7 @@ export default function ApprovalForm({ initialData = {}, isEditing = false }: Ap
                         <option value="">-- Select Office --</option>
                         <option value="Executive Engineer (EE)">Executive Engineer (EE)</option>
                         <option value="Superintending Engineer (SE)">Superintending Engineer (SE)</option>
-                        <option value="Chief Engineer (CE)">Chief Engineer (CE)</option>
+                        <option value="Road and Building Department">Road and Building Department</option>
                     </select>
                 </div>
 

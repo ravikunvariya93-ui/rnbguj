@@ -41,7 +41,9 @@ export default function BOQForm({ initialData = {}, isEditing = false }: BOQForm
     useEffect(() => {
         const fetchTenders = async () => {
             try {
-                const res = await fetch('/api/tenders');
+                const targetId = initialData.tenderId?._id || initialData.tenderId || '';
+                const url = targetId ? `/api/tenders?includeId=${targetId}` : '/api/tenders';
+                const res = await fetch(url);
                 const data = await res.json();
                 if (data.success) {
                     setTenders(data.data.map((t: any) => ({
@@ -54,10 +56,10 @@ export default function BOQForm({ initialData = {}, isEditing = false }: BOQForm
             }
         };
         fetchTenders();
-    }, []);
+    }, [initialData]);
 
     const handleAddItem = () => {
-        setFormData(prev => ({
+        setFormData((prev: any) => ({
             ...prev,
             items: [...prev.items, { itemNo: '', description: '', quantity: 0, unit: '', rate: 0, amount: 0 }]
         }));
@@ -67,7 +69,7 @@ export default function BOQForm({ initialData = {}, isEditing = false }: BOQForm
         const newItems = [...formData.items];
         newItems.splice(index, 1);
         const total = newItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
-        setFormData(prev => ({ ...prev, items: newItems, totalAmount: total }));
+        setFormData((prev: any) => ({ ...prev, items: newItems, totalAmount: total }));
     };
 
     const handleItemChange = (index: number, field: keyof BOQItem, value: any) => {
@@ -81,7 +83,7 @@ export default function BOQForm({ initialData = {}, isEditing = false }: BOQForm
         
         newItems[index] = item;
         const total = newItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
-        setFormData(prev => ({ ...prev, items: newItems, totalAmount: total }));
+        setFormData((prev: any) => ({ ...prev, items: newItems, totalAmount: total }));
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,7 +103,7 @@ export default function BOQForm({ initialData = {}, isEditing = false }: BOQForm
             if (data.success && data.data.length > 0) {
                 const newItems = [...formData.items, ...data.data];
                 const total = newItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
-                setFormData(prev => ({ ...prev, items: newItems, totalAmount: total }));
+                setFormData((prev: any) => ({ ...prev, items: newItems, totalAmount: total }));
             } else {
                 alert('Could not extract any items from the PDF. Please check the format.');
             }
@@ -153,7 +155,7 @@ export default function BOQForm({ initialData = {}, isEditing = false }: BOQForm
                         required
                         options={tenders}
                         value={formData.tenderId}
-                        onChange={(id) => setFormData(prev => ({ ...prev, tenderId: id }))}
+                        onChange={(id) => setFormData((prev: any) => ({ ...prev, tenderId: id }))}
                         placeholder="Search by Tender ID or Package Name..."
                     />
                 </div>

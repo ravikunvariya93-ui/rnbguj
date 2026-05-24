@@ -3,7 +3,7 @@ import dbConnect from '@/lib/db';
 import DTP from '@/models/DTP';
 import Package from '@/models/Package';
 import Link from 'next/link';
-import { Plus, Filter, Eye, Edit2 } from 'lucide-react';
+import { Plus, Filter, Eye, Edit2, FileText } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import Pagination from '@/components/Pagination';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
@@ -12,13 +12,13 @@ import SortableHeader from '@/components/SortableHeader';
 export const dynamic = 'force-dynamic';
 
 interface Props {
-    searchParams: { search?: string; page?: string; limit?: string ; sort?: string; order?: string }
+    searchParams: { search?: string; page?: string; limit?: string; sort?: string; order?: string }
 }
 
 export default async function DTPListPage({ searchParams }: Props) {
     await dbConnect();
     const params = await searchParams;
-    
+
     let query: any = {};
     if (params.search) {
         const matchingPackages = await Package.find({
@@ -35,7 +35,6 @@ export default async function DTPListPage({ searchParams }: Props) {
     if (params.sort && params.order) {
         sortObj = { [params.sort]: params.order === 'asc' ? 1 : -1 };
     }
-
 
     const totalItems = await DTP.countDocuments(query);
     const totalPages = Math.ceil(totalItems / limit);
@@ -65,8 +64,23 @@ export default async function DTPListPage({ searchParams }: Props) {
                     </div>
                     <p className="mt-2 text-sm text-gray-700">List of all Detailed Technical Proposals.</p>
                 </div>
-                <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-                    <Link href="/dtp/new" className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto">
+                <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none flex gap-3">
+                    <Link
+                        href="/dtp/forwarding-letter"
+                        className="inline-flex items-center justify-center rounded-md border border-blue-600 bg-white px-4 py-2 text-sm font-medium text-blue-600 shadow-sm hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    >
+                        <FileText className="w-4 h-4 mr-2" /> Generate Forwarding Letter
+                    </Link>
+                    <Link
+                        href="/dtp/dtp-order"
+                        className="inline-flex items-center justify-center rounded-md border border-blue-600 bg-white px-4 py-2 text-sm font-medium text-blue-600 shadow-sm hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    >
+                        <FileText className="w-4 h-4 mr-2" /> Generate DTP Order
+                    </Link>
+                    <Link
+                        href="/dtp/new"
+                        className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    >
                         <Plus className="w-4 h-4 mr-2" /> Add New DTP
                     </Link>
                 </div>
@@ -92,7 +106,6 @@ export default async function DTPListPage({ searchParams }: Props) {
                                     <tr>
                                         <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 w-16">Sr. No.</th>
                                         <SortableHeader field="packageName" label="Package Name" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6" />
-
                                         <SortableHeader field="dtpapprovaldate" label="DTP Approval Date" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900" />
                                         <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right">Actions</th>
                                     </tr>
@@ -107,9 +120,6 @@ export default async function DTPListPage({ searchParams }: Props) {
                                                 <td className="whitespace-normal py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-6 max-w-sm">
                                                     {(dtp.tsId as any)?.packageName || 'Unknown Package'}
                                                 </td>
-
-
-
                                                 <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                                                     {dtp.dtpApprovalDate ? new Date(dtp.dtpApprovalDate).toLocaleDateString('en-GB') : '-'}
                                                 </td>
@@ -120,10 +130,10 @@ export default async function DTPListPage({ searchParams }: Props) {
                                                     <Link href={`/dtp/${dtp._id}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Item">
                                                         <Edit2 className="w-5 h-5" />
                                                     </Link>
-                                                    <GenericDeleteButton 
-                                                        itemId={dtp._id} 
-                                                        itemName={dtp.packageName || 'DTP'} 
-                                                        apiPath="/api/dtps" 
+                                                    <GenericDeleteButton
+                                                        itemId={dtp._id}
+                                                        itemName={dtp.packageName || 'DTP'}
+                                                        apiPath="/api/dtps"
                                                     />
                                                 </td>
                                             </tr>

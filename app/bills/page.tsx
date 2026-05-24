@@ -68,7 +68,7 @@ export default async function BillsPage(props: { searchParams?: Promise<any> }) 
                                             return (
                                                 <tr key={bill._id.toString()} className="hover:bg-gray-50 transition-colors">
                                                     <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                                                        {bill.billType === 'Running' ? `${bill.runningBillNumber}${bill.runningBillNumber === 1 ? 'st' : bill.runningBillNumber === 2 ? 'nd' : bill.runningBillNumber === 3 ? 'rd' : 'th'} Running` : 'Final Bill'}
+                                                        {bill.runningBillNumber}{bill.runningBillNumber === 1 ? 'st' : bill.runningBillNumber === 2 ? 'nd' : bill.runningBillNumber === 3 ? 'rd' : 'th'} and {bill.billType} Bill
                                                     </td>
                                                     <td className="px-3 py-4 text-sm text-gray-500 max-w-xs truncate">
                                                         {tender?.packageName || 'Unknown Package'}

@@ -17,7 +17,12 @@ export async function POST(req: Request) {
 export async function GET() {
     await dbConnect();
     try {
-        const workOrders = await WorkOrder.find({}).populate('loaId').sort({ createdAt: -1 });
+        const workOrders = await WorkOrder.find({})
+            .populate({
+                path: 'loaId',
+                populate: { path: 'tenderId' }
+            })
+            .sort({ createdAt: -1 });
         return NextResponse.json({ success: true, data: workOrders });
     } catch (error) {
         return NextResponse.json({ success: false, error: 'Failed to fetch Work Orders' }, { status: 500 });

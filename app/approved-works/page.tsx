@@ -31,6 +31,8 @@ interface Props {
         workType?: string;
         schemeName?: string;
         jobNumberApprovalDate?: string;
+        sort?: string;
+        order?: string;
     }>;
 }
 
@@ -53,53 +55,22 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
     // Consumption logic for Pending TS is handled in-memory during result processing
     if (params.filter === 'pending') {
         filterLabels.push("Awaiting Technical Sanction (Pending TS)");
-    } else if (['pendingDTP', 'pendingTender', 'pendingApproval', 'pendingLOA', 'pendingWorkOrder'].includes(params.filter || '')) {
-        const allPackages = await Package.find({}).select('works').lean();
-        const allDTPs = await DTP.find({}).select('tsId').lean();
-        const allTenders = await Tender.find({}).select('packageId').lean();
-        const allApprovals = await Approval.find({}).select('tenderId').lean();
-        const allLOAs = await LOA.find({}).select('tenderId').lean();
-        const allWorkOrders = await WorkOrder.find({}).select('loaId').lean();
+    } else if (params.filter === 'pendingPackage') {
+        filterLabels.push("Pending Package");
+    }
 
-        const dtpPkgIds = new Set(allDTPs.map(d => d.tsId?.toString()));
-        const tenderPkgIds = new Set(allTenders.map(t => t.packageId?.toString()));
-        const approvalTenderIds = new Set(allApprovals.map(a => a.tenderId?.toString()));
-        const loaTenderIds = new Set(allLOAs.map(l => l.tenderId?.toString()));
-        const woLoaIds = new Set(allWorkOrders.map(wo => wo.loaId?.toString()));
-
-        const targetNames = new Set<string>();
-
-        allPackages.forEach(pkg => {
-            const pkgId = pkg._id.toString();
-            let isPending = false;
-
-            if (params.filter === 'pendingDTP') {
-                isPending = !dtpPkgIds.has(pkgId);
-            } else if (params.filter === 'pendingTender') {
-                isPending = !tenderPkgIds.has(pkgId);
-            } else if (params.filter === 'pendingApproval') {
-                const tender = allTenders.find(t => t.packageId?.toString() === pkgId);
-                isPending = tender ? !approvalTenderIds.has(tender._id.toString()) : false;
-            } else if (params.filter === 'pendingLOA') {
-                const tender = allTenders.find(t => t.packageId?.toString() === pkgId);
-                isPending = tender ? !loaTenderIds.has(tender._id.toString()) : false;
-            } else if (params.filter === 'pendingWorkOrder') {
-                const tender = allTenders.find(t => t.packageId?.toString() === pkgId);
-                if (tender) {
-                    const loa = allLOAs.find(l => l.tenderId?.toString() === tender._id.toString());
-                    isPending = loa ? !woLoaIds.has(loa._id.toString()) : false;
-                }
-            }
-
-            if (isPending && pkg.works) {
-                pkg.works.forEach((w: any) => {
-                    if (w.workName) targetNames.add(normalizeString(w.workName));
-                });
-            }
-        });
-
-        // We use a custom in-memory filter later, so we just set a flag here or use a dummy query
-        // Actually, let's just use the same in-memory filtering approach as 'pending TS'
+    if (['pendingDTP', 'pendingTender', 'pendingProposal', 'pendingApproval', 'pendingLOA', 'pendingWorkOrder'].includes(params.filter || '')) {
+        const filterNames: Record<string, string> = {
+            pendingDTP: "Pending DTP",
+            pendingTender: "Pending Tender",
+            pendingProposal: "Pending Proposal",
+            pendingApproval: "Pending Approval",
+            pendingLOA: "Pending LOA",
+            pendingWorkOrder: "Pending Work Order"
+        };
+        if (params.filter) {
+            filterLabels.push(filterNames[params.filter]);
+        }
     }
 
     // Standard Filters
@@ -173,14 +144,23 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
         // Fetch ALL potential stage data for in-memory filtering
         const allPackages = await Package.find({}).select('works').lean();
         const allDTPs = await DTP.find({}).select('tsId').lean();
-        const allTenders = await Tender.find({}).sort({ trialNo: 1 }).select('packageId tenderApprovalDate').lean();
-        const allApprovals = await Approval.find({ tenderApprovalDate: { $exists: true, $ne: null } }).select('tenderId').lean();
+        const allTenders = await Tender.find({}).sort({ trialNo: 1 }).select('packageId proposalDate tenderApprovalDate').lean();
+        const allApprovals = await Approval.find({}).select('tenderId proposalDate tenderApprovalDate').lean();
         const allLOAs = await LOA.find({}).select('tenderId').lean();
         const allWorkOrders = await WorkOrder.find({}).select('loaId').lean();
 
         const dtpPkgIds = new Set(allDTPs.map(d => d.tsId?.toString()));
         const tenderPkgIds = new Set(allTenders.map(t => t.packageId?.toString()));
-        const approvalTenderIds = new Set(allApprovals.map(a => a.tenderId?.toString()));
+        const approvalByTenderId = new Map<string, any>();
+        allApprovals.forEach(a => {
+            if (a.tenderId) {
+                const tIdStr = a.tenderId.toString();
+                const existing = approvalByTenderId.get(tIdStr);
+                if (!existing || (!existing.tenderApprovalDate && a.tenderApprovalDate)) {
+                    approvalByTenderId.set(tIdStr, a);
+                }
+            }
+        });
         const loaTenderIds = new Set(allLOAs.map(l => l.tenderId?.toString()));
         const woLoaIds = new Set(allWorkOrders.map(wo => wo.loaId?.toString()));
 
@@ -232,22 +212,29 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
             const tender = tenderByPkgId.get(pkgId);
             if (!tender) return false;
             const tId = tender._id.toString();
+            const approval = approvalByTenderId.get(tId);
+            const hasProposalDate = Boolean(tender.proposalDate) || Boolean(approval);
+            const hasApproval = Boolean(tender.tenderApprovalDate) || Boolean(approval?.tenderApprovalDate);
 
-            const hasApproval = approvalTenderIds.has(tId) || Boolean(tender.tenderApprovalDate);
+            if (hasApproval) {
+                if (params.filter === 'pendingProposal') return false;
+                if (params.filter === 'pendingApproval') return false;
 
-            if (params.filter === 'pendingApproval') return !hasApproval;
-            
-            if (!hasApproval) return false;
+                const hasLOA = loaTenderIds.has(tId);
+                if (params.filter === 'pendingLOA') return !hasLOA;
 
-            const hasLOA = loaTenderIds.has(tId);
+                if (!hasLOA) return false;
 
-            if (params.filter === 'pendingLOA') return !hasLOA;
-            
-            if (!hasLOA) return false;
-            
-            if (params.filter === 'pendingWorkOrder') {
-                const loa = loaByTenderId.get(tId);
-                return loa ? !woLoaIds.has(loa._id.toString()) : false;
+                if (params.filter === 'pendingWorkOrder') {
+                    const loa = loaByTenderId.get(tId);
+                    return loa ? !woLoaIds.has(loa._id.toString()) : false;
+                }
+            } else {
+                if (params.filter === 'pendingProposal') return !hasProposalDate;
+                if (!hasProposalDate) return false;
+
+                if (params.filter === 'pendingApproval') return !hasApproval;
+                return false;
             }
 
             return true;

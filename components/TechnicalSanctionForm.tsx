@@ -193,7 +193,7 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
                         <option value="">-- Select Authority --</option>
                         <option value="Executive Engineer (EE)">Executive Engineer (EE)</option>
                         <option value="Superintending Engineer (SE)">Superintending Engineer (SE)</option>
-                        <option value="Chief Engineer (CE)">Chief Engineer (CE)</option>
+                        <option value="Road and Building Department">Road and Building Department</option>
                     </select>
                 </div>
                 <div className="sm:col-span-2">

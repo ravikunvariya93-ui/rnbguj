@@ -66,7 +66,9 @@ export default function LOAForm({ initialData = {}, isEditing = false }: LOAForm
     useEffect(() => {
         const fetchTenders = async () => {
             try {
-                const res = await fetch('/api/tenders');
+                const targetId = initialData.tenderId?._id || initialData.tenderId || '';
+                const url = targetId ? `/api/tenders?includeId=${targetId}` : '/api/tenders';
+                const res = await fetch(url);
                 const data = await res.json();
                 if (data.success) {
                     setTenders(data.data);
@@ -77,7 +79,7 @@ export default function LOAForm({ initialData = {}, isEditing = false }: LOAForm
             }
         };
         fetchTenders();
-    }, []);
+    }, [initialData]);
 
     useEffect(() => {
         if (isEditing && initialData) {

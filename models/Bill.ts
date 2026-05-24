@@ -1,5 +1,17 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
+export interface IBillItem {
+    itemNo: string;
+    description: string;
+    quantity: number;
+    fullRate: number;
+    partRate?: number;
+    unit: string;
+    uptoDateAmount: number;
+    previousPaidAmount: number;
+    toBePaidAmount: number;
+}
+
 export interface IBill extends Document {
     workOrderId: mongoose.Schema.Types.ObjectId;
     billType: 'Running' | 'Final';
@@ -9,9 +21,22 @@ export interface IBill extends Document {
     netPaidAmount: number;
     passingDate?: Date;
     remarks?: string;
+    items: IBillItem[];
     createdAt: Date;
     updatedAt: Date;
 }
+
+const BillItemSchema = new Schema({
+    itemNo: { type: String, required: true },
+    description: { type: String, required: true },
+    quantity: { type: Number, required: true },
+    fullRate: { type: Number, required: true },
+    partRate: { type: Number },
+    unit: { type: String, required: true },
+    uptoDateAmount: { type: Number, required: true },
+    previousPaidAmount: { type: Number, default: 0 },
+    toBePaidAmount: { type: Number, required: true }
+});
 
 const BillSchema: Schema = new Schema({
     workOrderId: { type: mongoose.Schema.Types.ObjectId, ref: 'WorkOrder', required: true },
@@ -19,14 +44,15 @@ const BillSchema: Schema = new Schema({
     runningBillNumber: { 
         type: Number, 
         min: 1, 
-        max: 15,
-        required: function(this: any) { return this.billType === 'Running'; }
+        max: 50,
+        required: true
     },
     billDate: { type: Date, required: true },
     grossAmount: { type: Number, required: true },
     netPaidAmount: { type: Number, required: true },
     passingDate: { type: Date },
     remarks: { type: String },
+    items: [BillItemSchema]
 }, {
     timestamps: true,
 });

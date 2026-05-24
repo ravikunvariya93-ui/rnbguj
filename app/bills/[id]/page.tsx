@@ -1,7 +1,7 @@
 import dbConnect from '@/lib/db';
 import Bill from '@/models/Bill';
 import Link from 'next/link';
-import { ArrowLeft, Edit2, Trash2, Calendar, IndianRupee, FileText } from 'lucide-react';
+import { ArrowLeft, Edit2, Trash2, Calendar, IndianRupee, FileText, LayoutList } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
 
@@ -33,7 +33,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
             icon: FileText,
             fields: [
                 { label: 'Bill Type', value: bill.billType },
-                { label: 'Bill Number', value: bill.billType === 'Running' ? `${bill.runningBillNumber}${bill.runningBillNumber === 1 ? 'st' : bill.runningBillNumber === 2 ? 'nd' : bill.runningBillNumber === 3 ? 'rd' : 'th'} Running` : 'Final' },
+                { label: 'Bill Number', value: `${bill.runningBillNumber}${bill.runningBillNumber === 1 ? 'st' : bill.runningBillNumber === 2 ? 'nd' : bill.runningBillNumber === 3 ? 'rd' : 'th'} and ${bill.billType} Bill` },
                 { label: 'Remarks', value: bill.remarks || '-' },
             ]
         },
@@ -67,7 +67,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
     ];
 
     return (
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             <div className="mb-8 flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                     <Link href="/bills" className="text-gray-500 hover:text-gray-700 transition-colors">
@@ -75,9 +75,9 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                     </Link>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">
-                            {bill.billType === 'Running' ? `${bill.runningBillNumber}${bill.runningBillNumber === 1 ? 'st' : bill.runningBillNumber === 2 ? 'nd' : bill.runningBillNumber === 3 ? 'rd' : 'th'} Running Bill` : 'Final Bill'}
+                            {bill.runningBillNumber}{bill.runningBillNumber === 1 ? 'st' : bill.runningBillNumber === 2 ? 'nd' : bill.runningBillNumber === 3 ? 'rd' : 'th'} and {bill.billType} Bill
                         </h1>
-                        <p className="text-sm text-gray-500">View detailed financial and temporal project data.</p>
+                        <p className="text-sm text-gray-500">View detailed financial and abstract data.</p>
                     </div>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -96,7 +96,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 {sections.map((section) => (
                     <div key={section.title} className="bg-white shadow rounded-lg border border-gray-200 overflow-hidden">
                         <div className="px-5 py-4 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
@@ -117,6 +117,84 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                 ))}
             </div>
             
+            {/* Bill Abstract Section */}
+            <div className="bg-white shadow rounded-lg border border-gray-200 overflow-hidden mb-8">
+                <div className="px-6 py-5 bg-slate-50 border-b border-gray-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <LayoutList className="w-5 h-5 text-slate-700" />
+                        <h2 className="text-lg font-bold text-slate-900 tracking-tight">Bill Abstract (Line Items)</h2>
+                    </div>
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                        {bill.items?.length || 0} Items
+                    </span>
+                </div>
+                
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-slate-50">
+                            <tr>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider">No.</th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider w-1/4">Description</th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider">Unit</th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider">Rate (₹)</th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-blue-700 bg-blue-50 tracking-wider border-l border-blue-100 min-w-[140px]">Upto Date Qty</th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-blue-700 bg-blue-50 tracking-wider border-r border-blue-100 min-w-[140px]">Part Rate (₹)</th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider bg-slate-100">Upto Date Amt</th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-amber-700 bg-amber-50 tracking-wider">Prev Paid Amt</th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-emerald-700 bg-emerald-50 tracking-wider">To Be Paid</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {(!bill.items || bill.items.length === 0) ? (
+                                <tr>
+                                    <td colSpan={9} className="px-6 py-12 text-center text-sm text-gray-500">
+                                        No abstract items recorded for this bill.
+                                    </td>
+                                </tr>
+                            ) : (
+                                bill.items.map((item: any, index: number) => (
+                                    <tr key={index} className="hover:bg-slate-50 transition-colors">
+                                        <td className="px-4 py-4 text-sm text-slate-700 font-medium whitespace-nowrap">{item.itemNo}</td>
+                                        <td className="px-4 py-4 text-xs text-slate-600 line-clamp-3" title={item.description}>{item.description}</td>
+                                        <td className="px-4 py-4 text-xs text-slate-500 whitespace-nowrap">{item.unit}</td>
+                                        <td className="px-4 py-4 text-sm text-slate-700 font-mono">{item.fullRate?.toFixed(2)}</td>
+                                        
+                                        <td className="px-4 py-4 text-sm text-blue-800 font-mono font-medium border-l border-blue-100 bg-blue-50/30">
+                                            {item.quantity?.toFixed(2)}
+                                        </td>
+                                        <td className="px-4 py-4 text-sm text-blue-800 font-mono font-medium border-r border-blue-100 bg-blue-50/30">
+                                            {item.partRate?.toFixed(2)}
+                                        </td>
+                                        
+                                        <td className="px-4 py-4 text-sm text-slate-800 font-mono bg-slate-50">{item.uptoDateAmount?.toFixed(2)}</td>
+                                        <td className="px-4 py-4 text-sm text-amber-800 font-mono bg-amber-50/30">{item.previousPaidAmount?.toFixed(2)}</td>
+                                        <td className="px-4 py-4 text-sm font-bold text-emerald-700 font-mono bg-emerald-50/50">
+                                            {item.toBePaidAmount?.toFixed(2)}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                        {bill.items && bill.items.length > 0 && (
+                            <tfoot className="bg-slate-100 font-semibold border-t-2 border-slate-200">
+                                <tr>
+                                    <td colSpan={6} className="px-4 py-4 text-right text-sm text-slate-700 uppercase tracking-wider">Totals:</td>
+                                    <td className="px-4 py-4 text-sm text-slate-800 font-mono">
+                                        {bill.items.reduce((s: number, i: any) => s + (i.uptoDateAmount || 0), 0).toFixed(2)}
+                                    </td>
+                                    <td className="px-4 py-4 text-sm text-amber-700 font-mono">
+                                        {bill.items.reduce((s: number, i: any) => s + (i.previousPaidAmount || 0), 0).toFixed(2)}
+                                    </td>
+                                    <td className="px-4 py-4 text-sm font-bold text-emerald-700 font-mono text-lg border-x-2 border-emerald-200 bg-emerald-100/50">
+                                        ₹{bill.items.reduce((s: number, i: any) => s + (i.toBePaidAmount || 0), 0).toFixed(2)}
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        )}
+                    </table>
+                </div>
+            </div>
+
             <div className="mt-8 bg-blue-50 border border-blue-100 rounded-lg p-6">
                 <h3 className="text-sm font-bold text-blue-800 uppercase mb-4">Project Context</h3>
                 <div className="flex items-start gap-4">
