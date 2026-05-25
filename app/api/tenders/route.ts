@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import '@/models/Package';
+import '@/models/TechnicalSanction';
 import Tender from '@/models/Tender';
 
 export async function POST(request: Request) {

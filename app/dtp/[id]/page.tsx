@@ -1,8 +1,12 @@
 import dbConnect from '@/lib/db';
 import DTP from '@/models/DTP';
+import Package from '@/models/Package';
 import Link from 'next/link';
 import { ArrowLeft, Edit2 } from 'lucide-react';
 import { notFound } from 'next/navigation';
+
+// Ensure Package model is registered for populate
+void Package;
 
 export default async function DTPDetailPage({ params }: { params: Promise<{ id: string }> }) {
     await dbConnect();

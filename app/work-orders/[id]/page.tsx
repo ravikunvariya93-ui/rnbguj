@@ -1,8 +1,14 @@
 import dbConnect from '@/lib/db';
 import WorkOrder from '@/models/WorkOrder';
+import LOA from '@/models/LOA';
+import Tender from '@/models/Tender';
 import Link from 'next/link';
 import { ArrowLeft, Edit2 } from 'lucide-react';
 import { notFound } from 'next/navigation';
+
+// Ensure models are registered for populate
+void LOA;
+void Tender;
 
 export default async function WorkOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
     await dbConnect();

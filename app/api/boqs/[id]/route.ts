@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import BOQ from '@/models/BOQ';
+import Tender from '@/models/Tender';
+
+// Ensure Tender model is registered for populate
+void Tender;
 
 export async function GET(
     request: Request,

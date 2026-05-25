@@ -1,8 +1,12 @@
 import dbConnect from '@/lib/db';
 import LOA from '@/models/LOA';
+import Tender from '@/models/Tender';
 import Link from 'next/link';
-import { ArrowLeft, Edit2 } from 'lucide-react';
+import { ArrowLeft, Edit2, FileText } from 'lucide-react';
 import { notFound } from 'next/navigation';
+
+// Ensure Tender model is registered for populate
+void Tender;
 
 export default async function LOADetailPage({ params }: { params: Promise<{ id: string }> }) {
     await dbConnect();
@@ -42,12 +46,20 @@ export default async function LOADetailPage({ params }: { params: Promise<{ id: 
                     </Link>
                     <h1 className="text-2xl font-bold text-gray-900">Letter of Acceptance Details</h1>
                 </div>
-                <Link
-                    href={`/loas/${id}/edit`}
-                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-                >
-                    <Edit2 className="w-4 h-4 mr-2" /> Edit LOA
-                </Link>
+                <div className="flex gap-3">
+                    <Link
+                        href={`/loas/${id}/letter`}
+                        className="inline-flex items-center px-4 py-2 border border-blue-600 rounded-md shadow-sm text-sm font-medium text-blue-600 bg-white hover:bg-blue-50 transition-colors"
+                    >
+                        <FileText className="w-4 h-4 mr-2" /> Generate Letter
+                    </Link>
+                    <Link
+                        href={`/loas/${id}/edit`}
+                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                    >
+                        <Edit2 className="w-4 h-4 mr-2" /> Edit LOA
+                    </Link>
+                </div>
             </div>
 
             <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">

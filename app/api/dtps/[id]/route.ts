@@ -1,7 +1,10 @@
 import dbConnect from '@/lib/db';
 import DTP from '@/models/DTP';
-import TechnicalSanction from '@/models/TechnicalSanction';
+import Package from '@/models/Package';
 import { NextResponse } from 'next/server';
+
+// Ensure Package model is registered for populate
+void Package;
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     await dbConnect();

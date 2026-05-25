@@ -10,10 +10,14 @@ import Pagination from '@/components/Pagination';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
 import SortableHeader from '@/components/SortableHeader';
 
+// Ensure models are registered for populate
+void LOA;
+void Tender;
+
 export const dynamic = 'force-dynamic';
 
 interface Props {
-    searchParams: { search?: string; page?: string; limit?: string ; sort?: string; order?: string }
+    searchParams: Promise<{ search?: string; page?: string; limit?: string ; sort?: string; order?: string }>;
 }
 
 export default async function WorkOrderListPage({ searchParams }: Props) {
@@ -47,7 +51,6 @@ export default async function WorkOrderListPage({ searchParams }: Props) {
     if (params.sort && params.order) {
         sortObj = { [params.sort]: params.order === 'asc' ? 1 : -1 };
     }
-
 
     const totalItems = await WorkOrder.countDocuments(query);
     const totalPages = Math.ceil(totalItems / limit);

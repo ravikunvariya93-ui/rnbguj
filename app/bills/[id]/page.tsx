@@ -1,9 +1,17 @@
 import dbConnect from '@/lib/db';
 import Bill from '@/models/Bill';
+import WorkOrder from '@/models/WorkOrder';
+import LOA from '@/models/LOA';
+import Tender from '@/models/Tender';
 import Link from 'next/link';
 import { ArrowLeft, Edit2, Trash2, Calendar, IndianRupee, FileText, LayoutList } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
+
+// Ensure models are registered for populate
+void WorkOrder;
+void LOA;
+void Tender;
 
 export default async function BillDetailPage({ params }: { params: Promise<{ id: string }> }) {
     await dbConnect();

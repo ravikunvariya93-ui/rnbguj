@@ -1,7 +1,11 @@
 import dbConnect from '@/lib/db';
 import BOQ from '@/models/BOQ';
+import Tender from '@/models/Tender';
 import BOQForm from '@/components/BOQForm';
 import { notFound } from 'next/navigation';
+
+// Ensure Tender model is registered for populate
+void Tender;
 
 export default async function EditBOQPage({ params }: { params: Promise<{ id: string }> }) {
     await dbConnect();

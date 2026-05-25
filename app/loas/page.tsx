@@ -4,11 +4,14 @@ import LOA from '@/models/LOA';
 import WorkOrder from '@/models/WorkOrder';
 import Tender from '@/models/Tender';
 import Link from 'next/link';
-import { Plus, Filter, Eye, Edit2 } from 'lucide-react';
+import { Plus, Filter, Eye, Edit2, FileText } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import Pagination from '@/components/Pagination';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
 import SortableHeader from '@/components/SortableHeader';
+
+// Ensure Tender model is registered for populate (LOA.tenderId -> ref: 'Tender')
+void Tender;
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +28,8 @@ interface Props {
         roadCategory?: string;
         workType?: string;
         schemeName?: string;
+        sort?: string;
+        order?: string;
     }>;
 }
 
@@ -123,7 +128,6 @@ export default async function LOAListPage({ searchParams }: Props) {
         sortObj = { [params.sort]: params.order === 'asc' ? 1 : -1 };
     }
 
-
     const totalItems = await LOA.countDocuments(query);
     const totalPages = Math.ceil(totalItems / limit);
 
@@ -145,9 +149,9 @@ export default async function LOAListPage({ searchParams }: Props) {
                     <div className="flex items-center space-x-2">
                         <h1 className="text-2xl font-semibold text-gray-900">Letter of Acceptance (LOA)</h1>
                         {(params.filter || params.search) && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                <Filter className="w-3 h-3 mr-1" /> {params.search ? 'Search Active' : 'Filter Active'}
-                            </span>
+                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                 <Filter className="w-3 h-3 mr-1" /> {params.search ? 'Search Active' : 'Filter Active'}
+                             </span>
                         )}
                     </div>
                     <p className="mt-2 text-sm text-gray-700">{filterLabel}</p>
@@ -201,6 +205,9 @@ export default async function LOAListPage({ searchParams }: Props) {
                                                     {loa.acceptanceLetterDate ? new Date(loa.acceptanceLetterDate).toLocaleDateString('en-GB') : '-'}
                                                 </td>
                                                 <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 flex items-center justify-end space-x-3">
+                                                    <Link href={`/loas/${loa._id}/letter`} className="text-emerald-600 hover:text-emerald-900 p-1" title="Generate Letter">
+                                                        <FileText className="w-5 h-5" />
+                                                    </Link>
                                                     <Link href={`/loas/${loa._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
                                                         <Eye className="w-5 h-5" />
                                                     </Link>

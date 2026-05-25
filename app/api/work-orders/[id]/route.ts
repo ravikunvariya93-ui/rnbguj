@@ -1,6 +1,12 @@
 import dbConnect from '@/lib/db';
 import WorkOrder from '@/models/WorkOrder';
+import LOA from '@/models/LOA';
+import Tender from '@/models/Tender';
 import { NextResponse } from 'next/server';
+
+// Ensure models are registered for populate
+void LOA;
+void Tender;
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     await dbConnect();

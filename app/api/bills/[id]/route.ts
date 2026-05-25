@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Bill from '@/models/Bill';
+import WorkOrder from '@/models/WorkOrder';
+import LOA from '@/models/LOA';
+import Tender from '@/models/Tender';
+
+// Ensure models are registered for populate
+void WorkOrder;
+void LOA;
+void Tender;
 
 export async function GET(
     request: Request,

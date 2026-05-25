@@ -3,6 +3,9 @@ import LOA from '@/models/LOA';
 import Tender from '@/models/Tender';
 import { NextResponse } from 'next/server';
 
+// Ensure Tender model is registered for populate
+void Tender;
+
 export async function POST(req: Request) {
     await dbConnect();
     try {

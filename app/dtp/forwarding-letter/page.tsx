@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, Printer, X, Loader2 } from 'lucide-react';
+import { FileText, Printer, X, Loader2, Download, Edit3 } from 'lucide-react';
+import { logoBase64 } from '@/lib/logoBase64';
 
 interface DTPRecord {
     _id: string;
@@ -9,6 +10,16 @@ interface DTPRecord {
     dtpSendingDate: string;
     tenderAmount?: number;
     tsId: { _id: string; packageName: string };
+}
+
+function formatToUTCDateStr(dateInput?: string | Date) {
+    if (!dateInput) return '-';
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return '-';
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const year = d.getUTCFullYear();
+    return `${day}/${month}/${year}`;
 }
 
 export default function DTPForwardingLetterPage() {
@@ -41,7 +52,7 @@ export default function DTPForwardingLetterPage() {
 
                     // Match date
                     const dateMatch = dtp.dtpSendingDate &&
-                        new Date(dtp.dtpSendingDate).toLocaleDateString('en-GB') === letterDate.trim();
+                        formatToUTCDateStr(dtp.dtpSendingDate) === letterDate.trim();
 
                     return noMatch && dateMatch;
                 });
@@ -60,118 +71,212 @@ export default function DTPForwardingLetterPage() {
     };
 
     const fmt = (amt?: number) => amt ? amt.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-';
-    const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('en-GB') : '-';
+    const fmtDate = (d?: string) => d ? formatToUTCDateStr(d) : '-';
 
     return (
-        <div className="max-w-lg mx-auto px-4 sm:px-6 lg:px-8 py-16">
-            <div className="mb-10 text-center">
-                <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-100 rounded-2xl mb-4">
-                    <FileText className="w-7 h-7 text-blue-700" />
-                </div>
-                <h1 className="text-2xl font-bold text-gray-900">DTP Forwarding Letter</h1>
-                <p className="text-sm text-gray-500 mt-1">Enter the letter details to generate the forwarding letter for all DTPs.</p>
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 space-y-6">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Letter / WS No. <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                        type="text"
-                        value={wsNumber}
-                        onChange={e => setWsNumber(e.target.value)}
-                        placeholder="587"
-                        className="block w-full border border-gray-300 rounded-xl px-4 py-3 text-lg font-semibold tracking-wide text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    />
+        <>
+            <div className="max-w-lg mx-auto px-4 sm:px-6 lg:px-8 py-16 screen-only">
+                <div className="mb-10 text-center">
+                    <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-100 rounded-2xl mb-4">
+                        <FileText className="w-7 h-7 text-blue-700" />
+                    </div>
+                    <h1 className="text-2xl font-bold text-gray-900">DTP Forwarding Letter</h1>
+                    <p className="text-sm text-gray-500 mt-1">Enter the letter details to generate the forwarding letter for all DTPs.</p>
                 </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Date of Letter <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                        type="text"
-                        value={letterDate}
-                        onChange={e => setLetterDate(e.target.value)}
-                        placeholder="21/05/2026"
-                        className="block w-full border border-gray-300 rounded-xl px-4 py-3 text-lg font-semibold tracking-wide text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    />
+                <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 space-y-6">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                            Letter / WS No. <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={wsNumber}
+                            onChange={e => setWsNumber(e.target.value)}
+                            placeholder="587"
+                            className="block w-full border border-gray-300 rounded-xl px-4 py-3 text-lg font-semibold tracking-wide text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                            Date of Letter <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={letterDate}
+                            onChange={e => setLetterDate(e.target.value)}
+                            placeholder="21/05/2026"
+                            className="block w-full border border-gray-300 rounded-xl px-4 py-3 text-lg font-semibold tracking-wide text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        />
+                    </div>
+
+                    <button
+                        onClick={handleGenerate}
+                        disabled={!wsNumber.trim() || !letterDate.trim() || loading}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-blue-600 text-white text-sm font-bold rounded-xl shadow hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                        {loading ? 'Generating…' : 'Generate Letter'}
+                    </button>
                 </div>
 
-                <button
-                    onClick={handleGenerate}
-                    disabled={!wsNumber.trim() || !letterDate.trim() || loading}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-blue-600 text-white text-sm font-bold rounded-xl shadow hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                    {loading ? 'Generating…' : 'Generate Letter'}
-                </button>
-            </div>
-
-            {/* Letter Modal */}
-            {showLetter && (
-                <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm overflow-y-auto py-8 px-4">
-                    <div className="w-full max-w-5xl">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-white font-semibold text-sm">DTP Forwarding Letter Preview</h2>
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => window.print()}
-                                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 shadow"
-                                >
-                                    <Printer className="w-4 h-4" /> Print / Save as PDF
-                                </button>
-                                <button
-                                    onClick={() => setShowLetter(false)}
-                                    className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 text-white text-sm font-medium rounded-lg hover:bg-white/20"
-                                >
-                                    <X className="w-4 h-4" /> Close
-                                </button>
+                {/* Letter Modal */}
+                {showLetter && (
+                    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm overflow-y-auto py-8 px-4">
+                        <div className="w-full max-w-5xl">
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-white font-semibold text-sm">DTP Forwarding Letter Preview</h2>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => window.print()}
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 shadow"
+                                    >
+                                        <Printer className="w-4 h-4" /> Print / Save as PDF
+                                    </button>
+                                    <button
+                                        onClick={() => setShowLetter(false)}
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 text-white text-sm font-medium rounded-lg hover:bg-white/20"
+                                    >
+                                        <X className="w-4 h-4" /> Close
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="bg-white shadow-2xl rounded-lg">
+                                <LetterContent wsNo={fullWsNo} letterDate={letterDate} dtps={dtps} fmt={fmt} fmtDate={fmtDate} />
                             </div>
                         </div>
-                        <div id="printable-letter" className="bg-white shadow-2xl rounded-lg">
-                            <LetterContent wsNo={fullWsNo} letterDate={letterDate} dtps={dtps} fmt={fmt} fmtDate={fmtDate} />
-                        </div>
                     </div>
+                )}
+            </div>
+
+            {/* Dedicated Hidden Printable Area outside parent max-w and positioning wrappers */}
+            {showLetter && (
+                <div id="print-area" className="print-only">
+                    <LetterContent wsNo={fullWsNo} letterDate={letterDate} dtps={dtps} fmt={fmt} fmtDate={fmtDate} />
                 </div>
             )}
 
             <style>{`
-                @media print {
-                    body * { visibility: hidden; }
-                    #printable-letter, #printable-letter * { visibility: visible; }
-                    #printable-letter {
-                        position: fixed; top: 0; left: 0;
-                        width: 100%; height: auto;
-                        box-shadow: none; border-radius: 0;
+                @media screen {
+                    .print-only, .printable-container {
+                        margin: 2rem auto;
+                        box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+                        max-width: 21cm;
                     }
+                    body { background-color: #f1f5f9; }
+                }
+                }
+                @media print {
+                    /* Hide everything except the print area */
+                    .screen-only,
+                    header, nav, aside,
+                    button, svg, [role="navigation"] {
+                        display: none !important;
+                    }
+
+                    /* Reset html & body */
+                    html, body {
+                        height: auto !important;
+                        width: 100% !important;
+                        overflow: visible !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background: white !important;
+                    }
+
+                    /* Reset only the layout wrapper chain (not their deep children).
+                       Structure: body > div(flex h-screen overflow-hidden)
+                                       > main(overflow-y-auto md:ml-64)
+                                           > div(max-w-7xl)
+                                               > Fragment children */
+                    body > div,
+                    body > div > main,
+                    body > div > main > div {
+                        display: block !important;
+                        position: static !important;
+                        overflow: visible !important;
+                        height: auto !important;
+                        max-height: none !important;
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+
+                    /* Show only the print area */
+                    .print-only {
+                        display: block !important;
+                        position: static !important;
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        overflow: visible !important;
+                    }
+
+                    #print-area {
+                        display: block !important;
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                    }
+
+                    .printable-container {
+                        padding: 40px 50px !important;
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        box-sizing: border-box !important;
+                    }
+
                     @page {
-                        margin: 0;
                         size: A4;
+                        margin: 1.5cm 2cm;
                     }
                 }
             `}</style>
-        </div>
+        </>
     );
 }
+
+
+    const exportToDoc = () => {
+        const element = document.getElementById('print-area');
+        if (!element) return;
+        const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>";
+        const postHtml = "</body></html>";
+        let html = element.innerHTML;
+        html = preHtml + html + postHtml;
+        const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+        const url = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(html);
+        const filename = 'DTP_Forwarding_Letter.doc';
+        const downloadLink = document.createElement('a');
+        document.body.appendChild(downloadLink);
+        if (navigator.msSaveOrOpenBlob) {
+            navigator.msSaveOrOpenBlob(blob, filename);
+        } else {
+            downloadLink.href = url;
+            downloadLink.download = filename;
+            downloadLink.click();
+        }
+        document.body.removeChild(downloadLink);
+    };
 
 function LetterContent({ wsNo, letterDate, dtps, fmt, fmtDate }: {
     wsNo: string; letterDate: string; dtps: DTPRecord[];
     fmt: (n?: number) => string; fmtDate: (d?: string) => string;
 }) {
-    const total = dtps.reduce((s, d) => s + (d.tenderAmount || 0), 0);
 
     return (
-        <div style={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '14px', lineHeight: '1.9', padding: '60px 72px', color: '#000' }}>
+        <div className="printable-container" id="print-area" contentEditable suppressContentEditableWarning style={{ outline: "none", fontFamily: 'Cambria, Georgia, serif', fontSize: '14px', lineHeight: '1.9', padding: '60px 72px', color: '#000' }}>
 
             {/* Office Header */}
-            <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-                <div style={{ fontSize: '15px', fontWeight: 'bold' }}>Panchayat Road and Building Division</div>
-                <div style={{ fontSize: '15px', fontWeight: 'bold' }}>District Panchayat Office</div>
-                <div style={{ fontSize: '14px', fontWeight: 'bold' }}>Moti Bagh, Bhavnagar - 364 001</div>
-                <div style={{ fontSize: '12px', marginTop: '4px' }}>Phone: 0278-2422548 &nbsp;|&nbsp; E-Mail: exernb-ddo-bav@gujarat.gov.in</div>
-                <div style={{ borderBottom: '2px solid black', marginTop: '12px' }} />
+            <div style={{ textAlign: 'center', marginBottom: '24px', lineHeight: '1.5' }}>
+                <div style={{ fontSize: '18px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                    District Panchayat Office, Panchayat Road and Building Division
+                </div>
+                <div style={{ fontSize: '16px', fontWeight: 'bold', marginTop: '4px' }}>Balvantray Maheta Bhavan, Near Motibag, Bhavnagar-364001</div>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', marginTop: '4px' }}>Phone: - 0278-2422548, Email ID: - exernb-ddo-bav@gujarat.gov.in</div>
+                <div style={{ borderBottom: '2px solid black', marginTop: '10px' }} />
             </div>
 
             {/* No. and Date */}
@@ -219,10 +324,6 @@ function LetterContent({ wsNo, letterDate, dtps, fmt, fmtDate }: {
                             <td style={{ border: '1px solid black', padding: '8px 10px', textAlign: 'right', verticalAlign: 'top', fontFamily: 'monospace' }}>{fmt(dtp.tenderAmount)}</td>
                         </tr>
                     ))}
-                    <tr style={{ fontWeight: 'bold', backgroundColor: '#f9fafb' }}>
-                        <td colSpan={2} style={{ border: '1px solid black', padding: '8px 10px', textAlign: 'right' }}>Total</td>
-                        <td style={{ border: '1px solid black', padding: '8px 10px', textAlign: 'right', fontFamily: 'monospace' }}>{fmt(total)}</td>
-                    </tr>
                 </tbody>
             </table>
 
@@ -231,7 +332,7 @@ function LetterContent({ wsNo, letterDate, dtps, fmt, fmtDate }: {
                 <div style={{ textAlign: 'center' }}>
                     <div style={{ marginBottom: '48px' }}>&nbsp;</div>
                     <div style={{ fontWeight: 'bold' }}>Executive Engineer</div>
-                    <div>Panchayat Road and Building Division</div>
+                    <div>Panchayat R & B Division</div>
                     <div>Bhavnagar</div>
                 </div>
             </div>

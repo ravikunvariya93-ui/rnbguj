@@ -1,7 +1,10 @@
 import dbConnect from '@/lib/db';
 import DTP from '@/models/DTP';
-import TechnicalSanction from '@/models/TechnicalSanction';
+import Package from '@/models/Package';
 import { NextResponse } from 'next/server';
+
+// Ensure Package model is registered for populate (DTP.tsId -> ref: 'Package')
+void Package;
 
 export async function POST(req: Request) {
     await dbConnect();

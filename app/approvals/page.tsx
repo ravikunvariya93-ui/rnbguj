@@ -8,6 +8,9 @@ import SearchBar from '@/components/SearchBar';
 import Pagination from '@/components/Pagination';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
 
+// Ensure Tender model is registered for populate
+void Tender;
+
 export const dynamic = 'force-dynamic';
 
 interface Props {

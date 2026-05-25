@@ -1,8 +1,16 @@
 import dbConnect from '@/lib/db';
 import Bill from '@/models/Bill';
+import WorkOrder from '@/models/WorkOrder';
+import LOA from '@/models/LOA';
+import Tender from '@/models/Tender';
 import Link from 'next/link';
 import { Plus, Edit2, Eye } from 'lucide-react';
 import SortableHeader from '@/components/SortableHeader';
+
+// Ensure models are registered for populate
+void WorkOrder;
+void LOA;
+void Tender;
 
 export default async function BillsPage(props: { searchParams?: Promise<any> }) {
     const searchParams = props.searchParams || Promise.resolve({});

@@ -1,8 +1,12 @@
 import dbConnect from '@/lib/db';
 import BOQ from '@/models/BOQ';
+import Tender from '@/models/Tender';
 import Link from 'next/link';
 import { ArrowLeft, Edit2, FileText, Download } from 'lucide-react';
 import { notFound } from 'next/navigation';
+
+// Ensure Tender model is registered for populate
+void Tender;
 
 export default async function BOQDetailPage({ params }: { params: Promise<{ id: string }> }) {
     await dbConnect();

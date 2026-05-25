@@ -1,8 +1,12 @@
 import dbConnect from '@/lib/db';
 import Approval from '@/models/Approval';
+import Tender from '@/models/Tender';
 import Link from 'next/link';
 import { ArrowLeft, Edit2 } from 'lucide-react';
 import { notFound } from 'next/navigation';
+
+// Ensure Tender model is registered for populate
+void Tender;
 
 export default async function ApprovalDetailPage({ params }: { params: Promise<{ id: string }> }) {
     await dbConnect();
