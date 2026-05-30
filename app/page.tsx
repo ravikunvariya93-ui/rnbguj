@@ -1,34 +1,24 @@
 import dbConnect from '@/lib/db';
-import ApprovedWork from '@/models/ApprovedWork';
-import TechnicalSanction from '@/models/TechnicalSanction';
-import Package from '@/models/Package';
-import DTP from '@/models/DTP';
 import Tender from '@/models/Tender';
 import Approval from '@/models/Approval';
 import LOA from '@/models/LOA';
 import WorkOrder from '@/models/WorkOrder';
-import DashboardFilters from '@/components/DashboardFilters';
-import ReportGrouping from '@/components/ReportGrouping';
-import SortableHeader from '@/components/SortableHeader';
-import { 
-    FileText, Search
-} from 'lucide-react';
+import Package from '@/models/Package';
+import ApprovedWork from '@/models/ApprovedWork';
+import TechnicalSanction from '@/models/TechnicalSanction';
+import DTP from '@/models/DTP';
+import Pagination from '@/components/Pagination';
+import DataTable from '@/components/DataTable';
+import { formatShortDate } from '@/lib/dateUtils';
+import type { Column } from '@/lib/types';
 import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
 interface Props {
     searchParams: Promise<{ 
-        subDivision?: string;
-        estimateConsultant?: string;
-        approvalYear?: string;
-        roadCategory?: string;
-        workType?: string;
-        natureOfWork?: string;
-        schemeName?: string;
-        groupBy?: string;
-        sort?: string;
-        order?: string;
+        page?: string;
+        limit?: string;
     }>;
 }
 
@@ -36,611 +26,475 @@ export default async function Home({ searchParams }: Props) {
     await dbConnect();
     const params = await searchParams;
 
-    // Fetch all works to calculate filter options globally 
-    const rawApprovedWorks = await ApprovedWork.find({}).select('subDivision estimateConsultant approvalYear roadCategory workType natureOfWork schemeName').lean();
-
-    // Extract Filter Options
-    const filterOptions = {
-        subDivisions: [...new Set(rawApprovedWorks.map(w => w.subDivision).filter(Boolean))].sort(),
-        contractors: [...new Set(rawApprovedWorks.map(w => w.estimateConsultant).filter(Boolean))].sort(),
-        years: [...new Set(rawApprovedWorks.map(w => w.approvalYear).filter(Boolean))].sort(),
-        roadCategories: [...new Set(rawApprovedWorks.map(w => w.roadCategory).filter(Boolean))].sort(),
-        workTypes: [...new Set(rawApprovedWorks.map(w => w.workType).filter(Boolean))].sort(),
-        natures: [...new Set(rawApprovedWorks.map(w => w.natureOfWork).filter(Boolean))].sort(),
-        schemes: [...new Set(rawApprovedWorks.map(w => w.schemeName).filter(Boolean))].sort(),
-    } as any;
-
-    // Build Query from Params to populate the table
-    const query: any = {};
-    if (params.subDivision) query.subDivision = params.subDivision;
-    if (params.estimateConsultant) query.estimateConsultant = params.estimateConsultant;
-    if (params.approvalYear) query.approvalYear = params.approvalYear;
-    if (params.roadCategory) query.roadCategory = params.roadCategory;
-    if (params.workType) query.workType = params.workType;
-    if (params.natureOfWork) query.natureOfWork = params.natureOfWork;
-    if (params.schemeName) query.schemeName = params.schemeName;
-
-    // Fetch matching works to evaluate aggregates
-    const works = await ApprovedWork.find(query).lean();
-
-    const normalizeString = (str: string) => (str || '').trim().toLowerCase().replace(/\s+/g, ' ');
-
+    const reportTenders = await Tender.find({ cancelled: { $ne: true } }).lean();
+    const reportApprovals = await Approval.find({}).lean();
+    const reportLOAs = await LOA.find({}).lean();
+    const reportWorkOrders = await WorkOrder.find({}).lean();
+    const reportPackages = await Package.find({}).lean();
+    const allApprovedWorks = await ApprovedWork.find({}).lean();
     const allTS = await TechnicalSanction.find({}).select('workName').lean();
+    const allDTPs = await DTP.find({}).lean();
+
+    // Build mapping tables
+    const approvalMap = new Map(reportApprovals.map(a => [a.tenderId?.toString(), a]));
+    const loaMap = new Map(reportLOAs.map(l => [l.tenderId?.toString(), l]));
+    const workOrderMap = new Map(reportWorkOrders.map(wo => [wo.loaId?.toString(), wo]));
+    const packageMap = new Map(reportPackages.map(p => [p._id.toString(), p]));
+
+    // Normalize and filter Pending TS Works
+    const normalizeString = (str: string) => (str || '').trim().toLowerCase().replace(/\s+/g, ' ');
     const tsCountMap: Record<string, number> = {};
     allTS.forEach(ts => {
-        const name = normalizeString(ts.workName);
+        const name = normalizeString(ts.workName as string);
         tsCountMap[name] = (tsCountMap[name] || 0) + 1;
     });
 
-    const allPackages = await Package.find({}).select('works').lean();
-    const workNameToPackageId = new Map<string, string>();
-    allPackages.forEach(pkg => {
-        if (pkg.works && Array.isArray(pkg.works)) {
-            pkg.works.forEach(w => {
-                if (w.workName) workNameToPackageId.set(normalizeString(w.workName), pkg._id.toString());
+    const pendingTSWorks = allApprovedWorks.filter(w => {
+        const safeName = normalizeString(w.workName as string);
+        if (tsCountMap[safeName] > 0) {
+            tsCountMap[safeName]--;
+            return false;
+        }
+        return true;
+    });
+
+    // Filter Pending DTP Works (Approved Works whose TS exists but DTP Approval Date does not exist)
+    const pendingTSIds = new Set(pendingTSWorks.map(w => w._id.toString()));
+    const workNameToPkg = new Map<string, any>();
+    reportPackages.forEach(pkg => {
+        if (pkg.works) {
+            pkg.works.forEach((pw: any) => {
+                if (pw.workName) {
+                    workNameToPkg.set(normalizeString(pw.workName), pkg);
+                }
             });
         }
     });
 
-    const allDTPs = await DTP.find({}).select('tsId').lean();
-    const dtpPackageIds = new Set(allDTPs.map(d => d.tsId?.toString()));
+    const pkgIdToDTP = new Map<string, any>();
+    allDTPs.forEach(d => {
+        if (d.tsId) {
+            pkgIdToDTP.set(d.tsId.toString(), d);
+        }
+    });
 
-    const allTenders = await Tender.find({}).sort({ trialNo: 1 }).select('packageId proposalDate tenderApprovalDate').lean();
-    const tenderPackageIds = new Set(allTenders.map(t => t.packageId?.toString()));
-    const tenderByPkgId = new Map(allTenders.map(t => [t.packageId?.toString(), t]));
-
-    const allApprovals = await Approval.find({}).select('tenderId proposalDate tenderApprovalDate').lean();
-    const approvalByTenderId = new Map<string, any>();
-    allApprovals.forEach(a => {
-        if (a.tenderId) {
-            const tIdStr = a.tenderId.toString();
-            const existing = approvalByTenderId.get(tIdStr);
-            if (!existing || (!existing.tenderApprovalDate && a.tenderApprovalDate)) {
-                approvalByTenderId.set(tIdStr, a);
+    const pendingDTPs: any[] = [];
+    allApprovedWorks.forEach(w => {
+        const hasTS = !pendingTSIds.has(w._id.toString());
+        if (hasTS) {
+            const safeName = normalizeString(w.workName as string);
+            const pkg = workNameToPkg.get(safeName);
+            const dtp = pkg ? pkgIdToDTP.get(pkg._id.toString()) : null;
+            const hasApprovedDTP = Boolean(dtp && dtp.dtpApprovalDate);
+            
+            if (!hasApprovedDTP) {
+                pendingDTPs.push({
+                    _id: w._id.toString(),
+                    packageName: pkg ? pkg.packageName : '-',
+                    approvedWorks: [w.workName],
+                    tenderAmount: dtp ? dtp.tenderAmount : null,
+                    dtpSendingDate: dtp ? dtp.dtpSendingDate : null,
+                    dtpApprovingAuthority: dtp ? dtp.dtpApprovingAuthority : null,
+                    dtpApprovalDate: dtp ? dtp.dtpApprovalDate : null,
+                    remarks: w.remarks || dtp?.remarks || null,
+                });
             }
         }
     });
 
-    const allLOAs = await LOA.find({}).select('tenderId').lean();
-    const loaTenderIds = new Set(allLOAs.map(l => l.tenderId?.toString()));
-    const loaByTenderId = new Map(allLOAs.map(l => [l.tenderId?.toString(), l]));
+    // --- Build Summary Report Data ---
+    const summaryMap: Record<string, any> = {};
 
-    const allWorkOrders = await WorkOrder.find({}).select('loaId').lean();
-    const workOrderLoaIds = new Set(allWorkOrders.map(wo => wo.loaId?.toString()));
-
-    const totalWorks = works.length;
-    let overallPendingTS = 0;
-
-    // Build base query string for links
-    const searchParamsObj = new URLSearchParams();
-    if (params.subDivision) searchParamsObj.set('subDivision', params.subDivision);
-    if (params.estimateConsultant) searchParamsObj.set('estimateConsultant', params.estimateConsultant);
-    if (params.approvalYear) searchParamsObj.set('approvalYear', params.approvalYear);
-    if (params.roadCategory) searchParamsObj.set('roadCategory', params.roadCategory);
-    if (params.workType) searchParamsObj.set('workType', params.workType);
-    if (params.natureOfWork) searchParamsObj.set('natureOfWork', params.natureOfWork);
-    if (params.schemeName) searchParamsObj.set('schemeName', params.schemeName);
-    if (params.groupBy) searchParamsObj.set('groupBy', params.groupBy);
-    
-    const queryString = searchParamsObj.toString() ? `?${searchParamsObj.toString()}` : '';
-
-    const groupByField = params.groupBy || 'subDivision';
-    const groupLabels: Record<string, string> = {
-        natureOfWork: 'Nature of Work',
-        subDivision: 'Sub Division',
-        estimateConsultant: 'Consultant',
-        approvalYear: 'Approval Year',
-        roadCategory: 'Road Category',
-        workType: 'Work Type',
-        schemeName: 'Scheme Name',
-        jobNumberApprovalDate: 'Date'
-    };
-    const groupByLabel = groupLabels[groupByField] || 'Category';
-
-    // Grouping dynamically
-    const groupedData = works.reduce((acc, work) => {
-        const rawVal = (work as any)[groupByField];
-        let category = 'Unspecified';
-        
-        if (rawVal) {
-            if (rawVal instanceof Date) {
-                category = rawVal.toLocaleDateString('en-GB');
-            } else {
-                category = rawVal.toString().trim();
-            }
+    allApprovedWorks.forEach(work => {
+        const year = work.approvalYear || 'Unspecified';
+        if (!summaryMap[year]) {
+            summaryMap[year] = { 
+                year, 
+                total: 0, 
+                tsPrepared: 0, 
+                tsPending: 0, 
+                dtpPrepared: 0, 
+                dtpPending: 0 
+            };
         }
         
-        if (!acc[category]) acc[category] = { 
-            count: 0, 
-            pendingTS: 0, 
-            pendingPackage: 0,
-            pendingDTP: 0, 
-            pendingTender: 0, 
-            pendingProposal: 0, 
-            pendingApproval: 0, 
-            pendingLOA: 0, 
-            pendingWorkOrder: 0 
-        };
+        summaryMap[year].total++;
         
-        acc[category].count += 1;
-
-        const safeName = normalizeString(work.workName);
-        const pkgId = workNameToPackageId.get(safeName);
-        
-        // Tracking Pending TS (Consumption Model)
-        let isPendingTS = false;
-        if (tsCountMap[safeName] > 0) {
-            tsCountMap[safeName]--;
+        const isTSPending = pendingTSIds.has(work._id.toString());
+        if (isTSPending) {
+            summaryMap[year].tsPending++;
         } else {
-            acc[category].pendingTS += 1;
-            overallPendingTS += 1;
-            isPendingTS = true;
-        }
+            // It has TS prepared.
+            summaryMap[year].tsPrepared++;
 
-        if (!isPendingTS && !pkgId) {
-            acc[category].pendingPackage += 1;
-        }
-
-        if (pkgId) {
-            const hasDTP = dtpPackageIds.has(pkgId);
-            const hasTender = tenderPackageIds.has(pkgId);
+            // Now check DTP status
+            const safeName = normalizeString(work.workName as string);
+            const pkg = workNameToPkg.get(safeName);
+            const dtp = pkg ? pkgIdToDTP.get(pkg._id.toString()) : null;
+            const hasApprovedDTP = Boolean(dtp && dtp.dtpApprovalDate);
             
-            if (!hasDTP) {
-                acc[category].pendingDTP += 1;
-            } else if (!hasTender) {
-                acc[category].pendingTender += 1;
+            if (hasApprovedDTP) {
+                summaryMap[year].dtpPrepared++;
             } else {
-                // Find tender for this package to check approval/loa
-                const tender = tenderByPkgId.get(pkgId);
-                if (tender) {
-                    const tId = tender._id.toString();
-                    const approval = approvalByTenderId.get(tId);
-                    const hasProposalDate = Boolean(tender.proposalDate) || Boolean(approval);
-                    const hasApproval = Boolean(tender.tenderApprovalDate) || Boolean(approval?.tenderApprovalDate);
-                    const hasLOA = loaTenderIds.has(tId);
-
-                    if (hasApproval) {
-                        if (!hasLOA) {
-                            acc[category].pendingLOA += 1;
-                        } else {
-                            const loa = loaByTenderId.get(tId);
-                            if (loa && !workOrderLoaIds.has(loa._id.toString())) {
-                                acc[category].pendingWorkOrder += 1;
-                            }
-                        }
-                    } else if (!hasProposalDate) {
-                        acc[category].pendingProposal += 1;
-                    } else {
-                        acc[category].pendingApproval += 1;
-                    }
-                }
+                summaryMap[year].dtpPending++;
             }
         }
+    });
 
-        return acc;
-    }, {} as Record<string, any>);
+    const summaryData = Object.values(summaryMap).sort((a, b) => b.year.localeCompare(a.year));
+    
+    const summaryTotals = summaryData.reduce((acc, row) => ({
+        year: 'Total',
+        total: acc.total + row.total,
+        tsPrepared: acc.tsPrepared + row.tsPrepared,
+        tsPending: acc.tsPending + row.tsPending,
+        dtpPrepared: acc.dtpPrepared + row.dtpPrepared,
+        dtpPending: acc.dtpPending + row.dtpPending
+    }), { year: 'Total', total: 0, tsPrepared: 0, tsPending: 0, dtpPrepared: 0, dtpPending: 0 });
 
-    let reportRows = Object.entries(groupedData).map(([category, data]) => ({
-        category,
-        count: data.count,
-        pendingTS: data.pendingTS,
-        pendingPackage: data.pendingPackage,
-        pendingDTP: data.pendingDTP,
-        pendingTender: data.pendingTender,
-        pendingProposal: data.pendingProposal,
-        pendingApproval: data.pendingApproval,
-        pendingLOA: data.pendingLOA,
-        pendingWorkOrder: data.pendingWorkOrder
-    }));
+    if (summaryData.length > 0) {
+        summaryData.push(summaryTotals);
+    }
+    // ---------------------------------
 
-    // Dashboard Sorting Logic
-    const sortField = params.sort || 'count';
-    const sortOrder = params.order || 'desc';
+    // In-memory Join & Fallback Logic
+    let tendersReportData = reportTenders.map((tender: any) => {
+        const tIdStr = tender._id.toString();
+        const approval = approvalMap.get(tIdStr);
+        const loa = loaMap.get(tIdStr);
+        const workOrder = loa ? workOrderMap.get(loa._id.toString()) : null;
 
-    reportRows.sort((a, b) => {
-        let valA = (a as any)[sortField];
-        let valB = (b as any)[sortField];
+        // Date fallback rules
+        const proposalDate = tender.proposalDate || approval?.proposalDate || null;
+        const tenderApprovalDate = tender.tenderApprovalDate || approval?.tenderApprovalDate || null;
+        const acceptanceLetterDate = tender.acceptanceLetterDate || loa?.acceptanceLetterDate || null;
+        const workOrderDate = tender.workOrderDate || workOrder?.workOrderDate || null;
 
-        // Chronological sorting for Date categories
-        if (sortField === 'category' && groupByField === 'jobNumberApprovalDate') {
-            if (valA === 'Unspecified') return sortOrder === 'asc' ? 1 : -1;
-            if (valB === 'Unspecified') return sortOrder === 'asc' ? -1 : 1;
-            
-            const [d1, m1, y1] = valA.split('/').map(Number);
-            const [d2, m2, y2] = valB.split('/').map(Number);
-            const dateA = new Date(y1, m1 - 1, d1).getTime();
-            const dateB = new Date(y2, m2 - 1, d2).getTime();
-            
-            return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
-        }
+        const pkg = tender.packageId ? packageMap.get(tender.packageId.toString()) : null;
+        const approvedWorks = pkg && pkg.works && pkg.works.length > 0 
+            ? pkg.works.map((w: any) => w.workName).filter(Boolean)
+            : [];
 
-        if (typeof valA === 'string') valA = valA.toLowerCase();
-        if (typeof valB === 'string') valB = valB.toLowerCase();
+        return {
+            _id: tIdStr,
+            tenderNoticeYear: tender.tenderNoticeYear || '-',
+            noticeNo: tender.noticeNo || '-',
+            srNo: tender.srNo || '-',
+            packageName: tender.packageName || 'Unspecified Package',
+            approvedWorks,
+            packageId: tender.packageId?.toString() || null,
+            contractorName: tender.contractorName || '-',
+            proposalDate,
+            tenderApprovalDate,
+            acceptanceLetterDate,
+            workOrderDate,
+            cancelled: tender.cancelled || false,
+            cancellationReason: tender.cancellationReason || '',
+        };
+    });
 
-        if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
-        if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+    // Apply Excel-Style Multi-Level Sorting: Year (Desc) -> Notice No (Asc) -> Sr No (Asc)
+    tendersReportData.sort((a, b) => {
+        const yearA = a.tenderNoticeYear || '';
+        const yearB = b.tenderNoticeYear || '';
+        if (yearA !== yearB) return yearB.localeCompare(yearA, undefined, { numeric: true });
+
+        const noticeA = a.noticeNo || '';
+        const noticeB = b.noticeNo || '';
+        if (noticeA !== noticeB) return String(noticeA).localeCompare(String(noticeB), undefined, { numeric: true });
+
+        const srA = a.srNo || '';
+        const srB = b.srNo || '';
+        if (srA !== srB) return String(srA).localeCompare(String(srB), undefined, { numeric: true });
+
         return 0;
     });
 
-    const totals = reportRows.reduce((acc, row) => {
-        acc.pendingPackage += row.pendingPackage;
-        acc.pendingDTP += row.pendingDTP;
-        acc.pendingTender += row.pendingTender;
-        acc.pendingProposal += row.pendingProposal;
-        acc.pendingApproval += row.pendingApproval;
-        acc.pendingLOA += row.pendingLOA;
-        acc.pendingWorkOrder += row.pendingWorkOrder;
-        return acc;
-    }, {
-        pendingPackage: 0,
-        pendingDTP: 0,
-        pendingTender: 0,
-        pendingProposal: 0,
-        pendingApproval: 0,
-        pendingLOA: 0,
-        pendingWorkOrder: 0
-    });
+    // Paginate in memory
+    const tenderPage = parseInt(params.page || '1');
+    const tenderLimit = parseInt(params.limit || '100');
+    const tenderTotalItems = tendersReportData.length;
+    const tenderTotalPages = Math.ceil(tenderTotalItems / tenderLimit);
+    const tenderSkip = (tenderPage - 1) * tenderLimit;
 
-    const totalMatchedTS = totalWorks - overallPendingTS;
-    const isDataMismatched = allTS.length > totalMatchedTS;
+    const paginatedTendersReportData = tendersReportData.slice(tenderSkip, tenderSkip + tenderLimit);
+
+    const columns: Column[] = [
+        { key: 'tenderNoticeYear', label: 'Notice Year' },
+        { key: 'noticeNo', label: 'Notice No.' },
+        { key: 'srNo', label: 'Sr No.', align: 'center' },
+        { 
+            key: 'packageName', 
+            label: 'Package Name', 
+            minWidth: '200px', 
+            render: (row) => (
+                <div className="flex flex-col gap-1">
+                    <span className="break-words">{row.packageName}</span>
+                    {row.cancelled && (
+                        <span className="inline-flex items-center self-start px-2 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-600 border border-red-200 leading-none">
+                            Cancelled: {row.cancellationReason || 'N/A'}
+                        </span>
+                    )}
+                </div>
+            ) 
+        },
+        { 
+            key: 'approvedWorks', 
+            label: 'Approved Works', 
+            minWidth: '250px',
+            render: (row) => row.approvedWorks.length > 0 ? (
+                <div className="space-y-1">
+                    {row.approvedWorks.map((work: string, idx: number) => (
+                        <div key={idx} className="text-xs leading-tight">
+                            {idx + 1}. {work}
+                        </div>
+                    ))}
+                </div>
+            ) : <span className="text-slate-400 italic">No works found</span>
+        },
+        { key: 'contractorName', label: 'Contractor Name', minWidth: '150px' },
+        { key: 'proposalDate', label: 'Proposal Date', render: (row) => <span className="text-slate-600">{formatShortDate(row.proposalDate)}</span> },
+        { key: 'tenderApprovalDate', label: 'Approval Date', render: (row) => <span className="text-slate-600">{formatShortDate(row.tenderApprovalDate)}</span> },
+        { key: 'acceptanceLetterDate', label: 'Acceptance Date', render: (row) => <span className="text-slate-600">{formatShortDate(row.acceptanceLetterDate)}</span> }
+    ];
+
+    const pendingTSColumns: Column[] = [
+        { 
+            key: 'srNo', 
+            label: 'Sr. No.', 
+            render: (_, index) => index + 1
+        },
+        { 
+            key: 'workName', 
+            label: 'Name of Work', 
+            minWidth: '350px',
+            render: (row) => (
+                <div className="line-clamp-2 max-w-lg whitespace-normal break-words" title={row.workName}>
+                    {row.workName}
+                </div>
+            )
+        },
+        { 
+            key: 'tsAmount', 
+            label: 'TS Amount in Lacs', 
+            minWidth: '80px',
+            align: 'center',
+            render: (row) => row.tsAmount ? Number(row.tsAmount).toLocaleString('en-IN') : '-'
+        },
+        { 
+            key: 'tsDate', 
+            label: 'T.S. Date', 
+            render: (row) => row.tsDate ? new Date(row.tsDate).toLocaleDateString('en-GB') : '-'
+        },
+        { 
+            key: 'tsAuthority', 
+            label: 'TS Authority', 
+            render: (row) => row.tsAuthority || '-'
+        },
+        { 
+            key: 'remarks', 
+            label: 'Remarks', 
+            minWidth: '250px',
+            render: (row) => (
+                <div className="line-clamp-3 max-w-sm whitespace-normal break-words" title={row.remarks}>
+                    {row.remarks || '-'}
+                </div>
+            )
+        }
+    ];
+
+    const pendingDTPColumns: Column[] = [
+        { 
+            key: 'srNo', 
+            label: 'Sr. No.', 
+            render: (_, index) => index + 1
+        },
+        { 
+            key: 'packageName', 
+            label: 'Package Name', 
+            minWidth: '200px',
+            render: (row) => <span className="max-w-sm whitespace-normal break-words font-medium">{row.packageName}</span>
+        },
+        { 
+            key: 'approvedWorks', 
+            label: 'Approved Works', 
+            minWidth: '250px',
+            render: (row) => row.approvedWorks.length > 0 ? (
+                <div className="space-y-1">
+                    {row.approvedWorks.map((work: string, idx: number) => (
+                        <div key={idx} className="text-xs leading-tight">
+                            {idx + 1}. {work}
+                        </div>
+                    ))}
+                </div>
+            ) : <span className="text-slate-400 italic">No works found</span>
+        },
+        { 
+            key: 'tenderAmount', 
+            label: 'Tender Amount', 
+            align: 'center',
+            render: (row) => row.tenderAmount ? Number(row.tenderAmount).toLocaleString('en-IN') : '-'
+        },
+        { 
+            key: 'dtpSendingDate', 
+            label: 'Date of Sending DTP for Approval', 
+            render: (row) => row.dtpSendingDate ? new Date(row.dtpSendingDate).toLocaleDateString('en-GB') : '-'
+        },
+        { 
+            key: 'dtpApprovingAuthority', 
+            label: 'DTP Approving Authority', 
+            render: (row) => row.dtpApprovingAuthority || '-'
+        },
+        { 
+            key: 'dtpApprovalDate', 
+            label: 'DTP Approval Date', 
+            render: (row) => row.dtpApprovalDate ? new Date(row.dtpApprovalDate).toLocaleDateString('en-GB') : '-'
+        },
+        { 
+            key: 'remarks', 
+            label: 'Remarks', 
+            minWidth: '250px',
+            render: (row) => (
+                <div className="line-clamp-3 max-w-sm whitespace-normal break-words" title={row.remarks}>
+                    {row.remarks || '-'}
+                </div>
+            )
+        }
+    ];
 
     return (
-        <div className="min-h-screen bg-[#f8fafc] flex flex-col">
-            <div className="flex-1 relative z-10">
-                {/* Main Content Area */}
-                <main className="px-4 sm:px-6 lg:px-10 py-10">
-                    <div className="max-w-7xl mx-auto flex flex-col gap-6">
+        <div className="min-h-screen bg-slate-50/50 p-4 sm:p-8 space-y-12">
+            <div className="max-w-[100%] mx-auto space-y-12">
+                <div className="flex flex-col gap-1">
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Executive Dashboard</h1>
+                    <p className="text-sm font-medium text-slate-500">Panchayat Road and Building Division, Bhavnagar</p>
+                </div>
 
-                        {/* Data Table Section */}
-                        <div className="flex flex-col gap-5">
-                            <div className="flex items-center">
-                                <ReportGrouping />
-                            </div>
-                            
-                            {/* Filter Bar */}
-                            <DashboardFilters options={filterOptions} />
-
-                            {isDataMismatched && (
-                                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
-                                    <div className="bg-amber-500 text-white p-1 rounded-full">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                                    </div>
-                                    <div className="flex-1">
-                                        <h4 className="text-sm font-bold text-amber-900">Data Discrepancy Detected</h4>
-                                        <p className="text-xs text-amber-800 mt-1">
-                                            You have <strong>{allTS.length}</strong> TS records but only <strong>{totalMatchedTS}</strong> matches in your Approved Works list. 
-                                            This usually means there are <strong>{allTS.length - totalMatchedTS}</strong> duplicate or typoed Technical Sanction records that are not "spent" properly.
-                                            <br />
-                                            <Link href="/unmatched-ts" className="font-bold underline hover:text-amber-950 mt-2 inline-block">Click here to view these orphaned TS records and fix them.</Link>
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
-                                <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="bg-slate-50 border-b border-slate-200">
-                                            <SortableHeader field="category" label={`Report Category (${groupByLabel})`} className="px-3 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-normal" />
-                                            <SortableHeader field="count" label="Total Approved Works" className="px-3 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-normal text-center" />
-                                            <SortableHeader field="pendingTS" label="Pending TS" className="px-3 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-normal text-center" />
-                                            <SortableHeader field="pendingPackage" label="Pending Package" className="px-3 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-normal text-center" />
-                                            <SortableHeader field="pendingDTP" label="Pending DTP" className="px-3 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-normal text-center" />
-                                            <SortableHeader field="pendingTender" label="Pending Tender" className="px-3 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-normal text-center" />
-                                            <SortableHeader field="pendingProposal" label="Pending Proposal" className="px-3 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-normal text-center" />
-                                            <SortableHeader field="pendingApproval" label="Pending Approval" className="px-3 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-normal text-center" />
-                                            <SortableHeader field="pendingLOA" label="Pending LOA" className="px-3 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-normal text-center" />
-                                            <SortableHeader field="pendingWorkOrder" label="Pending Work Order" className="px-3 py-3 text-[9px] font-black text-slate-500 uppercase tracking-widest whitespace-normal text-center" />
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {reportRows.length > 0 ? (
-                                            <>
-                                                {reportRows.map(row => {
-                                                    const rowParams = new URLSearchParams(searchParamsObj);
-                                                    rowParams.set(groupByField, row.category);
-                                                    rowParams.delete('groupBy');
-                                                    const rowQuery = `?${rowParams.toString()}`;
-
-                                                    const tsParams = new URLSearchParams(rowParams);
-                                                    tsParams.set('filter', 'pending');
-                                                    const tsQuery = `?${tsParams.toString()}`;
-
-                                                    const pkgParams = new URLSearchParams(rowParams);
-                                                    pkgParams.set('filter', 'pendingPackage');
-                                                    const pkgQuery = `?${pkgParams.toString()}`;
-
-                                                    const dtpParams = new URLSearchParams(rowParams);
-                                                    dtpParams.set('filter', 'pendingDTP');
-                                                    const dtpQuery = `?${dtpParams.toString()}`;
-
-                                                    const tenderParams = new URLSearchParams(rowParams);
-                                                    tenderParams.set('filter', 'pendingTender');
-                                                    const tenderQuery = `?${tenderParams.toString()}`;
-
-                                                    const proposalParams = new URLSearchParams(rowParams);
-                                                    proposalParams.set('filter', 'pendingProposal');
-                                                    const proposalQuery = `?${proposalParams.toString()}`;
-
-                                                    const approvalParams = new URLSearchParams(rowParams);
-                                                    approvalParams.set('filter', 'pendingApproval');
-                                                    const approvalQuery = `?${approvalParams.toString()}`;
-
-                                                    const loaParams = new URLSearchParams(rowParams);
-                                                    loaParams.set('filter', 'pendingLOA');
-                                                    const loaQuery = `?${loaParams.toString()}`;
-
-                                                    const woParams = new URLSearchParams(rowParams);
-                                                    woParams.set('filter', 'pendingWorkOrder');
-                                                    const woQuery = `?${woParams.toString()}`;
-
-                                                    return (
-                                                        <tr key={row.category} className="hover:bg-blue-50/50 transition-colors group">
-                                                            <td className="px-3 py-2.5 text-[11px] font-bold text-slate-700">{row.category}</td>
-                                                            <td className="px-3 py-2.5 text-center">
-                                                                <Link 
-                                                                    href={`/approved-works${rowQuery}`}
-                                                                    className="inline-flex items-center justify-center min-w-[2.5rem] px-2 py-0.5 bg-blue-100 text-blue-700 text-[11px] font-black rounded-md group-hover:bg-blue-600 group-hover:text-white transition-colors shadow-sm"
-                                                                    title="View Detailed List"
-                                                                >
-                                                                    {row.count}
-                                                                </Link>
-                                                            </td>
-                                                            <td className="px-3 py-2.5 text-center text-[11px] font-black text-rose-600 font-mono">
-                                                                {row.pendingTS > 0 ? (
-                                                                    <Link 
-                                                                        href={`/approved-works${tsQuery}`} 
-                                                                        className="hover:underline hover:text-rose-800 transition-colors px-1.5 py-0.5 rounded hover:bg-rose-50 inline-block focus:outline-none"
-                                                                        title="View Pending TS List"
-                                                                    >
-                                                                        {row.pendingTS}
-                                                                    </Link>
-                                                                ) : '-'}
-                                                            </td>
-                                                            <td className="px-3 py-2.5 text-center text-[11px] font-black text-fuchsia-600 font-mono">
-                                                                {row.pendingPackage > 0 ? (
-                                                                    <Link 
-                                                                        href={`/approved-works${pkgQuery}`} 
-                                                                        className="hover:underline hover:text-fuchsia-800 transition-colors px-1.5 py-0.5 rounded hover:bg-fuchsia-50 inline-block focus:outline-none"
-                                                                        title="View Pending Package List"
-                                                                    >
-                                                                        {row.pendingPackage}
-                                                                    </Link>
-                                                                ) : '-'}
-                                                            </td>
-                                                            <td className="px-3 py-2.5 text-center text-[11px] font-black text-amber-600 font-mono">
-                                                                {row.pendingDTP > 0 ? (
-                                                                    <Link 
-                                                                        href={`/approved-works${dtpQuery}`} 
-                                                                        className="hover:underline hover:text-amber-800 transition-colors px-1.5 py-0.5 rounded hover:bg-amber-50 inline-block focus:outline-none"
-                                                                        title="View Pending DTP List"
-                                                                    >
-                                                                        {row.pendingDTP}
-                                                                    </Link>
-                                                                ) : '-'}
-                                                            </td>
-                                                            <td className="px-3 py-2.5 text-center text-[11px] font-black text-orange-600 font-mono">
-                                                                {row.pendingTender > 0 ? (
-                                                                    <Link 
-                                                                        href={`/approved-works${tenderQuery}`} 
-                                                                        className="hover:underline hover:text-orange-800 transition-colors px-1.5 py-0.5 rounded hover:bg-orange-50 inline-block focus:outline-none"
-                                                                        title="View Pending Tender List"
-                                                                    >
-                                                                        {row.pendingTender}
-                                                                    </Link>
-                                                                ) : '-'}
-                                                            </td>
-                                                            <td className="px-3 py-2.5 text-center text-[11px] font-black text-amber-500 font-mono">
-                                                                {row.pendingProposal > 0 ? (
-                                                                    <Link 
-                                                                        href={`/approved-works${proposalQuery}`} 
-                                                                        className="hover:underline hover:text-amber-800 transition-colors px-1.5 py-0.5 rounded hover:bg-amber-50 inline-block focus:outline-none"
-                                                                        title="View Pending Proposal List"
-                                                                    >
-                                                                        {row.pendingProposal}
-                                                                    </Link>
-                                                                ) : '-'}
-                                                            </td>
-                                                            <td className="px-3 py-2.5 text-center text-[11px] font-black text-blue-600 font-mono">
-                                                                {row.pendingApproval > 0 ? (
-                                                                    <Link 
-                                                                        href={`/approved-works${approvalQuery}`} 
-                                                                        className="hover:underline hover:text-blue-800 transition-colors px-1.5 py-0.5 rounded hover:bg-blue-50 inline-block focus:outline-none"
-                                                                        title="View Pending Approval List"
-                                                                    >
-                                                                        {row.pendingApproval}
-                                                                    </Link>
-                                                                ) : '-'}
-                                                            </td>
-                                                            <td className="px-3 py-2.5 text-center text-[11px] font-black text-indigo-600 font-mono">
-                                                                {row.pendingLOA > 0 ? (
-                                                                    <Link 
-                                                                        href={`/approved-works${loaQuery}`} 
-                                                                        className="hover:underline hover:text-indigo-800 transition-colors px-1.5 py-0.5 rounded hover:bg-indigo-50 inline-block focus:outline-none"
-                                                                        title="View Pending LOA List"
-                                                                    >
-                                                                        {row.pendingLOA}
-                                                                    </Link>
-                                                                ) : '-'}
-                                                            </td>
-                                                            <td className="px-3 py-2.5 text-center text-[11px] font-black text-green-600 font-mono">
-                                                                {row.pendingWorkOrder > 0 ? (
-                                                                    <Link 
-                                                                        href={`/approved-works${woQuery}`} 
-                                                                        className="hover:underline hover:text-green-800 transition-colors px-1.5 py-0.5 rounded hover:bg-green-50 inline-block focus:outline-none"
-                                                                        title="View Pending Work Order List"
-                                                                    >
-                                                                        {row.pendingWorkOrder}
-                                                                    </Link>
-                                                                ) : '-'}
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                                <tr className="bg-slate-50">
-                                                    <td className="px-3 py-3 text-[11px] font-black text-slate-900 uppercase">Total Overall</td>
-                                                    <td className="px-3 py-3 text-center">
-                                                        <Link 
-                                                            href={`/approved-works${queryString}`}
-                                                            className="inline-flex items-center justify-center min-w-[2.5rem] px-2 py-0.5 bg-slate-800 text-white text-[11px] font-black rounded-md hover:bg-slate-700 transition-colors shadow-sm"
-                                                            title="View Complete Detailed List"
-                                                        >
-                                                            {totalWorks}
-                                                        </Link>
-                                                    </td>
-                                                    <td className="px-3 py-3 text-center text-[11px] font-black text-rose-600 font-mono">
-                                                        {overallPendingTS > 0 ? (() => {
-                                                            const p = new URLSearchParams(searchParamsObj);
-                                                            p.set('filter', 'pending');
-                                                            p.delete('groupBy');
-                                                            return (
-                                                                <Link 
-                                                                    href={`/approved-works?${p.toString()}`} 
-                                                                    className="hover:underline hover:text-rose-800 transition-colors px-1.5 py-0.5 rounded hover:bg-rose-50 inline-block focus:outline-none"
-                                                                    title="View All Pending TS"
-                                                                >
-                                                                    {overallPendingTS}
-                                                                </Link>
-                                                            );
-                                                        })() : '-'}
-                                                    </td>
-                                                    <td className="px-3 py-3 text-center text-[11px] font-black text-fuchsia-600 font-mono">
-                                                        {totals.pendingPackage > 0 ? (() => {
-                                                            const p = new URLSearchParams(searchParamsObj);
-                                                            p.set('filter', 'pendingPackage');
-                                                            p.delete('groupBy');
-                                                            return (
-                                                                <Link 
-                                                                    href={`/approved-works?${p.toString()}`} 
-                                                                    className="hover:underline hover:text-fuchsia-800 transition-colors px-1.5 py-0.5 rounded hover:bg-fuchsia-50 inline-block focus:outline-none"
-                                                                    title="View All Pending Package"
-                                                                >
-                                                                    {totals.pendingPackage}
-                                                                </Link>
-                                                            );
-                                                        })() : '-'}
-                                                    </td>
-                                                    <td className="px-3 py-3 text-center text-[11px] font-black text-amber-600 font-mono">
-                                                        {totals.pendingDTP > 0 ? (() => {
-                                                            const p = new URLSearchParams(searchParamsObj);
-                                                            p.set('filter', 'pendingDTP');
-                                                            p.delete('groupBy');
-                                                            return (
-                                                                <Link 
-                                                                    href={`/approved-works?${p.toString()}`} 
-                                                                    className="hover:underline hover:text-amber-800 transition-colors px-1.5 py-0.5 rounded hover:bg-amber-50 inline-block focus:outline-none"
-                                                                    title="View All Pending DTP"
-                                                                >
-                                                                    {totals.pendingDTP}
-                                                                </Link>
-                                                            );
-                                                        })() : '-'}
-                                                    </td>
-                                                    <td className="px-3 py-3 text-center text-[11px] font-black text-orange-600 font-mono">
-                                                        {totals.pendingTender > 0 ? (() => {
-                                                            const p = new URLSearchParams(searchParamsObj);
-                                                            p.set('filter', 'pendingTender');
-                                                            p.delete('groupBy');
-                                                            return (
-                                                                <Link 
-                                                                    href={`/approved-works?${p.toString()}`} 
-                                                                    className="hover:underline hover:text-orange-800 transition-colors px-1.5 py-0.5 rounded hover:bg-orange-50 inline-block focus:outline-none"
-                                                                    title="View All Pending Tender"
-                                                                >
-                                                                    {totals.pendingTender}
-                                                                </Link>
-                                                            );
-                                                        })() : '-'}
-                                                    </td>
-                                                    <td className="px-3 py-3 text-center text-[11px] font-black text-amber-500 font-mono">
-                                                        {totals.pendingProposal > 0 ? (() => {
-                                                            const p = new URLSearchParams(searchParamsObj);
-                                                            p.set('filter', 'pendingProposal');
-                                                            p.delete('groupBy');
-                                                            return (
-                                                                <Link 
-                                                                    href={`/approved-works?${p.toString()}`} 
-                                                                    className="hover:underline hover:text-amber-800 transition-colors px-1.5 py-0.5 rounded hover:bg-amber-50 inline-block focus:outline-none"
-                                                                    title="View All Pending Proposal"
-                                                                >
-                                                                    {totals.pendingProposal}
-                                                                </Link>
-                                                            );
-                                                        })() : '-'}
-                                                    </td>
-                                                    <td className="px-3 py-3 text-center text-[11px] font-black text-blue-600 font-mono">
-                                                        {totals.pendingApproval > 0 ? (() => {
-                                                            const p = new URLSearchParams(searchParamsObj);
-                                                            p.set('filter', 'pendingApproval');
-                                                            p.delete('groupBy');
-                                                            return (
-                                                                <Link 
-                                                                    href={`/approved-works?${p.toString()}`} 
-                                                                    className="hover:underline hover:text-blue-800 transition-colors px-1.5 py-0.5 rounded hover:bg-blue-50 inline-block focus:outline-none"
-                                                                    title="View All Pending Approval"
-                                                                >
-                                                                    {totals.pendingApproval}
-                                                                </Link>
-                                                            );
-                                                        })() : '-'}
-                                                    </td>
-                                                    <td className="px-3 py-3 text-center text-[11px] font-black text-indigo-600 font-mono">
-                                                        {totals.pendingLOA > 0 ? (() => {
-                                                            const p = new URLSearchParams(searchParamsObj);
-                                                            p.set('filter', 'pendingLOA');
-                                                            p.delete('groupBy');
-                                                            return (
-                                                                <Link 
-                                                                    href={`/approved-works?${p.toString()}`} 
-                                                                    className="hover:underline hover:text-indigo-800 transition-colors px-1.5 py-0.5 rounded hover:bg-indigo-50 inline-block focus:outline-none"
-                                                                    title="View All Pending LOA"
-                                                                >
-                                                                    {totals.pendingLOA}
-                                                                </Link>
-                                                            );
-                                                        })() : '-'}
-                                                    </td>
-                                                    <td className="px-3 py-3 text-center text-[11px] font-black text-green-600 font-mono">
-                                                        {totals.pendingWorkOrder > 0 ? (() => {
-                                                            const p = new URLSearchParams(searchParamsObj);
-                                                            p.set('filter', 'pendingWorkOrder');
-                                                            p.delete('groupBy');
-                                                            return (
-                                                                <Link 
-                                                                    href={`/approved-works?${p.toString()}`} 
-                                                                    className="hover:underline hover:text-green-800 transition-colors px-1.5 py-0.5 rounded hover:bg-green-50 inline-block focus:outline-none"
-                                                                    title="View All Pending Work Order"
-                                                                >
-                                                                    {totals.pendingWorkOrder}
-                                                                </Link>
-                                                            );
-                                                        })() : '-'}
-                                                    </td>
-                                                </tr>
-                                            </>
-                                        ) : (
-                                            <tr>
-                                                <td colSpan={4} className="px-6 py-12 text-center">
-                                                    <div className="inline-flex flex-col items-center justify-center">
-                                                        <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
-                                                            <Search className="w-6 h-6 text-slate-400" />
-                                                        </div>
-                                                        <h3 className="text-sm font-bold text-slate-900 mb-1">No records found</h3>
-                                                        <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                                                            Try adjusting your filters to see more matching summary reports.
-                                                        </p>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        </div>
+                {/* 0. Summary Report */}
+                <div className="bg-white p-6 shadow-sm rounded-xl border border-slate-100 space-y-4">
+                    <div className="flex flex-col gap-1">
+                        <h2 className="text-lg font-bold text-slate-800 tracking-tight">Summary Report</h2>
+                        <p className="text-xs text-slate-500 font-medium">Overview of works and packages status by Approval Year</p>
                     </div>
-                </main>
+                    <div className="overflow-x-auto border border-slate-300 shadow-sm rounded-lg">
+                        <table className="w-full text-left border-collapse text-xs font-medium">
+                            <thead>
+                                <tr className="bg-slate-100 border-b border-slate-300">
+                                    <th rowSpan={2} className="px-3 py-2.5 font-bold text-slate-700 border-r border-slate-300">Approval Year</th>
+                                    <th rowSpan={2} className="px-3 py-2.5 font-bold text-slate-700 border-r border-slate-300 text-center">Total Approved Works</th>
+                                    <th colSpan={2} className="px-3 py-2.5 font-bold text-slate-700 border-r border-slate-300 text-center">TS</th>
+                                    <th colSpan={2} className="px-3 py-2.5 font-bold text-slate-700 text-center">DTP</th>
+                                </tr>
+                                <tr className="bg-slate-100 border-b border-slate-300">
+                                    <th className="px-3 py-2.5 font-medium text-slate-700 border-r border-slate-300 text-center">Prepared</th>
+                                    <th className="px-3 py-2.5 font-medium text-slate-700 border-r border-slate-300 text-center">Pending</th>
+                                    <th className="px-3 py-2.5 font-medium text-slate-700 border-r border-slate-300 text-center">Prepared</th>
+                                    <th className="px-3 py-2.5 font-medium text-slate-700 text-center">Pending</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200">
+                                {summaryData.length > 0 ? summaryData.map((row: any, index: number) => {
+                                    const rowBg = index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
+                                    return (
+                                        <tr key={row.year} className={`${rowBg} hover:bg-blue-50/80 transition-colors`}>
+                                            <td className="px-3 py-2 text-slate-800 border-r border-slate-200"><span className="font-bold">{row.year}</span></td>
+                                            <td className="px-3 py-2 text-slate-800 border-r border-slate-200 text-center">
+                                                {row.year !== 'Total' ? <Link href={`/approved-works?approvalYear=${encodeURIComponent(row.year)}`} className="text-blue-600 hover:underline font-medium">{row.total}</Link> : <Link href="/approved-works" className="text-blue-600 hover:underline font-bold">{row.total}</Link>}
+                                            </td>
+                                            <td className="px-3 py-2 text-slate-800 border-r border-slate-200 text-center">
+                                                {row.year !== 'Total' ? <Link href={`/approved-works?approvalYear=${encodeURIComponent(row.year)}&filter=preparedTS`} className="text-blue-600 hover:underline font-medium">{row.tsPrepared}</Link> : <Link href="/approved-works?filter=preparedTS" className="text-blue-600 hover:underline font-bold">{row.tsPrepared}</Link>}
+                                            </td>
+                                            <td className="px-3 py-2 text-slate-800 border-r border-slate-200 text-center">
+                                                {row.year !== 'Total' ? <Link href={`/approved-works?approvalYear=${encodeURIComponent(row.year)}&filter=pending`} className="text-amber-600 hover:underline font-medium">{row.tsPending}</Link> : <Link href="/approved-works?filter=pending" className="text-amber-700 hover:underline font-bold">{row.tsPending}</Link>}
+                                            </td>
+                                            <td className="px-3 py-2 text-slate-800 border-r border-slate-200 text-center">
+                                                {row.year !== 'Total' ? <Link href={`/approved-works?approvalYear=${encodeURIComponent(row.year)}&filter=preparedDTP`} className="text-blue-600 hover:underline font-medium">{row.dtpPrepared}</Link> : <Link href="/approved-works?filter=preparedDTP" className="text-blue-600 hover:underline font-bold">{row.dtpPrepared}</Link>}
+                                            </td>
+                                            <td className="px-3 py-2 text-slate-800 text-center">
+                                                {row.year !== 'Total' ? <Link href={`/approved-works?approvalYear=${encodeURIComponent(row.year)}&filter=pendingDTP`} className="text-amber-600 hover:underline font-medium">{row.dtpPending}</Link> : <Link href="/approved-works?filter=pendingDTP" className="text-amber-700 hover:underline font-bold">{row.dtpPending}</Link>}
+                                            </td>
+                                        </tr>
+                                    );
+                                }) : (
+                                    <tr>
+                                        <td colSpan={6} className="px-4 py-8 text-center text-slate-500">No summary data available.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* 1. Pending TS Report */}
+                <details className="group bg-white shadow-sm rounded-xl border border-slate-100 overflow-hidden">
+                    <summary className="list-none p-6 cursor-pointer flex justify-between items-center hover:bg-slate-50 transition-colors [&::-webkit-details-marker]:hidden">
+                        <div className="flex flex-col gap-1">
+                            <h2 className="text-lg font-bold text-slate-800 tracking-tight">Pending TS Report</h2>
+                            <p className="text-xs text-slate-500 font-medium">Approved works awaiting Technical Sanction approval</p>
+                        </div>
+                        <div className="text-slate-400 group-open:rotate-180 transition-transform duration-200">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </summary>
+                    <div className="p-6 border-t border-slate-100">
+                        <DataTable 
+                            columns={pendingTSColumns} 
+                            data={pendingTSWorks} 
+                            emptyMessage="No pending Technical Sanctions."
+                        />
+                    </div>
+                </details>
+
+                {/* 2. Pending DTP Report */}
+                <details className="group bg-white shadow-sm rounded-xl border border-slate-100 overflow-hidden">
+                    <summary className="list-none p-6 cursor-pointer flex justify-between items-center hover:bg-slate-50 transition-colors [&::-webkit-details-marker]:hidden">
+                        <div className="flex flex-col gap-1">
+                            <h2 className="text-lg font-bold text-slate-800 tracking-tight">Pending DTP Report</h2>
+                            <p className="text-xs text-slate-500 font-medium">Approved works with Technical Sanction awaiting Detailed Technical Proposal (DTP) approval</p>
+                        </div>
+                        <div className="text-slate-400 group-open:rotate-180 transition-transform duration-200">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </summary>
+                    <div className="p-6 border-t border-slate-100">
+                        <DataTable 
+                            columns={pendingDTPColumns} 
+                            data={pendingDTPs} 
+                            emptyMessage="No pending DTP works."
+                        />
+                    </div>
+                </details>
+
+                {/* 3. Pending Work Order Report */}
+                <details className="group bg-white shadow-sm rounded-xl border border-slate-100 overflow-hidden">
+                    <summary className="list-none p-6 cursor-pointer flex justify-between items-center hover:bg-slate-50 transition-colors [&::-webkit-details-marker]:hidden">
+                        <div className="flex flex-col gap-1">
+                            <h2 className="text-lg font-bold text-slate-800 tracking-tight">Pending Work Order Report</h2>
+                            <p className="text-xs text-slate-500 font-medium">Active tender notice tracks and contract allocations</p>
+                        </div>
+                        <div className="text-slate-400 group-open:rotate-180 transition-transform duration-200">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </div>
+                    </summary>
+                    <div className="p-6 border-t border-slate-100 space-y-4">
+                        <DataTable 
+                            columns={columns} 
+                            data={paginatedTendersReportData} 
+                            emptyMessage="No tender notices found."
+                        />
+                        {tenderTotalPages > 1 && (
+                            <div className="mt-4 flex justify-end">
+                                <Pagination currentPage={tenderPage} totalPages={tenderTotalPages} />
+                            </div>
+                        )}
+                    </div>
+                </details>
             </div>
         </div>
     );

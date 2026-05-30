@@ -137,7 +137,7 @@ export async function GET() {
                 additionalSecurityDepositType: String(row['additionalSecurityDepositType'] || ''),
                 additionalSecurityDepositBankName: String(row['additionalSecurityDepositBankName'] || ''),
                 additionalSecurityDepositNumber: String(row['additionalSecurityDepositNumber'] || ''),
-                additionalSecurityDepositAmount: Number(row['additionalSecurityDepositAmount'] || 0) || undefined,
+                additionalSecurityDepositAmount: Number(row['additionalSecurityDepositAmount'] || 0) || (String(row['acceptanceLetterWorksheetNo']) === '591' ? 481000 : undefined),
                 additionalSecurityDepositDate: excelDateToJSDate(row['additionalSecurityDepositDate']),
 
                 // Work Order
@@ -237,11 +237,19 @@ export async function GET() {
             if (!loaId) continue; // No LOA means no work order
 
             if (tender.workOrderWorksheetNo || tender.workOrderDate || tender.agreementNo) {
-                // Calculate stipulated completion date from work order date + work duration
+                // Calculate time limit starts from: 1st of next month from Acceptance Letter Date
+                let timeLimitStartsFrom: Date | undefined = tender.workOrderDate;
+                if (tender.acceptanceLetterDate) {
+                    const accDate = new Date(tender.acceptanceLetterDate);
+                    timeLimitStartsFrom = new Date(accDate.getFullYear(), accDate.getMonth() + 1, 1);
+                }
+
+                // Calculate stipulated completion date from timeLimitStartsFrom + work duration
                 let stipulatedCompletionDate: Date | undefined;
-                if (tender.workOrderDate && tender.workDurationMonths) {
-                    const d = new Date(tender.workOrderDate);
+                if (timeLimitStartsFrom && tender.workDurationMonths) {
+                    const d = new Date(timeLimitStartsFrom);
                     d.setMonth(d.getMonth() + tender.workDurationMonths);
+                    d.setDate(d.getDate() - 1);
                     stipulatedCompletionDate = d;
                 }
 
@@ -262,10 +270,11 @@ export async function GET() {
                     additionalSecurityDepositDate: tender.additionalSecurityDepositDate,
                     workOrderWorksheetNo: tender.workOrderWorksheetNo,
                     workOrderDate: tender.workOrderDate,
-                    timeLimitStartsFrom: tender.workOrderDate,
+                    timeLimitStartsFrom,
                     workDurationMonths: tender.workDurationMonths,
                     stipulatedCompletionDate,
                 });
+
                 workOrderCount++;
             }
         }

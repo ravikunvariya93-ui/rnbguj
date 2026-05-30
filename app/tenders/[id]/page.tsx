@@ -21,6 +21,8 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
                 { label: 'Package Name', value: tender.packageName },
                 { label: 'Trial No.', value: tender.trialNo },
                 { label: 'Re-Invite?', value: tender.reInvite ? 'Yes' : 'No' },
+                { label: 'Cancelled?', value: tender.cancelled ? 'Yes' : 'No' },
+                { label: 'Reason for Cancellation', value: tender.cancelled ? (tender.cancellationReason || '-') : '-' },
                 { label: 'Tender Notice Year', value: tender.tenderNoticeYear },
                 { label: 'Notice No.', value: tender.noticeNo },
                 { label: 'Sr No.', value: tender.srNo },

@@ -13,6 +13,7 @@ interface ClassificationSectionProps {
         workType: string;
         natureOfWork: string;
         schemeName: string;
+        buildingType?: string;
         remarks?: string;
     };
     handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
@@ -32,28 +33,78 @@ export default function ClassificationSection({ formData, handleChange }: Classi
         "CWB",
         "CCR"
     ];
-    const [natureOfWorkOptions, setNatureOfWorkOptions] = useState(DEFAULT_NATURES);
+    const [natureOfWorkOptions, setNatureOfWorkOptions] = useState(() => {
+        const initialVal = formData.natureOfWork ? [formData.natureOfWork] : [];
+        return Array.from(new Set([...DEFAULT_NATURES, ...initialVal]));
+    });
+
+    const DEFAULT_SCHEMES = [
+        "MMGSY",
+        "Suvidhapath",
+        "SR",
+        "BUJ",
+        "EMRI - MMGSY"
+    ];
+    const [schemeOptions, setSchemeOptions] = useState(() => {
+        const initialVal = formData.schemeName ? [formData.schemeName] : [];
+        return Array.from(new Set([...DEFAULT_SCHEMES, ...initialVal]));
+    });
+    const [isAddingNewScheme, setIsAddingNewScheme] = useState(false);
+    const [newSchemeValue, setNewSchemeValue] = useState('');
+
+    const DEFAULT_BUILDING_TYPES = [
+        "Residential",
+        "Non-Residential",
+        "Hospital",
+        "School",
+        "Office"
+    ];
+    const [buildingTypeOptions, setBuildingTypeOptions] = useState(() => {
+        const initialVal = formData.buildingType ? [formData.buildingType] : [];
+        return Array.from(new Set([...DEFAULT_BUILDING_TYPES, ...initialVal]));
+    });
+    const [isAddingNewBuildingType, setIsAddingNewBuildingType] = useState(false);
+    const [newBuildingTypeValue, setNewBuildingTypeValue] = useState('');
 
     useEffect(() => {
-        const fetchNatures = async () => {
+        const fetchMetadata = async () => {
             setIsLoading(true);
             try {
-                const response = await fetch('/api/metadata/natures');
-                if (response.ok) {
-                    const dbNatures = await response.json();
-                    // Merge defaults with DB values and ensure uniqueness
-                    const combined = Array.from(new Set([...DEFAULT_NATURES, ...dbNatures])).sort();
+                const [naturesRes, schemesRes, buildingTypesRes] = await Promise.all([
+                    fetch('/api/metadata/natures'),
+                    fetch('/api/metadata/schemes'),
+                    fetch('/api/metadata/building-types')
+                ]);
+
+                if (naturesRes.ok) {
+                    const dbNatures = await naturesRes.json();
+                    const initialNature = formData.natureOfWork ? [formData.natureOfWork] : [];
+                    const combined = Array.from(new Set([...DEFAULT_NATURES, ...initialNature, ...dbNatures])).sort();
                     setNatureOfWorkOptions(combined);
                 }
+
+                if (schemesRes.ok) {
+                    const dbSchemes = await schemesRes.json();
+                    const initialScheme = formData.schemeName ? [formData.schemeName] : [];
+                    const combined = Array.from(new Set([...DEFAULT_SCHEMES, ...initialScheme, ...dbSchemes])).sort();
+                    setSchemeOptions(combined);
+                }
+
+                if (buildingTypesRes.ok) {
+                    const dbBuildingTypes = await buildingTypesRes.json();
+                    const initialBuildingType = formData.buildingType ? [formData.buildingType] : [];
+                    const combined = Array.from(new Set([...DEFAULT_BUILDING_TYPES, ...initialBuildingType, ...dbBuildingTypes])).sort();
+                    setBuildingTypeOptions(combined);
+                }
             } catch (error) {
-                console.error("Error fetching natures:", error);
+                console.error("Error fetching metadata:", error);
             } finally {
                 setIsLoading(false);
             }
         };
 
-        fetchNatures();
-    }, []);
+        fetchMetadata();
+    }, [formData.natureOfWork, formData.schemeName, formData.buildingType]);
 
     const handleNatureOfWorkChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         if (e.target.value === 'ADD_NEW') {
@@ -84,6 +135,66 @@ export default function ClassificationSection({ formData, handleChange }: Classi
     const cancelAddNew = () => {
         setIsAddingNew(false);
         setNewOptionValue('');
+    };
+
+    const handleSchemeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        if (e.target.value === 'ADD_NEW') {
+            setIsAddingNewScheme(true);
+        } else {
+            handleChange(e);
+        }
+    };
+
+    const handleAddNewScheme = () => {
+        if (newSchemeValue.trim()) {
+            if (!schemeOptions.includes(newSchemeValue.trim())) {
+                setSchemeOptions(prev => [...prev, newSchemeValue.trim()]);
+            }
+            const mockEvent = {
+                target: {
+                    name: 'schemeName',
+                    value: newSchemeValue.trim()
+                }
+            } as any;
+            handleChange(mockEvent);
+            setIsAddingNewScheme(false);
+            setNewSchemeValue('');
+        }
+    };
+
+    const cancelAddNewScheme = () => {
+        setIsAddingNewScheme(false);
+        setNewSchemeValue('');
+    };
+
+    const handleBuildingTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        if (e.target.value === 'ADD_NEW') {
+            setIsAddingNewBuildingType(true);
+        } else {
+            handleChange(e);
+        }
+    };
+
+    const handleAddNewBuildingType = () => {
+        if (newBuildingTypeValue.trim()) {
+            if (!buildingTypeOptions.includes(newBuildingTypeValue.trim())) {
+                setBuildingTypeOptions(prev => [...prev, newBuildingTypeValue.trim()]);
+            }
+            const mockEvent = {
+                target: {
+                    name: 'buildingType',
+                    value: newBuildingTypeValue.trim()
+                }
+            } as any;
+            handleChange(mockEvent);
+            setIsAddingNewBuildingType(false);
+            setNewBuildingTypeValue('');
+        }
+    };
+
+    const cancelAddNewBuildingType = () => {
+        setIsAddingNewBuildingType(false);
+        setNewBuildingTypeValue('');
     };
 
     return (
@@ -168,6 +279,64 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                     </select>
                 </div>
 
+                {formData.workType === 'Building' && (
+                    <div className="sm:col-span-2">
+                        <label htmlFor="buildingType" className="block text-sm font-medium text-gray-700 font-bold mb-1 flex justify-between items-center">
+                            Building Type
+                        </label>
+                        {isAddingNewBuildingType ? (
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    autoFocus
+                                    value={newBuildingTypeValue}
+                                    onChange={(e) => setNewBuildingTypeValue(e.target.value)}
+                                    className="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="Enter new building type..."
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleAddNewBuildingType();
+                                        } else if (e.key === 'Escape') {
+                                            cancelAddNewBuildingType();
+                                        }
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleAddNewBuildingType}
+                                    className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                    title="Add"
+                                >
+                                    <Check className="w-4 h-4" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={cancelAddNewBuildingType}
+                                    className="p-2 bg-gray-200 text-gray-600 rounded-md hover:bg-gray-300 transition-colors"
+                                    title="Cancel"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ) : (
+                            <select
+                                name="buildingType"
+                                id="buildingType"
+                                value={formData.buildingType || ''}
+                                onChange={handleBuildingTypeChange}
+                                className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500 bg-white"
+                            >
+                                <option value="">-- Select Building Type --</option>
+                                {buildingTypeOptions.map(option => (
+                                    <option key={option} value={option}>{option}</option>
+                                ))}
+                                <option value="ADD_NEW" className="text-blue-600 font-bold italic">+ Add New...</option>
+                            </select>
+                        )}
+                    </div>
+                )}
+
                 <div className="sm:col-span-2">
                     <label htmlFor="natureOfWork" className="block text-sm font-medium text-gray-700 font-bold mb-1 flex justify-between items-center">
                         Nature of Work
@@ -233,21 +402,59 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                 </div>
 
                 <div className="sm:col-span-2">
-                    <label htmlFor="schemeName" className="block text-sm font-medium text-gray-700">Name of Scheme</label>
-                    <select
-                        name="schemeName"
-                        id="schemeName"
-                        value={formData.schemeName}
-                        onChange={handleChange}
-                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                    >
-                        <option value="">-- Select Name of Scheme --</option>
-                        <option value="MMGSY">MMGSY</option>
-                        <option value="Suvidhapath">Suvidhapath</option>
-                        <option value="SR">SR</option>
-                        <option value="BUJ">BUJ</option>
-                        <option value="EMRI - MMGSY">EMRI - MMGSY</option>
-                    </select>
+                    <label htmlFor="schemeName" className="block text-sm font-medium text-gray-700 font-bold mb-1 flex justify-between items-center">
+                        Name of Scheme
+                    </label>
+                    {isAddingNewScheme ? (
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                autoFocus
+                                value={newSchemeValue}
+                                onChange={(e) => setNewSchemeValue(e.target.value)}
+                                className="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Enter new scheme..."
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleAddNewScheme();
+                                    } else if (e.key === 'Escape') {
+                                        cancelAddNewScheme();
+                                    }
+                                }}
+                            />
+                            <button
+                                type="button"
+                                onClick={handleAddNewScheme}
+                                className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                title="Add"
+                            >
+                                <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={cancelAddNewScheme}
+                                className="p-2 bg-gray-200 text-gray-600 rounded-md hover:bg-gray-300 transition-colors"
+                                title="Cancel"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    ) : (
+                        <select
+                            name="schemeName"
+                            id="schemeName"
+                            value={formData.schemeName}
+                            onChange={handleSchemeChange}
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        >
+                            <option value="">-- Select Name of Scheme --</option>
+                            {schemeOptions.map(option => (
+                                <option key={option} value={option}>{option}</option>
+                            ))}
+                            <option value="ADD_NEW" className="text-blue-600 font-bold italic">+ Add New...</option>
+                        </select>
+                    )}
                 </div>
 
                 <div className="sm:col-span-6">

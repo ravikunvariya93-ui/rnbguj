@@ -4,6 +4,7 @@ export interface ILOA extends Document {
     tenderId: mongoose.Schema.Types.ObjectId;
     stampDuty: number;
     defectLiabilityPeriod: string;
+    workDurationMonths: number;
     acceptanceLetterWorksheetNo: string;
     acceptanceLetterDate: Date;
     createdAt: Date;
@@ -14,6 +15,7 @@ const LOASchema: Schema = new Schema({
     tenderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tender', required: true },
     stampDuty: { type: Number },
     defectLiabilityPeriod: { type: String },
+    workDurationMonths: { type: Number },
     acceptanceLetterWorksheetNo: { type: String },
     acceptanceLetterDate: { type: Date },
 }, {

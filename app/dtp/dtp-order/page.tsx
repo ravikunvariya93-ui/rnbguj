@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, Printer, X, Loader2 } from 'lucide-react';
+import { FileText, Printer, X, Loader2, Download } from 'lucide-react';
 
 interface DTPRecord {
     _id: string;
@@ -68,6 +68,28 @@ export default function DTPOrderPage() {
         }
     };
 
+    const exportToDoc = () => {
+        const element = document.getElementById('print-area');
+        if (!element) return;
+        const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>";
+        const postHtml = "</body></html>";
+        let html = element.innerHTML;
+        html = preHtml + html + postHtml;
+        const blob = new Blob(['\\ufeff', html], { type: 'application/msword' });
+        const url = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(html);
+        const filename = 'DTP_Order.doc';
+        const downloadLink = document.createElement('a');
+        document.body.appendChild(downloadLink);
+        if (navigator.msSaveOrOpenBlob) {
+            navigator.msSaveOrOpenBlob(blob, filename);
+        } else {
+            downloadLink.href = url;
+            downloadLink.download = filename;
+            downloadLink.click();
+        }
+        document.body.removeChild(downloadLink);
+    };
+
     const fmt = (amt?: number) => amt ? amt.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-';
 
     return (
@@ -125,6 +147,12 @@ export default function DTPOrderPage() {
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-white font-semibold text-sm">DTP Order Preview ({dtps.length} {dtps.length === 1 ? 'order' : 'orders'} found)</h2>
                                 <div className="flex gap-3 text-sans">
+                                    <button
+                                        onClick={exportToDoc}
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 shadow cursor-pointer transition-all"
+                                    >
+                                        <Download className="w-4 h-4" /> Export to Word
+                                    </button>
                                     <button
                                         onClick={() => window.print()}
                                         className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 shadow cursor-pointer transition-all"
@@ -287,66 +315,71 @@ function OrderContent({ dtp, enteredApprovalNo, approvalDate, getYear, fmt, styl
     // Determine the full approval number
     // If the database has a full reference containing slashes (e.g., "PB/BVN/SBD/422"), use it.
     // Otherwise construct the default standard format
+    const is591 = enteredApprovalNo.trim().includes('591');
+    const currentYear = is591 ? '2025' : getYear();
+    const cleanApprovalNo = enteredApprovalNo.trim().replace('/2026', '');
     const fullApprovalNo = dtp.dtpApprovalNo && dtp.dtpApprovalNo.includes('/') 
-        ? dtp.dtpApprovalNo 
-        : `DP/R&B/Tender/${enteredApprovalNo}/${getYear()}`;
+        ? dtp.dtpApprovalNo.replace('591/2026', '591/2025') 
+        : `DP/R&B/Tender/${cleanApprovalNo}/${currentYear}`;
 
     return (
-        <div className="printable-container" style={{
-            fontFamily: '"Times New Roman", Times, serif',
-            fontSize: '15px',
-            lineHeight: '1.9',
-            padding: '60px 72px',
+        <div className="printable-container text-black bg-white" contentEditable suppressContentEditableWarning style={{
+            fontFamily: 'Cambria, Georgia, serif',
+            fontSize: '14px',
+            lineHeight: '1.5',
+            padding: '40px 60px',
             color: '#000',
             backgroundColor: '#fff',
+            outline: 'none',
+            boxSizing: 'border-box',
             ...style
         }}>
             {/* Top Table / Header Layout */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '36px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '16px' }}>
                 <tbody>
                     <tr>
-                        <td style={{ verticalAlign: 'top', width: '40%', fontSize: '15px', padding: '0' }}>
+                        <td style={{ verticalAlign: 'top', width: '40%', fontSize: '14px', padding: '0' }}>
                             <strong>No. </strong>{fullApprovalNo}
                         </td>
-                        <td style={{ verticalAlign: 'top', width: '60%', textAlign: 'right', fontSize: '15px', padding: '0', fontWeight: 'bold', lineHeight: '1.4' }}>
+                        <td style={{ verticalAlign: 'top', width: '60%', textAlign: 'right', fontSize: '14px', padding: '0', fontWeight: 'bold', lineHeight: '1.3' }}>
                             Panchayat R & B Division, Bhavnagar.<br />
                             District Panchayat Office<br />
-                            <span style={{ fontWeight: 'normal', fontSize: '15px' }}>Dt. {approvalDate}</span>
+                            <span style={{ fontWeight: 'normal', fontSize: '14px' }}>Dt. - &nbsp;&nbsp;&nbsp;{approvalDate}</span>
                         </td>
                     </tr>
                 </tbody>
             </table>
 
             {/* Office Order Title */}
-            <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '16px', textDecoration: 'underline', marginBottom: '32px', letterSpacing: '0.5px' }}>
+            <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '15px', textDecoration: 'underline', marginBottom: '16px', letterSpacing: '0.5px' }}>
                 OFFICE ORDER
             </div>
 
             {/* Subject / Body Statement */}
-            <div style={{ textAlign: 'justify', fontSize: '15px', lineHeight: '2.1', marginBottom: '32px', textIndent: '3em' }}>
+            <div style={{ textAlign: 'justify', fontSize: '14px', lineHeight: '1.5', marginBottom: '16px', textIndent: '3em' }}>
                 Standard Bidding Document (S.B.D.) for the work of <strong>{dtp.tsId?.packageName}</strong> amounting Rs. <strong>{fmt(dtp.tenderAmount)}</strong> ({numberToIndianWords(dtp.tenderAmount || 0)}) is hereby approved subject to following conditions.
             </div>
 
             {/* Conditions Section */}
-            <div style={{ fontSize: '15px', marginBottom: '32px' }}>
-                <strong style={{ fontSize: '15px' }}>Conditions: -</strong>
-                <ol style={{ paddingLeft: '24px', marginTop: '8px', listStyleType: 'decimal', fontSize: '15px' }}>
-                    <li style={{ marginBottom: '12px', textAlign: 'justify', lineHeight: '1.8' }}>
+            <div style={{ fontSize: '14px', marginBottom: '16px' }}>
+                <strong style={{ fontSize: '14px' }}>Conditions: -</strong>
+                <ol style={{ paddingLeft: '24px', marginTop: '4px', listStyleType: 'decimal', fontSize: '14px' }}>
+                    <li style={{ marginBottom: '8px', textAlign: 'justify', lineHeight: '1.5' }}>
                         Necessary correction made in S.B.D. shall be checked thoroughly before issuing the tender copy to the contractor or online submission.
                     </li>
-                    <li style={{ marginBottom: '12px', textAlign: 'justify', lineHeight: '1.8' }}>
+                    <li style={{ marginBottom: '8px', textAlign: 'justify', lineHeight: '1.5' }}>
                         Page number to all tender papers be given before issuing the final copy.
                     </li>
-                    <li style={{ marginBottom: '12px', textAlign: 'justify', lineHeight: '1.8' }}>
+                    <li style={{ marginBottom: '8px', textAlign: 'justify', lineHeight: '1.5' }}>
                         Instruction contained in the technical note of T.S. Order shall be scrupulously followed.
                     </li>
                 </ol>
             </div>
 
             {/* Executive Engineer Signature Block */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '40px', marginBottom: '40px', fontSize: '15px', textAlign: 'center' }}>
-                <div style={{ lineHeight: '1.4' }}>
-                    <div style={{ marginBottom: '52px' }}>&nbsp;</div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', marginBottom: '20px', fontSize: '14px', textAlign: 'center' }}>
+                <div style={{ lineHeight: '1.3' }}>
+                    <div style={{ marginBottom: '24px' }}>&nbsp;</div>
                     <div style={{ fontWeight: 'bold' }}>Executive Engineer</div>
                     <div>Panchayat R & B Division</div>
                     <div>Bhavnagar</div>
@@ -354,7 +387,7 @@ function OrderContent({ dtp, enteredApprovalNo, approvalDate, getYear, fmt, styl
             </div>
 
             {/* Copy To Block */}
-            <div style={{ fontSize: '15px', marginTop: '24px', lineHeight: '1.5', textAlign: 'left' }}>
+            <div style={{ fontSize: '14px', marginTop: '12px', lineHeight: '1.4', textAlign: 'left' }}>
                 <strong>Copy to: -</strong><br />
                 Deputy Executive Engineer,<br />
                 Panchayat R&amp;B Sub Division,<br />
@@ -363,3 +396,4 @@ function OrderContent({ dtp, enteredApprovalNo, approvalDate, getYear, fmt, styl
         </div>
     );
 }
+

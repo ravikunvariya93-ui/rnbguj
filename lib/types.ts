@@ -1,0 +1,30 @@
+export interface ListPageSearchParams {
+  filter?: string;
+  search?: string;
+  page?: string;
+  limit?: string;
+  sort?: string;
+  order?: string;
+  // dashboard metadata filters
+  natureOfWork?: string;
+  subDivision?: string;
+  estimateConsultant?: string;
+  approvalYear?: string;
+  roadCategory?: string;
+  workType?: string;
+  schemeName?: string;
+}
+
+export interface EntityFormProps<T = any> {
+  initialData?: T;
+  isEditing?: boolean;
+}
+
+export interface Column<T = any> {
+  key: string;
+  label: string;
+  sortable?: boolean;
+  align?: 'left' | 'center' | 'right';
+  minWidth?: string;
+  render?: (row: T, index: number) => React.ReactNode;
+}

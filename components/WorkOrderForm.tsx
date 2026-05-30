@@ -42,6 +42,25 @@ function formatDateForInput(dateString: string): string {
     }
 }
 
+function getDefectLiabilityDate(
+    timeLimitStartsFrom: string,
+    workDurationMonths: string | number,
+    estimatedAmount?: number,
+) {
+    const startDate = parseDateStr(String(timeLimitStartsFrom));
+    if (!startDate) return null;
+
+    const workMonths = Number(workDurationMonths) || 0;
+    const amount = Number(estimatedAmount) || 0;
+    const daysToAdd = amount > 10000000
+        ? (workMonths * 30) + (36 * 30) + 30
+        : (workMonths * 30) + (12 * 30) + 30;
+
+    const defectLiabilityDate = new Date(startDate);
+    defectLiabilityDate.setDate(defectLiabilityDate.getDate() + daysToAdd);
+    return defectLiabilityDate;
+}
+
 import SearchableSelect from './SearchableSelect';
 
 export default function WorkOrderForm({ initialData = {}, isEditing = false }: WorkOrderFormProps) {
@@ -109,24 +128,18 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
     useEffect(() => {
         if (!formData.loaId) return;
 
-        if (formData.workOrderDate) {
+        const selectedLoa = loas.find((loa: any) => loa._id === formData.loaId);
+        if (selectedLoa && selectedLoa.acceptanceLetterDate) {
+            const accDate = new Date(selectedLoa.acceptanceLetterDate);
+            const nextMonth = new Date(accDate.getFullYear(), accDate.getMonth() + 1, 1);
+            const calcDateStr = formatDate(nextMonth);
+            const loaWorkDurationMonths = selectedLoa.workDurationMonths || selectedLoa.tenderId?.workDurationMonths || '';
             setFormData((prev: any) => {
-                if (prev.timeLimitStartsFrom === formData.workOrderDate) return prev;
-                return { ...prev, timeLimitStartsFrom: formData.workOrderDate };
+                if (prev.timeLimitStartsFrom === calcDateStr && prev.workDurationMonths === loaWorkDurationMonths) return prev;
+                return { ...prev, timeLimitStartsFrom: calcDateStr, workDurationMonths: loaWorkDurationMonths };
             });
-        } else {
-            const selectedLoa = loas.find((loa: any) => loa._id === formData.loaId);
-            if (selectedLoa && selectedLoa.acceptanceLetterDate) {
-                const accDate = new Date(selectedLoa.acceptanceLetterDate);
-                accDate.setMonth(accDate.getMonth() + 3);
-                const calcDateStr = formatDate(accDate);
-                setFormData((prev: any) => {
-                    if (prev.timeLimitStartsFrom === calcDateStr) return prev;
-                    return { ...prev, timeLimitStartsFrom: calcDateStr };
-                });
-            }
         }
-    }, [formData.workOrderDate, formData.loaId, loas]);
+    }, [formData.loaId, loas]);
 
     useEffect(() => {
         if (!formData.timeLimitStartsFrom || !formData.workDurationMonths) return;
@@ -143,6 +156,28 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
             stipulatedCompletionDate: formatDate(stipulatedDate),
         }));
     }, [formData.timeLimitStartsFrom, formData.workDurationMonths]);
+
+    useEffect(() => {
+        if (!formData.loaId || !formData.timeLimitStartsFrom || !formData.workDurationMonths) return;
+        const selectedLoa = loas.find((loa: any) => loa._id === formData.loaId);
+        if (!selectedLoa) return;
+
+        const estimatedAmount = selectedLoa.tenderId?.estimatedAmount || selectedLoa.tenderId?.contractPrice;
+        const defectLiabilityDate = getDefectLiabilityDate(
+            String(formData.timeLimitStartsFrom),
+            formData.workDurationMonths,
+            estimatedAmount,
+        );
+        if (!defectLiabilityDate) return;
+
+        defectLiabilityDate.setDate(defectLiabilityDate.getDate() + 60);
+
+        const calcDateStr = formatDate(defectLiabilityDate);
+        setFormData((prev: any) => {
+            if (prev.securityDepositDate === calcDateStr) return prev;
+            return { ...prev, securityDepositDate: calcDateStr };
+        });
+    }, [formData.loaId, formData.timeLimitStartsFrom, formData.workDurationMonths, loas]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -305,10 +340,6 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
                 <div className="sm:col-span-2">
                     <label htmlFor="workOrderDate" className="block text-sm font-medium text-gray-700">Work Order Date</label>
                     <input type="text" placeholder="20/01/2025" name="workOrderDate" id="workOrderDate" value={formData.workOrderDate} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                </div>
-                <div className="sm:col-span-2">
-                    <label htmlFor="workDurationMonths" className="block text-sm font-medium text-gray-700">Duration of Work (Months)</label>
-                    <input type="number" name="workDurationMonths" id="workDurationMonths" value={formData.workDurationMonths} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                 </div>
                 <div className="sm:col-span-2">
                     <label htmlFor="timeLimitStartsFrom" className="block text-sm font-medium text-gray-700">Time Limit Starts From</label>

@@ -10,8 +10,8 @@ export async function POST(request: Request) {
         const body = await request.json();
 
         // Basic validation
-        if (!body.packageId || !body.tenderId) {
-            return NextResponse.json({ success: false, error: 'Package ID and Tender ID are required' }, { status: 400 });
+        if (!body.packageId) {
+            return NextResponse.json({ success: false, error: 'Package ID is required' }, { status: 400 });
         }
 
         const tender = await Tender.create(body);

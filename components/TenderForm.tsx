@@ -55,6 +55,8 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
         tenderOpeningDate: initialData.tenderOpeningDate || '',
         tenderValidityDate: initialData.tenderValidityDate || '',
         reInvite: initialData.reInvite || searchParams.get('reInvite') === 'true' || false,
+        cancelled: initialData.cancelled || false,
+        cancellationReason: initialData.cancellationReason || '',
         contractorName: initialData.contractorName || '',
         contractPrice: initialData.contractPrice || '',
         aboveBelowPercentage: initialData.aboveBelowPercentage || '',
@@ -327,13 +329,16 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                 body: JSON.stringify(submissionData),
             });
 
-            if (!res.ok) throw new Error('Failed to save tender');
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => null);
+                throw new Error(errorData?.error || 'Failed to save tender');
+            }
 
             router.push('/tenders');
             router.refresh();
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            alert('Error saving tender');
+            alert(error.message || 'Error saving tender');
         } finally {
             setLoading(false);
         }
@@ -364,8 +369,8 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
 
 
                 <div className="sm:col-span-3">
-                    <label htmlFor="tenderId" className="block text-sm font-medium text-gray-700">Tender ID *</label>
-                    <input type="text" name="tenderId" id="tenderId" required value={formData.tenderId} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                    <label htmlFor="tenderId" className="block text-sm font-medium text-gray-700">Tender ID</label>
+                    <input type="text" name="tenderId" id="tenderId" value={formData.tenderId} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                 </div>
 
                 <div className="sm:col-span-2">
@@ -403,6 +408,40 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                     <label htmlFor="tenderValidityDate" className="block text-sm font-medium text-gray-700">Tender Validity Date</label>
                     <input type="text" name="tenderValidityDate" id="tenderValidityDate" value={formData.tenderValidityDate || ''} readOnly className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border bg-gray-50" />
                 </div>
+
+                <div className="sm:col-span-3 flex items-center pt-6">
+                    <label className="inline-flex items-center cursor-pointer">
+                        <input
+                            type="checkbox"
+                            name="cancelled"
+                            id="cancelled"
+                            checked={formData.cancelled}
+                            onChange={handleChange}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="ml-2 text-sm font-medium text-gray-700">Tender Cancelled</span>
+                    </label>
+                </div>
+
+                {formData.cancelled && (
+                    <div className="sm:col-span-3">
+                        <label htmlFor="cancellationReason" className="block text-sm font-medium text-gray-700">Reason for Cancellation</label>
+                        <select
+                            id="cancellationReason"
+                            name="cancellationReason"
+                            value={formData.cancellationReason}
+                            onChange={handleChange}
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border bg-white focus:ring-blue-500 focus:border-blue-500"
+                        >
+                            <option value="">-- Select Reason --</option>
+                            <option value="High Rate">High Rate</option>
+                            <option value="Single Bidder">Single Bidder</option>
+                            <option value="Technical Ground">Technical Ground</option>
+                            <option value="Administrative Ground">Administrative Ground</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                )}
 
 
 

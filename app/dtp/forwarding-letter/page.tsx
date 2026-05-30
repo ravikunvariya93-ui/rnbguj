@@ -34,7 +34,10 @@ export default function DTPForwardingLetterPage() {
         return parts.length === 3 && parts[2].length === 4 ? parts[2] : new Date().getFullYear().toString();
     };
 
-    const fullWsNo = `DP/R&B/Tender/${wsNumber}/${getYear()}`;
+    const is591 = wsNumber.trim().includes('591');
+    const year = is591 ? '2025' : getYear();
+    const cleanWsNumber = wsNumber.trim().replace('/2026', '');
+    const fullWsNo = `DP/R&B/Tender/${cleanWsNumber}/${year}`;
 
     const handleGenerate = async () => {
         if (!wsNumber.trim() || !letterDate.trim()) return;
@@ -128,6 +131,12 @@ export default function DTPForwardingLetterPage() {
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-white font-semibold text-sm">DTP Forwarding Letter Preview</h2>
                                 <div className="flex gap-3">
+                                    <button
+                                        onClick={exportToDoc}
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 shadow cursor-pointer transition-all"
+                                    >
+                                        <Download className="w-4 h-4" /> Export to Word
+                                    </button>
                                     <button
                                         onClick={() => window.print()}
                                         className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 shadow"
@@ -267,26 +276,26 @@ function LetterContent({ wsNo, letterDate, dtps, fmt, fmtDate }: {
 }) {
 
     return (
-        <div className="printable-container" id="print-area" contentEditable suppressContentEditableWarning style={{ outline: "none", fontFamily: 'Cambria, Georgia, serif', fontSize: '14px', lineHeight: '1.9', padding: '60px 72px', color: '#000' }}>
+        <div className="printable-container" id="print-area" contentEditable suppressContentEditableWarning style={{ outline: "none", fontFamily: 'Cambria, Georgia, serif', fontSize: '14px', lineHeight: '1.5', padding: '40px 60px', color: '#000', boxSizing: 'border-box' }}>
 
             {/* Office Header */}
-            <div style={{ textAlign: 'center', marginBottom: '24px', lineHeight: '1.5' }}>
-                <div style={{ fontSize: '18px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+            <div style={{ textAlign: 'center', marginBottom: '12px', lineHeight: '1.3' }}>
+                <div style={{ fontSize: '16px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                     District Panchayat Office, Panchayat Road and Building Division
                 </div>
-                <div style={{ fontSize: '16px', fontWeight: 'bold', marginTop: '4px' }}>Balvantray Maheta Bhavan, Near Motibag, Bhavnagar-364001</div>
-                <div style={{ fontSize: '14px', fontWeight: 'bold', marginTop: '4px' }}>Phone: - 0278-2422548, Email ID: - exernb-ddo-bav@gujarat.gov.in</div>
-                <div style={{ borderBottom: '2px solid black', marginTop: '10px' }} />
+                <div style={{ fontSize: '14px', fontWeight: 'bold', marginTop: '2px' }}>Balvantray Maheta Bhavan, Near Motibag, Bhavnagar-364001</div>
+                <div style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '2px' }}>Phone: - 0278-2422548, Email ID: - exernb-ddo-bav@gujarat.gov.in</div>
+                <div style={{ borderBottom: '2px solid black', marginTop: '6px' }} />
             </div>
 
             {/* No. and Date */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '28px', fontSize: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontSize: '14px' }}>
                 <div><span style={{ fontWeight: 'bold' }}>No. </span>{wsNo}</div>
-                <div><span style={{ fontWeight: 'bold' }}>Date: </span>{letterDate}</div>
+                <div><span style={{ fontWeight: 'bold' }}>Dt. - &nbsp;&nbsp;&nbsp;</span>{letterDate}</div>
             </div>
 
             {/* To */}
-            <div style={{ marginBottom: '24px', fontSize: '14px' }}>
+            <div style={{ marginBottom: '12px', fontSize: '14px', lineHeight: '1.4' }}>
                 <div style={{ fontWeight: 'bold' }}>To,</div>
                 <div style={{ marginLeft: '24px' }}>The Superintending Engineer,</div>
                 <div style={{ marginLeft: '24px' }}>Panchayat Road and Building Circle - 2,</div>
@@ -294,43 +303,43 @@ function LetterContent({ wsNo, letterDate, dtps, fmt, fmtDate }: {
             </div>
 
             {/* Subject */}
-            <div style={{ marginBottom: '20px', fontSize: '14px', lineHeight: '1.8', paddingLeft: '4em' }}>
+            <div style={{ marginBottom: '10px', fontSize: '14px', lineHeight: '1.4', paddingLeft: '4em' }}>
                 <span style={{ fontWeight: 'bold' }}>Subject:</span>
                 <span style={{ display: 'inline-block', width: '1em' }}></span>
                 <span style={{ fontWeight: 'bold' }}>Regarding Approval of Standard Bidding Document (S.B.D.)</span>
             </div>
 
             {/* Body */}
-            <div style={{ marginBottom: '24px', fontSize: '14px', textAlign: 'justify', lineHeight: '2' }}>
+            <div style={{ marginBottom: '12px', fontSize: '14px', textAlign: 'justify', lineHeight: '1.5' }}>
                 <p style={{ margin: '0', textIndent: '2em' }}>
                     Respectfully, with reference to the above cited subject, it is submitted that the Standard Bidding Document (S.B.D.) in respect of the works detailed in the table below, pertaining to this Division, have been prepared and are hereby forwarded for approval.
                 </p>
             </div>
 
             {/* Table */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', marginBottom: '16px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', marginBottom: '10px' }}>
                 <thead>
                     <tr style={{ backgroundColor: '#f3f4f6' }}>
-                        <th style={{ border: '1px solid black', padding: '8px 10px', textAlign: 'center', width: '46px' }}>Sr.<br />No.</th>
-                        <th style={{ border: '1px solid black', padding: '8px 10px', textAlign: 'center' }}>Name of Work</th>
-                        <th style={{ border: '1px solid black', padding: '8px 10px', textAlign: 'center', width: '150px' }}>DTP Amount (₹)</th>
+                        <th style={{ border: '1px solid black', padding: '6px 8px', textAlign: 'center', width: '46px' }}>Sr.<br />No.</th>
+                        <th style={{ border: '1px solid black', padding: '6px 8px', textAlign: 'center' }}>Name of Work</th>
+                        <th style={{ border: '1px solid black', padding: '6px 8px', textAlign: 'center', width: '150px' }}>DTP Amount (₹)</th>
                     </tr>
                 </thead>
                 <tbody>
                     {dtps.map((dtp, i) => (
                         <tr key={dtp._id}>
-                            <td style={{ border: '1px solid black', padding: '8px 10px', textAlign: 'center', verticalAlign: 'top' }}>{i + 1}</td>
-                            <td style={{ border: '1px solid black', padding: '8px 10px', verticalAlign: 'top' }}>{dtp.tsId?.packageName}</td>
-                            <td style={{ border: '1px solid black', padding: '8px 10px', textAlign: 'right', verticalAlign: 'top', fontFamily: 'monospace' }}>{fmt(dtp.tenderAmount)}</td>
+                            <td style={{ border: '1px solid black', padding: '6px 8px', textAlign: 'center', verticalAlign: 'top' }}>{i + 1}</td>
+                            <td style={{ border: '1px solid black', padding: '6px 8px', verticalAlign: 'top' }}>{dtp.tsId?.packageName}</td>
+                            <td style={{ border: '1px solid black', padding: '6px 8px', textAlign: 'right', verticalAlign: 'top', fontFamily: 'monospace' }}>{fmt(dtp.tenderAmount)}</td>
                         </tr>
                     ))}
                 </tbody>
             </table>
 
             {/* Signature */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', fontSize: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px', fontSize: '14px' }}>
                 <div style={{ textAlign: 'center' }}>
-                    <div style={{ marginBottom: '48px' }}>&nbsp;</div>
+                    <div style={{ marginBottom: '24px' }}>&nbsp;</div>
                     <div style={{ fontWeight: 'bold' }}>Executive Engineer</div>
                     <div>Panchayat R & B Division</div>
                     <div>Bhavnagar</div>
@@ -338,9 +347,10 @@ function LetterContent({ wsNo, letterDate, dtps, fmt, fmtDate }: {
             </div>
 
             {/* Enclosure */}
-            <div style={{ marginTop: '32px', fontSize: '14px' }}>
+            <div style={{ marginTop: '16px', fontSize: '14px' }}>
                 <span style={{ fontWeight: 'bold' }}>Enclosure: </span>As above.
             </div>
         </div>
+
     );
 }

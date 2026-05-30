@@ -9,31 +9,18 @@ import Approval from '@/models/Approval';
 import LOA from '@/models/LOA';
 import WorkOrder from '@/models/WorkOrder';
 import Link from 'next/link';
-import { Plus, Filter, Eye, Edit2 } from 'lucide-react';
-import SearchBar from '@/components/SearchBar';
-import Pagination from '@/components/Pagination';
+import { Plus, Eye, Edit2 } from 'lucide-react';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
-import SortableHeader from '@/components/SortableHeader';
+import Pagination from '@/components/Pagination';
+import ListPageLayout from '@/components/ListPageLayout';
+import DataTable from '@/components/DataTable';
+import { parsePagination, parseSort } from '@/lib/queryHelpers';
+import type { ListPageSearchParams, Column } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 interface Props {
-    searchParams: Promise<{ 
-        filter?: string; 
-        search?: string; 
-        page?: string; 
-        limit?: string;
-        natureOfWork?: string;
-        subDivision?: string;
-        estimateConsultant?: string;
-        approvalYear?: string;
-        roadCategory?: string;
-        workType?: string;
-        schemeName?: string;
-        jobNumberApprovalDate?: string;
-        sort?: string;
-        order?: string;
-    }>;
+    searchParams: Promise<ListPageSearchParams>;
 }
 
 export default async function ApprovedWorksListPage({ searchParams }: Props) {
@@ -47,21 +34,35 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
     const allTS = await TechnicalSanction.find({}).select('workName').lean();
     const tsCountMap: Record<string, number> = {};
     allTS.forEach(ts => {
-        const name = normalizeString(ts.workName);
+        const name = normalizeString(ts.workName as string);
         tsCountMap[name] = (tsCountMap[name] || 0) + 1;
     });
+
+    // Align in-memory matching with Dashboard global calculations
+    const allApprovedGlobal = await ApprovedWork.find({}).select('_id workName').lean();
+    const globalPendingTSIds = new Set<string>();
+    const tempTSCountMap = { ...tsCountMap };
+    allApprovedGlobal.forEach(w => {
+        const safeName = normalizeString(w.workName as string);
+        if (tempTSCountMap[safeName] > 0) {
+            tempTSCountMap[safeName]--;
+        } else {
+            globalPendingTSIds.add(w._id.toString());
+        }
+    });
     
-    
-    // Consumption logic for Pending TS is handled in-memory during result processing
     if (params.filter === 'pending') {
         filterLabels.push("Awaiting Technical Sanction (Pending TS)");
+    } else if (params.filter === 'preparedTS') {
+        filterLabels.push("Technical Sanction Prepared");
     } else if (params.filter === 'pendingPackage') {
         filterLabels.push("Pending Package");
     }
 
-    if (['pendingDTP', 'pendingTender', 'pendingProposal', 'pendingApproval', 'pendingLOA', 'pendingWorkOrder'].includes(params.filter || '')) {
+    if (['pendingDTP', 'preparedDTP', 'pendingTender', 'pendingProposal', 'pendingApproval', 'pendingLOA', 'pendingWorkOrder'].includes(params.filter || '')) {
         const filterNames: Record<string, string> = {
-            pendingDTP: "Pending DTP",
+            pendingDTP: "Awaiting DTP Approval",
+            preparedDTP: "DTP Approved",
             pendingTender: "Pending Tender",
             pendingProposal: "Pending Proposal",
             pendingApproval: "Pending Approval",
@@ -69,7 +70,7 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
             pendingWorkOrder: "Pending Work Order"
         };
         if (params.filter) {
-            filterLabels.push(filterNames[params.filter]);
+            filterLabels.push(filterNames[params.filter] || params.filter);
         }
     }
 
@@ -78,15 +79,18 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
         query.workName = { $regex: params.search, $options: 'i' };
     }
 
+    // Explicit cast for TS to avoid union type issues
+    const typedParams = params as Record<string, string | undefined>;
+
     const filterFields: Record<string, { label: string, val: string | undefined }> = {
-        subDivision: { label: 'Sub Division', val: params.subDivision },
-        estimateConsultant: { label: 'Consultant', val: params.estimateConsultant },
-        approvalYear: { label: 'Year', val: params.approvalYear },
-        roadCategory: { label: 'Road Category', val: params.roadCategory },
-        workType: { label: 'Work Type', val: params.workType },
-        schemeName: { label: 'Scheme', val: params.schemeName },
-        natureOfWork: { label: 'Nature', val: params.natureOfWork },
-        jobNumberApprovalDate: { label: 'Date', val: params.jobNumberApprovalDate }
+        subDivision: { label: 'Sub Division', val: typedParams.subDivision },
+        estimateConsultant: { label: 'Consultant', val: typedParams.estimateConsultant },
+        approvalYear: { label: 'Year', val: typedParams.approvalYear },
+        roadCategory: { label: 'Road Category', val: typedParams.roadCategory },
+        workType: { label: 'Work Type', val: typedParams.workType },
+        schemeName: { label: 'Scheme', val: typedParams.schemeName },
+        natureOfWork: { label: 'Nature', val: typedParams.natureOfWork },
+        jobNumberApprovalDate: { label: 'Date', val: typedParams.jobNumberApprovalDate }
     };
 
     const emptyQuery = (field: string) => ({
@@ -97,13 +101,10 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
         ]
     });
 
-    // We collect global Unspecified conditions to combine them using $and
     const andConditions: any[] = [];
 
     Object.entries(filterFields).forEach(([field, config]) => {
         if (config.val) {
-            // Dashboard sends 'Unspecified' when the property is empty/missing
-            // (Also catch 'Unclassified' for backwards compatibility if needed)
             if (config.val === 'Unspecified' || config.val === 'Unclassified') {
                 andConditions.push(emptyQuery(field));
                 filterLabels.push(`${config.label}: Unspecified`);
@@ -128,28 +129,22 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
         ? `Filtered by: ${filterLabels.join(' | ')}`
         : "A list of all approved works including budget details, approval dates, amounts, and classifications.";
 
-    const page = parseInt(params.page || '1');
-    const limit = parseInt(params.limit || '100');
-    const skip = (page - 1) * limit;
-
-    let sortObj: any = { createdAt: -1 };
-    if (params.sort && params.order) {
-        sortObj = { [params.sort]: params.order === 'asc' ? 1 : -1 };
-    }
+    const { page, limit, skip } = parsePagination(params);
+    const sortObj = parseSort(params, { createdAt: -1 });
 
     let finalWorks: any[] = [];
     let totalItems = 0;
 
     if (params.filter && params.filter !== 'none') {
-        // Fetch ALL potential stage data for in-memory filtering
         const allPackages = await Package.find({}).select('works').lean();
-        const allDTPs = await DTP.find({}).select('tsId').lean();
+        const allDTPs = await DTP.find({}).select('tsId dtpApprovalDate').lean();
         const allTenders = await Tender.find({}).sort({ trialNo: 1 }).select('packageId proposalDate tenderApprovalDate').lean();
         const allApprovals = await Approval.find({}).select('tenderId proposalDate tenderApprovalDate').lean();
         const allLOAs = await LOA.find({}).select('tenderId').lean();
         const allWorkOrders = await WorkOrder.find({}).select('loaId').lean();
 
         const dtpPkgIds = new Set(allDTPs.map(d => d.tsId?.toString()));
+        const approvedDtpPkgIds = new Set(allDTPs.filter(d => Boolean(d.dtpApprovalDate)).map(d => d.tsId?.toString()));
         const tenderPkgIds = new Set(allTenders.map(t => t.packageId?.toString()));
         const approvalByTenderId = new Map<string, any>();
         allApprovals.forEach(a => {
@@ -178,32 +173,37 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
 
         const allPotentialWorks = await ApprovedWork.find(query).sort(sortObj).lean();
         const filtered = allPotentialWorks.filter(w => {
-            const safeName = normalizeString(w.workName);
+            const safeName = normalizeString(w.workName as string);
             const pkgId = workNameToPkgId.get(safeName);
             
             if (params.filter === 'pending') {
-                if (tsCountMap[safeName] > 0) {
-                    tsCountMap[safeName]--;
-                    return false;
-                }
-                return true;
+                return globalPendingTSIds.has(w._id.toString());
+            }
+            if (params.filter === 'preparedTS') {
+                return !globalPendingTSIds.has(w._id.toString());
             }
 
             if (params.filter === 'pendingPackage') {
-                const isPendingTS = tsCountMap[safeName] <= 0;
-                if (!isPendingTS) {
-                    tsCountMap[safeName]--; // consume TS
-                }
+                const isPendingTS = globalPendingTSIds.has(w._id.toString());
                 return !isPendingTS && !pkgId;
             }
 
-            if (!pkgId) return false;
+            // DTP logic: DTP is pending if TS is prepared but DTP is not approved
+            if (params.filter === 'pendingDTP') {
+                const isPendingTS = globalPendingTSIds.has(w._id.toString());
+                if (isPendingTS) return false;
+                return !pkgId || !approvedDtpPkgIds.has(pkgId);
+            }
+            if (params.filter === 'preparedDTP') {
+                const isPendingTS = globalPendingTSIds.has(w._id.toString());
+                if (isPendingTS) return false;
+                return pkgId && approvedDtpPkgIds.has(pkgId);
+            }
 
-            if (params.filter === 'pendingDTP') return !dtpPkgIds.has(pkgId);
+            if (!pkgId) return false;
             
             const hasDTP = dtpPkgIds.has(pkgId);
             if (!hasDTP) return false;
-
             if (params.filter === 'pendingTender') return !tenderPkgIds.has(pkgId);
 
             const hasTender = tenderPkgIds.has(pkgId);
@@ -222,7 +222,6 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
 
                 const hasLOA = loaTenderIds.has(tId);
                 if (params.filter === 'pendingLOA') return !hasLOA;
-
                 if (!hasLOA) return false;
 
                 if (params.filter === 'pendingWorkOrder') {
@@ -258,115 +257,98 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
         _id: w._id.toString(),
     }));
 
-    return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-            <div className="sm:flex sm:items-center">
-                <div className="sm:flex-auto">
-                    <div className="flex items-center space-x-2">
-                        <h1 className="text-2xl font-semibold text-gray-900">Approved Works</h1>
-                        {(params.filter || params.search) && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                <Filter className="w-3 h-3 mr-1" /> {params.search ? 'Search Active' : 'Filter Active'}
-                            </span>
-                        )}
-                    </div>
-                    <p className="mt-2 text-sm text-gray-700">{filterLabel}</p>
+    const columns: Column[] = [
+        { 
+            key: 'srNo', 
+            label: 'Sr. No.', 
+            render: (row, index) => skip + index + 1
+        },
+        { 
+            key: 'workName', 
+            label: 'Name of Work', 
+            sortable: true,
+            minWidth: '350px',
+            render: (row) => (
+                <div className="line-clamp-3 max-w-lg whitespace-normal break-words" title={row.workName}>
+                    {row.workName}
                 </div>
-                <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-                    <Link
-                        href="/approved-works/new"
-                        className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
-                    >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add New Work
-                    </Link>
+            )
+        },
+        { 
+            key: 'jobNumberAmount', 
+            label: 'Job Number Amount (in Lakh)', 
+            sortable: true,
+            minWidth: '80px',
+            align: 'center',
+            render: (row) => row.jobNumberAmount || '-'
+        },
+        { 
+            key: 'jobNumberApprovalDate', 
+            label: 'Approval Date', 
+            sortable: true,
+            render: (row) => row.jobNumberApprovalDate ? new Date(row.jobNumberApprovalDate).toLocaleDateString('en-GB') : '-'
+        },
+        { 
+            key: 'workType', 
+            label: 'Work Type', 
+            sortable: true,
+            render: (row) => row.workType || '-'
+        },
+        { 
+            key: 'estimateConsultant', 
+            label: 'Estimate Consultant', 
+            sortable: true,
+            minWidth: '150px',
+            render: (row) => row.estimateConsultant || '-'
+        },
+        { 
+            key: 'remarks', 
+            label: 'Remarks', 
+            sortable: true,
+            minWidth: '120px',
+            render: (row) => (
+                <div className="line-clamp-2 max-w-[150px] whitespace-normal break-words" title={row.remarks}>
+                    {row.remarks || '-'}
                 </div>
-            </div>
+            )
+        }
+    ];
 
-            <div className="mt-6 flex justify-start items-center">
-                <Suspense fallback={<div className="h-10 w-full max-w-lg bg-gray-100 animate-pulse rounded-md" />}>
-                    <SearchBar placeholder="Search by name of work..." />
-                </Suspense>
-                {(params.filter || params.search) && (
-                    <Link href="/approved-works" className="ml-4 text-sm text-blue-600 hover:text-blue-900">
-                        Clear all filters
-                    </Link>
-                )}
-            </div>
-
-            <div className="mt-8 flex flex-col">
-                <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-                    <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-                        <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                            <table className="min-w-full divide-y divide-gray-300">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 w-16">
-                                            Sr. No.
-                                        </th>
-                                        <SortableHeader field="workName" label="Name of Work" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 max-w-xs sm:max-w-sm md:max-w-md" />
-                                        <SortableHeader field="jobNumberApprovalDate" label="Approval Date" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 whitespace-normal" />
-                                        <SortableHeader field="jobNumberAmount" label="Job Number / Amount" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 whitespace-normal" />
-                                        <SortableHeader field="remarks" label="Remarks" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900 whitespace-normal" />
-                                        <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right whitespace-normal">
-                                            Actions
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200 bg-white">
-                                    {serializedWorks.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={6} className="py-10 text-center text-sm text-gray-500">
-                                                No works found matching the criteria.
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        serializedWorks.map((work: any, index: number) => (
-                                            <tr key={work._id}>
-                                                <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500 sm:pl-6">{skip + index + 1}</td>
-                                                <td className="whitespace-normal py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6 max-w-xs sm:max-w-sm md:max-w-md break-words">
-                                                    <div className="line-clamp-3" title={work.workName}>
-                                                        {work.workName}
-                                                    </div>
-                                                </td>
-                                                <td className="whitespace-normal px-3 py-4 text-sm text-gray-500 break-words">
-                                                    {work.jobNumberApprovalDate ? new Date(work.jobNumberApprovalDate).toLocaleDateString('en-GB') : '-'}
-                                                </td>
-                                                <td className="whitespace-normal px-3 py-4 text-sm text-gray-500 break-words">
-                                                    {work.jobNumberAmount}
-                                                </td>
-                                                <td className="whitespace-normal px-3 py-4 text-sm text-gray-500 break-words max-w-xs">
-                                                    <div className="line-clamp-2" title={work.remarks}>
-                                                        {work.remarks || '-'}
-                                                    </div>
-                                                </td>
-                                                <td className="relative whitespace-normal py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                                    <div className="flex flex-wrap items-center justify-end gap-2">
-                                                        <Link href={`/approved-works/${work._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
-                                                            <Eye className="w-5 h-5" />
-                                                        </Link>
-                                                        <Link href={`/approved-works/${work._id}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Item">
-                                                            <Edit2 className="w-5 h-5" />
-                                                        </Link>
-                                                        <GenericDeleteButton 
-                                                            itemId={work._id} 
-                                                            itemName={work.workName} 
-                                                            apiPath="/api/approved-works" 
-                                                        />
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                        <Suspense fallback={<div className="h-10 w-full bg-gray-50 animate-pulse mt-4 rounded-md" />}>
-                            <Pagination currentPage={page} totalPages={totalPages} />
-                        </Suspense>
-                    </div>
-                </div>
-            </div>
+    const renderActions = (row: any) => (
+        <div className="flex items-center justify-end space-x-3">
+            <Link href={`/approved-works/${row._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
+                <Eye className="w-5 h-5" />
+            </Link>
+            <Link href={`/approved-works/${row._id}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Item">
+                <Edit2 className="w-5 h-5" />
+            </Link>
+            <GenericDeleteButton 
+                itemId={row._id} 
+                itemName={row.workName} 
+                apiPath="/api/approved-works" 
+            />
         </div>
+    );
+
+    return (
+        <ListPageLayout
+            title="Approved Works"
+            subtitle={filterLabel}
+            addHref="/approved-works/new"
+            addLabel="Add New Work"
+            searchPlaceholder="Search by name of work..."
+            filterActive={!!params.filter || !!params.search || Object.values(filterFields).some(f => f.val)}
+            clearFiltersHref="/approved-works"
+        >
+            <DataTable 
+                columns={columns} 
+                data={serializedWorks} 
+                emptyMessage="No works found matching the criteria."
+                actions={renderActions}
+            />
+            <Suspense fallback={<div className="h-10 w-full bg-gray-50 animate-pulse mt-4 rounded-md" />}>
+                <Pagination currentPage={page} totalPages={totalPages} />
+            </Suspense>
+        </ListPageLayout>
     );
 }

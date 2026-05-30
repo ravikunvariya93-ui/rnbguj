@@ -56,8 +56,7 @@ export default function LOAForm({ initialData = {}, isEditing = false }: LOAForm
 
     const [formData, setFormData] = useState({
         tenderId: '',
-        stampDuty: '',
-        defectLiabilityPeriod: '',
+        workDurationMonths: '',
         acceptanceLetterWorksheetNo: '',
         acceptanceLetterDate: '',
         ...sanitized,
@@ -167,42 +166,18 @@ export default function LOAForm({ initialData = {}, isEditing = false }: LOAForm
                 )}
 
                 <div className="sm:col-span-3">
-                    <label htmlFor="acceptanceLetterDate" className="block text-sm font-medium text-gray-700">Acceptance Letter Date</label>
-                    <input type="text" placeholder="20/01/2025" name="acceptanceLetterDate" id="acceptanceLetterDate" value={formData.acceptanceLetterDate || ''} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                </div>
-                
-                <div className="sm:col-span-3">
                     <label htmlFor="acceptanceLetterWorksheetNo" className="block text-sm font-medium text-gray-700">Acceptance Letter Worksheet No.</label>
                     <input type="text" name="acceptanceLetterWorksheetNo" id="acceptanceLetterWorksheetNo" value={formData.acceptanceLetterWorksheetNo || ''} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                 </div>
 
                 <div className="sm:col-span-3">
-                    <label htmlFor="defectLiabilityPeriod" className="block text-sm font-medium text-gray-700">
-                        Defect Liability Period
-                    </label>
-                    <input
-                        type="text"
-                        placeholder="e.g. 1 Year"
-                        name="defectLiabilityPeriod"
-                        id="defectLiabilityPeriod"
-                        value={formData.defectLiabilityPeriod || ''}
-                        onChange={handleChange}
-                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                    />
+                    <label htmlFor="acceptanceLetterDate" className="block text-sm font-medium text-gray-700">Acceptance Letter Date</label>
+                    <input type="text" placeholder="20/01/2025" name="acceptanceLetterDate" id="acceptanceLetterDate" value={formData.acceptanceLetterDate || ''} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                 </div>
 
                 <div className="sm:col-span-3">
-                    <label htmlFor="stampDuty" className="block text-sm font-medium text-gray-700">
-                        Required Stamp Duty
-                    </label>
-                    <input
-                        type="number"
-                        name="stampDuty"
-                        id="stampDuty"
-                        value={formData.stampDuty || ''}
-                        onChange={handleChange}
-                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border bg-yellow-50"
-                    />
+                    <label htmlFor="workDurationMonths" className="block text-sm font-medium text-gray-700">Duration of Work (Months)</label>
+                    <input type="number" name="workDurationMonths" id="workDurationMonths" value={formData.workDurationMonths || ''} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                 </div>
 
             </div>

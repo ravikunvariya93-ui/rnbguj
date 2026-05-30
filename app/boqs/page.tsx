@@ -148,12 +148,12 @@ function BOQExpandableRow({ boq, onDelete, index }: { boq: any; onDelete: (id: s
                             <tbody className="bg-white divide-y divide-slate-100">
                                 {boq.items?.map((item: any, idx: number) => (
                                     <tr key={idx} className="hover:bg-blue-50/40 transition-colors">
-                                        <td className="px-4 py-3 text-xs text-slate-700 text-center font-semibold">{item.itemNo}</td>
+                                        <td className="px-4 py-3 text-xs text-slate-700 text-center">{item.itemNo}</td>
                                         <td className="px-4 py-3 text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{item.description}</td>
-                                        <td className="px-4 py-3 text-xs text-slate-700 text-right font-medium font-mono">{item.quantity?.toLocaleString('en-IN')}</td>
-                                        <td className="px-4 py-3 text-xs text-slate-500 font-medium">{item.unit}</td>
-                                        <td className="px-4 py-3 text-xs text-slate-700 text-right font-medium font-mono">₹{item.rate?.toLocaleString('en-IN')}</td>
-                                        <td className="px-4 py-3 text-xs text-right font-bold text-blue-600 font-mono">₹{item.amount?.toLocaleString('en-IN')}</td>
+                                        <td className="px-4 py-3 text-xs text-slate-700 text-right font-mono">{item.quantity?.toLocaleString('en-IN')}</td>
+                                        <td className="px-4 py-3 text-xs text-slate-500">{item.unit}</td>
+                                        <td className="px-4 py-3 text-xs text-slate-700 text-right font-mono">₹{item.rate?.toLocaleString('en-IN')}</td>
+                                        <td className="px-4 py-3 text-xs text-right text-blue-600 font-mono">₹{item.amount?.toLocaleString('en-IN')}</td>
                                     </tr>
                                 ))}
                             </tbody>

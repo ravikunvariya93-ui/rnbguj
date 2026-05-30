@@ -15,6 +15,8 @@ export interface ITender extends Document {
     tenderValidityDate: Date;
     estimatedAmount: number;
     reInvite: boolean;
+    cancelled: boolean;
+    cancellationReason: string;
     contractorName: string;
     contractPrice: number;
     aboveBelowPercentage: number;
@@ -73,6 +75,8 @@ const TenderSchema: Schema = new Schema({
     tenderValidityDate: { type: Date },
     estimatedAmount: { type: Number },
     reInvite: { type: Boolean, default: false },
+    cancelled: { type: Boolean, default: false },
+    cancellationReason: { type: String },
     contractorName: { type: String },
     contractPrice: { type: Number },
     aboveBelowPercentage: { type: Number },

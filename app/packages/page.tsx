@@ -4,28 +4,18 @@ import Package from '@/models/Package';
 import DTP from '@/models/DTP';
 import Tender from '@/models/Tender';
 import Link from 'next/link';
-import { Plus, Filter, Eye, Edit2 } from 'lucide-react';
-import SearchBar from '@/components/SearchBar';
-import Pagination from '@/components/Pagination';
+import { Plus, Eye, Edit2 } from 'lucide-react';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
-import SortableHeader from '@/components/SortableHeader';
+import Pagination from '@/components/Pagination';
+import ListPageLayout from '@/components/ListPageLayout';
+import DataTable from '@/components/DataTable';
+import { buildDashboardFilter, parsePagination, parseSort } from '@/lib/queryHelpers';
+import type { ListPageSearchParams, Column } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 interface Props {
-    searchParams: Promise<{ 
-        filter?: string; 
-        search?: string; 
-        page?: string; 
-        limit?: string; 
-        natureOfWork?: string;
-        subDivision?: string;
-        estimateConsultant?: string;
-        approvalYear?: string;
-        roadCategory?: string;
-        workType?: string;
-        schemeName?: string;
-    }>;
+    searchParams: Promise<ListPageSearchParams>;
 }
 
 export default async function PackagesListPage({ searchParams }: Props) {
@@ -35,46 +25,16 @@ export default async function PackagesListPage({ searchParams }: Props) {
     let query: any = {};
     let filterLabels: string[] = [];
 
-    // Dashboard Filters Integration
-    if (params.subDivision) {
-        query.subDivision = params.subDivision;
-        filterLabels.push(`Sub Division: ${params.subDivision}`);
-    }
-
-    // Filters for metadata that exists in ApprovedWork but not in Package
-    const metadataFiltersArr: any = [];
-    if (params.estimateConsultant) metadataFiltersArr.push({ estimateConsultant: params.estimateConsultant });
-    if (params.approvalYear) metadataFiltersArr.push({ approvalYear: params.approvalYear });
-    if (params.roadCategory) metadataFiltersArr.push({ roadCategory: params.roadCategory });
-    if (params.workType) metadataFiltersArr.push({ workType: params.workType });
-    if (params.schemeName) metadataFiltersArr.push({ schemeName: params.schemeName });
-    if (params.natureOfWork) {
-        if (params.natureOfWork === 'Unclassified') {
-            metadataFiltersArr.push({ $or: [{ natureOfWork: { $exists: false } }, { natureOfWork: null }, { natureOfWork: '' }] });
+    const dashboardFilter = await buildDashboardFilter(params);
+    if (dashboardFilter.hasFilter && dashboardFilter.packageIds) {
+        if (query._id) {
+            query._id.$in = dashboardFilter.packageIds;
         } else {
-            metadataFiltersArr.push({ natureOfWork: params.natureOfWork });
+            query._id = { $in: dashboardFilter.packageIds };
         }
+        filterLabels.push("Dashboard Filters Applied");
     }
 
-    if (metadataFiltersArr.length > 0) {
-        const { default: ApprovedWork } = await import('@/models/ApprovedWork');
-        const workQuery = metadataFiltersArr.length > 1 ? { $and: metadataFiltersArr } : metadataFiltersArr[0];
-        const matchingWorks = await ApprovedWork.find(workQuery).select('workName').lean();
-        const validWorkNames = matchingWorks.map((w: any) => w.workName);
-        
-        const { default: TechnicalSanction } = await import('@/models/TechnicalSanction');
-        const matchingTS = await TechnicalSanction.find({ workName: { $in: validWorkNames } }).select('_id').lean();
-        const tsIds = matchingTS.map((ts: any) => ts._id);
-
-        query.$or = [
-            { "works.workName": { $in: validWorkNames } },
-            { "works.workId": { $in: tsIds } }
-        ];
-        
-        filterLabels.push("Metadata Filters Applied");
-    }
-
-    // Process State Filters
     if (params.filter === 'pending_dtp') {
         const packagesWithDTP = await DTP.find().distinct('tsId');
         query._id = { ...query._id, $nin: packagesWithDTP };
@@ -93,15 +53,8 @@ export default async function PackagesListPage({ searchParams }: Props) {
         ? `Filtered by: ${filterLabels.join(' | ')}`
         : "List of all packages containing approved works.";
 
-    const page = parseInt(params.page || '1');
-    const limit = parseInt(params.limit || '100');
-    const skip = (page - 1) * limit;
-    
-    let sortObj: any = { createdAt: -1 };
-    if (params.sort && params.order) {
-        sortObj = { [params.sort]: params.order === 'asc' ? 1 : -1 };
-    }
-
+    const { page, limit, skip } = parsePagination(params);
+    const sortObj = parseSort(params, { createdAt: -1 });
 
     const totalItems = await Package.countDocuments(query);
     const totalPages = Math.ceil(totalItems / limit);
@@ -111,92 +64,86 @@ export default async function PackagesListPage({ searchParams }: Props) {
         .skip(skip)
         .limit(limit)
         .lean();
+        
     const packages = packagesRaw.map((p: any) => ({
         ...p,
         _id: p._id.toString(),
+        approvedWorks: p.works && p.works.length > 0
+            ? p.works.map((w: any) => w.workName).filter(Boolean)
+            : []
     }));
 
-    return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-            <div className="sm:flex sm:items-center">
-                <div className="sm:flex-auto">
-                    <div className="flex items-center space-x-2">
-                        <h1 className="text-2xl font-semibold text-gray-900">Packages</h1>
-                        {(params.filter || params.search) && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                <Filter className="w-3 h-3 mr-1" /> {params.search ? 'Search Active' : 'Filter Active'}
-                            </span>
-                        )}
-                    </div>
-                    <p className="mt-2 text-sm text-gray-700">{filterLabel}</p>
-                </div>
-                <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-                    <Link href="/packages/new" className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto">
-                        <Plus className="w-4 h-4 mr-2" /> Add New Package
-                    </Link>
-                </div>
-            </div>
-
-            <div className="mt-6 flex justify-start items-center">
-                <Suspense fallback={<div className="h-10 w-full max-w-lg bg-gray-100 animate-pulse rounded-md" />}>
-                    <SearchBar placeholder="Search by package name..." />
-                </Suspense>
-                {(params.filter || params.search) && (
-                    <Link href="/packages" className="ml-4 text-sm text-blue-600 hover:text-blue-900">
-                        Clear all filters
-                    </Link>
-                )}
-            </div>
-
-            <div className="mt-8 flex flex-col">
-                <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-                    <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-                        <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                            <table className="min-w-full divide-y divide-gray-300">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6 w-16">Sr. No.</th>
-                                        <SortableHeader field="packageName" label="Package Name" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6" />
-
-                                        <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 cursor-default text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200 bg-white">
-                                    {packages.length === 0 ? (
-                                        <tr><td colSpan={3} className="py-10 text-center text-sm text-gray-500">No packages found matching the criteria.</td></tr>
-                                    ) : (
-                                        packages.map((pkg: any, index: number) => (
-                                            <tr key={pkg._id}>
-                                                <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-500 sm:pl-6">{skip + index + 1}</td>
-                                                <td className="whitespace-normal px-3 py-4 text-sm font-medium text-gray-900 sm:pl-6 max-w-md" style={{ wordBreak: 'break-word' }}>{pkg.packageName}</td>
-
-
-
-                                                <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 flex items-center justify-end space-x-3">
-                                                    <Link href={`/packages/${pkg._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
-                                                        <Eye className="w-5 h-5" />
-                                                    </Link>
-                                                    <Link href={`/packages/${pkg._id}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Item">
-                                                        <Edit2 className="w-5 h-5" />
-                                                    </Link>
-                                                    <GenericDeleteButton 
-                                                        itemId={pkg._id} 
-                                                        itemName={pkg.packageName} 
-                                                        apiPath="/api/packages" 
-                                                    />
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
+    const columns: Column[] = [
+        { 
+            key: 'srNo', 
+            label: 'Sr. No.', 
+            render: (row, index) => skip + index + 1
+        },
+        { 
+            key: 'packageName', 
+            label: 'Package Name', 
+            sortable: true,
+            minWidth: '200px',
+            render: (row) => <span className="max-w-md whitespace-normal break-words font-medium">{row.packageName}</span>
+        },
+        { 
+            key: 'approvedWorks', 
+            label: 'Approved Works', 
+            minWidth: '250px',
+            render: (row) => row.approvedWorks.length > 0 ? (
+                <div className="space-y-1">
+                    {row.approvedWorks.map((work: string, idx: number) => (
+                        <div key={idx} className="text-xs leading-tight">
+                            {idx + 1}. {work}
                         </div>
-                        <Suspense fallback={<div className="h-10 w-full bg-gray-50 animate-pulse mt-4 rounded-md" />}>
-                            <Pagination currentPage={page} totalPages={totalPages} />
-                        </Suspense>
-                    </div>
+                    ))}
                 </div>
-            </div>
+            ) : <span className="text-slate-400 italic">No works found</span>
+        },
+        { 
+            key: 'dtpConsultant', 
+            label: 'DTP Consultant', 
+            sortable: true,
+            minWidth: '250px',
+            render: (row) => row.dtpConsultant || '-'
+        }
+    ];
+
+    const renderActions = (row: any) => (
+        <div className="flex items-center justify-end space-x-3">
+            <Link href={`/packages/${row._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
+                <Eye className="w-5 h-5" />
+            </Link>
+            <Link href={`/packages/${row._id}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Item">
+                <Edit2 className="w-5 h-5" />
+            </Link>
+            <GenericDeleteButton 
+                itemId={row._id} 
+                itemName={row.packageName} 
+                apiPath="/api/packages" 
+            />
         </div>
+    );
+
+    return (
+        <ListPageLayout
+            title="Packages"
+            subtitle={filterLabel}
+            addHref="/packages/new"
+            addLabel="Add New Package"
+            searchPlaceholder="Search by package name..."
+            filterActive={!!params.filter || !!params.search}
+            clearFiltersHref="/packages"
+        >
+            <DataTable 
+                columns={columns} 
+                data={packages} 
+                emptyMessage="No packages found matching the criteria."
+                actions={renderActions}
+            />
+            <Suspense fallback={<div className="h-10 w-full bg-gray-50 animate-pulse mt-4 rounded-md" />}>
+                <Pagination currentPage={page} totalPages={totalPages} />
+            </Suspense>
+        </ListPageLayout>
     );
 }

@@ -26,6 +26,7 @@ export interface IApprovedWork extends Document {
     workNameGujarati: string;
     natureOfWork: string;
     schemeName: string;
+    buildingType?: string;
     length: number;
     chainage: string;
     estimateConsultant: string;
@@ -59,6 +60,7 @@ const ApprovedWorkSchema: Schema = new Schema({
     workNameGujarati: { type: String },
     natureOfWork: { type: String },
     schemeName: { type: String },
+    buildingType: { type: String },
     length: { type: Number },
     chainage: { type: String },
     estimateConsultant: { type: String },

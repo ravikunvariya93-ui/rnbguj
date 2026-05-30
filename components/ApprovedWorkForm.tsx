@@ -99,6 +99,7 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
         mlaName: '',
         roadCategory: '',
         workType: 'Road',
+        buildingType: '',
         parliamentaryConstituency: '',
         mpName: '',
         workNameGujarati: '',

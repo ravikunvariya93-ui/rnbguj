@@ -1,27 +1,55 @@
+import { Suspense } from 'react';
 import dbConnect from '@/lib/db';
 import Bill from '@/models/Bill';
 import WorkOrder from '@/models/WorkOrder';
 import LOA from '@/models/LOA';
 import Tender from '@/models/Tender';
 import Link from 'next/link';
-import { Plus, Edit2, Eye } from 'lucide-react';
-import SortableHeader from '@/components/SortableHeader';
+import { Plus, Eye, Edit2 } from 'lucide-react';
+import GenericDeleteButton from '@/components/GenericDeleteButton';
+import Pagination from '@/components/Pagination';
+import ListPageLayout from '@/components/ListPageLayout';
+import DataTable from '@/components/DataTable';
+import { parsePagination, parseSort } from '@/lib/queryHelpers';
+import type { ListPageSearchParams, Column } from '@/lib/types';
 
 // Ensure models are registered for populate
 void WorkOrder;
 void LOA;
 void Tender;
 
-export default async function BillsPage(props: { searchParams?: Promise<any> }) {
-    const searchParams = props.searchParams || Promise.resolve({});
+export const dynamic = 'force-dynamic';
+
+interface Props {
+    searchParams: Promise<ListPageSearchParams>;
+}
+
+export default async function BillsPage({ searchParams }: Props) {
+    await dbConnect();
     const params = await searchParams;
-    let sortObj: any = { createdAt: -1 };
-    if (params.sort && params.order) {
-        sortObj = { [params.sort]: params.order === 'asc' ? 1 : -1 };
+    
+    let query: any = {};
+    if (params.search) {
+        // Find matching Tenders
+        const matchingTenders = await Tender.find({
+            $or: [
+                { packageName: { $regex: params.search, $options: 'i' } }
+            ]
+        }).distinct('_id');
+
+        const matchingLOAs = await LOA.find({ tenderId: { $in: matchingTenders } }).distinct('_id');
+        const matchingWorkOrders = await WorkOrder.find({ loaId: { $in: matchingLOAs } }).distinct('_id');
+
+        query.workOrderId = { $in: matchingWorkOrders };
     }
 
-    await dbConnect();
-    const bills = await Bill.find({})
+    const { page, limit, skip } = parsePagination(params);
+    const sortObj = parseSort(params, { createdAt: -1 });
+
+    const totalItems = await Bill.countDocuments(query);
+    const totalPages = Math.ceil(totalItems / limit);
+
+    const billsRaw = await Bill.find(query)
         .populate({
             path: 'workOrderId',
             populate: {
@@ -30,83 +58,84 @@ export default async function BillsPage(props: { searchParams?: Promise<any> }) 
             }
         })
         .sort(sortObj)
+        .skip(skip)
+        .limit(limit)
         .lean();
 
-    return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-            <div className="sm:flex sm:items-center">
-                <div className="sm:flex-auto">
-                    <h1 className="text-2xl font-semibold text-gray-900">Bills</h1>
-                    <p className="mt-2 text-sm text-gray-700">A list of all project bills including running and final bills.</p>
-                </div>
-                <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-                    <Link
-                        href="/bills/new"
-                        className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto transition-colors"
-                    >
-                        <Plus className="w-4 h-4 mr-2" /> Add Bill
-                    </Link>
-                </div>
-            </div>
+    const bills = billsRaw.map((bill: any) => ({
+        ...bill,
+        _id: bill._id.toString(),
+    }));
 
-            <div className="mt-8 flex flex-col">
-                <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-                    <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-                        <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg border border-gray-200">
-                            <table className="min-w-full divide-y divide-gray-300">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <SortableHeader field="billtype/no." label="Bill Type / No." className="py-3.5 pl-4 pr-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider sm:pl-6" />
-                                        <SortableHeader field="package/workorder" label="Package / Work Order" className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider" />
-                                        <SortableHeader field="grossamount" label="Gross Amount" className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider" />
-                                        <SortableHeader field="billdate" label="Bill Date" className="px-3 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider" />
-                                        <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                                            <span className="sr-only">Actions</span>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200 bg-white">
-                                    {bills.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={5} className="py-10 text-center text-gray-500 italic">No bills found. Click &quot;Add Bill&quot; to create one.</td>
-                                        </tr>
-                                    ) : (
-                                        bills.map((bill: any) => {
-                                            const tender = bill.workOrderId?.loaId?.tenderId;
-                                            return (
-                                                <tr key={bill._id.toString()} className="hover:bg-gray-50 transition-colors">
-                                                    <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                                                        {bill.runningBillNumber}{bill.runningBillNumber === 1 ? 'st' : bill.runningBillNumber === 2 ? 'nd' : bill.runningBillNumber === 3 ? 'rd' : 'th'} and {bill.billType} Bill
-                                                    </td>
-                                                    <td className="px-3 py-4 text-sm text-gray-500 max-w-xs truncate">
-                                                        {tender?.packageName || 'Unknown Package'}
-                                                    </td>
-                                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 font-semibold font-mono">
-                                                        ₹{bill.grossAmount?.toLocaleString('en-IN')}
-                                                    </td>
-                                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                                        {bill.billDate ? new Date(bill.billDate).toLocaleDateString('en-GB') : '-'}
-                                                    </td>
-                                                    <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                                        <div className="flex justify-end space-x-3">
-                                                            <Link href={`/bills/${bill._id}`} className="text-gray-400 hover:text-blue-600 transition-colors">
-                                                                <Eye className="w-5 h-5" />
-                                                            </Link>
-                                                            <Link href={`/bills/${bill._id}/edit`} className="text-gray-400 hover:text-indigo-600 transition-colors">
-                                                                <Edit2 className="w-5 h-5" />
-                                                            </Link>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    const columns: Column[] = [
+        { 
+            key: 'billtype/no.', 
+            label: 'Bill Type / No.', 
+            sortable: true,
+            render: (row) => {
+                const nth = row.runningBillNumber === 1 ? 'st' : row.runningBillNumber === 2 ? 'nd' : row.runningBillNumber === 3 ? 'rd' : 'th';
+                return <span>{row.runningBillNumber}{nth} and {row.billType} Bill</span>;
+            }
+        },
+        { 
+            key: 'package/workorder', 
+            label: 'Package / Work Order', 
+            sortable: true,
+            minWidth: '200px',
+            render: (row) => {
+                const tender = (row.workOrderId as any)?.loaId?.tenderId;
+                return <span className="max-w-xs whitespace-normal break-words">{tender?.packageName || 'Unknown Package'}</span>
+            }
+        },
+        { 
+            key: 'grossamount', 
+            label: 'Gross Amount', 
+            sortable: true,
+            render: (row) => <span className="font-mono">₹{row.grossAmount?.toLocaleString('en-IN')}</span>
+        },
+        { 
+            key: 'billdate', 
+            label: 'Bill Date', 
+            sortable: true,
+            render: (row) => row.billDate ? new Date(row.billDate).toLocaleDateString('en-GB') : '-'
+        }
+    ];
+
+    const renderActions = (row: any) => (
+        <div className="flex items-center justify-end space-x-3">
+            <Link href={`/bills/${row._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
+                <Eye className="w-5 h-5" />
+            </Link>
+            <Link href={`/bills/${row._id}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Item">
+                <Edit2 className="w-5 h-5" />
+            </Link>
+            <GenericDeleteButton 
+                itemId={row._id} 
+                itemName={`Bill ${row.runningBillNumber}`} 
+                apiPath="/api/bills" 
+            />
         </div>
+    );
+
+    return (
+        <ListPageLayout
+            title="Bills"
+            subtitle="A list of all project bills including running and final bills."
+            addHref="/bills/new"
+            addLabel="Add Bill"
+            searchPlaceholder="Search by package name..."
+            filterActive={!!params.search}
+            clearFiltersHref="/bills"
+        >
+            <DataTable 
+                columns={columns} 
+                data={bills} 
+                emptyMessage="No bills found. Click 'Add Bill' to create one."
+                actions={renderActions}
+            />
+            <Suspense fallback={<div className="h-10 w-full bg-gray-50 animate-pulse mt-4 rounded-md" />}>
+                <Pagination currentPage={page} totalPages={totalPages} />
+            </Suspense>
+        </ListPageLayout>
     );
 }
