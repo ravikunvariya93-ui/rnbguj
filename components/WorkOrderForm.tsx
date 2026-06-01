@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save } from 'lucide-react';
+import { Save, Plus, X } from 'lucide-react';
 import Link from 'next/link';
 
 interface WorkOrderFormProps {
@@ -67,6 +67,12 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [loas, setLoas] = useState<any[]>([]);
+    const [banks, setBanks] = useState<any[]>([]);
+    const [isBankModalOpen, setIsBankModalOpen] = useState(false);
+    const [activeBankField, setActiveBankField] = useState<'security' | 'additional'>('security');
+    const [newBank, setNewBank] = useState({ name: '' });
+    const [bankSaving, setBankSaving] = useState(false);
+    const [bankError, setBankError] = useState('');
 
     const sanitized = Object.fromEntries(
         Object.entries(initialData).map(([k, v]) => [k, v == null ? '' : v])
@@ -108,6 +114,21 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
             }
         };
         fetchLoas();
+    }, []);
+
+    useEffect(() => {
+        const fetchBanks = async () => {
+            try {
+                const res = await fetch('/api/banks');
+                const data = await res.json();
+                if (data.success) {
+                    setBanks(data.data);
+                }
+            } catch (error) {
+                console.error('Failed to fetch banks', error);
+            }
+        };
+        fetchBanks();
     }, []);
 
     useEffect(() => {
@@ -158,6 +179,8 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
     }, [formData.timeLimitStartsFrom, formData.workDurationMonths]);
 
     useEffect(() => {
+        // Disabled auto-calculation as per user request to keep SD Date field blank by default
+        /*
         if (!formData.loaId || !formData.timeLimitStartsFrom || !formData.workDurationMonths) return;
         const selectedLoa = loas.find((loa: any) => loa._id === formData.loaId);
         if (!selectedLoa) return;
@@ -177,6 +200,7 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
             if (prev.securityDepositDate === calcDateStr) return prev;
             return { ...prev, securityDepositDate: calcDateStr };
         });
+        */
     }, [formData.loaId, formData.timeLimitStartsFrom, formData.workDurationMonths, loas]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -186,6 +210,48 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
 
     const handleLoaSelect = (id: string) => {
         setFormData((prev: any) => ({ ...prev, loaId: id }));
+    };
+
+    const handleCreateBank = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newBank.name.trim()) {
+            setBankError('Bank name is required.');
+            return;
+        }
+        setBankSaving(true);
+        setBankError('');
+        try {
+            const res = await fetch('/api/banks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newBank),
+            });
+            const data = await res.json();
+            if (data.success) {
+                const createdBank = data.data;
+                setBanks((prev) => [...prev, createdBank].sort((a, b) => a.name.localeCompare(b.name)));
+                if (activeBankField === 'security') {
+                    setFormData((prev: any) => ({
+                        ...prev,
+                        securityDepositBankName: createdBank.name,
+                    }));
+                } else {
+                    setFormData((prev: any) => ({
+                        ...prev,
+                        additionalSecurityDepositBankName: createdBank.name,
+                    }));
+                }
+                setNewBank({ name: '' });
+                setIsBankModalOpen(false);
+            } else {
+                setBankError(data.error || 'Failed to create bank.');
+            }
+        } catch (err: any) {
+            console.error(err);
+            setBankError('An unexpected error occurred while saving the bank.');
+        } finally {
+            setBankSaving(false);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -240,7 +306,8 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
     }));
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-gray-200 bg-white p-8 shadow rounded-lg">
+        <>
+            <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-gray-200 bg-white p-8 shadow rounded-lg">
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                 
                 <div className="sm:col-span-6">
@@ -275,11 +342,11 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
                     <h3 className="text-lg font-medium text-gray-900 mb-1">Security Deposit Details</h3>
                 </div>
                 <div className="sm:col-span-2">
-                    <label htmlFor="securityDepositAmount" className="block text-sm font-medium text-gray-700">Required SD Amount</label>
+                    <label htmlFor="securityDepositAmount" className="block text-sm font-medium text-gray-700">SD Amount</label>
                     <input type="number" name="securityDepositAmount" id="securityDepositAmount" value={formData.securityDepositAmount || ''} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                 </div>
                 <div className="sm:col-span-2">
-                    <label htmlFor="securityDepositDate" className="block text-sm font-medium text-gray-700">Date upto which SD Required</label>
+                    <label htmlFor="securityDepositDate" className="block text-sm font-medium text-gray-700">SD Date</label>
                     <input type="text" placeholder="20/01/2025" name="securityDepositDate" id="securityDepositDate" value={formData.securityDepositDate || ''} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                 </div>
                 <div className="sm:col-span-2"></div>
@@ -293,8 +360,32 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
                     </select>
                 </div>
                 <div className="sm:col-span-2">
-                    <label htmlFor="securityDepositBankName" className="block text-sm font-medium text-gray-700">Bank Name</label>
-                    <input type="text" name="securityDepositBankName" id="securityDepositBankName" value={formData.securityDepositBankName} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                    <div className="flex justify-between items-center mb-1">
+                        <label className="block text-sm font-medium text-gray-700 font-semibold">Bank Name</label>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setActiveBankField('security');
+                                setIsBankModalOpen(true);
+                            }}
+                            className="inline-flex items-center text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                        >
+                            <Plus className="w-3.5 h-3.5 mr-1" /> Add Bank
+                        </button>
+                    </div>
+                    <SearchableSelect
+                        placeholder="Search/Select bank..."
+                        options={banks}
+                        value={banks.find(b => b.name === formData.securityDepositBankName)?._id || ''}
+                        onChange={(id) => {
+                            const selected = banks.find(b => b._id === id);
+                            setFormData((prev: any) => ({
+                                ...prev,
+                                securityDepositBankName: selected ? selected.name : ''
+                            }));
+                        }}
+                        displayField="name"
+                    />
                 </div>
                 <div className="sm:col-span-2">
                     <label htmlFor="securityDepositNumber" className="block text-sm font-medium text-gray-700">SD Number</label>
@@ -304,11 +395,11 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
                 <div className="sm:col-span-6 border-b border-gray-100 my-2"></div>
 
                 <div className="sm:col-span-2">
-                    <label htmlFor="additionalSecurityDepositAmount" className="block text-sm font-medium text-gray-700">Required Addl. SD Amount</label>
+                    <label htmlFor="additionalSecurityDepositAmount" className="block text-sm font-medium text-gray-700">Addl. SD Amount</label>
                     <input type="number" name="additionalSecurityDepositAmount" id="additionalSecurityDepositAmount" value={formData.additionalSecurityDepositAmount || ''} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                 </div>
                 <div className="sm:col-span-2">
-                    <label htmlFor="additionalSecurityDepositDate" className="block text-sm font-medium text-gray-700">Date upto which Addl. SD Req</label>
+                    <label htmlFor="additionalSecurityDepositDate" className="block text-sm font-medium text-gray-700">Addl. SD Date</label>
                     <input type="text" placeholder="20/01/2025" name="additionalSecurityDepositDate" id="additionalSecurityDepositDate" value={formData.additionalSecurityDepositDate || ''} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                 </div>
                 <div className="sm:col-span-2"></div>
@@ -322,8 +413,32 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
                     </select>
                 </div>
                 <div className="sm:col-span-2">
-                    <label htmlFor="additionalSecurityDepositBankName" className="block text-sm font-medium text-gray-700">Bank Name</label>
-                    <input type="text" name="additionalSecurityDepositBankName" id="additionalSecurityDepositBankName" value={formData.additionalSecurityDepositBankName} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                    <div className="flex justify-between items-center mb-1">
+                        <label className="block text-sm font-medium text-gray-700 font-semibold">Bank Name</label>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setActiveBankField('additional');
+                                setIsBankModalOpen(true);
+                            }}
+                            className="inline-flex items-center text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                        >
+                            <Plus className="w-3.5 h-3.5 mr-1" /> Add Bank
+                        </button>
+                    </div>
+                    <SearchableSelect
+                        placeholder="Search/Select bank..."
+                        options={banks}
+                        value={banks.find(b => b.name === formData.additionalSecurityDepositBankName)?._id || ''}
+                        onChange={(id) => {
+                            const selected = banks.find(b => b._id === id);
+                            setFormData((prev: any) => ({
+                                ...prev,
+                                additionalSecurityDepositBankName: selected ? selected.name : ''
+                            }));
+                        }}
+                        displayField="name"
+                    />
                 </div>
                 <div className="sm:col-span-2">
                     <label htmlFor="additionalSecurityDepositNumber" className="block text-sm font-medium text-gray-700">Addl. SD Number</label>
@@ -361,5 +476,72 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
                 </div>
             </div>
         </form>
+
+        {/* Bank Modal */}
+        {isBankModalOpen && (
+            <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs transition-opacity duration-300">
+                <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden relative border border-gray-100 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+                    
+                    {/* Header */}
+                    <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/70">
+                        <h3 className="text-lg font-bold text-gray-900">Add New Bank</h3>
+                        <button 
+                            type="button" 
+                            onClick={() => {
+                                setIsBankModalOpen(false);
+                                setBankError('');
+                            }} 
+                            className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-all"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    {/* Form */}
+                    <form onSubmit={handleCreateBank} className="flex-1 overflow-y-auto p-6 space-y-4">
+                        
+                        {bankError && (
+                            <div className="p-3 rounded-md bg-red-50 border border-red-200 text-sm text-red-700 font-medium">
+                                {bankError}
+                            </div>
+                        )}
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Bank Name *</label>
+                            <input 
+                                type="text" 
+                                required 
+                                value={newBank.name}
+                                onChange={(e) => setNewBank({ name: e.target.value })}
+                                placeholder="e.g. State Bank of India"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            />
+                        </div>
+
+                        {/* Footer / Buttons inside form */}
+                        <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+                            <button 
+                                type="button" 
+                                onClick={() => {
+                                    setIsBankModalOpen(false);
+                                    setBankError('');
+                                }} 
+                                className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                type="submit" 
+                                disabled={bankSaving} 
+                                className="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 inline-flex items-center"
+                            >
+                                {bankSaving ? 'Saving...' : 'Save Bank'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        )}
+        </>
     );
 }
