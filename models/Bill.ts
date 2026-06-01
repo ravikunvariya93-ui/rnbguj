@@ -18,7 +18,7 @@ export interface IBill extends Document {
     runningBillNumber?: number;
     billDate: Date;
     grossAmount: number;
-    netPaidAmount: number;
+    netPaidAmount?: number;
     passingDate?: Date;
     remarks?: string;
     items: IBillItem[];
@@ -49,7 +49,7 @@ const BillSchema: Schema = new Schema({
     },
     billDate: { type: Date, required: true },
     grossAmount: { type: Number, required: true },
-    netPaidAmount: { type: Number, required: true },
+    netPaidAmount: { type: Number },
     passingDate: { type: Date },
     remarks: { type: String },
     items: [BillItemSchema]

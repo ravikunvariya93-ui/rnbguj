@@ -183,22 +183,97 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                                 ))
                             )}
                         </tbody>
-                        {bill.items && bill.items.length > 0 && (
-                            <tfoot className="bg-slate-100 font-semibold border-t-2 border-slate-200">
-                                <tr>
-                                    <td colSpan={6} className="px-4 py-4 text-right text-sm text-slate-700 uppercase tracking-wider">Totals:</td>
-                                    <td className="px-4 py-4 text-sm text-slate-800 font-mono">
-                                        {bill.items.reduce((s: number, i: any) => s + (i.uptoDateAmount || 0), 0).toFixed(2)}
-                                    </td>
-                                    <td className="px-4 py-4 text-sm text-amber-700 font-mono">
-                                        {bill.items.reduce((s: number, i: any) => s + (i.previousPaidAmount || 0), 0).toFixed(2)}
-                                    </td>
-                                    <td className="px-4 py-4 text-sm font-bold text-emerald-700 font-mono text-lg border-x-2 border-emerald-200 bg-emerald-100/50">
-                                        ₹{bill.items.reduce((s: number, i: any) => s + (i.toBePaidAmount || 0), 0).toFixed(2)}
-                                    </td>
-                                </tr>
-                            </tfoot>
-                        )}
+                        {bill.items && bill.items.length > 0 && (() => {
+                            const totalUptoDate = bill.items.reduce((s: number, i: any) => s + (i.uptoDateAmount || 0), 0);
+                            const totalPrevPaid = bill.items.reduce((s: number, i: any) => s + (i.previousPaidAmount || 0), 0);
+                            const totalToBePaid = bill.items.reduce((s: number, i: any) => s + (i.toBePaidAmount || 0), 0);
+
+                            const uptoDateAbove25 = totalUptoDate * 0.25;
+                            const prevPaidAbove25 = totalPrevPaid * 0.25;
+                            const toBePaidAbove25 = totalToBePaid * 0.25;
+
+                            const uptoDateNet = totalUptoDate + uptoDateAbove25;
+                            const prevPaidNet = totalPrevPaid + prevPaidAbove25;
+                            const toBePaidNet = totalToBePaid + toBePaidAbove25;
+
+                            const uptoDateGst = uptoDateNet * 0.18;
+                            const prevPaidGst = prevPaidNet * 0.18;
+                            const toBePaidGst = toBePaidNet * 0.18;
+
+                            const uptoDatePayable = uptoDateNet + uptoDateGst;
+                            const prevPaidPayable = prevPaidNet + prevPaidGst;
+                            const toBePaidPayable = toBePaidNet + toBePaidGst;
+
+                            return (
+                                <tfoot className="bg-slate-100 font-semibold border-t-2 border-slate-200">
+                                    {/* Row 1: Total Amount */}
+                                    <tr className="border-b border-slate-200">
+                                        <td colSpan={6} className="px-4 py-3.5 text-right text-sm text-slate-700 uppercase tracking-wider font-semibold">Total Amount:</td>
+                                        <td className="px-4 py-3.5 text-sm text-slate-800 font-mono">
+                                            {totalUptoDate.toFixed(2)}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-sm text-amber-700 font-mono">
+                                            {totalPrevPaid.toFixed(2)}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-sm text-emerald-700 font-mono text-lg border-x border-emerald-200 bg-emerald-100/50 font-bold">
+                                            ₹{totalToBePaid.toFixed(2)}
+                                        </td>
+                                    </tr>
+                                    {/* Row 2: 25 % Above */}
+                                    <tr className="border-b border-slate-200 bg-slate-50/50">
+                                        <td colSpan={6} className="px-4 py-3 text-right text-sm text-slate-600 uppercase tracking-wider font-normal">25 % Above:</td>
+                                        <td className="px-4 py-3 text-sm text-slate-600 font-mono font-normal">
+                                            {uptoDateAbove25.toFixed(2)}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-amber-600 font-mono font-normal">
+                                            {prevPaidAbove25.toFixed(2)}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-emerald-600 font-mono border-x border-slate-200 font-bold">
+                                            ₹{toBePaidAbove25.toFixed(2)}
+                                        </td>
+                                    </tr>
+                                    {/* Row 3: Net Amount */}
+                                    <tr className="border-b border-slate-200">
+                                        <td colSpan={6} className="px-4 py-3.5 text-right text-sm text-slate-700 uppercase tracking-wider">Net Amount:</td>
+                                        <td className="px-4 py-3.5 text-sm text-slate-800 font-mono">
+                                            {uptoDateNet.toFixed(2)}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-sm text-amber-700 font-mono">
+                                            {prevPaidNet.toFixed(2)}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-sm text-emerald-700 font-mono border-x border-slate-200 font-bold">
+                                            ₹{toBePaidNet.toFixed(2)}
+                                        </td>
+                                    </tr>
+                                    {/* Row 4: Add 18% GST */}
+                                    <tr className="border-b border-slate-200 bg-slate-50/50">
+                                        <td colSpan={6} className="px-4 py-3 text-right text-sm text-slate-600 uppercase tracking-wider font-normal">Add 18% GST:</td>
+                                        <td className="px-4 py-3 text-sm text-slate-600 font-mono font-normal">
+                                            {uptoDateGst.toFixed(2)}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-amber-600 font-mono font-normal">
+                                            {prevPaidGst.toFixed(2)}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-emerald-600 font-mono border-x border-slate-200 font-bold">
+                                            ₹{toBePaidGst.toFixed(2)}
+                                        </td>
+                                    </tr>
+                                    {/* Row 5: Net Payble Amount */}
+                                    <tr className="bg-emerald-50 font-bold border-b border-slate-200">
+                                        <td colSpan={6} className="px-4 py-4 text-right text-sm text-emerald-800 uppercase tracking-wider">Net Payble Amount:</td>
+                                        <td className="px-4 py-4 text-sm text-emerald-800 font-mono text-base font-bold">
+                                            {uptoDatePayable.toFixed(2)}
+                                        </td>
+                                        <td className="px-4 py-4 text-sm text-amber-800 font-mono text-base font-bold">
+                                            {prevPaidPayable.toFixed(2)}
+                                        </td>
+                                        <td className="px-4 py-4 text-sm text-emerald-900 font-mono text-lg border-x border-emerald-200 bg-emerald-100/50 font-extrabold">
+                                            ₹{toBePaidPayable.toFixed(2)}
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            );
+                        })()}
                     </table>
                 </div>
             </div>

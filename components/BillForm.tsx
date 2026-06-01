@@ -156,8 +156,12 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
     };
 
     const calculateTotals = (items: IBillItem[]) => {
-        const gross = items.reduce((sum, item) => sum + (item.toBePaidAmount || 0), 0);
-        setFormData((prev: any) => ({ ...prev, grossAmount: gross.toFixed(2) }));
+        const totalToBePaid = items.reduce((sum, item) => sum + (item.toBePaidAmount || 0), 0);
+        const above25 = totalToBePaid * 0.25;
+        const netAmount = totalToBePaid + above25;
+        const gst18 = netAmount * 0.18;
+        const netPayableAmount = netAmount + gst18;
+        setFormData((prev: any) => ({ ...prev, grossAmount: netPayableAmount.toFixed(2) }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -179,7 +183,9 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
             submissionData.billDate = parseDateOutput(formData.billDate) as any;
             submissionData.passingDate = parseDateOutput(formData.passingDate) as any;
             submissionData.grossAmount = Number(formData.grossAmount) as any;
-            submissionData.netPaidAmount = Number(formData.netPaidAmount) as any;
+            submissionData.netPaidAmount = (formData.netPaidAmount !== '' && formData.netPaidAmount !== null && formData.netPaidAmount !== undefined)
+                ? Number(formData.netPaidAmount)
+                : undefined as any;
             submissionData.runningBillNumber = Number(formData.runningBillNumber) as any;
 
             const url = isEditing ? `/api/bills/${initialData._id}` : '/api/bills';
@@ -327,6 +333,17 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
                                                 step="0.01"
                                                 value={item.quantity || ''}
                                                 onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        const nextInput = document.querySelector(`input[data-qty-index="${index + 1}"]`) as HTMLInputElement;
+                                                        if (nextInput) {
+                                                            nextInput.focus();
+                                                            nextInput.select();
+                                                        }
+                                                    }
+                                                }}
+                                                data-qty-index={index}
                                                 className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500"
                                             />
                                         </td>
@@ -362,22 +379,97 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
                                 ))
                             )}
                         </tbody>
-                        {formData.items.length > 0 && (
-                            <tfoot className="bg-slate-100 font-semibold border-t-2 border-slate-200">
-                                <tr>
-                                    <td colSpan={6} className="px-3 py-3 text-right text-sm text-slate-700">Totals:</td>
-                                    <td className="px-3 py-3 text-sm text-slate-800 font-mono">
-                                        {formData.items.reduce((s: number, i: any) => s + (i.uptoDateAmount || 0), 0).toFixed(2)}
-                                    </td>
-                                    <td className="px-3 py-3 text-sm text-amber-700 font-mono">
-                                        {formData.items.reduce((s: number, i: any) => s + (i.previousPaidAmount || 0), 0).toFixed(2)}
-                                    </td>
-                                    <td className="px-3 py-3 text-sm text-emerald-700 font-mono text-lg border-x-2 border-emerald-200 bg-emerald-100/50">
-                                        ₹{formData.items.reduce((s: number, i: any) => s + (i.toBePaidAmount || 0), 0).toFixed(2)}
-                                    </td>
-                                </tr>
-                            </tfoot>
-                        )}
+                        {formData.items.length > 0 && (() => {
+                            const totalUptoDate = formData.items.reduce((s: number, i: any) => s + (i.uptoDateAmount || 0), 0);
+                            const totalPrevPaid = formData.items.reduce((s: number, i: any) => s + (i.previousPaidAmount || 0), 0);
+                            const totalToBePaid = formData.items.reduce((s: number, i: any) => s + (i.toBePaidAmount || 0), 0);
+
+                            const uptoDateAbove25 = totalUptoDate * 0.25;
+                            const prevPaidAbove25 = totalPrevPaid * 0.25;
+                            const toBePaidAbove25 = totalToBePaid * 0.25;
+
+                            const uptoDateNet = totalUptoDate + uptoDateAbove25;
+                            const prevPaidNet = totalPrevPaid + prevPaidAbove25;
+                            const toBePaidNet = totalToBePaid + toBePaidAbove25;
+
+                            const uptoDateGst = uptoDateNet * 0.18;
+                            const prevPaidGst = prevPaidNet * 0.18;
+                            const toBePaidGst = toBePaidNet * 0.18;
+
+                            const uptoDatePayable = uptoDateNet + uptoDateGst;
+                            const prevPaidPayable = prevPaidNet + prevPaidGst;
+                            const toBePaidPayable = toBePaidNet + toBePaidGst;
+
+                            return (
+                                <tfoot className="bg-slate-100 font-semibold border-t-2 border-slate-200">
+                                    {/* Row 1: Total Amount */}
+                                    <tr className="border-b border-slate-200">
+                                        <td colSpan={6} className="px-3 py-2.5 text-right text-sm text-slate-700">Total Amount:</td>
+                                        <td className="px-3 py-2.5 text-sm text-slate-800 font-mono">
+                                            {totalUptoDate.toFixed(2)}
+                                        </td>
+                                        <td className="px-3 py-2.5 text-sm text-amber-700 font-mono">
+                                            {totalPrevPaid.toFixed(2)}
+                                        </td>
+                                        <td className="px-3 py-2.5 text-sm text-emerald-700 font-mono text-lg border-x border-emerald-200 bg-emerald-100/50 font-bold">
+                                            ₹{totalToBePaid.toFixed(2)}
+                                        </td>
+                                    </tr>
+                                    {/* Row 2: 25 % Above */}
+                                    <tr className="border-b border-slate-200 bg-slate-50/50">
+                                        <td colSpan={6} className="px-3 py-2 text-right text-sm text-slate-600">25 % Above:</td>
+                                        <td className="px-3 py-2 text-sm text-slate-600 font-mono">
+                                            {uptoDateAbove25.toFixed(2)}
+                                        </td>
+                                        <td className="px-3 py-2 text-sm text-amber-600 font-mono">
+                                            {prevPaidAbove25.toFixed(2)}
+                                        </td>
+                                        <td className="px-3 py-2 text-sm text-emerald-600 font-mono border-x border-slate-200 font-bold">
+                                            ₹{toBePaidAbove25.toFixed(2)}
+                                        </td>
+                                    </tr>
+                                    {/* Row 3: Net Amount */}
+                                    <tr className="border-b border-slate-200">
+                                        <td colSpan={6} className="px-3 py-2.5 text-right text-sm text-slate-700 font-semibold">Net Amount:</td>
+                                        <td className="px-3 py-2.5 text-sm text-slate-800 font-mono">
+                                            {uptoDateNet.toFixed(2)}
+                                        </td>
+                                        <td className="px-3 py-2.5 text-sm text-amber-700 font-mono">
+                                            {prevPaidNet.toFixed(2)}
+                                        </td>
+                                        <td className="px-3 py-2.5 text-sm text-emerald-700 font-mono border-x border-slate-200 font-bold">
+                                            ₹{toBePaidNet.toFixed(2)}
+                                        </td>
+                                    </tr>
+                                    {/* Row 4: Add 18% GST */}
+                                    <tr className="border-b border-slate-200 bg-slate-50/50">
+                                        <td colSpan={6} className="px-3 py-2 text-right text-sm text-slate-600">Add 18% GST:</td>
+                                        <td className="px-3 py-2 text-sm text-slate-600 font-mono">
+                                            {uptoDateGst.toFixed(2)}
+                                        </td>
+                                        <td className="px-3 py-2 text-sm text-amber-600 font-mono">
+                                            {prevPaidGst.toFixed(2)}
+                                        </td>
+                                        <td className="px-3 py-2 text-sm text-emerald-600 font-mono border-x border-slate-200 font-bold">
+                                            ₹{toBePaidGst.toFixed(2)}
+                                        </td>
+                                    </tr>
+                                    {/* Row 5: Net Payble Amount */}
+                                    <tr className="bg-emerald-50 font-bold border-b border-slate-200">
+                                        <td colSpan={6} className="px-3 py-3 text-right text-sm text-emerald-800 text-base">Net Payble Amount:</td>
+                                        <td className="px-3 py-3 text-sm text-emerald-800 font-mono text-base">
+                                            {uptoDatePayable.toFixed(2)}
+                                        </td>
+                                        <td className="px-3 py-3 text-sm text-amber-800 font-mono text-base">
+                                            {prevPaidPayable.toFixed(2)}
+                                        </td>
+                                        <td className="px-3 py-3 text-sm text-emerald-900 font-mono text-lg border-x border-emerald-200 bg-emerald-100/50 font-extrabold">
+                                            ₹{toBePaidPayable.toFixed(2)}
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            );
+                        })()}
                     </table>
                 </div>
             </div>
@@ -397,14 +489,13 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
                     </div>
 
                     <div className="sm:col-span-2">
-                        <label htmlFor="netPaidAmount" className="block text-sm font-medium text-gray-700">Net Paid Amount (₹)</label>
+                        <label htmlFor="netPaidAmount" className="block text-sm font-medium text-gray-700 font-semibold">Net Paid Amount (₹)</label>
                         <input 
                             type="number" step="0.01" name="netPaidAmount" id="netPaidAmount" 
                             value={formData.netPaidAmount} onChange={handleChange} 
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" 
-                            required
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500" 
                         />
-                        <p className="text-xs text-gray-500 mt-1">After deductions (IT, GST, etc.)</p>
+                        <p className="text-xs text-gray-500 mt-1">After deductions (IT, GST, etc.) (Optional)</p>
                     </div>
 
                     <div className="sm:col-span-2">
