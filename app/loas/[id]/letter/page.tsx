@@ -35,6 +35,7 @@ export default async function LOALetterPage({ params }: PageProps) {
     const approval = JSON.parse(JSON.stringify(approvalRaw));
 
     if (approval && loa.tenderId) {
+        loa.tenderId.notRequired = approval.notRequired;
         loa.tenderId.tenderApprovalOffice ||= approval.tenderApprovalOffice;
         loa.tenderId.tenderApprovalNo ||= approval.tenderApprovalNo;
         loa.tenderId.tenderApprovalDate ||= approval.tenderApprovalDate;

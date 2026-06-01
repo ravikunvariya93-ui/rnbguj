@@ -9,6 +9,7 @@ import TechnicalSanction from '@/models/TechnicalSanction';
 import DTP from '@/models/DTP';
 import Pagination from '@/components/Pagination';
 import DataTable from '@/components/DataTable';
+import ExportTableButton from '@/components/ExportTableButton';
 import { formatShortDate } from '@/lib/dateUtils';
 import type { Column } from '@/lib/types';
 import Link from 'next/link';
@@ -77,31 +78,6 @@ export default async function Home({ searchParams }: Props) {
             pkgIdToDTP.set(d.tsId.toString(), d);
         }
     });
-
-    const pendingDTPs: any[] = [];
-    allApprovedWorks.forEach(w => {
-        const hasTS = !pendingTSIds.has(w._id.toString());
-        if (hasTS) {
-            const safeName = normalizeString(w.workName as string);
-            const pkg = workNameToPkg.get(safeName);
-            const dtp = pkg ? pkgIdToDTP.get(pkg._id.toString()) : null;
-            const hasApprovedDTP = Boolean(dtp && dtp.dtpApprovalDate);
-            
-            if (!hasApprovedDTP) {
-                pendingDTPs.push({
-                    _id: w._id.toString(),
-                    packageName: pkg ? pkg.packageName : '-',
-                    approvedWorks: [w.workName],
-                    tenderAmount: dtp ? dtp.tenderAmount : null,
-                    dtpSendingDate: dtp ? dtp.dtpSendingDate : null,
-                    dtpApprovingAuthority: dtp ? dtp.dtpApprovingAuthority : null,
-                    dtpApprovalDate: dtp ? dtp.dtpApprovalDate : null,
-                    remarks: w.remarks || dtp?.remarks || null,
-                });
-            }
-        }
-    });
-
     // --- Build Summary Report Data ---
     const summaryMap: Record<string, any> = {};
 
@@ -165,8 +141,9 @@ export default async function Home({ searchParams }: Props) {
         const workOrder = loa ? workOrderMap.get(loa._id.toString()) : null;
 
         // Date fallback rules
-        const proposalDate = tender.proposalDate || approval?.proposalDate || null;
-        const tenderApprovalDate = tender.tenderApprovalDate || approval?.tenderApprovalDate || null;
+        const isApprovalNotRequired = approval?.notRequired === true;
+        const proposalDate = isApprovalNotRequired ? 'Not Required' : (tender.proposalDate || approval?.proposalDate || null);
+        const tenderApprovalDate = isApprovalNotRequired ? 'Not Required' : (tender.tenderApprovalDate || approval?.tenderApprovalDate || null);
         const acceptanceLetterDate = tender.acceptanceLetterDate || loa?.acceptanceLetterDate || null;
         const workOrderDate = tender.workOrderDate || workOrder?.workOrderDate || null;
 
@@ -253,113 +230,21 @@ export default async function Home({ searchParams }: Props) {
             ) : <span className="text-slate-400 italic">No works found</span>
         },
         { key: 'contractorName', label: 'Contractor Name', minWidth: '150px' },
-        { key: 'proposalDate', label: 'Proposal Date', render: (row) => <span className="text-slate-600">{formatShortDate(row.proposalDate)}</span> },
-        { key: 'tenderApprovalDate', label: 'Approval Date', render: (row) => <span className="text-slate-600">{formatShortDate(row.tenderApprovalDate)}</span> },
+        { 
+            key: 'proposalDate', 
+            label: 'Proposal Date', 
+            render: (row) => row.proposalDate === 'Not Required' ? (
+                <span className="text-slate-500 italic font-semibold">Not Required</span>
+            ) : <span className="text-slate-600">{formatShortDate(row.proposalDate)}</span> 
+        },
+        { 
+            key: 'tenderApprovalDate', 
+            label: 'Approval Date', 
+            render: (row) => row.tenderApprovalDate === 'Not Required' ? (
+                <span className="text-slate-500 italic font-semibold">Not Required</span>
+            ) : <span className="text-slate-600">{formatShortDate(row.tenderApprovalDate)}</span> 
+        },
         { key: 'acceptanceLetterDate', label: 'Acceptance Date', render: (row) => <span className="text-slate-600">{formatShortDate(row.acceptanceLetterDate)}</span> }
-    ];
-
-    const pendingTSColumns: Column[] = [
-        { 
-            key: 'srNo', 
-            label: 'Sr. No.', 
-            render: (_, index) => index + 1
-        },
-        { 
-            key: 'workName', 
-            label: 'Name of Work', 
-            minWidth: '350px',
-            render: (row) => (
-                <div className="line-clamp-2 max-w-lg whitespace-normal break-words" title={row.workName}>
-                    {row.workName}
-                </div>
-            )
-        },
-        { 
-            key: 'tsAmount', 
-            label: 'TS Amount in Lacs', 
-            minWidth: '80px',
-            align: 'center',
-            render: (row) => row.tsAmount ? Number(row.tsAmount).toLocaleString('en-IN') : '-'
-        },
-        { 
-            key: 'tsDate', 
-            label: 'T.S. Date', 
-            render: (row) => row.tsDate ? new Date(row.tsDate).toLocaleDateString('en-GB') : '-'
-        },
-        { 
-            key: 'tsAuthority', 
-            label: 'TS Authority', 
-            render: (row) => row.tsAuthority || '-'
-        },
-        { 
-            key: 'remarks', 
-            label: 'Remarks', 
-            minWidth: '250px',
-            render: (row) => (
-                <div className="line-clamp-3 max-w-sm whitespace-normal break-words" title={row.remarks}>
-                    {row.remarks || '-'}
-                </div>
-            )
-        }
-    ];
-
-    const pendingDTPColumns: Column[] = [
-        { 
-            key: 'srNo', 
-            label: 'Sr. No.', 
-            render: (_, index) => index + 1
-        },
-        { 
-            key: 'packageName', 
-            label: 'Package Name', 
-            minWidth: '200px',
-            render: (row) => <span className="max-w-sm whitespace-normal break-words font-medium">{row.packageName}</span>
-        },
-        { 
-            key: 'approvedWorks', 
-            label: 'Approved Works', 
-            minWidth: '250px',
-            render: (row) => row.approvedWorks.length > 0 ? (
-                <div className="space-y-1">
-                    {row.approvedWorks.map((work: string, idx: number) => (
-                        <div key={idx} className="text-xs leading-tight">
-                            {idx + 1}. {work}
-                        </div>
-                    ))}
-                </div>
-            ) : <span className="text-slate-400 italic">No works found</span>
-        },
-        { 
-            key: 'tenderAmount', 
-            label: 'Tender Amount', 
-            align: 'center',
-            render: (row) => row.tenderAmount ? Number(row.tenderAmount).toLocaleString('en-IN') : '-'
-        },
-        { 
-            key: 'dtpSendingDate', 
-            label: 'Date of Sending DTP for Approval', 
-            render: (row) => row.dtpSendingDate ? new Date(row.dtpSendingDate).toLocaleDateString('en-GB') : '-'
-        },
-        { 
-            key: 'dtpApprovingAuthority', 
-            label: 'DTP Approving Authority', 
-            render: (row) => row.dtpApprovingAuthority || '-'
-        },
-        { 
-            key: 'dtpApprovalDate', 
-            label: 'DTP Approval Date', 
-            render: (row) => row.dtpApprovalDate ? new Date(row.dtpApprovalDate).toLocaleDateString('en-GB') : '-'
-        },
-        { 
-            key: 'remarks', 
-            label: 'Remarks', 
-            minWidth: '250px',
-            render: (row) => (
-                <div className="line-clamp-3 max-w-sm whitespace-normal break-words" title={row.remarks}>
-                    {row.remarks || '-'}
-                </div>
-            )
-        }
     ];
 
     return (
@@ -372,12 +257,15 @@ export default async function Home({ searchParams }: Props) {
 
                 {/* 0. Summary Report */}
                 <div className="bg-white p-6 shadow-sm rounded-xl border border-slate-100 space-y-4">
-                    <div className="flex flex-col gap-1">
-                        <h2 className="text-lg font-bold text-slate-800 tracking-tight">Summary Report</h2>
-                        <p className="text-xs text-slate-500 font-medium">Overview of works and packages status by Approval Year</p>
+                    <div className="flex justify-between items-start">
+                        <div className="flex flex-col gap-1">
+                            <h2 className="text-lg font-bold text-slate-800 tracking-tight">Summary Report</h2>
+                            <p className="text-xs text-slate-500 font-medium">Overview of works and packages status by Approval Year</p>
+                        </div>
+                        <ExportTableButton tableId="summary-table" filename="Summary_Report.xlsx" />
                     </div>
                     <div className="overflow-x-auto border border-slate-300 shadow-sm rounded-lg">
-                        <table className="w-full text-left border-collapse text-xs font-medium">
+                        <table id="summary-table" className="w-full text-left border-collapse text-xs font-medium">
                             <thead>
                                 <tr className="bg-slate-100 border-b border-slate-300">
                                     <th rowSpan={2} className="px-3 py-2.5 font-bold text-slate-700 border-r border-slate-300">Approval Year</th>
@@ -425,49 +313,6 @@ export default async function Home({ searchParams }: Props) {
                     </div>
                 </div>
 
-                {/* 1. Pending TS Report */}
-                <details className="group bg-white shadow-sm rounded-xl border border-slate-100 overflow-hidden">
-                    <summary className="list-none p-6 cursor-pointer flex justify-between items-center hover:bg-slate-50 transition-colors [&::-webkit-details-marker]:hidden">
-                        <div className="flex flex-col gap-1">
-                            <h2 className="text-lg font-bold text-slate-800 tracking-tight">Pending TS Report</h2>
-                            <p className="text-xs text-slate-500 font-medium">Approved works awaiting Technical Sanction approval</p>
-                        </div>
-                        <div className="text-slate-400 group-open:rotate-180 transition-transform duration-200">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </div>
-                    </summary>
-                    <div className="p-6 border-t border-slate-100">
-                        <DataTable 
-                            columns={pendingTSColumns} 
-                            data={pendingTSWorks} 
-                            emptyMessage="No pending Technical Sanctions."
-                        />
-                    </div>
-                </details>
-
-                {/* 2. Pending DTP Report */}
-                <details className="group bg-white shadow-sm rounded-xl border border-slate-100 overflow-hidden">
-                    <summary className="list-none p-6 cursor-pointer flex justify-between items-center hover:bg-slate-50 transition-colors [&::-webkit-details-marker]:hidden">
-                        <div className="flex flex-col gap-1">
-                            <h2 className="text-lg font-bold text-slate-800 tracking-tight">Pending DTP Report</h2>
-                            <p className="text-xs text-slate-500 font-medium">Approved works with Technical Sanction awaiting Detailed Technical Proposal (DTP) approval</p>
-                        </div>
-                        <div className="text-slate-400 group-open:rotate-180 transition-transform duration-200">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </div>
-                    </summary>
-                    <div className="p-6 border-t border-slate-100">
-                        <DataTable 
-                            columns={pendingDTPColumns} 
-                            data={pendingDTPs} 
-                            emptyMessage="No pending DTP works."
-                        />
-                    </div>
-                </details>
 
                 {/* 3. Pending Work Order Report */}
                 <details className="group bg-white shadow-sm rounded-xl border border-slate-100 overflow-hidden">
@@ -487,6 +332,7 @@ export default async function Home({ searchParams }: Props) {
                             columns={columns} 
                             data={paginatedTendersReportData} 
                             emptyMessage="No tender notices found."
+                            exportFilename="Pending_Work_Order_Report.xlsx"
                         />
                         {tenderTotalPages > 1 && (
                             <div className="mt-4 flex justify-end">

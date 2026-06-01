@@ -55,6 +55,7 @@ export default function ApprovalForm({ initialData = {}, isEditing = false }: Ap
 
     const [formData, setFormData] = useState({
         tenderId: '',
+        notRequired: false,
         proposalDate: '',
         tenderApprovalOffice: '',
         tenderApprovalNo: '',
@@ -83,6 +84,7 @@ export default function ApprovalForm({ initialData = {}, isEditing = false }: Ap
         if (isEditing && initialData) {
             setFormData((prev: any) => ({
                 ...prev,
+                notRequired: initialData.notRequired ?? false,
                 proposalDate: formatDateForInput(initialData.proposalDate),
                 tenderApprovalDate: formatDateForInput(initialData.tenderApprovalDate),
                 tenderId: initialData.tenderId?._id || initialData.tenderId || '',
@@ -91,8 +93,9 @@ export default function ApprovalForm({ initialData = {}, isEditing = false }: Ap
     }, [initialData, isEditing]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData((prev: any) => ({ ...prev, [name]: value }));
+        const { name, value, type } = e.target as HTMLInputElement;
+        const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+        setFormData((prev: any) => ({ ...prev, [name]: val }));
     };
 
     const handleTenderSelect = (id: string) => {
@@ -115,8 +118,15 @@ export default function ApprovalForm({ initialData = {}, isEditing = false }: Ap
                 return d ? d.toISOString() : undefined;
             };
 
-            if (submissionData.proposalDate) submissionData.proposalDate = parseDateOutput(submissionData.proposalDate) as any;
-            if (submissionData.tenderApprovalDate) submissionData.tenderApprovalDate = parseDateOutput(submissionData.tenderApprovalDate) as any;
+            if (submissionData.notRequired) {
+                submissionData.proposalDate = '' as any;
+                submissionData.tenderApprovalOffice = '';
+                submissionData.tenderApprovalNo = '';
+                submissionData.tenderApprovalDate = '' as any;
+            } else {
+                if (submissionData.proposalDate) submissionData.proposalDate = parseDateOutput(submissionData.proposalDate) as any;
+                if (submissionData.tenderApprovalDate) submissionData.tenderApprovalDate = parseDateOutput(submissionData.tenderApprovalDate) as any;
+            }
 
             const url = isEditing ? `/api/approvals/${initialData._id}` : '/api/approvals';
             const method = isEditing ? 'PUT' : 'POST';
@@ -167,39 +177,58 @@ export default function ApprovalForm({ initialData = {}, isEditing = false }: Ap
 
 
                 <div className="sm:col-span-6 border-t border-gray-200 pt-4 mt-4">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Tender Approval Details</h3>
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Tender Approval Details</h3>
+                        <div className="flex items-center mb-4">
+                            <input
+                                id="notRequired"
+                                name="notRequired"
+                                type="checkbox"
+                                checked={formData.notRequired || false}
+                                onChange={handleChange}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                            />
+                            <label htmlFor="notRequired" className="ml-2 block text-sm text-gray-900 font-semibold cursor-pointer">
+                                Tender Approval Not Required
+                            </label>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="sm:col-span-2">
-                    <label htmlFor="proposalDate" className="block text-sm font-medium text-gray-700">Proposal Date (DD/MM/YYYY)</label>
-                    <input type="text" placeholder="20/01/2025" name="proposalDate" id="proposalDate" value={formData.proposalDate} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                </div>
+                {!formData.notRequired && (
+                    <>
+                        <div className="sm:col-span-2">
+                            <label htmlFor="proposalDate" className="block text-sm font-medium text-gray-700">Proposal Date (DD/MM/YYYY)</label>
+                            <input type="text" placeholder="20/01/2025" name="proposalDate" id="proposalDate" value={formData.proposalDate} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                        </div>
 
-                <div className="sm:col-span-4">
-                    <label htmlFor="tenderApprovalOffice" className="block text-sm font-medium text-gray-700">Tender Approval Office</label>
-                    <select
-                        name="tenderApprovalOffice"
-                        id="tenderApprovalOffice"
-                        value={formData.tenderApprovalOffice}
-                        onChange={handleChange}
-                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                    >
-                        <option value="">-- Select Office --</option>
-                        <option value="Executive Engineer (EE)">Executive Engineer (EE)</option>
-                        <option value="Superintending Engineer (SE)">Superintending Engineer (SE)</option>
-                        <option value="Road and Building Department">Road and Building Department</option>
-                    </select>
-                </div>
+                        <div className="sm:col-span-4">
+                            <label htmlFor="tenderApprovalOffice" className="block text-sm font-medium text-gray-700">Tender Approval Office</label>
+                            <select
+                                name="tenderApprovalOffice"
+                                id="tenderApprovalOffice"
+                                value={formData.tenderApprovalOffice}
+                                onChange={handleChange}
+                                className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                            >
+                                <option value="">-- Select Office --</option>
+                                <option value="Executive Engineer (EE)">Executive Engineer (EE)</option>
+                                <option value="Superintending Engineer (SE)">Superintending Engineer (SE)</option>
+                                <option value="Road and Building Department">Road and Building Department</option>
+                            </select>
+                        </div>
 
-                <div className="sm:col-span-3">
-                    <label htmlFor="tenderApprovalNo" className="block text-sm font-medium text-gray-700">Tender Approval No.</label>
-                    <input type="text" name="tenderApprovalNo" id="tenderApprovalNo" value={formData.tenderApprovalNo} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                </div>
+                        <div className="sm:col-span-3">
+                            <label htmlFor="tenderApprovalNo" className="block text-sm font-medium text-gray-700">Tender Approval No.</label>
+                            <input type="text" name="tenderApprovalNo" id="tenderApprovalNo" value={formData.tenderApprovalNo} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                        </div>
 
-                <div className="sm:col-span-3">
-                    <label htmlFor="tenderApprovalDate" className="block text-sm font-medium text-gray-700">Tender Approval Date (DD/MM/YYYY)</label>
-                    <input type="text" placeholder="20/01/2025" name="tenderApprovalDate" id="tenderApprovalDate" value={formData.tenderApprovalDate} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                </div>
+                        <div className="sm:col-span-3">
+                            <label htmlFor="tenderApprovalDate" className="block text-sm font-medium text-gray-700">Tender Approval Date (DD/MM/YYYY)</label>
+                            <input type="text" placeholder="20/01/2025" name="tenderApprovalDate" id="tenderApprovalDate" value={formData.tenderApprovalDate} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                        </div>
+                    </>
+                )}
 
             </div>
 

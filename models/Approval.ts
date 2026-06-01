@@ -2,6 +2,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IApproval extends Document {
     tenderId: mongoose.Schema.Types.ObjectId;
+    notRequired?: boolean;
     proposalDate: Date;
     tenderApprovalOffice: string;
     tenderApprovalNo: string;
@@ -12,6 +13,7 @@ export interface IApproval extends Document {
 
 const ApprovalSchema: Schema = new Schema({
     tenderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tender', required: true },
+    notRequired: { type: Boolean, default: false },
     proposalDate: { type: Date },
     tenderApprovalOffice: { type: String },
     tenderApprovalNo: { type: String },

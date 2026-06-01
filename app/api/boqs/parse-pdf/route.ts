@@ -130,6 +130,14 @@ export async function POST(req: Request) {
                                 numbersFound.push({ value: parseFloat(w), index: j });
                             } else {
                                 unitWords.push(w);
+                                // If the collected unit words length is too large, the candidate quantity is actually part of description
+                                if (unitWords.length > 5) {
+                                    const candidateQtyObj = numbersFound[0];
+                                    descWords.push(candidateQtyObj.value.toString());
+                                    descWords.push(...unitWords);
+                                    numbersFound = [];
+                                    unitWords = [];
+                                }
                             }
                         } else if (numbersFound.length === 2) {
                             // After rate, the next decimal/integer is the amount

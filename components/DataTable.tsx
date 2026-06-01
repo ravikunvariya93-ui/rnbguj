@@ -1,4 +1,6 @@
+import React, { useId } from 'react';
 import SortableHeader from './SortableHeader';
+import ExportTableButton from './ExportTableButton';
 
 interface Column {
   key: string;
@@ -14,9 +16,12 @@ interface DataTableProps {
   data: any[];
   emptyMessage?: string;
   actions?: (row: any, index: number) => React.ReactNode;
+  exportFilename?: string;
 }
 
-export default function DataTable({ columns, data, emptyMessage = 'No data available.', actions }: DataTableProps) {
+export default function DataTable({ columns, data, emptyMessage = 'No data available.', actions, exportFilename }: DataTableProps) {
+  const tableIdBase = useId();
+  const tableId = `data-table-${tableIdBase.replace(/:/g, '')}`;
   const totalColumns = columns.length + (actions ? 1 : 0);
 
   const getAlignClass = (align?: 'left' | 'center' | 'right') => {
@@ -26,8 +31,14 @@ export default function DataTable({ columns, data, emptyMessage = 'No data avail
   };
 
   return (
-    <div className="overflow-x-auto border border-slate-300 shadow-sm">
-      <table className="w-full text-left border-collapse text-xs font-medium">
+    <div className="space-y-3">
+      {data.length > 0 && (
+        <div className="flex justify-end">
+          <ExportTableButton tableId={tableId} filename={exportFilename || 'Export.xlsx'} />
+        </div>
+      )}
+      <div className="overflow-x-auto border border-slate-300 shadow-sm rounded-md">
+        <table id={tableId} className="w-full text-left border-collapse text-xs font-medium">
         <thead>
           <tr className="bg-slate-100 border-b border-slate-300">
             {columns.map((col, colIdx) => {
@@ -96,6 +107,7 @@ export default function DataTable({ columns, data, emptyMessage = 'No data avail
           )}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

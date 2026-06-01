@@ -20,10 +20,12 @@ export default async function ApprovalDetailPage({ params }: { params: Promise<{
     const sections = [
         {
             title: 'Approval Details',
-            fields: [
+            fields: (approval as any).notRequired ? [
+                { label: 'Tender Approval Status', value: 'Not Required' }
+            ] : [
                 { label: 'Proposal Date', value: approval.proposalDate ? new Date(approval.proposalDate).toLocaleDateString('en-GB') : '-' },
-                { label: 'Tender Approval Office', value: approval.tenderApprovalOffice },
-                { label: 'Tender Approval No.', value: approval.tenderApprovalNo },
+                { label: 'Tender Approval Office', value: approval.tenderApprovalOffice || '-' },
+                { label: 'Tender Approval No.', value: approval.tenderApprovalNo || '-' },
                 { label: 'Tender Approval Date', value: approval.tenderApprovalDate ? new Date(approval.tenderApprovalDate).toLocaleDateString('en-GB') : '-' },
             ]
         },

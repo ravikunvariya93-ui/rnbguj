@@ -265,12 +265,14 @@ const exportToDoc = () => {
                     </div>
 
                     {/* References Block */}
-                    <div style={{ marginBottom: '10px', fontSize: '14px', display: 'flex', gap: '8px', lineHeight: '1.4', paddingLeft: '6em' }}>
-                        <div style={{ fontWeight: 'bold', flexShrink: 0 }}>Reference:</div>
-                        <div style={{ flex: 1, textAlign: 'justify' }}>
-                            {tender.tenderApprovalOffice || 'Road and Building Department, Gandhinagar'} Letter No. <span style={{ fontWeight: 'semibold' }}>{tender.tenderApprovalNo || 'RBD/TRF/e-file/16/2026/1303/Section D1'}</span> Dt. - {formatDateToOutput(tender.tenderApprovalDate)}
+                    {!tender.notRequired && (
+                        <div style={{ marginBottom: '10px', fontSize: '14px', display: 'flex', gap: '8px', lineHeight: '1.4', paddingLeft: '6em' }}>
+                            <div style={{ fontWeight: 'bold', flexShrink: 0 }}>Reference:</div>
+                            <div style={{ flex: 1, textAlign: 'justify' }}>
+                                {tender.tenderApprovalOffice || 'Road and Building Department, Gandhinagar'} Letter No. <span style={{ fontWeight: 'semibold' }}>{tender.tenderApprovalNo || 'RBD/TRF/e-file/16/2026/1303/Section D1'}</span> Dt. - {formatDateToOutput(tender.tenderApprovalDate)}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Paragraph 1 - Acceptance Announcement */}
                     <div style={{ textAlign: 'justify', textIndent: '3em', marginBottom: '8px', fontSize: '14px', lineHeight: '1.5' }}>

@@ -76,7 +76,11 @@ export default async function ApprovalsListPage({ searchParams }: Props) {
             key: 'tenderApprovalDate', 
             label: 'Tender Approval Date', 
             sortable: true,
-            render: (row) => row.tenderApprovalDate ? new Date(row.tenderApprovalDate).toLocaleDateString('en-GB') : '-'
+            render: (row) => row.notRequired ? (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-800 border border-gray-200">
+                    Not Required
+                </span>
+            ) : (row.tenderApprovalDate ? new Date(row.tenderApprovalDate).toLocaleDateString('en-GB') : '-')
         }
     ];
 

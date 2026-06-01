@@ -62,9 +62,9 @@ function BOQExpandableRow({ boq, onDelete, index }: { boq: any; onDelete: (id: s
 
     return (
         <div
-            className={`bg-white rounded-2xl border transition-all duration-300 overflow-hidden ${
+            className={`bg-white border transition-all duration-300 overflow-hidden ${
                 expanded
-                    ? 'border-blue-200 shadow-lg shadow-blue-100/50 ring-1 ring-blue-100'
+                    ? 'border-[#107c41] shadow-lg shadow-green-100/50 ring-1 ring-green-100 border-l-4 border-l-[#107c41]'
                     : 'border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300'
             }`}
             style={{ animationDelay: `${index * 50}ms` }}
@@ -76,7 +76,7 @@ function BOQExpandableRow({ boq, onDelete, index }: { boq: any; onDelete: (id: s
             >
                 {/* Expand/Collapse icon */}
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 flex-shrink-0 ${
-                    expanded ? 'bg-blue-100 text-blue-600 rotate-0' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'
+                    expanded ? 'bg-green-100 text-[#107c41] rotate-0' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'
                 }`}>
                     {expanded
                         ? <ChevronDown className="w-4 h-4" />
@@ -88,7 +88,7 @@ function BOQExpandableRow({ boq, onDelete, index }: { boq: any; onDelete: (id: s
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-bold text-slate-800">{tenderId}</span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 text-[#107c41] border border-green-100">
                             {itemCount} items
                         </span>
                     </div>
@@ -97,7 +97,7 @@ function BOQExpandableRow({ boq, onDelete, index }: { boq: any; onDelete: (id: s
 
                 {/* Amount */}
                 <div className="text-right hidden sm:block">
-                    <p className="text-sm font-black text-slate-800 font-mono">
+                    <p className="text-sm font-bold text-[#107c41] font-mono">
                         ₹{totalAmount.toLocaleString('en-IN')}
                     </p>
                     <p className="text-[10px] text-slate-400 mt-0.5">{updatedAt}</p>
@@ -107,7 +107,7 @@ function BOQExpandableRow({ boq, onDelete, index }: { boq: any; onDelete: (id: s
                 <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                     <Link
                         href={`/boqs/${boq._id}`}
-                        className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                        className="p-2 rounded-lg text-slate-400 hover:text-green-700 hover:bg-green-50 transition-colors"
                         title="View Details"
                     >
                         <Eye className="w-4 h-4" />
@@ -131,38 +131,38 @@ function BOQExpandableRow({ boq, onDelete, index }: { boq: any; onDelete: (id: s
                     {/* Mobile amount (visible on small screens) */}
                     <div className="sm:hidden mb-3 flex items-center justify-between">
                         <span className="text-xs text-slate-400">Total Amount</span>
-                        <span className="text-sm font-black text-blue-600 font-mono">₹{totalAmount.toLocaleString('en-IN')}</span>
+                        <span className="text-sm font-black text-[#107c41] font-mono">₹{totalAmount.toLocaleString('en-IN')}</span>
                     </div>
-                    <div className="overflow-x-auto rounded-xl border border-slate-200">
-                        <table className="min-w-full divide-y divide-slate-200">
+                    <div className="overflow-x-auto border border-gray-300 font-sans shadow-xs rounded-lg">
+                        <table className="min-w-full border-collapse border border-gray-300 text-xs">
                             <thead>
-                                <tr className="bg-slate-50">
-                                    <th className="px-4 py-2.5 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest w-16 text-center">No.</th>
-                                    <th className="px-4 py-2.5 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">Description of Item</th>
-                                    <th className="px-4 py-2.5 text-right text-[10px] font-black text-slate-500 uppercase tracking-widest w-20">Qty</th>
-                                    <th className="px-4 py-2.5 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest w-20">Unit</th>
-                                    <th className="px-4 py-2.5 text-right text-[10px] font-black text-slate-500 uppercase tracking-widest w-28">Rate</th>
-                                    <th className="px-4 py-2.5 text-right text-[10px] font-black text-slate-500 uppercase tracking-widest w-32">Amount</th>
+                                <tr className="bg-[#107c41] text-white font-bold">
+                                    <th className="border border-gray-300 px-3 py-2 text-center w-12 bg-[#107c41]">Item No.</th>
+                                    <th className="border border-gray-300 px-3 py-2 text-left bg-[#107c41]">Description of Item</th>
+                                    <th className="border border-gray-300 px-3 py-2 text-right w-24 bg-[#107c41]">Quantity</th>
+                                    <th className="border border-gray-300 px-3 py-2 text-left w-16 bg-[#107c41]">Unit</th>
+                                    <th className="border border-gray-300 px-3 py-2 text-right w-24 bg-[#107c41]">Rate</th>
+                                    <th className="border border-gray-300 px-3 py-2 text-right w-32 bg-[#107c41]">Amount</th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-slate-100">
+                            <tbody className="bg-white divide-y divide-gray-200">
                                 {boq.items?.map((item: any, idx: number) => (
-                                    <tr key={idx} className="hover:bg-blue-50/40 transition-colors">
-                                        <td className="px-4 py-3 text-xs text-slate-700 text-center">{item.itemNo}</td>
-                                        <td className="px-4 py-3 text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{item.description}</td>
-                                        <td className="px-4 py-3 text-xs text-slate-700 text-right font-mono">{item.quantity?.toLocaleString('en-IN')}</td>
-                                        <td className="px-4 py-3 text-xs text-slate-500">{item.unit}</td>
-                                        <td className="px-4 py-3 text-xs text-slate-700 text-right font-mono">₹{item.rate?.toLocaleString('en-IN')}</td>
-                                        <td className="px-4 py-3 text-xs text-right text-blue-600 font-mono">₹{item.amount?.toLocaleString('en-IN')}</td>
+                                    <tr key={idx} className={idx % 2 === 0 ? 'bg-white hover:bg-green-50/30' : 'bg-slate-50/50 hover:bg-green-50/30'}>
+                                        <td className="border border-gray-300 px-3 py-1.5 text-center font-mono text-gray-700">{item.itemNo}</td>
+                                        <td className="border border-gray-300 px-3 py-1.5 text-gray-600 leading-normal whitespace-pre-wrap">{item.description}</td>
+                                        <td className="border border-gray-300 px-3 py-1.5 text-right font-mono text-gray-800">{item.quantity?.toLocaleString('en-IN')}</td>
+                                        <td className="border border-gray-300 px-3 py-1.5 text-gray-600">{item.unit}</td>
+                                        <td className="border border-gray-300 px-3 py-1.5 text-right font-mono text-gray-800">₹{item.rate?.toLocaleString('en-IN')}</td>
+                                        <td className="border border-gray-300 px-3 py-1.5 text-right text-green-700 font-semibold font-mono">₹{item.amount?.toLocaleString('en-IN')}</td>
                                     </tr>
                                 ))}
                             </tbody>
-                            <tfoot className="bg-slate-50 border-t-2 border-slate-300">
+                            <tfoot className="bg-green-50/30 font-bold">
                                 <tr>
-                                    <td colSpan={5} className="px-4 py-3 text-right text-xs font-black text-slate-700 uppercase tracking-wider">
+                                    <td colSpan={5} className="border border-gray-300 px-3 py-2 text-right text-gray-700 font-bold uppercase">
                                         Grand Total (Excl. GST)
                                     </td>
-                                    <td className="px-4 py-3 text-right text-sm font-black text-blue-700 font-mono">
+                                    <td className="border border-gray-300 px-3 py-2 text-right text-sm text-[#107c41] font-bold font-mono">
                                         ₹{totalAmount.toLocaleString('en-IN')}
                                     </td>
                                 </tr>
@@ -284,13 +284,7 @@ function BOQListPageContent() {
                 </Link>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <StatCard icon={ClipboardList} label="Total BOQs" value={loading ? '...' : totalBoqs.toString()} color="blue" />
-                <StatCard icon={Layers} label="Total Items" value={loading ? '...' : totalItems.toLocaleString('en-IN')} color="violet" />
-                <StatCard icon={IndianRupee} label="Total Value" value={loading ? '...' : `₹${totalAmount.toLocaleString('en-IN')}`} sub="Across all BOQs" color="emerald" />
-                <StatCard icon={Calendar} label="Last Updated" value={loading ? '...' : latestUpdate} color="amber" />
-            </div>
+
 
             {/* Search */}
             <div className="relative mb-6">
@@ -380,14 +374,7 @@ export default function BOQListPage() {
                     <h1 className="text-2xl font-black text-slate-900 tracking-tight">Bill of Quantities</h1>
                     <p className="text-sm text-slate-400 mt-1">Manage detailed schedules of items, rates and specifications.</p>
                 </div>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    {[...Array(4)].map((_, i) => (
-                        <div key={i} className="bg-white rounded-2xl border border-slate-200 p-5 animate-pulse">
-                            <div className="h-3 bg-slate-100 rounded w-1/2 mb-3" />
-                            <div className="h-7 bg-slate-100 rounded w-2/3" />
-                        </div>
-                    ))}
-                </div>
+
                 <div className="flex flex-col gap-3">
                     <SkeletonRow />
                     <SkeletonRow />

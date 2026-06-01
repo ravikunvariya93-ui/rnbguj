@@ -139,7 +139,7 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
         const allPackages = await Package.find({}).select('works').lean();
         const allDTPs = await DTP.find({}).select('tsId dtpApprovalDate').lean();
         const allTenders = await Tender.find({}).sort({ trialNo: 1 }).select('packageId proposalDate tenderApprovalDate').lean();
-        const allApprovals = await Approval.find({}).select('tenderId proposalDate tenderApprovalDate').lean();
+        const allApprovals = await Approval.find({}).select('tenderId proposalDate tenderApprovalDate notRequired').lean();
         const allLOAs = await LOA.find({}).select('tenderId').lean();
         const allWorkOrders = await WorkOrder.find({}).select('loaId').lean();
 
@@ -213,8 +213,9 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
             if (!tender) return false;
             const tId = tender._id.toString();
             const approval = approvalByTenderId.get(tId);
-            const hasProposalDate = Boolean(tender.proposalDate) || Boolean(approval);
-            const hasApproval = Boolean(tender.tenderApprovalDate) || Boolean(approval?.tenderApprovalDate);
+            const isApprovalNotRequired = approval?.notRequired === true;
+            const hasProposalDate = isApprovalNotRequired || Boolean(tender.proposalDate) || Boolean(approval?.proposalDate);
+            const hasApproval = isApprovalNotRequired || Boolean(tender.tenderApprovalDate) || Boolean(approval?.tenderApprovalDate);
 
             if (hasApproval) {
                 if (params.filter === 'pendingProposal') return false;
