@@ -22,6 +22,8 @@ const ApprovalSchema: Schema = new Schema({
     timestamps: true,
 });
 
+ApprovalSchema.index({ tenderId: 1 });
+
 if (process.env.NODE_ENV !== 'production') delete mongoose.models.Approval;
 const Approval: Model<IApproval> = mongoose.models.Approval || mongoose.model<IApproval>('Approval', ApprovalSchema);
 

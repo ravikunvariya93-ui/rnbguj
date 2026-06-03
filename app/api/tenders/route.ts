@@ -27,8 +27,22 @@ export async function GET(request: Request) {
         
         const { searchParams } = new URL(request.url);
         const includeId = searchParams.get('includeId');
+        const pageStr = searchParams.get('page');
+        const limitStr = searchParams.get('limit');
+        
+        const page = pageStr ? parseInt(pageStr, 10) : 1;
+        const limit = limitStr ? parseInt(limitStr, 10) : 100;
+        const skip = (page - 1) * limit;
 
-        const tenders = await Tender.find({}).populate('packageId').sort({ createdAt: -1 });
+        const total = await Tender.countDocuments({});
+
+        const tenders = await Tender.find({})
+            .select('tenderId packageName packageId trialNo contractorName tenderNoticeYear noticeNo srNo cancelled cancellationReason aboveBelowPercentage aboveBelowInWord contractPrice')
+            .populate({ path: 'packageId', select: 'packageName works' })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean();
         
         // Group by packageId and keep the one with the highest trialNo
         const packageMap = new Map<string, any>();
@@ -65,7 +79,11 @@ export async function GET(request: Request) {
             }
         }
 
-        return NextResponse.json({ success: true, data: filteredTenders });
+        return NextResponse.json({ 
+            success: true, 
+            data: filteredTenders,
+            pagination: { total, page, limit, totalPages: Math.ceil(total / limit) }
+        });
     } catch (error: any) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }

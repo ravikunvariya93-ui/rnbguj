@@ -10,6 +10,13 @@ export interface IBillItem {
     uptoDateAmount: number;
     previousPaidAmount: number;
     toBePaidAmount: number;
+    itemType?: 'Standard' | 'Extra';
+}
+
+export interface IBillWork {
+    srNo: string;
+    nameOfWork: string;
+    amount: number;
 }
 
 export interface IBill extends Document {
@@ -21,7 +28,34 @@ export interface IBill extends Document {
     netPaidAmount?: number;
     passingDate?: Date;
     remarks?: string;
+    labourCessApplicable: boolean;
     items: IBillItem[];
+    works: IBillWork[];
+
+    // Audit Memo Fields
+    auditMemoPreviouslyPaid?: number;
+    dismantleCredit?: number;
+    excessExtraAmount?: number;
+    priceAdjustment?: number;
+    priceAdjustmentType?: 'Payable' | 'Deductible';
+    adminApprovalAmount?: number;
+    withheldDeposit?: number;
+    netPayableAmount?: number;
+
+    incomeTax?: number;
+    gst?: number;
+    labourCess?: number;
+    securityDeposit?: number;
+    freeMaintenanceDeposit?: number;
+    asphaltDeposit?: number;
+    coreSampleDeposit?: number;
+    tpi?: number;
+    esmp?: number;
+    timeLimitDeposit?: number;
+    testingCharges?: number;
+    otherDeposit?: number;
+    totalDeduction?: number;
+
     createdAt: Date;
     updatedAt: Date;
 }
@@ -35,7 +69,14 @@ const BillItemSchema = new Schema({
     unit: { type: String, required: true },
     uptoDateAmount: { type: Number, required: true },
     previousPaidAmount: { type: Number, default: 0 },
-    toBePaidAmount: { type: Number, required: true }
+    toBePaidAmount: { type: Number, required: true },
+    itemType: { type: String, enum: ['Standard', 'Extra'], default: 'Standard' }
+});
+
+const BillWorkSchema = new Schema({
+    srNo: { type: String, required: true },
+    nameOfWork: { type: String, required: true },
+    amount: { type: Number, required: true }
 });
 
 const BillSchema: Schema = new Schema({
@@ -52,10 +93,38 @@ const BillSchema: Schema = new Schema({
     netPaidAmount: { type: Number },
     passingDate: { type: Date },
     remarks: { type: String },
-    items: [BillItemSchema]
+    labourCessApplicable: { type: Boolean, default: false },
+    items: [BillItemSchema],
+    works: [BillWorkSchema],
+
+    // Audit Memo
+    auditMemoPreviouslyPaid: { type: Number, default: 0 },
+    dismantleCredit: { type: Number, default: 0 },
+    excessExtraAmount: { type: Number, default: 0 },
+    priceAdjustment: { type: Number, default: 0 },
+    priceAdjustmentType: { type: String, enum: ['Payable', 'Deductible'], default: 'Payable' },
+    adminApprovalAmount: { type: Number, default: 0 },
+    withheldDeposit: { type: Number, default: 0 },
+    netPayableAmount: { type: Number, default: 0 },
+
+    incomeTax: { type: Number, default: 0 },
+    gst: { type: Number, default: 0 },
+    labourCess: { type: Number, default: 0 },
+    securityDeposit: { type: Number, default: 0 },
+    freeMaintenanceDeposit: { type: Number, default: 0 },
+    asphaltDeposit: { type: Number, default: 0 },
+    coreSampleDeposit: { type: Number, default: 0 },
+    tpi: { type: Number, default: 0 },
+    esmp: { type: Number, default: 0 },
+    timeLimitDeposit: { type: Number, default: 0 },
+    testingCharges: { type: Number, default: 0 },
+    otherDeposit: { type: Number, default: 0 },
+    totalDeduction: { type: Number, default: 0 },
 }, {
     timestamps: true,
 });
+
+BillSchema.index({ workOrderId: 1 });
 
 if (process.env.NODE_ENV !== 'production') delete mongoose.models.Bill;
 

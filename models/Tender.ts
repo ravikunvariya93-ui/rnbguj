@@ -121,6 +121,12 @@ const TenderSchema: Schema = new Schema({
     timestamps: true,
 });
 
+TenderSchema.index({ packageId: 1 });
+TenderSchema.index({ cancelled: 1 });
+TenderSchema.index({ tenderNoticeYear: 1 });
+TenderSchema.index({ createdAt: -1 });
+TenderSchema.index({ packageId: 1, trialNo: -1 });
+
 // Avoid recompiling model in watch mode
 if (process.env.NODE_ENV !== 'production') delete mongoose.models.Tender;
 const Tender: Model<ITender> = mongoose.models.Tender || mongoose.model<ITender>('Tender', TenderSchema);

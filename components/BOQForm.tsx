@@ -13,6 +13,7 @@ interface BOQItem {
     unit: string;
     rate: number;
     amount: number;
+    itemType?: 'Standard' | 'Extra';
 }
 
 interface BOQFormProps {
@@ -32,7 +33,8 @@ export default function BOQForm({ initialData = {}, isEditing = false }: BOQForm
             ...item,
             quantity: item.quantity || 0,
             rate: item.rate || 0,
-            amount: item.amount || 0
+            amount: item.amount || 0,
+            itemType: item.itemType || 'Standard'
         })),
         totalAmount: initialData.totalAmount || 0,
         ...initialData
@@ -61,7 +63,7 @@ export default function BOQForm({ initialData = {}, isEditing = false }: BOQForm
     const handleAddItem = () => {
         setFormData((prev: any) => ({
             ...prev,
-            items: [...prev.items, { itemNo: '', description: '', quantity: 0, unit: '', rate: 0, amount: 0 }]
+            items: [...prev.items, { itemNo: '', description: '', quantity: 0, unit: '', rate: 0, amount: 0, itemType: 'Standard' }]
         }));
     };
 
@@ -80,7 +82,7 @@ export default function BOQForm({ initialData = {}, isEditing = false }: BOQForm
         if (field === 'quantity' || field === 'rate') {
             item.amount = (parseFloat(item.quantity) || 0) * (parseFloat(item.rate) || 0);
         }
-        
+
         newItems[index] = item;
         const total = newItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
         setFormData((prev: any) => ({ ...prev, items: newItems, totalAmount: total }));
@@ -101,7 +103,11 @@ export default function BOQForm({ initialData = {}, isEditing = false }: BOQForm
             });
             const data = await res.json();
             if (data.success && data.data.length > 0) {
-                const newItems = [...formData.items, ...data.data];
+                const parsedItems = data.data.map((item: any) => ({
+                    ...item,
+                    itemType: item.itemType || 'Standard'
+                }));
+                const newItems = [...formData.items, ...parsedItems];
                 const total = newItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
                 setFormData((prev: any) => ({ ...prev, items: newItems, totalAmount: total }));
             } else {
@@ -171,20 +177,22 @@ export default function BOQForm({ initialData = {}, isEditing = false }: BOQForm
                 <div className="sm:col-span-6 mt-4">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-bold text-gray-900">BOQ Items</h3>
-                        <button
-                            type="button"
-                            onClick={handleAddItem}
-                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 shadow-sm transition-colors"
-                        >
-                            <Plus className="w-3.5 h-3.5 mr-1" /> Add Item
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={handleAddItem}
+                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 shadow-sm transition-colors"
+                            >
+                                <Plus className="w-3.5 h-3.5 mr-1" /> Add Item
+                            </button>
+                        </div>
                     </div>
 
                     <div className="overflow-x-auto border border-gray-200 rounded-lg">
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-16">No.</th>
+                                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-28">No.</th>
                                     <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</th>
                                     <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-24">Qty</th>
                                     <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-24">Unit</th>
@@ -229,13 +237,13 @@ export default function BOQForm({ initialData = {}, isEditing = false }: BOQForm
                                 ))}
                                 {formData.items.length === 0 && (
                                     <tr>
-                                        <td colSpan={7} className="px-3 py-8 text-center text-sm text-gray-500 italic">No items added yet. Click "Add Item" or "Fetch from PDF".</td>
+                                        <td colSpan={8} className="px-3 py-8 text-center text-sm text-gray-500 italic">No items added yet. Click "Add Item" or "Fetch from PDF".</td>
                                     </tr>
                                 )}
                             </tbody>
                             <tfoot className="bg-gray-50 font-bold">
                                 <tr>
-                                    <td colSpan={5} className="px-3 py-4 text-right text-sm font-bold text-gray-900">Total Amount:</td>
+                                    <td colSpan={6} className="px-3 py-4 text-right text-sm font-bold text-gray-900">Total Amount:</td>
                                     <td className="px-3 py-4 text-right text-sm text-gray-900 px-4">
                                         ₹{formData.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </td>

@@ -175,7 +175,6 @@ export default function DTPForwardingLetterPage() {
                     }
                     body { background-color: #f1f5f9; }
                 }
-                }
                 @media print {
                     /* Hide everything except the print area */
                     .screen-only,

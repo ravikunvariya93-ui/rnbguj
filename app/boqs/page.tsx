@@ -8,6 +8,7 @@ import {
     ClipboardList, IndianRupee, Layers, Calendar, X, Eye
 } from 'lucide-react';
 import SortableHeader from '@/components/SortableHeader';
+import Pagination from '@/components/Pagination';
 
 function StatCard({ icon: Icon, label, value, sub, color }: {
     icon: any; label: string; value: string; sub?: string; color: string;
@@ -148,7 +149,16 @@ function BOQExpandableRow({ boq, onDelete, index }: { boq: any; onDelete: (id: s
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {boq.items?.map((item: any, idx: number) => (
                                     <tr key={idx} className={idx % 2 === 0 ? 'bg-white hover:bg-green-50/30' : 'bg-slate-50/50 hover:bg-green-50/30'}>
-                                        <td className="border border-gray-300 px-3 py-1.5 text-center font-mono text-gray-700">{item.itemNo}</td>
+                                        <td className="border border-gray-300 px-3 py-1.5 text-center font-mono text-gray-700">
+                                            <div className="flex flex-col items-center gap-1">
+                                                <span>{item.itemNo}</span>
+                                                {item.itemType === 'Extra' && (
+                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold bg-blue-50 text-blue-700 border border-blue-100 leading-none uppercase select-none">
+                                                        Extra
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
                                         <td className="border border-gray-300 px-3 py-1.5 text-gray-600 leading-normal whitespace-pre-wrap">{item.description}</td>
                                         <td className="border border-gray-300 px-3 py-1.5 text-right font-mono text-gray-800">{item.quantity?.toLocaleString('en-IN')}</td>
                                         <td className="border border-gray-300 px-3 py-1.5 text-gray-600">{item.unit}</td>
@@ -179,21 +189,28 @@ function BOQListPageContent() {
     const [boqs, setBoqs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [totalPages, setTotalPages] = useState(1);
 
     const searchParams = useSearchParams();
     const sortField = searchParams.get('sort');
     const sortOrder = searchParams.get('order');
+    const pageStr = searchParams.get('page');
+    const currentPage = pageStr ? parseInt(pageStr, 10) : 1;
 
     useEffect(() => {
-        fetchBoqs();
-    }, []);
+        fetchBoqs(currentPage);
+    }, [currentPage]);
 
-    const fetchBoqs = async () => {
+    const fetchBoqs = async (page: number) => {
+        setLoading(true);
         try {
-            const res = await fetch('/api/boqs');
+            const res = await fetch(`/api/boqs?page=${page}&limit=100`);
             const data = await res.json();
             if (data.success) {
                 setBoqs(data.data);
+                if (data.pagination) {
+                    setTotalPages(data.pagination.totalPages);
+                }
             }
         } catch (error) {
             console.error("Failed to fetch BOQs", error);
@@ -362,6 +379,11 @@ function BOQListPageContent() {
                     ))
                 )}
             </div>
+            {!loading && totalPages > 1 && (
+                <div className="mt-6">
+                    <Pagination currentPage={currentPage} totalPages={totalPages} />
+                </div>
+            )}
         </div>
     );
 }

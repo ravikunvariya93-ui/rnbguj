@@ -276,6 +276,7 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                         <option value="Road">Road</option>
                         <option value="Building">Building</option>
                         <option value="Structure">Structure</option>
+                        <option value="Service">Service</option>
                     </select>
                 </div>
 

@@ -21,7 +21,7 @@ export async function POST(req: Request) {
 export async function GET() {
     await dbConnect();
     try {
-        const dtps = await DTP.find({}).populate('tsId').sort({ createdAt: -1 });
+        const dtps = await DTP.find({}).populate({ path: 'tsId', select: '_id packageName' }).sort({ createdAt: -1 }).lean();
         return NextResponse.json({ success: true, data: dtps });
     } catch (error) {
         return NextResponse.json({ success: false, error: 'Failed to fetch DTPs' }, { status: 500 });

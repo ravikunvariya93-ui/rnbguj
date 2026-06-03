@@ -26,6 +26,8 @@ const PackageSchema: Schema = new Schema({
     timestamps: true,
 });
 
+PackageSchema.index({ createdAt: 1 });
+
 // Avoid recompiling model in watch mode
 if (process.env.NODE_ENV !== 'production') {
     if (mongoose.models.Package) {

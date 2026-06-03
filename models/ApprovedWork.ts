@@ -69,6 +69,9 @@ const ApprovedWorkSchema: Schema = new Schema({
     timestamps: true,
 });
 
+ApprovedWorkSchema.index({ workType: 1 });
+ApprovedWorkSchema.index({ approvalYear: 1 });
+
 // Avoid recompiling model in watch mode
 if (process.env.NODE_ENV !== 'production') {
     if (mongoose.models.ApprovedWork) {

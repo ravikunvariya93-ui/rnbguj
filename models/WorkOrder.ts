@@ -48,6 +48,8 @@ const WorkOrderSchema: Schema = new Schema({
     timestamps: true,
 });
 
+WorkOrderSchema.index({ loaId: 1 });
+
 if (process.env.NODE_ENV !== 'production') delete mongoose.models.WorkOrder;
 
 const WorkOrder: Model<IWorkOrder> = mongoose.models.WorkOrder || mongoose.model<IWorkOrder>('WorkOrder', WorkOrderSchema);

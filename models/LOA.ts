@@ -22,6 +22,8 @@ const LOASchema: Schema = new Schema({
     timestamps: true,
 });
 
+LOASchema.index({ tenderId: 1 });
+
 // Delete existing model to prevent overwrite error in development hot reload
 if (process.env.NODE_ENV !== 'production') {
     if (mongoose.models.LOA) {

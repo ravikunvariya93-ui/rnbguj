@@ -18,11 +18,22 @@ export async function POST(req: Request) {
     }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
     await dbConnect();
     try {
-        const loas = await LOA.find({}).populate('tenderId').sort({ createdAt: -1 });
-        return NextResponse.json({ success: true, data: loas });
+        const { searchParams } = new URL(request.url);
+        const page = parseInt(searchParams.get('page') || '1', 10);
+        const limit = parseInt(searchParams.get('limit') || '100', 10);
+        const skip = (page - 1) * limit;
+
+        const total = await LOA.countDocuments({});
+        const loas = await LOA.find({}).populate('tenderId').sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+        
+        return NextResponse.json({ 
+            success: true, 
+            data: loas,
+            pagination: { total, page, limit, totalPages: Math.ceil(total / limit) }
+        });
     } catch (error) {
         return NextResponse.json({ success: false, error: 'Failed to fetch LOAs' }, { status: 500 });
     }

@@ -7,6 +7,7 @@ export interface IBOQItem {
     unit: string;
     rate: number;
     amount: number;
+    itemType?: 'Standard' | 'Extra';
 }
 
 export interface IBOQ extends Document {
@@ -26,11 +27,14 @@ const BOQSchema: Schema = new Schema({
         unit: { type: String, required: true },
         rate: { type: Number, required: true },
         amount: { type: Number, required: true },
+        itemType: { type: String, enum: ['Standard', 'Extra'], default: 'Standard' },
     }],
     totalAmount: { type: Number, required: true },
 }, {
     timestamps: true,
 });
+
+BOQSchema.index({ tenderId: 1 });
 
 // Avoid recompiling model in watch mode
 if (process.env.NODE_ENV !== 'production') {

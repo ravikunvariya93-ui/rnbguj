@@ -153,15 +153,17 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
 
     // Prepare options for SearchableSelect
     // Hide works that already have a TS, unless we are currently editing that specific work
-    const workOptions = approvedWorks
-        .filter(w => {
-            if (isEditing && w.workName === initialData.workName) return true;
-            return !existingTSNames.includes(w.workName);
-        })
-        .map(w => ({
-            _id: w.workName, 
-            packageName: w.workName
-        }));
+    const workOptions = Array.from(new Set(
+        approvedWorks
+            .filter(w => {
+                if (isEditing && w.workName === initialData.workName) return true;
+                return !existingTSNames.includes(w.workName);
+            })
+            .map(w => w.workName)
+    )).map(workName => ({
+        _id: workName,
+        packageName: workName
+    }));
 
     return (
         <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-gray-200 bg-white p-8 shadow rounded-lg">
@@ -192,7 +194,7 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
                     >
                         <option value="">-- Select Authority --</option>
                         <option value="Executive Engineer (EE)">Executive Engineer (EE)</option>
-                        <option value="Superintending Engineer (SE)">Superintending Engineer (SE)</option>
+                        <option value="The Superintending Engineer, Panchayat Road and Building Circle - 2, Rajkot.">The Superintending Engineer, Panchayat Road and Building Circle - 2, Rajkot.</option>
                         <option value="Road and Building Department">Road and Building Department</option>
                     </select>
                 </div>

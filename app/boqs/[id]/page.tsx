@@ -71,7 +71,16 @@ export default async function BOQDetailPage({ params }: { params: Promise<{ id: 
                         <tbody className="bg-white divide-y divide-gray-200">
                             {boq.items?.map((item: any, index: number) => (
                                 <tr key={index} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4 text-sm text-gray-900 text-center font-medium">{item.itemNo}</td>
+                                    <td className="px-6 py-4 text-sm text-gray-900 text-center font-medium">
+                                        <div className="flex flex-col items-center gap-1">
+                                            <span>{item.itemNo}</span>
+                                            {item.itemType === 'Extra' && (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-100 uppercase tracking-wider leading-none scale-90">
+                                                    Extra
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td className="px-6 py-4 text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{item.description}</td>
                                     <td className="px-6 py-4 text-sm text-gray-900 text-right font-medium">{item.quantity?.toLocaleString()}</td>
                                     <td className="px-6 py-4 text-sm text-gray-500 font-medium">{item.unit}</td>

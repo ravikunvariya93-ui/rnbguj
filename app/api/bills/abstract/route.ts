@@ -62,7 +62,8 @@ export async function GET(request: Request) {
                 unit: boqItem.unit,
                 uptoDateAmount: 0,
                 previousPaidAmount: prevPaid,
-                toBePaidAmount: 0
+                toBePaidAmount: 0,
+                itemType: boqItem.itemType || 'Standard'
             };
         });
 

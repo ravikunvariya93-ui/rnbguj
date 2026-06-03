@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import dbConnect from '@/lib/db';
 import Tender from '@/models/Tender';
 import Approval from '@/models/Approval';
@@ -10,6 +11,7 @@ import DTP from '@/models/DTP';
 import Pagination from '@/components/Pagination';
 import DataTable from '@/components/DataTable';
 import ExportTableButton from '@/components/ExportTableButton';
+import WorkTypeFilter from '@/components/WorkTypeFilter';
 import { formatShortDate } from '@/lib/dateUtils';
 import type { Column } from '@/lib/types';
 import Link from 'next/link';
@@ -20,6 +22,7 @@ interface Props {
     searchParams: Promise<{ 
         page?: string;
         limit?: string;
+        workType?: string;
     }>;
 }
 
@@ -27,42 +30,70 @@ export default async function Home({ searchParams }: Props) {
     await dbConnect();
     const params = await searchParams;
 
-    const reportTenders = await Tender.find({ cancelled: { $ne: true } }).lean();
-    const reportApprovals = await Approval.find({}).lean();
-    const reportLOAs = await LOA.find({}).lean();
-    const reportWorkOrders = await WorkOrder.find({}).lean();
-    const reportPackages = await Package.find({}).lean();
-    const allApprovedWorks = await ApprovedWork.find({}).lean();
-    const allTS = await TechnicalSanction.find({}).select('workName').lean();
-    const allDTPs = await DTP.find({}).lean();
+    // Parse work types selection
+    const rawWorkType = params.workType;
+    let activeWorkTypes: string[] = ['Road', 'Structure']; // Default initial selection
+    let shouldFilter = true;
 
-    // Build mapping tables
-    const approvalMap = new Map(reportApprovals.map(a => [a.tenderId?.toString(), a]));
-    const loaMap = new Map(reportLOAs.map(l => [l.tenderId?.toString(), l]));
-    const workOrderMap = new Map(reportWorkOrders.map(wo => [wo.loaId?.toString(), wo]));
-    const packageMap = new Map(reportPackages.map(p => [p._id.toString(), p]));
+    if (rawWorkType !== undefined) {
+        if (rawWorkType === 'all') {
+            shouldFilter = false;
+            activeWorkTypes = [];
+        } else if (rawWorkType === 'none' || rawWorkType === '') {
+            shouldFilter = true;
+            activeWorkTypes = [];
+        } else {
+            shouldFilter = true;
+            activeWorkTypes = rawWorkType.split(',').filter(Boolean);
+        }
+    }
 
-    // Normalize and filter Pending TS Works
+    const PREDEFINED_WORK_TYPES = ['Road', 'Building', 'Structure', 'Service'];
+    const distinctWorkTypes: string[] = await ApprovedWork.distinct('workType');
+    const workTypes = Array.from(new Set([...PREDEFINED_WORK_TYPES, ...distinctWorkTypes])).filter(Boolean).sort();
+
+    const approvedWorkQuery: any = {};
+    if (shouldFilter) {
+        approvedWorkQuery.workType = { $in: activeWorkTypes };
+    }
+
+    const filterLabelText = !shouldFilter ? 'All' : activeWorkTypes.length === 0 ? 'None' : activeWorkTypes.join(', ');
+
+    // 1. Fetch minimum fields for Summary Report in-memory processing
+    // (This is highly optimized compared to fetching all fields)
+    const [
+        allApprovedWorks,
+        allPackages,
+        allTS,
+        allDTPs
+    ] = await Promise.all([
+        ApprovedWork.find(approvedWorkQuery).select('_id workName approvalYear workType').lean(),
+        Package.find({}).select('_id works.workName').lean(),
+        TechnicalSanction.find({}).select('workName').lean(),
+        DTP.find({}).select('tsId dtpApprovalDate').lean()
+    ]);
+
+    // Normalize strings for fuzzy matching
     const normalizeString = (str: string) => (str || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    
     const tsCountMap: Record<string, number> = {};
-    allTS.forEach(ts => {
+    allTS.forEach((ts: any) => {
         const name = normalizeString(ts.workName as string);
         tsCountMap[name] = (tsCountMap[name] || 0) + 1;
     });
 
-    const pendingTSWorks = allApprovedWorks.filter(w => {
+    const pendingTSIds = new Set<string>();
+    allApprovedWorks.forEach((w: any) => {
         const safeName = normalizeString(w.workName as string);
         if (tsCountMap[safeName] > 0) {
             tsCountMap[safeName]--;
-            return false;
+        } else {
+            pendingTSIds.add(w._id.toString());
         }
-        return true;
     });
 
-    // Filter Pending DTP Works (Approved Works whose TS exists but DTP Approval Date does not exist)
-    const pendingTSIds = new Set(pendingTSWorks.map(w => w._id.toString()));
     const workNameToPkg = new Map<string, any>();
-    reportPackages.forEach(pkg => {
+    allPackages.forEach((pkg: any) => {
         if (pkg.works) {
             pkg.works.forEach((pw: any) => {
                 if (pw.workName) {
@@ -73,25 +104,18 @@ export default async function Home({ searchParams }: Props) {
     });
 
     const pkgIdToDTP = new Map<string, any>();
-    allDTPs.forEach(d => {
+    allDTPs.forEach((d: any) => {
         if (d.tsId) {
             pkgIdToDTP.set(d.tsId.toString(), d);
         }
     });
-    // --- Build Summary Report Data ---
+
     const summaryMap: Record<string, any> = {};
 
-    allApprovedWorks.forEach(work => {
+    allApprovedWorks.forEach((work: any) => {
         const year = work.approvalYear || 'Unspecified';
         if (!summaryMap[year]) {
-            summaryMap[year] = { 
-                year, 
-                total: 0, 
-                tsPrepared: 0, 
-                tsPending: 0, 
-                dtpPrepared: 0, 
-                dtpPending: 0 
-            };
+            summaryMap[year] = { year, total: 0, tsPrepared: 0, tsPending: 0, dtpPrepared: 0, dtpPending: 0 };
         }
         
         summaryMap[year].total++;
@@ -100,10 +124,7 @@ export default async function Home({ searchParams }: Props) {
         if (isTSPending) {
             summaryMap[year].tsPending++;
         } else {
-            // It has TS prepared.
             summaryMap[year].tsPrepared++;
-
-            // Now check DTP status
             const safeName = normalizeString(work.workName as string);
             const pkg = workNameToPkg.get(safeName);
             const dtp = pkg ? pkgIdToDTP.get(pkg._id.toString()) : null;
@@ -131,16 +152,59 @@ export default async function Home({ searchParams }: Props) {
     if (summaryData.length > 0) {
         summaryData.push(summaryTotals);
     }
-    // ---------------------------------
 
-    // In-memory Join & Fallback Logic
-    let tendersReportData = reportTenders.map((tender: any) => {
+    // 2. Pending Work Order Report (Server-Side Pagination)
+    const filteredWorkNames = new Set(
+        allApprovedWorks.map((w: any) => normalizeString(w.workName as string))
+    );
+
+    const matchingPackageIds = allPackages.filter((pkg: any) => {
+        if (!shouldFilter) return true;
+        return pkg.works?.some((w: any) => filteredWorkNames.has(normalizeString(w.workName)));
+    }).map((pkg: any) => pkg._id);
+
+    const tenderPage = parseInt(params.page || '1');
+    const tenderLimit = parseInt(params.limit || '100');
+    const tenderSkip = (tenderPage - 1) * tenderLimit;
+
+    const tenderQuery: any = { cancelled: { $ne: true } };
+    if (shouldFilter) {
+        tenderQuery.packageId = { $in: matchingPackageIds };
+    }
+
+    const [tenderTotalItems, reportTendersRaw] = await Promise.all([
+        Tender.countDocuments(tenderQuery),
+        Tender.find(tenderQuery)
+            .select('_id tenderNoticeYear noticeNo srNo packageName packageId contractorName proposalDate tenderApprovalDate acceptanceLetterDate workOrderDate cancelled cancellationReason')
+            .sort({ tenderNoticeYear: -1, noticeNo: 1, srNo: 1 })
+            .skip(tenderSkip)
+            .limit(tenderLimit)
+            .lean()
+    ]);
+
+    const tenderTotalPages = Math.ceil(tenderTotalItems / tenderLimit);
+    const tenderIds = reportTendersRaw.map((t: any) => t._id);
+
+    // Fetch related records ONLY for the paginated Tenders (Massive performance boost)
+    const [reportApprovals, reportLOAs] = await Promise.all([
+        Approval.find({ tenderId: { $in: tenderIds } }).select('tenderId notRequired proposalDate tenderApprovalDate').lean(),
+        LOA.find({ tenderId: { $in: tenderIds } }).select('_id tenderId acceptanceLetterDate').lean()
+    ]);
+
+    const loaIds = reportLOAs.map((l: any) => l._id);
+    const reportWorkOrders = await WorkOrder.find({ loaId: { $in: loaIds } }).select('loaId workOrderDate').lean();
+
+    const approvalMap = new Map(reportApprovals.map((a: any) => [a.tenderId?.toString(), a]));
+    const loaMap = new Map(reportLOAs.map((l: any) => [l.tenderId?.toString(), l]));
+    const workOrderMap = new Map(reportWorkOrders.map((wo: any) => [wo.loaId?.toString(), wo]));
+    const packageMap = new Map(allPackages.map((p: any) => [p._id.toString(), p]));
+
+    const paginatedTendersReportData = reportTendersRaw.map((tender: any) => {
         const tIdStr = tender._id.toString();
         const approval = approvalMap.get(tIdStr);
         const loa = loaMap.get(tIdStr);
         const workOrder = loa ? workOrderMap.get(loa._id.toString()) : null;
 
-        // Date fallback rules
         const isApprovalNotRequired = approval?.notRequired === true;
         const proposalDate = isApprovalNotRequired ? 'Not Required' : (tender.proposalDate || approval?.proposalDate || null);
         const tenderApprovalDate = isApprovalNotRequired ? 'Not Required' : (tender.tenderApprovalDate || approval?.tenderApprovalDate || null);
@@ -169,32 +233,6 @@ export default async function Home({ searchParams }: Props) {
             cancellationReason: tender.cancellationReason || '',
         };
     });
-
-    // Apply Excel-Style Multi-Level Sorting: Year (Desc) -> Notice No (Asc) -> Sr No (Asc)
-    tendersReportData.sort((a, b) => {
-        const yearA = a.tenderNoticeYear || '';
-        const yearB = b.tenderNoticeYear || '';
-        if (yearA !== yearB) return yearB.localeCompare(yearA, undefined, { numeric: true });
-
-        const noticeA = a.noticeNo || '';
-        const noticeB = b.noticeNo || '';
-        if (noticeA !== noticeB) return String(noticeA).localeCompare(String(noticeB), undefined, { numeric: true });
-
-        const srA = a.srNo || '';
-        const srB = b.srNo || '';
-        if (srA !== srB) return String(srA).localeCompare(String(srB), undefined, { numeric: true });
-
-        return 0;
-    });
-
-    // Paginate in memory
-    const tenderPage = parseInt(params.page || '1');
-    const tenderLimit = parseInt(params.limit || '100');
-    const tenderTotalItems = tendersReportData.length;
-    const tenderTotalPages = Math.ceil(tenderTotalItems / tenderLimit);
-    const tenderSkip = (tenderPage - 1) * tenderLimit;
-
-    const paginatedTendersReportData = tendersReportData.slice(tenderSkip, tenderSkip + tenderLimit);
 
     const columns: Column[] = [
         { key: 'tenderNoticeYear', label: 'Notice Year' },
@@ -260,9 +298,14 @@ export default async function Home({ searchParams }: Props) {
                     <div className="flex justify-between items-start">
                         <div className="flex flex-col gap-1">
                             <h2 className="text-lg font-bold text-slate-800 tracking-tight">Summary Report</h2>
-                            <p className="text-xs text-slate-500 font-medium">Overview of works and packages status by Approval Year</p>
+                            <p className="text-xs text-slate-500 font-medium">Overview of works and packages status by Approval Year — Filtered: {filterLabelText}</p>
                         </div>
-                        <ExportTableButton tableId="summary-table" filename="Summary_Report.xlsx" />
+                        <div className="flex items-center gap-3">
+                            <Suspense fallback={null}>
+                                <WorkTypeFilter workTypes={workTypes} />
+                            </Suspense>
+                            <ExportTableButton tableId="summary-table" filename="Summary_Report.xlsx" />
+                        </div>
                     </div>
                     <div className="overflow-x-auto border border-slate-300 shadow-sm rounded-lg">
                         <table id="summary-table" className="w-full text-left border-collapse text-xs font-medium">
@@ -313,18 +356,22 @@ export default async function Home({ searchParams }: Props) {
                     </div>
                 </div>
 
-
                 {/* 3. Pending Work Order Report */}
-                <details className="group bg-white shadow-sm rounded-xl border border-slate-100 overflow-hidden">
+                <details className="group bg-white shadow-sm rounded-xl border border-slate-100 overflow-hidden" open>
                     <summary className="list-none p-6 cursor-pointer flex justify-between items-center hover:bg-slate-50 transition-colors [&::-webkit-details-marker]:hidden">
                         <div className="flex flex-col gap-1">
                             <h2 className="text-lg font-bold text-slate-800 tracking-tight">Pending Work Order Report</h2>
-                            <p className="text-xs text-slate-500 font-medium">Active tender notice tracks and contract allocations</p>
+                            <p className="text-xs text-slate-500 font-medium">Active tender notice tracks and contract allocations — Filtered: {filterLabelText}</p>
                         </div>
-                        <div className="text-slate-400 group-open:rotate-180 transition-transform duration-200">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
+                        <div className="flex items-center gap-3">
+                            <Suspense fallback={null}>
+                                <WorkTypeFilter workTypes={workTypes} stopPropagation />
+                            </Suspense>
+                            <div className="text-slate-400 group-open:rotate-180 transition-transform duration-200">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
                         </div>
                     </summary>
                     <div className="p-6 border-t border-slate-100 space-y-4">

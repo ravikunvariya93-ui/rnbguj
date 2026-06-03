@@ -80,7 +80,7 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
 
     const [formData, setFormData] = useState({
         loaId: '',
-        agreementYear: '',
+        agreementYear: initialData.agreementYear || (isEditing ? '' : '2026-27'),
         agreementNo: '',
         agreementDate: '',
         securityDepositType: '',
@@ -205,7 +205,13 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData((prev: any) => ({ ...prev, [name]: value }));
+        setFormData((prev: any) => {
+            const next = { ...prev, [name]: value };
+            if (name === 'workOrderDate') {
+                next.timeLimitStartsFrom = value;
+            }
+            return next;
+        });
     };
 
     const handleLoaSelect = (id: string) => {
@@ -327,7 +333,22 @@ export default function WorkOrderForm({ initialData = {}, isEditing = false }: W
                 </div>
                 <div className="sm:col-span-2">
                     <label htmlFor="agreementYear" className="block text-sm font-medium text-gray-700">Agreement Year</label>
-                    <input type="text" name="agreementYear" id="agreementYear" value={formData.agreementYear} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                    <select
+                        name="agreementYear"
+                        id="agreementYear"
+                        value={formData.agreementYear || ''}
+                        onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border bg-white focus:ring-blue-500 focus:border-blue-500"
+                    >
+                        <option value="">-- Select Year --</option>
+                        <option value="2023-24">2023-24</option>
+                        <option value="2024-25">2024-25</option>
+                        <option value="2025-26">2025-26</option>
+                        <option value="2026-27">2026-27</option>
+                        <option value="2027-28">2027-28</option>
+                        <option value="2028-29">2028-29</option>
+                        <option value="2029-30">2029-30</option>
+                    </select>
                 </div>
                 <div className="sm:col-span-2">
                     <label htmlFor="agreementNo" className="block text-sm font-medium text-gray-700">Agreement No.</label>

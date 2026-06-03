@@ -46,7 +46,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
         packageId: initialData.packageId || searchParams.get('packageId') || '',
         packageName: initialData.packageName || '',
         tenderId: initialData.tenderId || '',
-        tenderNoticeYear: initialData.tenderNoticeYear || '',
+        tenderNoticeYear: initialData.tenderNoticeYear || (isEditing ? '' : '2026-27'),
         noticeNo: initialData.noticeNo || '',
         srNo: initialData.srNo || '',
         trialNo: initialData.trialNo || 1,
@@ -375,7 +375,22 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
 
                 <div className="sm:col-span-2">
                     <label htmlFor="tenderNoticeYear" className="block text-sm font-medium text-gray-700">Tender Notice Year</label>
-                    <input type="text" placeholder="e.g. 2024-25" name="tenderNoticeYear" id="tenderNoticeYear" value={formData.tenderNoticeYear || ''} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                    <select
+                        name="tenderNoticeYear"
+                        id="tenderNoticeYear"
+                        value={formData.tenderNoticeYear || ''}
+                        onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border bg-white focus:ring-blue-500 focus:border-blue-500"
+                    >
+                        <option value="">-- Select Year --</option>
+                        <option value="2023-24">2023-24</option>
+                        <option value="2024-25">2024-25</option>
+                        <option value="2025-26">2025-26</option>
+                        <option value="2026-27">2026-27</option>
+                        <option value="2027-28">2027-28</option>
+                        <option value="2028-29">2028-29</option>
+                        <option value="2029-30">2029-30</option>
+                    </select>
                 </div>
                 <div className="sm:col-span-2">
                     <label htmlFor="noticeNo" className="block text-sm font-medium text-gray-700">Notice No.</label>

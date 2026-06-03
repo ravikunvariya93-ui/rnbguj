@@ -25,6 +25,8 @@ const DTPSchema: Schema = new Schema({
     timestamps: true,
 });
 
+DTPSchema.index({ tsId: 1 });
+
 if (process.env.NODE_ENV !== 'production') delete mongoose.models.DTP;
 const DTP: Model<IDTP> = mongoose.models.DTP || mongoose.model<IDTP>('DTP', DTPSchema);
 
