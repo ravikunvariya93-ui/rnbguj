@@ -863,10 +863,6 @@ export default function PackageDetailClient({
         }
     };
 
-    // Calculate Package Cost
-    const totalPackageCost = useMemo(() => {
-        return (pkg.works?.reduce((s: number, w: any) => s + (w.amount || 0), 0) || 0) / 100000;
-    }, [pkg]);
 
     // Calculate package timeline progress percent
     const progressStats = useMemo(() => {
@@ -919,12 +915,6 @@ export default function PackageDetailClient({
                             {pkg.packageName}
                         </h1>
                     </div>
-                </div>
-                <div className="text-right">
-                    <p className="text-xs text-slate-400 font-semibold uppercase">Total Est. Cost</p>
-                    <p className="text-2xl font-extrabold text-indigo-600">
-                        ₹{totalPackageCost.toFixed(2)} Lacs
-                    </p>
                 </div>
             </div>
 
