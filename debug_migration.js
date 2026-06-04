@@ -2,7 +2,11 @@ const mongoose = require('mongoose');
 
 async function debugData() {
     try {
-        await mongoose.connect('mongodb+srv://kunvariyaravi:kunvariyaravi41@cluster1.qnkfvpe.mongodb.net/?appName=Cluster1');
+        if (!process.env.MONGODB_URI) {
+            console.error("Error: MONGODB_URI environment variable is not set. Run with 'node --env-file=.env.local debug_migration.js'");
+            process.exit(1);
+        }
+        await mongoose.connect(process.env.MONGODB_URI);
         console.log('Connected');
         
         const ApprovedWork = mongoose.model('ApprovedWork', new mongoose.Schema({}, { strict: false }));

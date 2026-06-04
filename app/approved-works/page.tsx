@@ -132,11 +132,25 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
     const { page, limit, skip } = parsePagination(params);
     const sortObj = parseSort(params, { createdAt: -1 });
 
+    const allPackages = await Package.find({}).select('packageName works').lean();
+    const workNameToPkgInfo = new Map<string, { _id: string, packageName: string }>();
+    allPackages.forEach(pkg => {
+        if (pkg.works) {
+            pkg.works.forEach((w: any) => {
+                if (w.workName) {
+                    workNameToPkgInfo.set(normalizeString(w.workName), {
+                        _id: pkg._id.toString(),
+                        packageName: pkg.packageName
+                    });
+                }
+            });
+        }
+    });
+
     let finalWorks: any[] = [];
     let totalItems = 0;
 
     if (params.filter && params.filter !== 'none') {
-        const allPackages = await Package.find({}).select('works').lean();
         const allDTPs = await DTP.find({}).select('tsId dtpApprovalDate').lean();
         const allTenders = await Tender.find({}).sort({ trialNo: 1 }).select('packageId proposalDate tenderApprovalDate').lean();
         const allApprovals = await Approval.find({}).select('tenderId proposalDate tenderApprovalDate notRequired').lean();
@@ -253,10 +267,15 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
 
     const totalPages = Math.ceil(totalItems / limit);
 
-    const serializedWorks = finalWorks.map((w: any) => ({
-        ...w,
-        _id: w._id.toString(),
-    }));
+    const serializedWorks = finalWorks.map((w: any) => {
+        const pkgInfo = workNameToPkgInfo.get(normalizeString(w.workName));
+        return {
+            ...w,
+            _id: w._id.toString(),
+            packageId: pkgInfo?._id || null,
+            packageName: pkgInfo?.packageName || null,
+        };
+    });
 
     const columns: Column[] = [
         { 
@@ -273,6 +292,19 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
                 <div className="line-clamp-3 max-w-lg whitespace-normal break-words" title={row.workName}>
                     {row.workName}
                 </div>
+            )
+        },
+        { 
+            key: 'packageName', 
+            label: 'Package Name', 
+            sortable: true,
+            minWidth: '200px',
+            render: (row) => row.packageId ? (
+                <Link href={`/packages/${row.packageId}`} className="text-blue-600 hover:underline font-semibold break-words">
+                    {row.packageName}
+                </Link>
+            ) : (
+                <span className="text-slate-400 italic">Unpackaged</span>
             )
         },
         { 

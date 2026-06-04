@@ -35,7 +35,7 @@ export async function GET(request: Request) {
 
         // 3. Find previous bills for this WorkOrder to calculate previousPaidAmount
         // (Assuming we just sum up the toBePaidAmount from previous bills for each item)
-        const previousBills = await Bill.find({ workOrderId: workOrderId });
+        const previousBills = await Bill.find({ workOrderId: workOrderId as any });
         
         const previousPaidMap: Record<string, number> = {};
         

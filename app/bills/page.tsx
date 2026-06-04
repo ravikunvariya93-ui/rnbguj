@@ -84,7 +84,13 @@ export default async function BillsPage({ searchParams }: Props) {
             minWidth: '200px',
             render: (row) => {
                 const tender = (row.workOrderId as any)?.loaId?.tenderId;
-                return <span className="max-w-xs whitespace-normal break-words">{tender?.packageName || 'Unknown Package'}</span>
+                return tender?.packageId ? (
+                    <Link href={`/packages/${tender.packageId}`} className="text-blue-600 hover:underline font-semibold max-w-xs whitespace-normal break-words">
+                        {tender.packageName || 'Unknown Package'}
+                    </Link>
+                ) : (
+                    <span className="max-w-xs whitespace-normal break-words font-medium">{tender?.packageName || 'Unknown Package'}</span>
+                )
             }
         },
         { 

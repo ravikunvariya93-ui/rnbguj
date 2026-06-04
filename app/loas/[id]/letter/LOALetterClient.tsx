@@ -147,8 +147,8 @@ const exportToDoc = () => {
         const filename = 'LOA_Letter.doc';
         const downloadLink = document.createElement('a');
         document.body.appendChild(downloadLink);
-        if (navigator.msSaveOrOpenBlob) {
-            navigator.msSaveOrOpenBlob(blob, filename);
+        if ((navigator as any).msSaveOrOpenBlob) {
+            (navigator as any).msSaveOrOpenBlob(blob, filename);
         } else {
             downloadLink.href = url;
             downloadLink.download = filename;

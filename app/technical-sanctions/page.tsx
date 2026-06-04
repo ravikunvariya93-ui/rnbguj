@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import dbConnect from '@/lib/db';
 import TechnicalSanction from '@/models/TechnicalSanction';
+import Package from '@/models/Package';
 import Link from 'next/link';
 import { Plus, Eye, Edit2 } from 'lucide-react';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
@@ -36,11 +37,31 @@ export default async function TechnicalSanctionsListPage({ searchParams }: Props
         .skip(skip)
         .limit(limit)
         .lean();
+
+    const allPackages = await Package.find({}).select('packageName works').lean();
+    const tsIdToPkgInfo = new Map<string, { _id: string, packageName: string }>();
+    allPackages.forEach(pkg => {
+        if (pkg.works) {
+            pkg.works.forEach((w: any) => {
+                if (w.workId) {
+                    tsIdToPkgInfo.set(w.workId.toString(), {
+                        _id: pkg._id.toString(),
+                        packageName: pkg.packageName
+                    });
+                }
+            });
+        }
+    });
         
-    const sanctions = sanctionsRaw.map((ts: any) => ({
-        ...ts,
-        _id: ts._id.toString(),
-    }));
+    const sanctions = sanctionsRaw.map((ts: any) => {
+        const pkgInfo = tsIdToPkgInfo.get(ts._id.toString());
+        return {
+            ...ts,
+            _id: ts._id.toString(),
+            packageId: pkgInfo?._id || null,
+            packageName: pkgInfo?.packageName || null,
+        };
+    });
 
     const columns: Column[] = [
         { 
@@ -57,6 +78,19 @@ export default async function TechnicalSanctionsListPage({ searchParams }: Props
                 <div className="line-clamp-2 max-w-lg whitespace-normal break-words" title={row.workName}>
                     {row.workName}
                 </div>
+            )
+        },
+        { 
+            key: 'packageName', 
+            label: 'Package Name', 
+            sortable: true,
+            minWidth: '200px',
+            render: (row) => row.packageId ? (
+                <Link href={`/packages/${row.packageId}`} className="text-blue-600 hover:underline font-semibold break-words">
+                    {row.packageName}
+                </Link>
+            ) : (
+                <span className="text-slate-400 italic">Unpackaged</span>
             )
         },
         { 

@@ -28,7 +28,7 @@ export async function GET(request: Request) {
         const total = await BOQ.countDocuments({});
         const boqs = await BOQ.find({}).populate({
             path: 'tenderId',
-            select: 'tenderId packageName'
+            select: 'tenderId packageName packageId'
         }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
         
         return NextResponse.json({ 

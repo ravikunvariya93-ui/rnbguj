@@ -147,8 +147,8 @@ export default function DTPForm({ initialData = {}, isEditing = false }: DTPForm
                         label="Select Package"
                         required
                         options={packages.filter(p => {
-                            const currentTsId = typeof formData.tsId === 'object' && formData.tsId !== null
-                                ? formData.tsId._id
+                            const currentTsId = typeof (formData.tsId as any) === 'object' && formData.tsId !== null
+                                ? (formData.tsId as any)._id
                                 : formData.tsId;
                             if (p._id === currentTsId) return true;
                             if (isEditing && (p._id === initialData.tsId?._id || p._id === initialData.tsId)) return true;

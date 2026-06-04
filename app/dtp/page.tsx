@@ -62,7 +62,15 @@ export default async function DTPListPage({ searchParams }: Props) {
             label: 'Package Name', 
             sortable: true,
             minWidth: '200px',
-            render: (row) => <span className="max-w-sm whitespace-normal break-words font-medium">{row.packageName}</span>
+            render: (row) => (
+                row.tsId?._id ? (
+                    <Link href={`/packages/${row.tsId._id}`} className="text-blue-600 hover:underline font-semibold max-w-sm whitespace-normal break-words">
+                        {row.packageName}
+                    </Link>
+                ) : (
+                    <span className="max-w-sm whitespace-normal break-words font-medium">{row.packageName}</span>
+                )
+            )
         },
         { 
             key: 'approvedWorks', 

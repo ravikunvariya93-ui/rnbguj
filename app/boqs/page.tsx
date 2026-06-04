@@ -93,7 +93,17 @@ function BOQExpandableRow({ boq, onDelete, index }: { boq: any; onDelete: (id: s
                             {itemCount} items
                         </span>
                     </div>
-                    <p className="text-xs text-slate-400 mt-0.5 truncate max-w-lg">{packageName}</p>
+                    {boq.tenderId?.packageId ? (
+                        <Link 
+                            href={`/packages/${boq.tenderId.packageId}`} 
+                            className="text-xs text-blue-600 hover:underline font-semibold mt-0.5 inline-block truncate max-w-lg"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {packageName}
+                        </Link>
+                    ) : (
+                        <p className="text-xs text-slate-400 mt-0.5 truncate max-w-lg">{packageName}</p>
+                    )}
                 </div>
 
                 {/* Amount */}

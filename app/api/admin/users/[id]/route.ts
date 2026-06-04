@@ -4,9 +4,9 @@ import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import { auth } from '@/auth';
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
-  if (session?.user?.role !== 'ADMIN') {
+  if ((session?.user as any)?.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -39,16 +39,16 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
-  if (session?.user?.role !== 'ADMIN') {
+  if ((session?.user as any)?.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { id } = await params;
   
   // Prevent deleting self
-  if (id === (session.user as any).id) {
+  if (id === (session?.user as any)?.id) {
     return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 });
   }
 

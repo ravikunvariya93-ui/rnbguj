@@ -1,7 +1,11 @@
 const mongoose = require('mongoose');
-const uri = "mongodb+srv://kunvariyaravi:kunvariyaravi41@cluster1.qnkfvpe.mongodb.net/test?appName=Cluster1";
+const uri = process.env.MONGODB_URI;
 
 async function run() {
+  if (!uri) {
+    console.error("Error: MONGODB_URI environment variable is not set. Run with 'node --env-file=.env.local test-mongoose.js'");
+    process.exit(1);
+  }
   await mongoose.connect(uri);
   
   const PackageSchema = new mongoose.Schema({

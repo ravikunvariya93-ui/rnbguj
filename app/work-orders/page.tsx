@@ -79,7 +79,13 @@ export default async function WorkOrderListPage({ searchParams }: Props) {
             minWidth: '200px',
             render: (row) => {
                 const tender = (row.loaId as any)?.tenderId;
-                return <span className="max-w-sm whitespace-normal break-words font-medium">{tender?.packageName || '-'}</span>
+                return tender?.packageId ? (
+                    <Link href={`/packages/${tender.packageId}`} className="text-blue-600 hover:underline font-semibold max-w-sm whitespace-normal break-words">
+                        {tender.packageName || '-'}
+                    </Link>
+                ) : (
+                    <span className="max-w-sm whitespace-normal break-words font-medium">{tender?.packageName || '-'}</span>
+                )
             }
         },
         { 

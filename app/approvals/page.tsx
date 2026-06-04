@@ -64,7 +64,15 @@ export default async function ApprovalsListPage({ searchParams }: Props) {
             label: 'Package Name', 
             sortable: true,
             minWidth: '200px',
-            render: (row) => <span className="max-w-sm whitespace-normal break-words">{row.tenderId?.packageName || '-'}</span>
+            render: (row) => (
+                row.tenderId?.packageId ? (
+                    <Link href={`/packages/${row.tenderId.packageId}`} className="text-blue-600 hover:underline font-semibold max-w-sm whitespace-normal break-words">
+                        {row.tenderId?.packageName || '-'}
+                    </Link>
+                ) : (
+                    <span className="max-w-sm whitespace-normal break-words">{row.tenderId?.packageName || '-'}</span>
+                )
+            )
         },
         { 
             key: 'contractorname', 

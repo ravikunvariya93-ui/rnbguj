@@ -52,14 +52,14 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
         // CASCADING DELETES
         
         // 1. Find and delete LOA(s) and their associated WorkOrders
-        const loas = await LOA.find({ tenderId: id });
+        const loas = await LOA.find({ tenderId: id as any });
         for (const loa of loas) {
-            await WorkOrder.deleteMany({ loaId: loa._id });
+            await WorkOrder.deleteMany({ loaId: loa._id as any });
             await LOA.findByIdAndDelete(loa._id);
         }
 
         // 2. Delete associated Approvals
-        await Approval.deleteMany({ tenderId: id });
+        await Approval.deleteMany({ tenderId: id as any });
 
         // 3. Delete the Tender itself
         const deletedTender = await Tender.findByIdAndDelete(id);

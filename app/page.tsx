@@ -244,7 +244,13 @@ export default async function Home({ searchParams }: Props) {
             minWidth: '200px', 
             render: (row) => (
                 <div className="flex flex-col gap-1">
-                    <span className="break-words">{row.packageName}</span>
+                    {row.packageId ? (
+                        <Link href={`/packages/${row.packageId}`} className="text-blue-600 hover:underline font-semibold break-words">
+                            {row.packageName}
+                        </Link>
+                    ) : (
+                        <span className="break-words font-medium text-slate-700">{row.packageName}</span>
+                    )}
                     {row.cancelled && (
                         <span className="inline-flex items-center self-start px-2 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-600 border border-red-200 leading-none">
                             Cancelled: {row.cancellationReason || 'N/A'}

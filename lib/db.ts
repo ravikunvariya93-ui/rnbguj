@@ -1,5 +1,20 @@
 import mongoose from 'mongoose';
 
+// Register all schemas/models to prevent MissingSchemaError during Next.js route-splitting / hot-reloads
+import '@/models/Agency';
+import '@/models/Approval';
+import '@/models/ApprovedWork';
+import '@/models/BOQ';
+import '@/models/Bank';
+import '@/models/Bill';
+import '@/models/DTP';
+import '@/models/LOA';
+import '@/models/Package';
+import '@/models/TechnicalSanction';
+import '@/models/Tender';
+import '@/models/User';
+import '@/models/WorkOrder';
+
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {

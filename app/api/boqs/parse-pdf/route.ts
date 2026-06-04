@@ -15,7 +15,7 @@ export async function POST(req: Request) {
         const pdfParser = new PDFParser();
 
         const p = new Promise((resolve, reject) => {
-            pdfParser.on("pdfParser_dataError", errData => reject(errData.parserError));
+            pdfParser.on("pdfParser_dataError", (errData: any) => reject(errData.parserError));
             pdfParser.on("pdfParser_dataReady", pdfData => {
                 const text = pdfData.Pages.map((page: any) =>
                     page.Texts.map((t: any) => {

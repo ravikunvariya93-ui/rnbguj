@@ -54,17 +54,17 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
         // DEEP CASCADING DELETES
         
         // 1. DTP deletion
-        await DTP.deleteMany({ tsId: id });
+        await DTP.deleteMany({ tsId: id as any });
 
         // 2. Tenders & Sub-records deletion (Approval, LOA, WorkOrder)
-        const tenders = await Tender.find({ packageId: id });
+        const tenders = await Tender.find({ packageId: id as any });
         for (const tender of tenders) {
-            const loas = await LOA.find({ tenderId: tender._id });
+            const loas = await LOA.find({ tenderId: tender._id as any });
             for (const loa of loas) {
-                await WorkOrder.deleteMany({ loaId: loa._id });
+                await WorkOrder.deleteMany({ loaId: loa._id as any });
                 await LOA.findByIdAndDelete(loa._id);
             }
-            await Approval.deleteMany({ tenderId: tender._id });
+            await Approval.deleteMany({ tenderId: tender._id as any });
             await Tender.findByIdAndDelete(tender._id);
         }
 
