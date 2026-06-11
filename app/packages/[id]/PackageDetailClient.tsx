@@ -1783,26 +1783,38 @@ export default function PackageDetailClient({
                                     </div>
                                 </form>
                             ) : loa ? (
-                                <div className="overflow-x-auto">
-                                    <table className="excel-table">
-                                        <tbody>
-                                            <tr>
-                                                <td className="excel-label">Acceptance Letter WS No.</td>
-                                                <td className="excel-value w-[30%] font-mono">{loa.acceptanceLetterWorksheetNo || '-'}</td>
-                                                <td className="excel-label">Acceptance Letter Date</td>
-                                                <td className="excel-value w-[30%]">{loa.acceptanceLetterDate ? new Date(loa.acceptanceLetterDate).toLocaleDateString('en-GB') : '-'}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="excel-label">Duration of Work</td>
-                                                <td className="excel-value" colSpan={3}>{loa.workDurationMonths ? `${loa.workDurationMonths} Months` : '-'}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="excel-label">Defect Liability Period</td>
-                                                <td className="excel-value" colSpan={3}>{loa.defectLiabilityPeriod || '-'}</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <>
+                                    <div className="overflow-x-auto">
+                                        <table className="excel-table">
+                                            <tbody>
+                                                <tr>
+                                                    <td className="excel-label">Acceptance Letter WS No.</td>
+                                                    <td className="excel-value w-[30%] font-mono">{loa.acceptanceLetterWorksheetNo || '-'}</td>
+                                                    <td className="excel-label">Acceptance Letter Date</td>
+                                                    <td className="excel-value w-[30%]">{loa.acceptanceLetterDate ? new Date(loa.acceptanceLetterDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="excel-label">Duration of Work</td>
+                                                    <td className="excel-value" colSpan={3}>{loa.workDurationMonths ? `${loa.workDurationMonths} Months` : '-'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="excel-label">Defect Liability Period</td>
+                                                    <td className="excel-value" colSpan={3}>{loa.defectLiabilityPeriod || '-'}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end">
+                                        <Link 
+                                            href={`/packages/${packageId}/print-loa`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-2 text-xs font-bold text-[#107c41] bg-[#107c41]/5 hover:bg-[#107c41]/10 border border-[#107c41]/20 px-4 py-2 rounded-xl transition-all cursor-pointer"
+                                        >
+                                            <Printer className="w-4 h-4" /> Print LOA
+                                        </Link>
+                                    </div>
+                                </>
                             ) : (
                                 <div className="text-center py-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
                                     <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />

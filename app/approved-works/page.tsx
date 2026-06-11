@@ -114,6 +114,16 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
                 const endDate = new Date(year, month - 1, day, 23, 59, 59, 999);
                 query[field] = { $gte: startDate, $lte: endDate };
                 filterLabels.push(`${config.label}: ${config.val}`);
+            } else if (field === 'workType') {
+                if (config.val !== 'all') {
+                    const types = config.val.split(',').filter(Boolean);
+                    if (types.length > 1) {
+                        query[field] = { $in: types };
+                    } else if (types.length === 1) {
+                        query[field] = types[0];
+                    }
+                    filterLabels.push(`${config.label}: ${config.val}`);
+                }
             } else {
                 query[field] = config.val;
                 filterLabels.push(`${config.label}: ${config.val}`);
