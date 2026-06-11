@@ -51,6 +51,18 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
             .sort({ billType: 1, runningBillNumber: 1 }).lean() as any[]
         : [];
 
+    // Fetch all work orders to determine the maximum agreement number per year
+    const allWorkOrders = await WorkOrder.find({}, 'agreementYear agreementNo').lean() as any[];
+    const maxAgreementNos: Record<string, number> = {};
+    for (const wo of allWorkOrders) {
+        if (wo.agreementYear && wo.agreementNo) {
+            const num = parseInt(wo.agreementNo, 10);
+            if (!isNaN(num)) {
+                maxAgreementNos[wo.agreementYear] = Math.max(maxAgreementNos[wo.agreementYear] || 0, num);
+            }
+        }
+    }
+
     return (
         <PackageDetailClient
             packageId={id}
@@ -62,6 +74,7 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
             loa={loa ? serialize(loa) : null}
             workOrder={workOrder ? serialize(workOrder) : null}
             bills={serialize(bills)}
+            maxAgreementNos={maxAgreementNos}
         />
     );
 }

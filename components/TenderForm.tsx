@@ -24,6 +24,8 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
     const router = useRouter();
     const searchParams = useSearchParams();
     const [loading, setLoading] = useState(false);
+    const [isReTenderModalOpen, setIsReTenderModalOpen] = useState(false);
+    const [reTenderReason, setReTenderReason] = useState('');
     const [packages, setPackages] = useState<any[]>([]);
     const [existingTenderPkgIds, setExistingTenderPkgIds] = useState<string[]>([]);
     const [dtps, setDtps] = useState<any[]>([]);
@@ -289,6 +291,56 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
         }
     }, [formData.packageId, packages, isEditing]);
 
+    const handleExecuteReTender = async (reason: string) => {
+        if (!initialData?._id) return;
+        setLoading(true);
+        try {
+            // 1. Cancel the current tender
+            const cancelRes = await fetch(`/api/tenders/${initialData._id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    cancelled: true, 
+                    cancellationReason: reason 
+                }),
+            });
+            if (!cancelRes.ok) throw new Error("Failed to cancel current tender.");
+
+            // 2. Create the new tender trial
+            const newTenderData = {
+                packageId: formData.packageId,
+                packageName: formData.packageName,
+                tenderNoticeYear: formData.tenderNoticeYear || '2026-27',
+                trialNo: (Number(formData.trialNo) || 1) + 1,
+                reInvite: true,
+                cancelled: false,
+                cancellationReason: '',
+                contractorName: '',
+                contractPrice: '',
+                aboveBelowPercentage: '',
+                aboveBelowInWord: 'Below',
+                remarks: `Re-tender (Trial #${(Number(formData.trialNo) || 1) + 1}) after cancellation: ${reason}`
+            };
+
+            const createRes = await fetch('/api/tenders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newTenderData),
+            });
+            if (!createRes.ok) throw new Error("Failed to create new tender trial.");
+            const createData = await createRes.json();
+
+            alert('Re-tender trial created successfully!');
+            setIsReTenderModalOpen(false);
+            router.push(`/tenders/${createData.data._id}/edit`);
+            router.refresh();
+        } catch (err: any) {
+            alert(err.message || 'Error occurred during re-tender.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.packageId) {
@@ -530,9 +582,14 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
             </div>
 
             <div className="pt-5">
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                    {isEditing && (
+                        <button type="button" onClick={() => { setIsReTenderModalOpen(true); setReTenderReason(''); }} className="mr-auto bg-rose-600 hover:bg-rose-700 text-white py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 cursor-pointer animate-none">
+                            Re-Tender (Next Trial)
+                        </button>
+                    )}
                     <Link href="/tenders" className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Cancel</Link>
-                    <button type="submit" disabled={loading} className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
+                    <button type="submit" disabled={loading} className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
                         <Save className="w-4 h-4 mr-2" /> {loading ? 'Saving...' : 'Save Tender'}
                     </button>
                 </div>
@@ -651,6 +708,55 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+        )}
+
+        {/* RE-TENDER CANCELLATION MODAL */}
+        {isReTenderModalOpen && (
+            <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+                <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden relative border border-gray-100 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+                    <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/70">
+                        <h3 className="text-lg font-bold text-gray-900">Confirm Re-Tender</h3>
+                        <button 
+                            type="button" 
+                            onClick={() => setIsReTenderModalOpen(false)} 
+                            className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-all"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <p className="text-sm text-gray-500">
+                            This will cancel the current Tender trial (Trial #{formData.trialNo}) and create a new Tender trial (Trial #{(Number(formData.trialNo) || 1) + 1}).
+                        </p>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Reason for Cancelling Current Tender *</label>
+                            <select 
+                                value={reTenderReason} 
+                                onChange={(e) => setReTenderReason(e.target.value)} 
+                                className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border bg-white focus:ring-blue-500 focus:border-blue-500"
+                            >
+                                <option value="">-- Select Reason --</option>
+                                <option value="High Rate">High Rate</option>
+                                <option value="Single Bidder">Single Bidder</option>
+                                <option value="Technical Ground">Technical Ground</option>
+                                <option value="Administrative Ground">Administrative Ground</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+                            <button type="button" onClick={() => setIsReTenderModalOpen(false)} className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Cancel</button>
+                            <button 
+                                type="button" 
+                                disabled={!reTenderReason || loading} 
+                                onClick={() => handleExecuteReTender(reTenderReason)} 
+                                className="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 disabled:opacity-50"
+                            >
+                                Confirm & Create Re-Tender
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         )}

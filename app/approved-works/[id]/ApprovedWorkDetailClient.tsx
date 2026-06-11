@@ -23,6 +23,7 @@ interface ApprovedWorkDetailClientProps {
     loa: any;
     workOrder: any;
     bills: any[];
+    maxAgreementNos?: Record<string, number>;
 }
 
 type SectionType = 'work' | 'ts' | 'package' | 'dtp' | 'tender' | 'approval' | 'loa' | 'workOrder' | 'bills';
@@ -38,6 +39,7 @@ export default function ApprovedWorkDetailClient({
     loa: initialLoa,
     workOrder: initialWorkOrder,
     bills: initialBills,
+    maxAgreementNos = {},
 }: ApprovedWorkDetailClientProps) {
     const router = useRouter();
     
@@ -264,10 +266,16 @@ export default function ApprovedWorkDetailClient({
                 acceptanceLetterDate: loa?.acceptanceLetterDate ? formatDateForInput(loa.acceptanceLetterDate) : '',
             });
         } else if (section === 'workOrder') {
+            const hasExistingNo = !!workOrder?.agreementNo;
+            const defaultYear = workOrder?.agreementYear || '2026-27';
+            const defaultNo = hasExistingNo
+                ? workOrder.agreementNo
+                : String((maxAgreementNos[defaultYear] || 0) + 1);
+
             setWoForm({
                 loaId: loa?._id || '',
-                agreementYear: workOrder?.agreementYear || '2026-27',
-                agreementNo: workOrder?.agreementNo || '',
+                agreementYear: defaultYear,
+                agreementNo: defaultNo,
                 agreementDate: workOrder?.agreementDate ? formatDateForInput(workOrder.agreementDate) : '',
                 securityDepositType: workOrder?.securityDepositType || 'FDR',
                 securityDepositBankName: workOrder?.securityDepositBankName || '',
@@ -331,6 +339,9 @@ export default function ApprovedWorkDetailClient({
             const next = { ...prev, [name]: value };
             if (name === 'workOrderDate') {
                 next.timeLimitStartsFrom = value;
+            }
+            if (name === 'agreementYear' && (!workOrder || !workOrder.agreementNo)) {
+                next.agreementNo = String((maxAgreementNos[value] || 0) + 1);
             }
             return next;
         });

@@ -335,8 +335,11 @@ const exportToDoc = () => {
 
                     /* Reset layout wrapper chain */
                     body > div,
-                    body > div > main,
-                    body > div > main > div {
+                    body > div > div,
+                    body > div > div > main,
+                    body > div > div > main > div,
+                    main,
+                    main > div {
                         display: block !important;
                         position: static !important;
                         overflow: visible !important;

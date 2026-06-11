@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
     ArrowLeft, Save, Edit2, Plus, Trash2, CheckCircle2, XCircle, X, Loader2, 
-    Calendar, FileText, Settings, Award, Check, ChevronDown, ListPlus, 
+    Calendar, FileText, Settings, Award, Check, ChevronDown, ListPlus, Printer, 
     Receipt, DollarSign, Eye, AlertCircle, FileCheck, Layers, ClipboardCheck,
     Briefcase, FileSpreadsheet, Percent, Building2, User2, Clock
 } from 'lucide-react';
@@ -22,6 +22,7 @@ interface PackageDetailClientProps {
     loa: any;
     workOrder: any;
     bills: any[];
+    maxAgreementNos?: Record<string, number>;
 }
 
 type SectionType = 'package' | 'dtp' | 'tender' | 'approval' | 'loa' | 'workOrder' | 'bills';
@@ -36,6 +37,7 @@ export default function PackageDetailClient({
     loa: initialLoa,
     workOrder: initialWorkOrder,
     bills: initialBills,
+    maxAgreementNos = {},
 }: PackageDetailClientProps) {
     const router = useRouter();
 
@@ -109,6 +111,8 @@ export default function PackageDetailClient({
 
     // Bill Modal States
     const [isBillModalOpen, setIsBillModalOpen] = useState(false);
+    const [isReTenderModalOpen, setIsReTenderModalOpen] = useState(false);
+    const [reTenderReason, setReTenderReason] = useState('');
     const [editingBill, setEditingBill] = useState<any | null>(null);
     const [billForm, setBillForm] = useState<any>({
         billType: 'Running',
@@ -268,10 +272,16 @@ export default function PackageDetailClient({
                 acceptanceLetterDate: loa?.acceptanceLetterDate ? formatDateForInput(loa.acceptanceLetterDate) : '',
             });
         } else if (section === 'workOrder') {
+            const hasExistingNo = !!workOrder?.agreementNo;
+            const defaultYear = workOrder?.agreementYear || '2026-27';
+            const defaultNo = hasExistingNo
+                ? workOrder.agreementNo
+                : String((maxAgreementNos[defaultYear] || 0) + 1);
+
             setWoForm({
                 loaId: loa?._id || '',
-                agreementYear: workOrder?.agreementYear || '2026-27',
-                agreementNo: workOrder?.agreementNo || '',
+                agreementYear: defaultYear,
+                agreementNo: defaultNo,
                 agreementDate: workOrder?.agreementDate ? formatDateForInput(workOrder.agreementDate) : '',
                 securityDepositType: workOrder?.securityDepositType || 'FDR',
                 securityDepositBankName: workOrder?.securityDepositBankName || '',
@@ -325,6 +335,9 @@ export default function PackageDetailClient({
             const next = { ...prev, [name]: value };
             if (name === 'workOrderDate') {
                 next.timeLimitStartsFrom = value;
+            }
+            if (name === 'agreementYear' && (!workOrder || !workOrder.agreementNo)) {
+                next.agreementNo = String((maxAgreementNos[value] || 0) + 1);
             }
             return next;
         });
@@ -483,6 +496,55 @@ export default function PackageDetailClient({
             });
             if (!res.ok) throw new Error("Failed to save DTP details.");
             showToast('success', 'DTP details saved!');
+            setEditingSection(null);
+            router.refresh();
+        } catch (err: any) {
+            showToast('error', err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleExecuteReTender = async (reason: string) => {
+        if (!tender) return;
+        setLoading(true);
+        try {
+            // 1. Cancel the current tender
+            const cancelRes = await fetch(`/api/tenders/${tender._id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    cancelled: true, 
+                    cancellationReason: reason 
+                }),
+            });
+            if (!cancelRes.ok) throw new Error("Failed to cancel current tender.");
+
+            // 2. Create the new tender trial
+            const newTenderData = {
+                packageId: packageId,
+                packageName: pkg.packageName,
+                tenderNoticeYear: tender.tenderNoticeYear || '2026-27',
+                trialNo: (Number(tender.trialNo) || 1) + 1,
+                reInvite: true,
+                cancelled: false,
+                cancellationReason: '',
+                contractorName: '',
+                contractPrice: '',
+                aboveBelowPercentage: '',
+                aboveBelowInWord: 'Below',
+                remarks: `Re-tender (Trial #${(Number(tender.trialNo) || 1) + 1}) after cancellation: ${reason}`
+            };
+
+            const createRes = await fetch('/api/tenders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newTenderData),
+            });
+            if (!createRes.ok) throw new Error("Failed to create new tender trial.");
+
+            showToast('success', 'Re-tender trial created successfully!');
+            setIsReTenderModalOpen(false);
             setEditingSection(null);
             router.refresh();
         } catch (err: any) {
@@ -1234,16 +1296,20 @@ export default function PackageDetailClient({
                                         <table className="excel-table">
                                             <tbody>
                                                 <tr>
+                                                    <td className="excel-label">WS No. of Sending DTP for Approval</td>
+                                                    <td className="excel-value w-[30%]">
+                                                        <input type="text" name="dtpSendingNo" value={dtpForm.dtpSendingNo} onChange={handleDtpFieldChange} className="excel-cell-input" />
+                                                    </td>
                                                     <td className="excel-label">DTP Sending Date</td>
                                                     <td className="excel-value w-[30%]">
                                                         <input type="text" placeholder="DD/MM/YYYY" name="dtpSendingDate" value={dtpForm.dtpSendingDate} onChange={handleDtpFieldChange} className="excel-cell-input" />
                                                     </td>
+                                                </tr>
+                                                <tr>
                                                     <td className="excel-label">Tender Amount (₹)</td>
                                                     <td className="excel-value w-[30%]">
                                                         <input type="number" name="tenderAmount" value={dtpForm.tenderAmount} onChange={handleDtpFieldChange} step="0.01" className="excel-cell-input text-right font-mono" />
                                                     </td>
-                                                </tr>
-                                                <tr>
                                                     <td className="excel-label">DTP Approving Authority</td>
                                                     <td className="excel-value">
                                                         <select name="dtpApprovingAuthority" value={dtpForm.dtpApprovingAuthority} onChange={handleDtpFieldChange} className="excel-cell-select bg-white">
@@ -1252,6 +1318,12 @@ export default function PackageDetailClient({
                                                             <option value="The Superintending Engineer, Panchayat Road and Building Circle - 2, Rajkot.">The Superintending Engineer, Rajkot.</option>
                                                             <option value="Road and Building Department">Road and Building Department</option>
                                                         </select>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="excel-label">DTP Approval No.</td>
+                                                    <td className="excel-value">
+                                                        <input type="text" name="dtpApprovalNo" value={dtpForm.dtpApprovalNo} onChange={handleDtpFieldChange} className="excel-cell-input" />
                                                     </td>
                                                     <td className="excel-label">DTP Approval Date</td>
                                                     <td className="excel-value">
@@ -1273,27 +1345,45 @@ export default function PackageDetailClient({
                                     </div>
                                 </form>
                             ) : dtp ? (
-                                <div className="overflow-x-auto">
-                                    <table className="excel-table">
-                                        <tbody>
-                                            <tr>
-                                                <td className="excel-label">DTP Sending Date</td>
-                                                <td className="excel-value w-[30%]">{dtp.dtpSendingDate ? new Date(dtp.dtpSendingDate).toLocaleDateString('en-GB') : '-'}</td>
-                                                <td className="excel-label">Tender Amount</td>
-                                                <td className="excel-value w-[30%] text-emerald-700 font-bold font-mono">₹{dtp.tenderAmount ? dtp.tenderAmount.toLocaleString('en-IN') : '-'}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="excel-label">DTP Approving Authority</td>
-                                                <td className="excel-value">{dtp.dtpApprovingAuthority || '-'}</td>
-                                                <td className="excel-label">DTP Approval Date</td>
-                                                <td className="excel-value">{dtp.dtpApprovalDate ? new Date(dtp.dtpApprovalDate).toLocaleDateString('en-GB') : '-'}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="excel-label">Remarks</td>
-                                                <td className="excel-value" colSpan={3}>{dtp.remarks || '-'}</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                <div>
+                                    <div className="overflow-x-auto">
+                                        <table className="excel-table">
+                                            <tbody>
+                                                <tr>
+                                                    <td className="excel-label">WS No. of Sending DTP for Approval</td>
+                                                    <td className="excel-value w-[30%] font-mono">{dtp.dtpSendingNo || '-'}</td>
+                                                    <td className="excel-label">DTP Sending Date</td>
+                                                    <td className="excel-value w-[30%]">{dtp.dtpSendingDate ? new Date(dtp.dtpSendingDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="excel-label">Tender Amount</td>
+                                                    <td className="excel-value w-[30%] text-emerald-700 font-bold font-mono">₹{dtp.tenderAmount ? dtp.tenderAmount.toLocaleString('en-IN') : '-'}</td>
+                                                    <td className="excel-label">DTP Approving Authority</td>
+                                                    <td className="excel-value">{dtp.dtpApprovingAuthority || '-'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="excel-label">DTP Approval No.</td>
+                                                    <td className="excel-value font-mono">{dtp.dtpApprovalNo || '-'}</td>
+                                                    <td className="excel-label">DTP Approval Date</td>
+                                                    <td className="excel-value">{dtp.dtpApprovalDate ? new Date(dtp.dtpApprovalDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="excel-label">Remarks</td>
+                                                    <td className="excel-value" colSpan={3}>{dtp.remarks || '-'}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end">
+                                        <Link 
+                                            href={`/packages/${packageId}/print-dtp-order`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-2 text-xs font-bold text-[#107c41] bg-[#107c41]/5 hover:bg-[#107c41]/10 border border-[#107c41]/20 px-4 py-2 rounded-xl transition-all cursor-pointer"
+                                        >
+                                            <Printer className="w-4 h-4" /> Generate DTP Order
+                                        </Link>
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="text-center py-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
@@ -1443,6 +1533,9 @@ export default function PackageDetailClient({
                                         </table>
                                     </div>
                                     <div className="flex justify-end gap-2 pt-2">
+                                        {tender && (
+                                            <button type="button" onClick={() => { setIsReTenderModalOpen(true); setReTenderReason(''); }} className="mr-auto px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-semibold cursor-pointer">Re-Tender</button>
+                                        )}
                                         <button type="button" onClick={handleCancelEdit} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold cursor-pointer">Cancel</button>
                                         <button type="submit" className="px-5 py-2 bg-[#107c41] text-white rounded-xl text-sm font-semibold hover:bg-[#0f5b30] cursor-pointer">Save Tender</button>
                                     </div>
@@ -1671,12 +1764,8 @@ export default function PackageDetailClient({
                                                 </tr>
                                                 <tr>
                                                     <td className="excel-label">Duration of Work (Months)</td>
-                                                    <td className="excel-value">
+                                                    <td className="excel-value" colSpan={3}>
                                                         <input type="number" name="workDurationMonths" value={loaForm.workDurationMonths} onChange={handleLoaFieldChange} className="excel-cell-input" />
-                                                    </td>
-                                                    <td className="excel-label">Stamp Duty Fee (₹)</td>
-                                                    <td className="excel-value">
-                                                        <input type="number" name="stampDuty" value={loaForm.stampDuty} onChange={handleLoaFieldChange} className="excel-cell-input" />
                                                     </td>
                                                 </tr>
                                                 <tr>
@@ -1705,9 +1794,7 @@ export default function PackageDetailClient({
                                             </tr>
                                             <tr>
                                                 <td className="excel-label">Duration of Work</td>
-                                                <td className="excel-value">{loa.workDurationMonths ? `${loa.workDurationMonths} Months` : '-'}</td>
-                                                <td className="excel-label">Stamp Duty Fee</td>
-                                                <td className="excel-value font-mono text-emerald-700 font-bold">₹{loa.stampDuty ? loa.stampDuty.toLocaleString('en-IN') : '0'}</td>
+                                                <td className="excel-value" colSpan={3}>{loa.workDurationMonths ? `${loa.workDurationMonths} Months` : '-'}</td>
                                             </tr>
                                             <tr>
                                                 <td className="excel-label">Defect Liability Period</td>
@@ -1911,43 +1998,55 @@ export default function PackageDetailClient({
                                 </div>
                             </form>
                         ) : workOrder ? (
-                            <div className="overflow-x-auto">
-                                <table className="excel-table">
-                                    <tbody>
-                                        <tr className="bg-[#107c41]/10">
-                                            <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Agreement & Work Order</th>
-                                        </tr>
-                                        <tr>
-                                            <td className="excel-label">Agreement Year</td>
-                                            <td className="excel-value w-[30%]">{workOrder.agreementYear || '-'}</td>
-                                            <td className="excel-label">Agreement Details</td>
-                                            <td className="excel-value w-[30%]">No: {workOrder.agreementNo || '-'} &nbsp;|&nbsp; Date: {workOrder.agreementDate ? new Date(workOrder.agreementDate).toLocaleDateString('en-GB') : '-'}</td>
-                                        </tr>
-                                        <tr>
-                                            <td className="excel-label">Work Order Details</td>
-                                            <td className="excel-value font-mono">WS No: {workOrder.workOrderWorksheetNo || '-'} &nbsp;|&nbsp; Date: {workOrder.workOrderDate ? new Date(workOrder.workOrderDate).toLocaleDateString('en-GB') : '-'}</td>
-                                            <td className="excel-label">Completion Target</td>
-                                            <td className="excel-value">{workOrder.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate).toLocaleDateString('en-GB') : '-'}</td>
-                                        </tr>
-                                        <tr className="bg-[#107c41]/10">
-                                            <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Security Deposits</th>
-                                        </tr>
-                                        <tr>
-                                            <td className="excel-label">Security Deposit</td>
-                                            <td className="excel-value font-mono" colSpan={3}>
-                                                Type: {workOrder.securityDepositType || '-'} &nbsp;|&nbsp; Bank: {workOrder.securityDepositBankName || '-'} &nbsp;|&nbsp; No: {workOrder.securityDepositNumber || '-'} &nbsp;|&nbsp; Amount: <strong className="text-emerald-700">₹{workOrder.securityDepositAmount?.toLocaleString('en-IN') || 0}</strong>
-                                            </td>
-                                        </tr>
-                                        {workOrder.additionalSecurityDepositAmount > 0 && (
+                            <div>
+                                <div className="overflow-x-auto">
+                                    <table className="excel-table">
+                                        <tbody>
+                                            <tr className="bg-[#107c41]/10">
+                                                <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Agreement & Work Order</th>
+                                            </tr>
                                             <tr>
-                                                <td className="excel-label">Additional SD</td>
+                                                <td className="excel-label">Agreement Year</td>
+                                                <td className="excel-value w-[30%]">{workOrder.agreementYear || '-'}</td>
+                                                <td className="excel-label">Agreement Details</td>
+                                                <td className="excel-value w-[30%]">No: {workOrder.agreementNo || '-'} &nbsp;|&nbsp; Date: {workOrder.agreementDate ? new Date(workOrder.agreementDate).toLocaleDateString('en-GB') : '-'}</td>
+                                            </tr>
+                                            <tr>
+                                                <td className="excel-label">Work Order Details</td>
+                                                <td className="excel-value font-mono">WS No: {workOrder.workOrderWorksheetNo || '-'} &nbsp;|&nbsp; Date: {workOrder.workOrderDate ? new Date(workOrder.workOrderDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                <td className="excel-label">Completion Target</td>
+                                                <td className="excel-value">{workOrder.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate).toLocaleDateString('en-GB') : '-'}</td>
+                                            </tr>
+                                            <tr className="bg-[#107c41]/10">
+                                                <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Security Deposits</th>
+                                            </tr>
+                                            <tr>
+                                                <td className="excel-label">Security Deposit</td>
                                                 <td className="excel-value font-mono" colSpan={3}>
-                                                    Type: {workOrder.additionalSecurityDepositType || '-'} &nbsp;|&nbsp; Bank: {workOrder.additionalSecurityDepositBankName || '-'} &nbsp;|&nbsp; No: {workOrder.additionalSecurityDepositNumber || '-'} &nbsp;|&nbsp; Amount: <strong className="text-emerald-700">₹{workOrder.additionalSecurityDepositAmount?.toLocaleString('en-IN') || 0}</strong>
+                                                    Type: {workOrder.securityDepositType || '-'} &nbsp;|&nbsp; Bank: {workOrder.securityDepositBankName || '-'} &nbsp;|&nbsp; No: {workOrder.securityDepositNumber || '-'} &nbsp;|&nbsp; Amount: <strong className="text-emerald-700">₹{workOrder.securityDepositAmount?.toLocaleString('en-IN') || 0}</strong>
                                                 </td>
                                             </tr>
-                                        )}
-                                    </tbody>
-                                </table>
+                                            {workOrder.additionalSecurityDepositAmount > 0 && (
+                                                <tr>
+                                                    <td className="excel-label">Additional SD</td>
+                                                    <td className="excel-value font-mono" colSpan={3}>
+                                                        Type: {workOrder.additionalSecurityDepositType || '-'} &nbsp;|&nbsp; Bank: {workOrder.additionalSecurityDepositBankName || '-'} &nbsp;|&nbsp; No: {workOrder.additionalSecurityDepositNumber || '-'} &nbsp;|&nbsp; Amount: <strong className="text-emerald-700">₹{workOrder.additionalSecurityDepositAmount?.toLocaleString('en-IN') || 0}</strong>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end">
+                                    <Link 
+                                        href={`/packages/${packageId}/print-work-order`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 text-xs font-bold text-[#107c41] bg-[#107c41]/5 hover:bg-[#107c41]/10 border border-[#107c41]/20 px-4 py-2 rounded-xl transition-all cursor-pointer"
+                                    >
+                                        <Printer className="w-4 h-4" /> Print Work Order
+                                    </Link>
+                                </div>
                             </div>
                         ) : (
                             <div className="text-center py-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
@@ -2234,6 +2333,49 @@ export default function PackageDetailClient({
                                 <button type="submit" disabled={bankSaving} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700">Save Bank</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* RE-TENDER CANCELLATION MODAL */}
+            {isReTenderModalOpen && (
+                <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
+                            <h3 className="text-sm font-bold text-slate-800">Confirm Re-Tender</h3>
+                            <button type="button" onClick={() => setIsReTenderModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full"><X className="w-5 h-5" /></button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <p className="text-xs text-slate-500">
+                                This will cancel the current Tender trial (Trial #{tender?.trialNo}) and create a new Tender trial (Trial #{(Number(tender?.trialNo) || 1) + 1}).
+                            </p>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Reason for Cancelling Current Tender *</label>
+                                <select 
+                                    value={reTenderReason} 
+                                    onChange={(e) => setReTenderReason(e.target.value)} 
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white"
+                                >
+                                    <option value="">-- Select Reason --</option>
+                                    <option value="High Rate">High Rate</option>
+                                    <option value="Single Bidder">Single Bidder</option>
+                                    <option value="Technical Ground">Technical Ground</option>
+                                    <option value="Administrative Ground">Administrative Ground</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+                                <button type="button" onClick={() => setIsReTenderModalOpen(false)} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold">Cancel</button>
+                                <button 
+                                    type="button" 
+                                    disabled={!reTenderReason || loading} 
+                                    onClick={() => handleExecuteReTender(reTenderReason)} 
+                                    className="px-4 py-2 bg-rose-600 text-white rounded-xl text-sm font-semibold hover:bg-rose-700 disabled:opacity-50"
+                                >
+                                    Confirm & Create Re-Tender
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
