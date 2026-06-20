@@ -103,7 +103,9 @@ export default function PackageDetailClient({
     const [newContractor, setNewContractor] = useState({
         name: '', proprietorName: '', address: '', mobileNo: '', agencyType: ''
     });
+    const [editingContractorId, setEditingContractorId] = useState<string | null>(null);
     const [contractorSaving, setContractorSaving] = useState(false);
+
 
     // Package Edit Works States
     const [availableWorks, setAvailableWorks] = useState<any[]>([]);
@@ -724,27 +726,60 @@ export default function PackageDetailClient({
         }
     };
 
-    // Contractor addition handler
+    const handleOpenEditContractor = () => {
+        const selected = agencies.find(a => a.name === tenderForm.contractorName);
+        if (!selected) return;
+        setNewContractor({
+            name: selected.name || '',
+            proprietorName: selected.proprietorName || '',
+            address: selected.address || '',
+            mobileNo: selected.mobileNo || '',
+            agencyType: selected.agencyType || '',
+        });
+        setEditingContractorId(selected._id);
+        setIsContractorModalOpen(true);
+    };
+
+    const handleCloseContractorModal = () => {
+        setNewContractor({ name: '', proprietorName: '', address: '', mobileNo: '', agencyType: '' });
+        setEditingContractorId(null);
+        setIsContractorModalOpen(false);
+    };
+
+    // Contractor addition/edit handler
     const handleCreateContractor = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newContractor.name.trim()) return;
         setContractorSaving(true);
         try {
-            const res = await fetch('/api/agencies', {
-                method: 'POST',
+            const isEditing = !!editingContractorId;
+            const url = isEditing ? `/api/agencies/${editingContractorId}` : '/api/agencies';
+            const method = isEditing ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newContractor),
             });
             const data = await res.json();
             if (data.success) {
-                setAgencies(prev => [...prev, data.data].sort((a,b) => a.name.localeCompare(b.name)));
-                setTenderForm((prev: any) => ({ ...prev, contractorName: data.data.name }));
+                if (isEditing) {
+                    setAgencies(prev => prev.map(a => a._id === editingContractorId ? data.data : a).sort((a,b) => a.name.localeCompare(b.name)));
+                    setTenderForm((prev: any) => ({ ...prev, contractorName: data.data.name }));
+                    showToast('success', 'Contractor/Agency updated successfully.');
+                } else {
+                    setAgencies(prev => [...prev, data.data].sort((a,b) => a.name.localeCompare(b.name)));
+                    setTenderForm((prev: any) => ({ ...prev, contractorName: data.data.name }));
+                    showToast('success', 'Contractor/Agency added successfully.');
+                }
                 setNewContractor({ name: '', proprietorName: '', address: '', mobileNo: '', agencyType: '' });
+                setEditingContractorId(null);
                 setIsContractorModalOpen(false);
-                showToast('success', 'Contractor/Agency added successfully.');
+            } else {
+                showToast('error', data.error || `Error ${isEditing ? 'updating' : 'adding'} contractor.`);
             }
         } catch (err) {
-            showToast('error', 'Error adding contractor.');
+            showToast('error', `Error ${editingContractorId ? 'updating' : 'adding'} contractor.`);
         } finally {
             setContractorSaving(false);
         }
@@ -1499,7 +1534,12 @@ export default function PackageDetailClient({
                                                                     helperField="address"
                                                                 />
                                                             </div>
-                                                            <button type="button" onClick={() => setIsContractorModalOpen(true)} className="text-[10px] font-bold text-blue-600 hover:underline flex-shrink-0 cursor-pointer">+ New Contractor</button>
+                                                            <div className="flex flex-col gap-1 items-end">
+                                                                <button type="button" onClick={() => { setEditingContractorId(null); setIsContractorModalOpen(true); }} className="text-[10px] font-bold text-blue-600 hover:underline flex-shrink-0 cursor-pointer">+ New Contractor</button>
+                                                                {tenderForm.contractorName && (
+                                                                    <button type="button" onClick={handleOpenEditContractor} className="text-[10px] font-bold text-amber-600 hover:underline flex-shrink-0 cursor-pointer">Edit Contractor</button>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -2285,8 +2325,8 @@ export default function PackageDetailClient({
                 <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100 flex flex-col animate-in fade-in zoom-in-95 duration-200">
                         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
-                            <h3 className="text-sm font-bold text-slate-800">Add New Contractor</h3>
-                            <button type="button" onClick={() => setIsContractorModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full"><X className="w-5 h-5" /></button>
+                            <h3 className="text-sm font-bold text-slate-800">{editingContractorId ? 'Edit Contractor' : 'Add New Contractor'}</h3>
+                            <button type="button" onClick={handleCloseContractorModal} className="text-slate-400 hover:text-slate-600 p-1 rounded-full"><X className="w-5 h-5" /></button>
                         </div>
                         <form onSubmit={handleCreateContractor} className="p-6 space-y-4">
                             <div>
@@ -2317,9 +2357,9 @@ export default function PackageDetailClient({
                                 </div>
                             </div>
                             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-                                <button type="button" onClick={() => setIsContractorModalOpen(false)} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold">Cancel</button>
+                                <button type="button" onClick={handleCloseContractorModal} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold">Cancel</button>
                                 <button type="submit" disabled={contractorSaving} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700">
-                                    {contractorSaving ? 'Saving...' : 'Save Contractor'}
+                                    {contractorSaving ? 'Saving...' : editingContractorId ? 'Save Changes' : 'Save Contractor'}
                                 </button>
                             </div>
                         </form>

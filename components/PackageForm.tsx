@@ -103,10 +103,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (selectedWorks.length === 0) {
-            alert("Please add at least one work to the package.");
-            return;
-        }
+
 
         setLoading(true);
 

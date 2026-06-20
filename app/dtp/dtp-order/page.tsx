@@ -224,11 +224,11 @@ export default function DTPOrderPage() {
                         width: 100% !important;
                     }
                     .printable-container {
-                        padding: 0 !important;
+                        padding: 1cm 2cm !important;
                     }
                     @page {
                         size: A4;
-                        margin: 1.5cm 2cm;
+                        margin: 0 !important;
                     }
                 }
             `}</style>

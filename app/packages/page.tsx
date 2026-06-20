@@ -84,7 +84,11 @@ export default async function PackagesListPage({ searchParams }: Props) {
             label: 'Package Name', 
             sortable: true,
             minWidth: '200px',
-            render: (row) => <span className="max-w-md whitespace-normal break-words font-medium">{row.packageName}</span>
+            render: (row) => (
+                <Link href={`/packages/${row._id}`} className="max-w-md whitespace-normal break-words font-medium text-blue-600 hover:underline">
+                    {row.packageName}
+                </Link>
+            )
         },
         { 
             key: 'approvedWorks', 

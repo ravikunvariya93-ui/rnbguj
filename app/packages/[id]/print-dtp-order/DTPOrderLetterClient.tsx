@@ -287,13 +287,12 @@ export default function DTPOrderLetterClient({ packageData, dtp }: DTPOrderLette
                     body.dtp-printing #print-area {
                         display: block !important;
                         width: 100% !important;
-                        max-width: 100% !important;
                         margin: 0 !important;
                         padding: 0 !important;
                     }
 
                     body.dtp-printing .printable-container {
-                        padding: 0 !important;
+                        padding: 1cm 2cm !important;
                         width: 100% !important;
                         max-width: 100% !important;
                         box-sizing: border-box !important;
@@ -311,7 +310,7 @@ export default function DTPOrderLetterClient({ packageData, dtp }: DTPOrderLette
 
                     @page {
                         size: A4;
-                        margin: 1.5cm 2cm;
+                        margin: 0 !important;
                     }
                 }
             `}</style>

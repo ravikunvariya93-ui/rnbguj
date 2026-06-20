@@ -230,7 +230,7 @@ export default function DTPForwardingLetterPage() {
                     }
 
                     .printable-container {
-                        padding: 40px 50px !important;
+                        padding: 1cm 2cm !important;
                         width: 100% !important;
                         max-width: 100% !important;
                         box-sizing: border-box !important;
@@ -238,7 +238,7 @@ export default function DTPForwardingLetterPage() {
 
                     @page {
                         size: A4;
-                        margin: 1.5cm 2cm;
+                        margin: 0 !important;
                     }
                 }
             `}</style>

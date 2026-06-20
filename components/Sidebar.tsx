@@ -42,13 +42,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             {/* Backdrop for mobile */}
             {isOpen && (
                 <div
-                    className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden transition-opacity duration-300"
+                    className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden transition-opacity duration-300 screen-only"
                     onClick={onClose}
                 />
             )}
 
             {/* Sidebar drawer */}
-            <div className={`fixed inset-y-0 left-0 bg-white border-r border-gray-200 w-64 z-50 transform transition-transform duration-300 ease-in-out md:translate-x-0 ${isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'} md:flex md:flex-col`}>
+            <aside className={`fixed inset-y-0 left-0 bg-white border-r border-gray-200 w-64 z-50 transform transition-transform duration-300 ease-in-out md:translate-x-0 ${isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'} md:flex md:flex-col screen-only`}>
                 {/* Logo Section */}
                 <div className="flex flex-col items-center justify-center h-20 border-b border-gray-200 px-4 relative">
                     <div className="flex items-center gap-2">
@@ -119,7 +119,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                         Sign Out
                     </button>
                 </div>
-            </div>
+            </aside>
         </>
     );
 }

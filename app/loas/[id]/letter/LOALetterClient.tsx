@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Printer, Download, Edit3 } from 'lucide-react';
 import { logoBase64 } from '@/lib/logoBase64';
@@ -134,8 +135,21 @@ function calculateAdditionalSecurity(tender: any) {
 }
 
 export default function LOALetterClient({ loa, agencies }: LOALetterClientProps) {
+    // Add/remove loa-printing class on body so print CSS is scoped only to this page
+    useEffect(() => {
+        const onBefore = () => document.body.classList.add('loa-printing');
+        const onAfter = () => document.body.classList.remove('loa-printing');
+        window.addEventListener('beforeprint', onBefore);
+        window.addEventListener('afterprint', onAfter);
+        return () => {
+            window.removeEventListener('beforeprint', onBefore);
+            window.removeEventListener('afterprint', onAfter);
+            document.body.classList.remove('loa-printing');
+        };
+    }, []);
+
     const tender = loa.tenderId || {};
-const exportToDoc = () => {
+    const exportToDoc = () => {
         const element = document.getElementById('print-area');
         if (!element) return;
         const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>";
@@ -265,11 +279,11 @@ const exportToDoc = () => {
                     </div>
 
                     {/* References Block */}
-                    {!tender.notRequired && (
+                    {(!tender.notRequired && tender.tenderApprovalNo) && (
                         <div style={{ marginBottom: '10px', fontSize: '14px', display: 'flex', gap: '8px', lineHeight: '1.4', paddingLeft: '6em' }}>
                             <div style={{ fontWeight: 'bold', flexShrink: 0 }}>Reference:</div>
                             <div style={{ flex: 1, textAlign: 'justify' }}>
-                                {tender.tenderApprovalOffice || 'Road and Building Department, Gandhinagar'} Letter No. <span style={{ fontWeight: 'semibold' }}>{tender.tenderApprovalNo || 'RBD/TRF/e-file/16/2026/1303/Section D1'}</span> Dt. - {formatDateToOutput(tender.tenderApprovalDate)}
+                                {tender.tenderApprovalOffice || 'Superintending Engineer, Panchayat Road and Building Circle-2, Rajkot'} Letter No. <span style={{ fontWeight: 'semibold' }}>{tender.tenderApprovalNo}</span> Dt. - {formatDateToOutput(tender.tenderApprovalDate)}
                             </div>
                         </div>
                     )}
@@ -316,60 +330,49 @@ const exportToDoc = () => {
                     body { background-color: #f1f5f9; }
                 }
                 @media print {
-                    /* Hide everything except the print area */
-                    .screen-only,
-                    header, nav, aside,
-                    button, svg, [role="navigation"] {
-                        display: none !important;
+                    /* Only apply when on this specific print page */
+                    body.loa-printing *,
+                    body.loa-printing *::before,
+                    body.loa-printing *::after {
+                        height: auto !important;
+                        min-height: 0 !important;
+                        max-height: none !important;
+                        overflow: visible !important;
                     }
 
-                    /* Reset html & body */
-                    html, body {
-                        height: auto !important;
+                    body.loa-printing {
                         width: 100% !important;
-                        overflow: visible !important;
                         margin: 0 !important;
                         padding: 0 !important;
                         background: white !important;
                     }
 
-                    /* Reset layout wrapper chain */
-                    body > div,
-                    body > div > div,
-                    body > div > div > main,
-                    body > div > div > main > div,
-                    main,
-                    main > div {
-                        display: block !important;
-                        position: static !important;
-                        overflow: visible !important;
-                        height: auto !important;
-                        max-height: none !important;
-                        width: 100% !important;
-                        max-width: 100% !important;
-                        margin: 0 !important;
-                        padding: 0 !important;
+                    body.loa-printing .screen-only,
+                    body.loa-printing header,
+                    body.loa-printing nav,
+                    body.loa-printing aside,
+                    body.loa-printing button,
+                    body.loa-printing svg,
+                    body.loa-printing [role="navigation"] {
+                        display: none !important;
                     }
 
-                    /* Show only the print area */
-                    .print-only {
+                    body.loa-printing .print-only {
                         display: block !important;
                         position: static !important;
                         width: 100% !important;
                         max-width: 100% !important;
-                        overflow: visible !important;
                     }
 
-                    #print-area {
+                    body.loa-printing #print-area {
                         display: block !important;
                         width: 100% !important;
-                        max-width: 100% !important;
                         margin: 0 !important;
                         padding: 0 !important;
                     }
 
-                    .printable-container {
-                        padding: 0 !important;
+                    body.loa-printing .printable-container {
+                        padding: 1cm 2cm !important;
                         width: 100% !important;
                         max-width: 100% !important;
                         box-sizing: border-box !important;
@@ -378,7 +381,7 @@ const exportToDoc = () => {
 
                     @page {
                         size: A4;
-                        margin: 1.5cm 2cm;
+                        margin: 0 !important;
                     }
                 }
             `}</style>

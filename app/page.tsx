@@ -27,7 +27,6 @@ interface Props {
         workType?: string;
         search?: string;
         loadSummary?: string;
-        loadPending?: string;
         loadMaster?: string;
     }>;
 }
@@ -43,7 +42,6 @@ export default async function Home({ searchParams }: Props) {
         if (params.workType) newParams.set('workType', params.workType);
         if (params.search) newParams.set('search', params.search);
         if (params.loadSummary === 'true') newParams.set('loadSummary', 'true');
-        if (params.loadPending === 'true') newParams.set('loadPending', 'true');
         if (params.loadMaster === 'true') newParams.set('loadMaster', 'true');
         
         Object.entries(overrides).forEach(([key, val]) => {
@@ -87,13 +85,12 @@ export default async function Home({ searchParams }: Props) {
     const filterLabelText = !shouldFilter ? 'All' : activeWorkTypes.length === 0 ? 'None' : activeWorkTypes.join(', ');
 
     const loadSummary = params.loadSummary === 'true';
-    const loadPending = params.loadPending === 'true';
     const loadMaster = params.loadMaster === 'true';
     const searchQuery = params.search?.trim();
 
     // Determine what we need to query
-    const needPackages = Boolean(searchQuery || loadSummary || loadPending);
-    const needApprovedWorks = Boolean(loadSummary || loadPending);
+    const needPackages = Boolean(searchQuery || loadSummary);
+    const needApprovedWorks = Boolean(loadSummary);
     const needTS = loadSummary;
     const needDTPs = loadSummary;
 
@@ -385,163 +382,7 @@ export default async function Home({ searchParams }: Props) {
         }
     }
 
-    // 2. Pending Work Order Report (Server-Side Pagination)
-    let paginatedTendersReportData: any[] = [];
-    let tenderTotalPages = 0;
-    let tenderPage = 1;
 
-    if (loadPending) {
-        const filteredWorkNames = new Set(
-            allApprovedWorks.map((w: any) => normalizeString(w.workName as string))
-        );
-
-        const matchingPackageIds = allPackages.filter((pkg: any) => {
-            if (!shouldFilter) return true;
-            return pkg.works?.some((w: any) => filteredWorkNames.has(normalizeString(w.workName)));
-        }).map((pkg: any) => pkg._id);
-
-        tenderPage = parseInt(params.page || '1');
-        const tenderLimit = parseInt(params.limit || '100');
-        const tenderSkip = (tenderPage - 1) * tenderLimit;
-
-        // Find Tenders that already have a WorkOrder (either in database or with workOrderDate set)
-        const workOrders = await WorkOrder.find({}).select('loaId').lean() as any[];
-        const loaIdsWithWO = workOrders.map(wo => wo.loaId?.toString()).filter(Boolean);
-        const loasWithWO = await LOA.find({ _id: { $in: loaIdsWithWO } }).select('tenderId').lean() as any[];
-        const tenderIdsWithWO = loasWithWO.map(l => l.tenderId?.toString()).filter(Boolean);
-
-        const tenderQuery: any = { 
-            cancelled: { $ne: true },
-            _id: { $nin: tenderIdsWithWO },
-            $or: [
-                { workOrderDate: { $exists: false } },
-                { workOrderDate: null },
-                { workOrderDate: '' }
-            ]
-        };
-        if (shouldFilter) {
-            tenderQuery.packageId = { $in: matchingPackageIds };
-        }
-
-        const [tenderTotalItems, reportTendersRaw] = await Promise.all([
-            Tender.countDocuments(tenderQuery),
-            Tender.find(tenderQuery)
-                .select('_id tenderNoticeYear noticeNo srNo packageName packageId contractorName proposalDate tenderApprovalDate acceptanceLetterDate workOrderDate cancelled cancellationReason')
-                .sort({ tenderNoticeYear: -1, noticeNo: 1, srNo: 1 })
-                .skip(tenderSkip)
-                .limit(tenderLimit)
-                .lean()
-        ]);
-
-        tenderTotalPages = Math.ceil(tenderTotalItems / tenderLimit);
-        const tenderIds = reportTendersRaw.map((t: any) => t._id);
-
-        // Fetch related records ONLY for the paginated Tenders (Massive performance boost)
-        const [reportApprovals, reportLOAs] = await Promise.all([
-            Approval.find({ tenderId: { $in: tenderIds } }).select('tenderId notRequired proposalDate tenderApprovalDate').lean(),
-            LOA.find({ tenderId: { $in: tenderIds } }).select('_id tenderId acceptanceLetterDate').lean()
-        ]);
-
-        const loaIds = reportLOAs.map((l: any) => l._id);
-        const reportWorkOrders = await WorkOrder.find({ loaId: { $in: loaIds } }).select('loaId workOrderDate').lean();
-
-        const approvalMap = new Map(reportApprovals.map((a: any) => [a.tenderId?.toString(), a]));
-        const loaMap = new Map(reportLOAs.map((l: any) => [l.tenderId?.toString(), l]));
-        const workOrderMap = new Map(reportWorkOrders.map((wo: any) => [wo.loaId?.toString(), wo]));
-        const packageMap = new Map(allPackages.map((p: any) => [p._id.toString(), p]));
-
-        paginatedTendersReportData = reportTendersRaw.map((tender: any) => {
-            const tIdStr = tender._id.toString();
-            const approval = approvalMap.get(tIdStr);
-            const loa = loaMap.get(tIdStr);
-            const workOrder = loa ? workOrderMap.get(loa._id.toString()) : null;
-
-            const isApprovalNotRequired = approval?.notRequired === true;
-            const proposalDate = isApprovalNotRequired ? 'Not Required' : (tender.proposalDate || approval?.proposalDate || null);
-            const tenderApprovalDate = isApprovalNotRequired ? 'Not Required' : (tender.tenderApprovalDate || approval?.tenderApprovalDate || null);
-            const acceptanceLetterDate = tender.acceptanceLetterDate || loa?.acceptanceLetterDate || null;
-            const workOrderDate = tender.workOrderDate || workOrder?.workOrderDate || null;
-
-            const pkg = tender.packageId ? packageMap.get(tender.packageId.toString()) : null;
-            const approvedWorks = pkg && pkg.works && pkg.works.length > 0 
-                ? pkg.works.map((w: any) => w.workName).filter(Boolean)
-                : [];
-
-            return {
-                _id: tIdStr,
-                tenderNoticeYear: tender.tenderNoticeYear || '-',
-                noticeNo: tender.noticeNo || '-',
-                srNo: tender.srNo || '-',
-                packageName: tender.packageName || 'Unspecified Package',
-                approvedWorks,
-                packageId: tender.packageId?.toString() || null,
-                contractorName: tender.contractorName || '-',
-                proposalDate,
-                tenderApprovalDate,
-                acceptanceLetterDate,
-                workOrderDate,
-                cancelled: tender.cancelled || false,
-                cancellationReason: tender.cancellationReason || '',
-            };
-        });
-    }
-
-    const columns: Column[] = [
-        { key: 'tenderNoticeYear', label: 'Notice Year' },
-        { key: 'noticeNo', label: 'Notice No.' },
-        { key: 'srNo', label: 'Sr No.', align: 'center' },
-        { 
-            key: 'packageName', 
-            label: 'Package Name', 
-            minWidth: '200px', 
-            render: (row) => (
-                <div className="flex flex-col gap-1">
-                    {row.packageId ? (
-                        <Link href={`/packages/${row.packageId}`} className="text-blue-600 hover:underline font-semibold break-words">
-                            {row.packageName}
-                        </Link>
-                    ) : (
-                        <span className="break-words font-medium text-slate-700">{row.packageName}</span>
-                    )}
-                    {row.cancelled && (
-                        <span className="inline-flex items-center self-start px-2 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-600 border border-red-200 leading-none">
-                            Cancelled: {row.cancellationReason || 'N/A'}
-                        </span>
-                    )}
-                </div>
-            ) 
-        },
-        { 
-            key: 'approvedWorks', 
-            label: 'Approved Works', 
-            minWidth: '250px',
-            render: (row) => row.approvedWorks.length > 0 ? (
-                <div className="space-y-1">
-                    {row.approvedWorks.map((work: string, idx: number) => (
-                        <div key={idx} className="text-xs leading-tight">
-                            {idx + 1}. {work}
-                        </div>
-                    ))}
-                </div>
-            ) : <span className="text-slate-400 italic">No works found</span>
-        },
-        { key: 'contractorName', label: 'Contractor Name', minWidth: '150px' },
-        { 
-            key: 'proposalDate', 
-            label: 'Proposal Date', 
-            render: (row) => row.proposalDate === 'Not Required' ? (
-                <span className="text-slate-500 italic font-semibold">Not Required</span>
-            ) : <span className="text-slate-600">{formatShortDate(row.proposalDate)}</span> 
-        },
-        { 
-            key: 'tenderApprovalDate', 
-            label: 'Approval Date', 
-            render: (row) => row.tenderApprovalDate === 'Not Required' ? (
-                <span className="text-slate-500 italic font-semibold">Not Required</span>
-            ) : <span className="text-slate-600">{formatShortDate(row.tenderApprovalDate)}</span> 
-        },
-        { key: 'acceptanceLetterDate', label: 'Acceptance Date', render: (row) => <span className="text-slate-600">{formatShortDate(row.acceptanceLetterDate)}</span> }
-    ];
 
     const searchApprovedWorksColumns: Column[] = [
         { 
@@ -951,6 +792,8 @@ export default async function Home({ searchParams }: Props) {
                     )}
                 </div>
 
+
+
                 {/* 4. Master Report (Approved Works) */}
                 <div className="bg-white p-6 shadow-sm rounded-xl border border-slate-100 space-y-4">
                     <div className="flex justify-between items-start">
@@ -992,66 +835,7 @@ export default async function Home({ searchParams }: Props) {
                     )}
                 </div>
 
-                {/* 3. Pending Work Order Report */}
-                {loadPending ? (
-                    <details className="group bg-white shadow-sm rounded-xl border border-slate-100 overflow-hidden" open>
-                        <summary className="list-none p-6 cursor-pointer flex justify-between items-center hover:bg-slate-50 transition-colors [&::-webkit-details-marker]:hidden">
-                            <div className="flex flex-col gap-1">
-                                <div className="flex items-center gap-3">
-                                    <h2 className="text-lg font-bold text-slate-800 tracking-tight">Pending Work Order Report</h2>
-                                    <Link 
-                                        href={getQueryString({ loadPending: null })} 
-                                        className="text-[11px] font-semibold text-rose-600 hover:text-rose-800 border border-rose-200 px-2 py-1 rounded-md hover:bg-rose-50 transition-colors"
-                                    >
-                                        Hide Report
-                                    </Link>
-                                </div>
-                                <p className="text-xs text-slate-500 font-medium">Active tender notice tracks and contract allocations — Filtered: {filterLabelText}</p>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Suspense fallback={null}>
-                                    <WorkTypeFilter workTypes={workTypes} stopPropagation />
-                                </Suspense>
-                                <div className="text-slate-400 group-open:rotate-180 transition-transform duration-200">
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </div>
-                            </div>
-                        </summary>
-                        <div className="p-6 border-t border-slate-100 space-y-4">
-                            <DataTable 
-                                columns={columns} 
-                                data={paginatedTendersReportData} 
-                                emptyMessage="No tender notices found."
-                                exportFilename="Pending_Work_Order_Report.xlsx"
-                            />
-                            {tenderTotalPages > 1 && (
-                                <div className="mt-4 flex justify-end">
-                                    <Pagination currentPage={tenderPage} totalPages={tenderTotalPages} />
-                                </div>
-                            )}
-                        </div>
-                    </details>
-                ) : (
-                    <div className="bg-white p-6 shadow-sm rounded-xl border border-slate-100 space-y-4">
-                        <div className="flex justify-between items-start">
-                            <div className="flex flex-col gap-1">
-                                <h2 className="text-lg font-bold text-slate-800 tracking-tight">Pending Work Order Report</h2>
-                                <p className="text-xs text-slate-500 font-medium">Active tender notice tracks and contract allocations — Filtered: {filterLabelText}</p>
-                            </div>
-                        </div>
-                        <div className="flex flex-col items-center justify-center py-10 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 space-y-3">
-                            <p className="text-xs font-semibold text-slate-500">Pending Work Order Report data is not loaded.</p>
-                            <Link 
-                                href={getQueryString({ loadPending: 'true' })} 
-                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm hover:shadow transition-all cursor-pointer"
-                            >
-                                Load Pending Work Order Report
-                            </Link>
-                        </div>
-                    </div>
-                )}
+
             </div>
         </div>
     );

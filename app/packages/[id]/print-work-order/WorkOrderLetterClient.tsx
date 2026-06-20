@@ -400,10 +400,8 @@ export default function WorkOrderLetterClient({
                         max-width: 100% !important;
                         margin: 0 !important;
                         padding: 0 !important;
-                    }
-
-                    body.wo-printing .printable-container {
-                        padding: 0 !important;
+                                        body.wo-printing .printable-container {
+                        padding: 0.8cm 1.2cm !important;
                         width: 100% !important;
                         max-width: 100% !important;
                         box-sizing: border-box !important;
@@ -444,7 +442,7 @@ export default function WorkOrderLetterClient({
 
                     @page {
                         size: A4;
-                        margin: 0.8cm 1.2cm;
+                        margin: 0 !important;
                     }
                 }
             `}</style>
