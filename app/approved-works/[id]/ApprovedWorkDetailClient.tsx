@@ -246,7 +246,7 @@ export default function ApprovedWorkDetailClient({
                 contractorName: tender?.contractorName || '',
                 contractPrice: tender?.contractPrice || '',
                 aboveBelowPercentage: tender?.aboveBelowPercentage || '',
-                aboveBelowInWord: tender?.aboveBelowInWord || 'Below',
+                aboveBelowInWord: tender?.aboveBelowInWord === 'Equals' ? 'At Par' : (tender?.aboveBelowInWord || 'Below'),
                 remarks: tender?.remarks || '',
             });
         } else if (section === 'approval') {
@@ -1254,6 +1254,7 @@ export default function ApprovedWorkDetailClient({
                                                     <select name="tsAuthority" value={tsForm.tsAuthority} onChange={handleTsFieldChange} className="excel-cell-select bg-white">
                                                         <option value="">-- Select Authority --</option>
                                                         <option value="Executive Engineer (EE)">Executive Engineer (EE)</option>
+                                                        <option value="Deputy Executive Engineer (DEE)">Deputy Executive Engineer (DEE)</option>
                                                         <option value="The Superintending Engineer, Panchayat Road and Building Circle - 2, Rajkot.">The Superintending Engineer, Panchayat Road and Building Circle - 2, Rajkot.</option>
                                                         <option value="Road and Building Department">Road and Building Department</option>
                                                     </select>
@@ -1484,6 +1485,7 @@ export default function ApprovedWorkDetailClient({
                                                     <select name="dtpApprovingAuthority" value={dtpForm.dtpApprovingAuthority} onChange={handleDtpFieldChange} className="excel-cell-select bg-white">
                                                         <option value="">-- Select Authority --</option>
                                                         <option value="Executive Engineer (EE)">Executive Engineer (EE)</option>
+                                                        <option value="Deputy Executive Engineer (DEE)">Deputy Executive Engineer (DEE)</option>
                                                         <option value="The Superintending Engineer, Panchayat Road and Building Circle - 2, Rajkot.">The Superintending Engineer, Panchayat Road and Building Circle - 2, Rajkot.</option>
                                                         <option value="Road and Building Department">Road and Building Department</option>
                                                     </select>
@@ -1795,6 +1797,7 @@ export default function ApprovedWorkDetailClient({
                                                             <select name="tenderApprovalOffice" value={approvalForm.tenderApprovalOffice} onChange={handleApprovalFieldChange} className="excel-cell-select bg-white">
                                                                 <option value="">-- Select Office --</option>
                                                                 <option value="Executive Engineer (EE)">Executive Engineer (EE)</option>
+                                                                <option value="Deputy Executive Engineer (DEE)">Deputy Executive Engineer (DEE)</option>
                                                                 <option value="The Superintending Engineer, Panchayat Road and Building Circle - 2, Rajkot.">The Superintending Engineer, Rajkot.</option>
                                                                 <option value="Road and Building Department">Road and Building Department</option>
                                                             </select>

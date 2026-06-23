@@ -3,7 +3,7 @@ import Package from '@/models/Package';
 import DTP from '@/models/DTP';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import DTPOrderLetterClient from './DTPOrderLetterClient';
+import ForwardingLetterClient from './ForwardingLetterClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +11,7 @@ interface Props {
     params: Promise<{ id: string }>;
 }
 
-export default async function PrintDTPOrderPage({ params }: Props) {
+export default async function PrintForwardingLetterPage({ params }: Props) {
     await dbConnect();
     const { id } = await params;
 
@@ -43,7 +43,7 @@ export default async function PrintDTPOrderPage({ params }: Props) {
     const dtp = JSON.parse(JSON.stringify(dtpRaw));
 
     return (
-        <DTPOrderLetterClient
+        <ForwardingLetterClient
             packageData={packageData}
             dtp={dtp}
         />

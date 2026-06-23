@@ -7,7 +7,7 @@ import {
     ArrowLeft, Save, Edit2, Plus, Trash2, CheckCircle2, XCircle, X, Loader2, 
     Calendar, FileText, Settings, Award, Check, ChevronDown, ListPlus, Printer, 
     Receipt, DollarSign, Eye, AlertCircle, FileCheck, Layers, ClipboardCheck,
-    Briefcase, FileSpreadsheet, Percent, Building2, User2, Clock
+    Briefcase, FileSpreadsheet, Percent, Building2, User2, Clock, Upload
 } from 'lucide-react';
 import { parseDateStr, formatDate, formatDateForInput, formatShortDate } from '@/lib/dateUtils';
 import SearchableSelect from '@/components/SearchableSelect';
@@ -18,6 +18,7 @@ interface PackageDetailClientProps {
     approvedWorks: any[];
     dtp: any;
     tender: any;
+    boq: any;
     approval: any;
     loa: any;
     workOrder: any;
@@ -25,7 +26,7 @@ interface PackageDetailClientProps {
     maxAgreementNos?: Record<string, number>;
 }
 
-type SectionType = 'package' | 'dtp' | 'tender' | 'approval' | 'loa' | 'workOrder' | 'bills';
+type SectionType = 'package' | 'dtp' | 'tender' | 'boq' | 'approval' | 'loa' | 'workOrder' | 'bills';
 
 export default function PackageDetailClient({
     packageId,
@@ -33,6 +34,7 @@ export default function PackageDetailClient({
     approvedWorks,
     dtp: initialDtp,
     tender: initialTender,
+    boq: initialBoq,
     approval: initialApproval,
     loa: initialLoa,
     workOrder: initialWorkOrder,
@@ -45,6 +47,9 @@ export default function PackageDetailClient({
     const [pkg, setPkg] = useState(initialPkg);
     const [dtp, setDtp] = useState(initialDtp);
     const [tender, setTender] = useState(initialTender);
+    const [boq, setBoq] = useState(initialBoq);
+    const [boqForm, setBoqForm] = useState<any>({ items: [], totalAmount: 0 });
+    const [parsingBoq, setParsingBoq] = useState(false);
     const [approval, setApproval] = useState(initialApproval);
     const [loa, setLoa] = useState(initialLoa);
     const [workOrder, setWorkOrder] = useState(initialWorkOrder);
@@ -183,7 +188,7 @@ export default function PackageDetailClient({
         try {
             const [resTS, resPackages] = await Promise.all([
                 fetch('/api/technical-sanctions'),
-                fetch('/api/packages')
+                fetch('/api/packages?limit=1000')
             ]);
             const dataTS = await resTS.json();
             const dataPackages = await resPackages.json();
@@ -252,8 +257,13 @@ export default function PackageDetailClient({
                 contractorName: tender?.contractorName || '',
                 contractPrice: tender?.contractPrice || '',
                 aboveBelowPercentage: tender?.aboveBelowPercentage || '',
-                aboveBelowInWord: tender?.aboveBelowInWord || 'Below',
+                aboveBelowInWord: tender?.aboveBelowInWord === 'Equals' ? 'At Par' : (tender?.aboveBelowInWord || 'Below'),
                 remarks: tender?.remarks || '',
+            });
+        } else if (section === 'boq') {
+            setBoqForm({
+                items: boq?.items ? JSON.parse(JSON.stringify(boq.items)) : [],
+                totalAmount: boq?.totalAmount || 0
             });
         } else if (section === 'approval') {
             setApprovalForm({
@@ -547,6 +557,103 @@ export default function PackageDetailClient({
 
             showToast('success', 'Re-tender trial created successfully!');
             setIsReTenderModalOpen(false);
+            setEditingSection(null);
+            router.refresh();
+        } catch (err: any) {
+            showToast('error', err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleBoqAddItem = () => {
+        setBoqForm((prev: any) => ({
+            ...prev,
+            items: [...prev.items, { itemNo: '', description: '', quantity: 0, unit: '', rate: 0, amount: 0, itemType: 'Standard' }]
+        }));
+    };
+
+    const handleBoqRemoveItem = (index: number) => {
+        const newItems = [...boqForm.items];
+        newItems.splice(index, 1);
+        const total = newItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
+        setBoqForm((prev: any) => ({ ...prev, items: newItems, totalAmount: total }));
+    };
+
+    const handleBoqItemChange = (index: number, field: string, value: any) => {
+        const newItems = [...boqForm.items];
+        const item = { ...newItems[index], [field]: value };
+        
+        // Auto calculate amount
+        if (field === 'quantity' || field === 'rate') {
+            item.amount = (parseFloat(item.quantity) || 0) * (parseFloat(item.rate) || 0);
+        }
+
+        newItems[index] = item;
+        const total = newItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
+        setBoqForm((prev: any) => ({ ...prev, items: newItems, totalAmount: total }));
+    };
+
+    const handleBoqPdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setParsingBoq(true);
+        const uploadData = new FormData();
+        uploadData.append('file', file);
+
+        try {
+            const res = await fetch('/api/boqs/parse-pdf', {
+                method: 'POST',
+                body: uploadData
+            });
+            const data = await res.json();
+            if (data.success && data.data.length > 0) {
+                const parsedItems = data.data.map((item: any) => ({
+                    ...item,
+                    itemType: item.itemType || 'Standard'
+                }));
+                const newItems = [...boqForm.items, ...parsedItems];
+                const total = newItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
+                setBoqForm((prev: any) => ({ ...prev, items: newItems, totalAmount: total }));
+                showToast('success', `Parsed ${parsedItems.length} items from PDF successfully!`);
+            } else {
+                showToast('error', 'Could not extract any items from the PDF.');
+            }
+        } catch (error) {
+            console.error(error);
+            showToast('error', 'Error parsing PDF');
+        } finally {
+            setParsingBoq(false);
+        }
+    };
+
+    const handleSaveBoq = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!tender) return;
+        if (boqForm.items.length === 0) {
+            showToast('error', 'Please add at least one item');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const data = {
+                tenderId: tender._id,
+                items: boqForm.items,
+                totalAmount: boqForm.totalAmount
+            };
+            const url = boq ? `/api/boqs/${boq._id}` : `/api/boqs`;
+            const method = boq ? 'PUT' : 'POST';
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            if (!res.ok) throw new Error("Failed to save BOQ details.");
+            const resData = await res.json();
+            showToast('success', 'BOQ details saved successfully!');
+            setBoq(resData.data);
             setEditingSection(null);
             router.refresh();
         } catch (err: any) {
@@ -1409,7 +1516,15 @@ export default function PackageDetailClient({
                                             </tbody>
                                         </table>
                                     </div>
-                                    <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end">
+                                    <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end gap-3">
+                                        <Link 
+                                            href={`/packages/${packageId}/print-forwarding-letter`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-4 py-2 rounded-xl transition-all cursor-pointer"
+                                        >
+                                            <FileText className="w-4 h-4" /> Generate Forwarding Letter
+                                        </Link>
                                         <Link 
                                             href={`/packages/${packageId}/print-dtp-order`}
                                             target="_blank"
@@ -1641,7 +1756,219 @@ export default function PackageDetailClient({
                 </div>
             </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* BOQ Section */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md mt-6">
+                <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${boq ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                            <FileSpreadsheet className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-bold text-slate-800">Bill of Quantities (BOQ)</h3>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    boq ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                }`}>
+                                    {boq ? '✅ Done' : '⏳ Pending'}
+                                </span>
+                            </div>
+                            <p className="text-xs text-slate-400 font-medium">BOQ items list and rates details</p>
+                        </div>
+                    </div>
+                    {editingSection !== 'boq' && (
+                        <button 
+                            onClick={() => handleStartEdit('boq')}
+                            disabled={!tender || tender.cancelled} 
+                            className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {boq ? <><Edit2 className="w-3.5 h-3.5" /> Modify BOQ</> : <><Plus className="w-3.5 h-3.5" /> Add BOQ</>}
+                        </button>
+                    )}
+                </div>
+                <div className="p-6">
+                    {!tender ? (
+                        <div className="text-center py-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                            <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                            <p className="text-slate-500 font-semibold text-sm">Please complete Tender Details before adding BOQ.</p>
+                        </div>
+                    ) : editingSection === 'boq' ? (
+                        <form onSubmit={handleSaveBoq} className="space-y-4">
+                            <div className="flex justify-between items-center mb-4">
+                                <div className="text-sm font-bold text-slate-700">BOQ Items</div>
+                                <div className="flex gap-2">
+                                    <label className="cursor-pointer inline-flex items-center px-3 py-1.5 border border-blue-300 shadow-sm text-xs font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 transition-all">
+                                        {parsingBoq ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Upload className="w-3.5 h-3.5 mr-1.5" />}
+                                        {parsingBoq ? 'Parsing PDF...' : 'Fetch from PDF'}
+                                        <input type="file" className="hidden" accept=".pdf" onChange={handleBoqPdfUpload} disabled={parsingBoq} />
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={handleBoqAddItem}
+                                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 shadow-sm transition-colors"
+                                    >
+                                        <Plus className="w-3.5 h-3.5 mr-1" /> Add Item
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                                <table className="min-w-full divide-y divide-slate-200">
+                                    <thead className="bg-slate-50">
+                                        <tr>
+                                            <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider w-20 text-center">No.</th>
+                                            <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Description</th>
+                                            <th className="px-3 py-2 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider w-24">Qty</th>
+                                            <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider w-24">Unit</th>
+                                            <th className="px-3 py-2 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider w-28">Rate</th>
+                                            <th className="px-3 py-2 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider w-28">Amount</th>
+                                            <th className="px-3 py-2 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider w-24">Type</th>
+                                            <th className="px-3 py-2 w-12"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-slate-200">
+                                        {boqForm.items?.map((item: any, idx: number) => (
+                                            <tr key={idx} className="hover:bg-slate-50/50">
+                                                <td className="px-2 py-1.5">
+                                                    <input
+                                                        type="text"
+                                                        value={item.itemNo}
+                                                        onChange={(e) => handleBoqItemChange(idx, 'itemNo', e.target.value)}
+                                                        className="w-full text-center px-1.5 py-1 border border-slate-200 rounded-md text-xs font-mono"
+                                                        required
+                                                    />
+                                                </td>
+                                                <td className="px-2 py-1.5">
+                                                    <textarea
+                                                        value={item.description}
+                                                        onChange={(e) => handleBoqItemChange(idx, 'description', e.target.value)}
+                                                        className="w-full px-1.5 py-1 border border-slate-200 rounded-md text-xs"
+                                                        rows={1}
+                                                        required
+                                                    />
+                                                </td>
+                                                <td className="px-2 py-1.5">
+                                                    <input
+                                                        type="number"
+                                                        value={item.quantity}
+                                                        onChange={(e) => handleBoqItemChange(idx, 'quantity', parseFloat(e.target.value) || 0)}
+                                                        className="w-full text-right px-1.5 py-1 border border-slate-200 rounded-md text-xs font-mono"
+                                                        required
+                                                    />
+                                                </td>
+                                                <td className="px-2 py-1.5">
+                                                    <input
+                                                        type="text"
+                                                        value={item.unit}
+                                                        onChange={(e) => handleBoqItemChange(idx, 'unit', e.target.value)}
+                                                        className="w-full px-1.5 py-1 border border-slate-200 rounded-md text-xs"
+                                                        required
+                                                    />
+                                                </td>
+                                                <td className="px-2 py-1.5">
+                                                    <input
+                                                        type="number"
+                                                        value={item.rate}
+                                                        onChange={(e) => handleBoqItemChange(idx, 'rate', parseFloat(e.target.value) || 0)}
+                                                        className="w-full text-right px-1.5 py-1 border border-slate-200 rounded-md text-xs font-mono"
+                                                        required
+                                                    />
+                                                </td>
+                                                <td className="px-3 py-1.5 text-right text-xs font-bold text-slate-700 font-mono">
+                                                    ₹{item.amount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                </td>
+                                                <td className="px-2 py-1.5">
+                                                    <select
+                                                        value={item.itemType}
+                                                        onChange={(e) => handleBoqItemChange(idx, 'itemType', e.target.value)}
+                                                        className="w-full px-1 py-1 border border-slate-200 rounded-md text-xs bg-white"
+                                                    >
+                                                        <option value="Standard">Standard</option>
+                                                        <option value="Extra">Extra</option>
+                                                    </select>
+                                                </td>
+                                                <td className="px-2 py-1.5 text-center">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleBoqRemoveItem(idx)}
+                                                        className="text-rose-600 hover:text-rose-900 p-1 cursor-pointer"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="flex justify-between items-center bg-slate-100 p-3 rounded-xl border border-slate-200">
+                                <span className="text-sm font-bold text-slate-700">Total Amount:</span>
+                                <span className="text-base font-black text-blue-700 font-mono">
+                                    ₹{boqForm.totalAmount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                            <div className="flex justify-end gap-2 pt-2">
+                                <button type="button" onClick={handleCancelEdit} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold cursor-pointer">Cancel</button>
+                                <button type="submit" className="px-5 py-2 bg-[#107c41] text-white rounded-xl text-sm font-semibold hover:bg-[#0f5b30] cursor-pointer">Save BOQ</button>
+                            </div>
+                        </form>
+                    ) : boq ? (
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <div>
+                                    <h4 className="text-sm font-bold text-slate-800">{pkg.packageName}</h4>
+                                    <p className="text-xs text-slate-400 font-medium">BOQ for Tender {tender?.tenderId}</p>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Total Amount (Excl. GST)</span>
+                                    <span className="text-xl font-black text-blue-600 font-mono">₹{boq.totalAmount?.toLocaleString('en-IN')}</span>
+                                </div>
+                            </div>
+                            <div className="overflow-x-auto border border-slate-200 rounded-2xl max-h-96 overflow-y-auto">
+                                <table className="min-w-full divide-y divide-slate-200">
+                                    <thead className="bg-slate-50 sticky top-0">
+                                        <tr>
+                                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider w-16">No.</th>
+                                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Description of Item</th>
+                                            <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider w-24">Qty</th>
+                                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-24">Unit</th>
+                                            <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider w-32">Rate</th>
+                                            <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider w-40">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-slate-200">
+                                        {boq.items?.map((item: any, index: number) => (
+                                            <tr key={index} className="hover:bg-slate-50/50 transition-colors">
+                                                <td className="px-4 py-3 text-sm text-slate-900 text-center font-medium">
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span>{item.itemNo}</span>
+                                                        {item.itemType === 'Extra' && (
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-100 uppercase tracking-wider leading-none scale-90">
+                                                                Extra
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{item.description}</td>
+                                                <td className="px-4 py-3 text-sm text-slate-900 text-right font-medium font-mono">{item.quantity?.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-sm text-slate-500 font-medium">{item.unit}</td>
+                                                <td className="px-4 py-3 text-sm text-slate-900 text-right font-medium font-mono">₹{item.rate?.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-sm text-slate-900 text-right font-bold text-blue-600 font-mono">₹{item.amount?.toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-center py-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                            <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                            <p className="text-slate-500 font-semibold text-sm">BOQ details are pending.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                     {/* 4. Tender Approval Section */}
                     <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
                         <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">

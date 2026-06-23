@@ -80,7 +80,7 @@ const TenderSchema: Schema = new Schema({
     contractorName: { type: String },
     contractPrice: { type: Number },
     aboveBelowPercentage: { type: Number },
-    aboveBelowInWord: { type: String, enum: ['Above', 'Below', 'At Par'], default: 'Below' },
+    aboveBelowInWord: { type: String, enum: ['Above', 'Below', 'At Par', 'Equals'], default: 'Below' },
 
     // Proposal & Approval
     proposalDate: { type: Date },

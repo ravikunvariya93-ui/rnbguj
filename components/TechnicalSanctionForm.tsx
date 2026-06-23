@@ -194,6 +194,7 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
                     >
                         <option value="">-- Select Authority --</option>
                         <option value="Executive Engineer (EE)">Executive Engineer (EE)</option>
+                        <option value="Deputy Executive Engineer (DEE)">Deputy Executive Engineer (DEE)</option>
                         <option value="The Superintending Engineer, Panchayat Road and Building Circle - 2, Rajkot.">The Superintending Engineer, Panchayat Road and Building Circle - 2, Rajkot.</option>
                         <option value="Road and Building Department">Road and Building Department</option>
                     </select>

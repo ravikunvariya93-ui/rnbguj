@@ -13,6 +13,10 @@ export interface ListPageSearchParams {
   roadCategory?: string;
   workType?: string;
   schemeName?: string;
+  noticeYear?: string;
+  noticeNo?: string;
+  contractorName?: string;
+  trialNo?: string;
 }
 
 export interface EntityFormProps<T = any> {

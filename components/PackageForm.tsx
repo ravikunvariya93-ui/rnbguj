@@ -36,7 +36,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
             try {
                 const [resTS, resPackages] = await Promise.all([
                     fetch('/api/technical-sanctions'),
-                    fetch('/api/packages')
+                    fetch('/api/packages?limit=1000')
                 ]);
                 const dataTS = await resTS.json();
                 const dataPackages = await resPackages.json();

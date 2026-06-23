@@ -62,7 +62,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
         contractorName: initialData.contractorName || '',
         contractPrice: initialData.contractPrice || '',
         aboveBelowPercentage: initialData.aboveBelowPercentage || '',
-        aboveBelowInWord: initialData.aboveBelowInWord || 'Below',
+        aboveBelowInWord: initialData.aboveBelowInWord === 'Equals' ? 'At Par' : (initialData.aboveBelowInWord || 'Below'),
         remarks: initialData.remarks || '',
     });
 
@@ -70,10 +70,10 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
         const fetchData = async () => {
             try {
                 const [pkgRes, dtpRes, agencyRes, tenderRes] = await Promise.all([
-                    fetch('/api/packages'),
+                    fetch('/api/packages?limit=1000'),
                     fetch('/api/dtps'),
                     fetch('/api/agencies'),
-                    fetch('/api/tenders')
+                    fetch('/api/tenders?limit=1000')
                 ]);
                 const pkgData = await pkgRes.json();
                 const dtpData = await dtpRes.json();
@@ -279,6 +279,24 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
             setContractorSaving(false);
         }
     };
+
+    // Sync searchParams into form state on mount/client-hydration
+    useEffect(() => {
+        const pkgId = searchParams.get('packageId');
+        const reInvite = searchParams.get('reInvite') === 'true';
+        if (pkgId) {
+            setFormData((prev: any) => {
+                if (!prev.packageId) {
+                    return {
+                        ...prev,
+                        packageId: pkgId,
+                        reInvite: prev.reInvite || reInvite
+                    };
+                }
+                return prev;
+            });
+        }
+    }, [searchParams]);
 
     // Auto-fetch trial for pre-selected package
     useEffect(() => {

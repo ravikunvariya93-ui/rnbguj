@@ -23,12 +23,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         { name: 'Approved Work', href: '/approved-works', icon: CheckCircle, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
         { name: 'TS', href: '/technical-sanctions', icon: Layers, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
         { name: 'Package', href: '/packages', icon: Package, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
-        { name: 'DTP', href: '/dtp', icon: Layers, roles: ['ADMIN', 'SUPERVISOR'] },
         { name: 'Tender', href: '/tenders', icon: FileText, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
-        { name: 'BOQ', href: '/boqs', icon: ClipboardList, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
-        { name: 'Approval', href: '/approvals', icon: CheckCircle, roles: ['ADMIN', 'SUPERVISOR'] },
-        { name: 'LOA', href: '/loas', icon: CheckCircle, roles: ['ADMIN', 'SUPERVISOR'] },
-        { name: 'Work Order', href: '/work-orders', icon: CheckCircle, roles: ['ADMIN', 'SUPERVISOR'] },
         { name: 'Bill', href: '/bills', icon: FileText, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
         { name: 'User Management', href: '/admin/users', icon: Users, roles: ['ADMIN'] },
     ];
