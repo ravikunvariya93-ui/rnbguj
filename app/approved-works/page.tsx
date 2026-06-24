@@ -237,7 +237,11 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
             if (!tender) return false;
             const tId = tender._id.toString();
             const approval = approvalByTenderId.get(tId);
-            const isApprovalNotRequired = approval?.notRequired === true;
+            const isApprovalNotRequired = approval?.notRequired === true || (
+                (tender.estimatedAmount !== undefined && tender.estimatedAmount !== null)
+                    ? Number(tender.estimatedAmount) < 5000000
+                    : (tender.contractPrice !== undefined && Number(tender.contractPrice) < 5000000)
+            );
             const hasProposalDate = isApprovalNotRequired || Boolean(tender.proposalDate) || Boolean(approval?.proposalDate);
             const hasApproval = isApprovalNotRequired || Boolean(tender.tenderApprovalDate) || Boolean(approval?.tenderApprovalDate);
 

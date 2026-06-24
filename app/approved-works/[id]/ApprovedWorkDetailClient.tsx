@@ -81,6 +81,15 @@ export default function ApprovedWorkDetailClient({
     const [approvalForm, setApprovalForm] = useState<any>({});
     const [loaForm, setLoaForm] = useState<any>({});
     const [woForm, setWoForm] = useState<any>({});
+
+    // Helper to determine if tender approval is not required based on tender amount or contract price
+    const isTenderApprovalNotRequired = useMemo(() => {
+        if (!tender) return false;
+        const tenderAmt = tender.estimatedAmount !== undefined && tender.estimatedAmount !== null 
+            ? Number(tender.estimatedAmount) 
+            : Number(tender.contractPrice || 0);
+        return tenderAmt > 0 && tenderAmt < 5000000;
+    }, [tender]);
     
     // Bank list & contractor list for select dropdowns
     const [banks, setBanks] = useState<any[]>([]);
@@ -252,7 +261,7 @@ export default function ApprovedWorkDetailClient({
         } else if (section === 'approval') {
             setApprovalForm({
                 tenderId: tender?._id || '',
-                notRequired: approval?.notRequired || false,
+                notRequired: isTenderApprovalNotRequired ? true : (approval?.notRequired || false),
                 proposalDate: approval?.proposalDate ? formatDateForInput(approval.proposalDate) : '',
                 tenderApprovalOffice: approval?.tenderApprovalOffice || '',
                 tenderApprovalNo: approval?.tenderApprovalNo || '',
@@ -562,7 +571,11 @@ export default function ApprovedWorkDetailClient({
         e.preventDefault();
         setLoading(true);
         try {
-            const data = { ...approvalForm, tenderId: tender._id };
+            const data = { 
+                ...approvalForm, 
+                tenderId: tender._id,
+                notRequired: approvalForm.notRequired || isTenderApprovalNotRequired
+            };
             if (data.proposalDate) {
                 const parsed = parseDateStr(data.proposalDate);
                 if (parsed) data.proposalDate = parsed.toISOString();
@@ -944,7 +957,7 @@ export default function ApprovedWorkDetailClient({
             { name: 'Package', done: !!pkg, color: pkg ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-slate-400 bg-slate-50 border-slate-200' },
             { name: 'DTP Approval', done: !!dtp, color: dtp ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-slate-400 bg-slate-50 border-slate-200' },
             { name: 'Tendering', done: !!tender, color: tender ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-slate-400 bg-slate-50 border-slate-200' },
-            { name: 'Approval', done: !!approval || (approval?.notRequired), color: (approval || approval?.notRequired) ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-slate-400 bg-slate-50 border-slate-200' },
+            { name: 'Approval', done: !!approval || (approval?.notRequired) || isTenderApprovalNotRequired, color: (approval || approval?.notRequired || isTenderApprovalNotRequired) ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-slate-400 bg-slate-50 border-slate-200' },
             { name: 'LOA Issued', done: !!loa, color: loa ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-slate-400 bg-slate-50 border-slate-200' },
             { name: 'Work Order', done: !!workOrder, color: workOrder ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-slate-400 bg-slate-50 border-slate-200' },
             { name: 'Bills', done: bills && bills.length > 0, color: (bills && bills.length > 0) ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-slate-400 bg-slate-50 border-slate-200' },
@@ -1751,9 +1764,13 @@ export default function ApprovedWorkDetailClient({
                                 <div className="flex items-center gap-2">
                                     <h3 className="font-bold text-slate-800">6. Tender Approval</h3>
                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                        approval ? (approval.notRequired ? 'bg-slate-100 text-slate-800' : 'bg-emerald-100 text-emerald-800') : 'bg-amber-100 text-amber-800'
+                                        (approval?.notRequired || isTenderApprovalNotRequired) 
+                                            ? 'bg-slate-100 text-slate-800' 
+                                            : approval ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                                     }`}>
-                                        {approval ? (approval.notRequired ? '🚫 Not Required' : '✅ Done') : '⏳ Pending'}
+                                        {(approval?.notRequired || isTenderApprovalNotRequired) 
+                                            ? '🚫 Not Required' 
+                                            : approval ? '✅ Done' : '⏳ Pending'}
                                     </span>
                                 </div>
                                 <p className="text-xs text-slate-400 font-medium">Tender sanction and approval office details</p>
@@ -1780,8 +1797,15 @@ export default function ApprovedWorkDetailClient({
                                                 <td className="excel-label">Approval Requirement</td>
                                                 <td className="excel-value" colSpan={3}>
                                                     <label className="inline-flex items-center gap-2 cursor-pointer py-1">
-                                                        <input type="checkbox" name="notRequired" checked={approvalForm.notRequired} onChange={handleApprovalFieldChange} className="w-4 h-4 text-[#107c41] border-slate-200 rounded cursor-pointer" />
-                                                        <span className="text-xs font-bold text-slate-700">Tender Approval Not Required</span>
+                                                        <input 
+                                                            type="checkbox" 
+                                                            name="notRequired" 
+                                                            checked={approvalForm.notRequired || isTenderApprovalNotRequired} 
+                                                            disabled={isTenderApprovalNotRequired}
+                                                            onChange={handleApprovalFieldChange} 
+                                                            className="w-4 h-4 text-[#107c41] border-slate-200 rounded cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed" 
+                                                        />
+                                                        <span className="text-xs font-bold text-slate-700">Tender Approval Not Required {isTenderApprovalNotRequired && "(Auto - Price < 50L)"}</span>
                                                     </label>
                                                 </td>
                                             </tr>
@@ -1827,7 +1851,7 @@ export default function ApprovedWorkDetailClient({
                             </form>
                         ) : approval ? (
                             <div className="overflow-x-auto">
-                                {approval.notRequired ? (
+                                {(approval.notRequired || isTenderApprovalNotRequired) ? (
                                     <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-semibold text-slate-600 italic">
                                         🚫 Tender Approval is marked as <strong>Not Required</strong> for this work.
                                     </div>

@@ -56,6 +56,21 @@ export default async function TendersListPage({ searchParams }: Props) {
         query.proposalDate = null;
         query._id = { ...query._id, $nin: approvalsWithProposal.map((id: any) => id.toString()) };
         query.cancelled = { $ne: true };
+        // Exclude tenders that do not require approval (tender amount < 5,000,000)
+        query.$and = [
+            ...(query.$and || []),
+            {
+                $or: [
+                    { estimatedAmount: { $gte: 5000000 } },
+                    { 
+                        $and: [
+                            { $or: [{ estimatedAmount: { $exists: false } }, { estimatedAmount: null }] },
+                            { $or: [{ contractPrice: { $exists: false } }, { contractPrice: null }, { contractPrice: { $gte: 5000000 } }] }
+                        ]
+                    }
+                ]
+            }
+        ];
         filterLabels.push("Pending Proposal");
     } else if (params.filter === 'pending_approval') {
         const approvalsWithProposal = await Approval.find({
@@ -82,6 +97,21 @@ export default async function TendersListPage({ searchParams }: Props) {
             $nin: approvalsWithApproval.map((id: any) => id.toString()) 
         };
         query.cancelled = { $ne: true };
+        // Exclude tenders that do not require approval (tender amount < 5,000,000)
+        query.$and = [
+            ...(query.$and || []),
+            {
+                $or: [
+                    { estimatedAmount: { $gte: 5000000 } },
+                    { 
+                        $and: [
+                            { $or: [{ estimatedAmount: { $exists: false } }, { estimatedAmount: null }] },
+                            { $or: [{ contractPrice: { $exists: false } }, { contractPrice: null }, { contractPrice: { $gte: 5000000 } }] }
+                        ]
+                    }
+                ]
+            }
+        ];
         filterLabels.push("Pending Approval");
     } else if (params.filter === 'pending_loa') {
         const tendersWithApprovalDate = await Tender.find({ tenderApprovalDate: { $ne: null } }).distinct('_id');
@@ -91,9 +121,22 @@ export default async function TendersListPage({ searchParams }: Props) {
                 { notRequired: true }
             ]
         }).distinct('tenderId');
+        const lowPriceTenders = await Tender.find({
+            $or: [
+                { estimatedAmount: { $lt: 5000000, $gt: 0 } },
+                { 
+                    $and: [
+                        { $or: [{ estimatedAmount: { $exists: false } }, { estimatedAmount: null }] },
+                        { contractPrice: { $lt: 5000000, $ne: null, $gt: 0 } }
+                    ]
+                }
+            ]
+        }).distinct('_id');
+        
         const tendersApproved = Array.from(new Set([
             ...tendersWithApprovalDate.map((id: any) => id.toString()),
-            ...approvalsWithApproval.map((id: any) => id.toString())
+            ...approvalsWithApproval.map((id: any) => id.toString()),
+            ...lowPriceTenders.map((id: any) => id.toString())
         ]));
         const tendersWithLoaDocs = await LOA.find().distinct('tenderId');
         const tendersWithLoaDate = await Tender.find({ acceptanceLetterDate: { $ne: null } }).distinct('_id');
@@ -199,7 +242,11 @@ export default async function TendersListPage({ searchParams }: Props) {
         const loa = loaMap.get(tIdStr);
         const workOrder = loa ? workOrderMap.get(loa._id.toString()) : null;
 
-        const isApprovalNotRequired = approval?.notRequired === true;
+        const isApprovalNotRequired = approval?.notRequired === true || (
+            (t.estimatedAmount !== undefined && t.estimatedAmount !== null)
+                ? Number(t.estimatedAmount) < 5000000
+                : (t.contractPrice !== undefined && Number(t.contractPrice) < 5000000)
+        );
         const proposalDate = isApprovalNotRequired ? 'Not Required' : (t.proposalDate || approval?.proposalDate || null);
         const tenderApprovalDate = isApprovalNotRequired ? 'Not Required' : (t.tenderApprovalDate || approval?.tenderApprovalDate || null);
         const acceptanceLetterDate = t.acceptanceLetterDate || loa?.acceptanceLetterDate || null;

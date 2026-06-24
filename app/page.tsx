@@ -266,7 +266,12 @@ export default async function Home({ searchParams }: Props) {
             item.tender_remarks = tender.remarks || null;
 
             // Approval properties
-            item.approval_notRequired = approval.notRequired !== undefined ? approval.notRequired : null;
+            const isApprovalNotRequired = approval.notRequired === true || (
+                (tender.estimatedAmount !== undefined && tender.estimatedAmount !== null)
+                    ? Number(tender.estimatedAmount) < 5000000
+                    : (tender.contractPrice !== undefined && Number(tender.contractPrice) < 5000000)
+            );
+            item.approval_notRequired = isApprovalNotRequired;
             item.approval_proposalDate = approval.proposalDate ? new Date(approval.proposalDate).toISOString() : null;
             item.approval_tenderApprovalOffice = approval.tenderApprovalOffice || null;
             item.approval_tenderApprovalNo = approval.tenderApprovalNo || null;
@@ -465,7 +470,11 @@ export default async function Home({ searchParams }: Props) {
             const loa = searchLoaMap.get(tIdStr);
             const workOrder = loa ? searchWorkOrderMap.get(loa._id.toString()) : null;
 
-            const isApprovalNotRequired = approval?.notRequired === true;
+            const isApprovalNotRequired = approval?.notRequired === true || (
+                (tender.estimatedAmount !== undefined && tender.estimatedAmount !== null)
+                    ? Number(tender.estimatedAmount) < 5000000
+                    : (tender.contractPrice !== undefined && Number(tender.contractPrice) < 5000000)
+            );
             const proposalDate = isApprovalNotRequired ? 'Not Required' : (tender.proposalDate || approval?.proposalDate || null);
             const tenderApprovalDate = isApprovalNotRequired ? 'Not Required' : (tender.tenderApprovalDate || approval?.tenderApprovalDate || null);
             const acceptanceLetterDate = tender.acceptanceLetterDate || loa?.acceptanceLetterDate || null;

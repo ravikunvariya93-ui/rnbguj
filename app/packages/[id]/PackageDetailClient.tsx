@@ -96,6 +96,15 @@ export default function PackageDetailClient({
     const [loaForm, setLoaForm] = useState<any>({});
     const [woForm, setWoForm] = useState<any>({});
 
+    // Helper to determine if tender approval is not required based on tender amount or contract price
+    const isTenderApprovalNotRequired = useMemo(() => {
+        if (!tender) return false;
+        const tenderAmt = tender.estimatedAmount !== undefined && tender.estimatedAmount !== null 
+            ? Number(tender.estimatedAmount) 
+            : Number(tender.contractPrice || 0);
+        return tenderAmt > 0 && tenderAmt < 5000000;
+    }, [tender]);
+
     // Dropdown dependency states
     const [banks, setBanks] = useState<any[]>([]);
     const [agencies, setAgencies] = useState<any[]>([]);
@@ -268,7 +277,7 @@ export default function PackageDetailClient({
         } else if (section === 'approval') {
             setApprovalForm({
                 tenderId: tender?._id || '',
-                notRequired: approval?.notRequired || false,
+                notRequired: isTenderApprovalNotRequired ? true : (approval?.notRequired || false),
                 proposalDate: approval?.proposalDate ? formatDateForInput(approval.proposalDate) : '',
                 tenderApprovalOffice: approval?.tenderApprovalOffice || '',
                 tenderApprovalNo: approval?.tenderApprovalNo || '',
@@ -702,7 +711,11 @@ export default function PackageDetailClient({
         e.preventDefault();
         setLoading(true);
         try {
-            const data = { ...approvalForm, tenderId: tender._id };
+            const data = { 
+                ...approvalForm, 
+                tenderId: tender._id,
+                notRequired: approvalForm.notRequired || isTenderApprovalNotRequired
+            };
             if (data.proposalDate) {
                 const parsed = parseDateStr(data.proposalDate);
                 if (parsed) data.proposalDate = parsed.toISOString();
@@ -1075,7 +1088,7 @@ export default function PackageDetailClient({
             { name: 'Package', done: true },
             { name: 'DTP Approval', done: !!dtp },
             { name: 'Tendering', done: !!tender },
-            { name: 'Approval', done: !!approval || (approval?.notRequired) },
+            { name: 'Approval', done: !!approval || (approval?.notRequired) || isTenderApprovalNotRequired },
             { name: 'LOA Issued', done: !!loa },
             { name: 'Work Order', done: !!workOrder },
             { name: 'Bills', done: bills && bills.length > 0 },
@@ -1980,10 +1993,14 @@ export default function PackageDetailClient({
                                     <div className="flex items-center gap-2">
                                         <h3 className="font-bold text-slate-800">4. Tender Approval</h3>
                                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                            approval ? (approval.notRequired ? 'bg-slate-100 text-slate-800' : 'bg-emerald-100 text-emerald-800') : 'bg-amber-100 text-amber-800'
-                                        }`}>
-                                            {approval ? (approval.notRequired ? '🚫 Not Required' : '✅ Done') : '⏳ Pending'}
-                                        </span>
+                                                (approval?.notRequired || isTenderApprovalNotRequired) 
+                                                    ? 'bg-slate-100 text-slate-800' 
+                                                    : approval ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                            }`}>
+                                                {(approval?.notRequired || isTenderApprovalNotRequired) 
+                                                    ? '🚫 Not Required' 
+                                                    : approval ? '✅ Done' : '⏳ Pending'}
+                                            </span>
                                     </div>
                                     <p className="text-xs text-slate-400 font-medium">Tender sanction and approval office details</p>
                                 </div>
@@ -2008,8 +2025,15 @@ export default function PackageDetailClient({
                                                     <td className="excel-label">Approval Requirement</td>
                                                     <td className="excel-value" colSpan={3}>
                                                         <label className="inline-flex items-center gap-2 cursor-pointer py-1">
-                                                            <input type="checkbox" name="notRequired" checked={approvalForm.notRequired} onChange={handleApprovalFieldChange} className="w-4 h-4 text-[#107c41] border-slate-200 rounded cursor-pointer" />
-                                                            <span className="text-xs font-bold text-slate-700">Tender Approval Not Required</span>
+                                                            <input 
+                                                                type="checkbox" 
+                                                                name="notRequired" 
+                                                                checked={approvalForm.notRequired || isTenderApprovalNotRequired} 
+                                                                disabled={isTenderApprovalNotRequired}
+                                                                onChange={handleApprovalFieldChange} 
+                                                                className="w-4 h-4 text-[#107c41] border-slate-200 rounded cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed" 
+                                                            />
+                                                            <span className="text-xs font-bold text-slate-700">Tender Approval Not Required {isTenderApprovalNotRequired && "(Auto - Price < 50L)"}</span>
                                                         </label>
                                                     </td>
                                                 </tr>
@@ -2052,7 +2076,7 @@ export default function PackageDetailClient({
                                 </form>
                             ) : approval ? (
                                 <div className="overflow-x-auto">
-                                    {approval.notRequired ? (
+                                    {(approval.notRequired || isTenderApprovalNotRequired) ? (
                                         <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-semibold text-slate-600 italic">
                                             🚫 Tender Approval is marked as <strong>Not Required</strong> for this package.
                                         </div>
@@ -2135,12 +2159,7 @@ export default function PackageDetailClient({
                                                         <input type="number" name="workDurationMonths" value={loaForm.workDurationMonths} onChange={handleLoaFieldChange} className="excel-cell-input" />
                                                     </td>
                                                 </tr>
-                                                <tr>
-                                                    <td className="excel-label">Defect Liability Period</td>
-                                                    <td className="excel-value" colSpan={3}>
-                                                        <input type="text" name="defectLiabilityPeriod" value={loaForm.defectLiabilityPeriod} onChange={handleLoaFieldChange} className="excel-cell-input" />
-                                                    </td>
-                                                </tr>
+
                                             </tbody>
                                         </table>
                                     </div>
@@ -2164,10 +2183,7 @@ export default function PackageDetailClient({
                                                     <td className="excel-label">Duration of Work</td>
                                                     <td className="excel-value" colSpan={3}>{loa.workDurationMonths ? `${loa.workDurationMonths} Months` : '-'}</td>
                                                 </tr>
-                                                <tr>
-                                                    <td className="excel-label">Defect Liability Period</td>
-                                                    <td className="excel-value" colSpan={3}>{loa.defectLiabilityPeriod || '-'}</td>
-                                                </tr>
+
                                             </tbody>
                                         </table>
                                     </div>

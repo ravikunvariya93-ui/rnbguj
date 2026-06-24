@@ -22,6 +22,22 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const { id } = await params;
     try {
         const body = await req.json();
+
+        // Force notRequired: true if tender amount < 5,000,000
+        const existingApproval = await Approval.findById(id);
+        const tenderId = body.tenderId || existingApproval?.tenderId;
+        if (tenderId) {
+            const tender = await Tender.findById(tenderId);
+            if (tender) {
+                const tenderAmt = tender.estimatedAmount !== undefined && tender.estimatedAmount !== null 
+                    ? Number(tender.estimatedAmount) 
+                    : Number(tender.contractPrice || 0);
+                if (tenderAmt > 0 && tenderAmt < 5000000) {
+                    body.notRequired = true;
+                }
+            }
+        }
+
         const approval = await Approval.findByIdAndUpdate(id, body, { new: true, runValidators: true });
         if (!approval) {
             return NextResponse.json({ success: false, error: 'Approval not found' }, { status: 404 });

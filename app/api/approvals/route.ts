@@ -7,6 +7,20 @@ export async function POST(req: Request) {
     await dbConnect();
     try {
         const body = await req.json();
+        
+        // Force notRequired: true if tender amount < 5,000,000
+        if (body.tenderId) {
+            const tender = await Tender.findById(body.tenderId);
+            if (tender) {
+                const tenderAmt = tender.estimatedAmount !== undefined && tender.estimatedAmount !== null 
+                    ? Number(tender.estimatedAmount) 
+                    : Number(tender.contractPrice || 0);
+                if (tenderAmt > 0 && tenderAmt < 5000000) {
+                    body.notRequired = true;
+                }
+            }
+        }
+
         const approval = await Approval.create(body);
         return NextResponse.json({ success: true, data: approval }, { status: 201 });
     } catch (error) {

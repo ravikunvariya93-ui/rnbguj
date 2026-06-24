@@ -369,6 +369,9 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
 
         try {
             const submissionData = { ...formData };
+            if (tenderAmount !== '') {
+                submissionData.estimatedAmount = Number(tenderAmount);
+            }
 
             // Date Parsing Logic for Tender Dates (DD/MM/YYYY -> ISO)
             const parseDate = (dateStr: string) => {

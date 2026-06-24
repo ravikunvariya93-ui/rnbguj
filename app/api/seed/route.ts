@@ -175,20 +175,26 @@ export async function GET() {
         console.log(`Finished updating ${updateCount} packages.`);
 
         // ============================================================
-        // STEP 4: Create Approval records from tenders with approval data
+        // STEP 4: Create Approval records from tenders with approval data or if contract price < 5000000
         // ============================================================
         const approvalDocs = [];
         let approvalCount = 0;
 
         for (const tender of insertedTenders) {
-            // Only create approval if there's at least some approval data
-            if (tender.proposalDate || tender.tenderApprovalNo || tender.tenderApprovalDate) {
+            const tenderAmt = tender.estimatedAmount !== undefined && tender.estimatedAmount !== null 
+                ? Number(tender.estimatedAmount) 
+                : Number(tender.contractPrice || 0);
+            const isNotReq = tenderAmt > 0 && tenderAmt < 5000000;
+
+            // Create approval if there's approval data OR if price < 5000000
+            if (tender.proposalDate || tender.tenderApprovalNo || tender.tenderApprovalDate || isNotReq) {
                 approvalDocs.push({
                     tenderId: tender._id,
                     proposalDate: tender.proposalDate,
                     tenderApprovalOffice: tender.tenderApprovalOffice,
                     tenderApprovalNo: tender.tenderApprovalNo,
                     tenderApprovalDate: tender.tenderApprovalDate,
+                    notRequired: isNotReq || false,
                 });
                 approvalCount++;
             }

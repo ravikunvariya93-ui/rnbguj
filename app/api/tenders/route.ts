@@ -3,6 +3,7 @@ import dbConnect from '@/lib/db';
 import '@/models/Package';
 import '@/models/TechnicalSanction';
 import Tender from '@/models/Tender';
+import Approval from '@/models/Approval';
 
 export async function POST(request: Request) {
     try {
@@ -15,6 +16,19 @@ export async function POST(request: Request) {
         }
 
         const tender = await Tender.create(body);
+
+        // Auto-mark Tender Approval as Not Required if tender amount is less than 5,000,000
+        const tenderAmt = tender.estimatedAmount !== undefined && tender.estimatedAmount !== null 
+            ? Number(tender.estimatedAmount) 
+            : Number(tender.contractPrice || 0);
+        if (tenderAmt > 0 && tenderAmt < 5000000) {
+            await Approval.findOneAndUpdate(
+                { tenderId: tender._id } as any,
+                { $set: { notRequired: true } },
+                { upsert: true, new: true }
+            );
+        }
+
         return NextResponse.json({ success: true, data: tender }, { status: 201 });
     } catch (error: any) {
         return NextResponse.json({ success: false, error: error.message }, { status: 400 });

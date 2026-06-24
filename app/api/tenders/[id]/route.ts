@@ -38,6 +38,25 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
             return NextResponse.json({ success: false, error: 'Tender not found' }, { status: 404 });
         }
 
+        // Auto-mark/unmark Tender Approval based on updated tender amount
+        const tenderAmt = tender.estimatedAmount !== undefined && tender.estimatedAmount !== null 
+            ? Number(tender.estimatedAmount) 
+            : Number(tender.contractPrice || 0);
+        if (tenderAmt > 0) {
+            if (tenderAmt < 5000000) {
+                await Approval.findOneAndUpdate(
+                    { tenderId: tender._id } as any,
+                    { $set: { notRequired: true } },
+                    { upsert: true, new: true }
+                );
+            } else {
+                await Approval.findOneAndUpdate(
+                    { tenderId: tender._id } as any,
+                    { $set: { notRequired: false } }
+                );
+            }
+        }
+
         return NextResponse.json({ success: true, data: tender });
     } catch (error: any) {
         return NextResponse.json({ success: false, error: error.message }, { status: 400 });
