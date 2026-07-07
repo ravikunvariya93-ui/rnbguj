@@ -90,6 +90,7 @@ export default async function PrintWorkOrderPage({ params }: Props) {
     const dtp = dtpRaw ? JSON.parse(JSON.stringify(dtpRaw)) : null;
 
     if (approval) {
+        tender.tenderApprovalOffice ||= approval.tenderApprovalOffice;
         tender.tenderApprovalNo ||= approval.tenderApprovalNo;
         tender.tenderApprovalDate ||= approval.tenderApprovalDate;
     }

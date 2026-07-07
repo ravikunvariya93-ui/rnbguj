@@ -7,9 +7,10 @@ import { Filter, X } from 'lucide-react';
 interface TendersFilterBarProps {
     agencies: any[];
     years: string[];
+    subDivisions: string[];
 }
 
-export default function TendersFilterBar({ agencies, years }: TendersFilterBarProps) {
+export default function TendersFilterBar({ agencies, years, subDivisions }: TendersFilterBarProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -18,6 +19,7 @@ export default function TendersFilterBar({ agencies, years }: TendersFilterBarPr
     const [noticeNo, setNoticeNo] = useState(searchParams.get('noticeNo') || '');
     const [contractorName, setContractorName] = useState(searchParams.get('contractorName') || '');
     const [trialNo, setTrialNo] = useState(searchParams.get('trialNo') || '');
+    const [subDivision, setSubDivision] = useState(searchParams.get('subDivision') || '');
 
     // Synchronize local state with searchParams (handles clear filters, back/forward actions)
     useEffect(() => {
@@ -25,6 +27,7 @@ export default function TendersFilterBar({ agencies, years }: TendersFilterBarPr
         setNoticeNo(searchParams.get('noticeNo') || '');
         setContractorName(searchParams.get('contractorName') || '');
         setTrialNo(searchParams.get('trialNo') || '');
+        setSubDivision(searchParams.get('subDivision') || '');
     }, [searchParams]);
 
     const handleApplyFilters = () => {
@@ -45,6 +48,9 @@ export default function TendersFilterBar({ agencies, years }: TendersFilterBarPr
         if (trialNo) params.set('trialNo', trialNo);
         else params.delete('trialNo');
 
+        if (subDivision) params.set('subDivision', subDivision);
+        else params.delete('subDivision');
+
         router.push(`${pathname}?${params.toString()}`);
     };
 
@@ -54,17 +60,19 @@ export default function TendersFilterBar({ agencies, years }: TendersFilterBarPr
         params.delete('noticeNo');
         params.delete('contractorName');
         params.delete('trialNo');
+        params.delete('subDivision');
         params.set('page', '1');
 
         setNoticeYear('');
         setNoticeNo('');
         setContractorName('');
         setTrialNo('');
+        setSubDivision('');
 
         router.push(`${pathname}?${params.toString()}`);
     };
 
-    const hasActiveFilters = !!(noticeYear || noticeNo || contractorName || trialNo);
+    const hasActiveFilters = !!(noticeYear || noticeNo || contractorName || trialNo || subDivision);
 
     return (
         <div className="bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-200 shadow-2xs">
@@ -73,7 +81,23 @@ export default function TendersFilterBar({ agencies, years }: TendersFilterBarPr
                 <span>Filter Tenders</span>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                {/* Sub Division */}
+                <div>
+                    <label htmlFor="filterSubDivision" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Sub Division</label>
+                    <select
+                        id="filterSubDivision"
+                        value={subDivision}
+                        onChange={(e) => setSubDivision(e.target.value)}
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border focus:border-blue-500 shadow-2xs"
+                    >
+                        <option value="">All Sub Divisions</option>
+                        {subDivisions.map(sd => (
+                            <option key={sd} value={sd}>{sd}</option>
+                        ))}
+                    </select>
+                </div>
+
                 {/* Notice Year */}
                 <div>
                     <label htmlFor="filterNoticeYear" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Notice Year</label>

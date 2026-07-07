@@ -20,12 +20,14 @@ export interface IWorkOrder extends Document {
     timeLimitStartsFrom: Date;
     workDurationMonths: number;
     stipulatedCompletionDate: Date;
+    notRequired?: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
 
 const WorkOrderSchema: Schema = new Schema({
     loaId: { type: mongoose.Schema.Types.ObjectId, ref: 'LOA', required: true },
+    notRequired: { type: Boolean, default: false },
     agreementYear: { type: String },
     agreementNo: { type: String },
     agreementDate: { type: Date },

@@ -238,7 +238,7 @@ export default function WorkOrderLetterClient({
                             )}
                             {approval && (
                                 <div>
-                                    2. Superintending Engineer, Panchayat Road and Building Circle-2, Rajkot Letter No. {approval.tenderApprovalNo || tender.tenderApprovalNo || '-'} Dt. - {formatDateToOutput(approval.tenderApprovalDate || tender.tenderApprovalDate)}
+                                    2. {approval.tenderApprovalOffice || tender.tenderApprovalOffice || 'Road and Building Department'} Letter No. {approval.tenderApprovalNo || tender.tenderApprovalNo || '-'} Dt. - {formatDateToOutput(approval.tenderApprovalDate || tender.tenderApprovalDate)}
                                 </div>
                             )}
                         </div>

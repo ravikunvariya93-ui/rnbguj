@@ -4,6 +4,7 @@ import Package from '@/models/Package';
 import DTP from '@/models/DTP';
 import Tender from '@/models/Tender';
 import Link from 'next/link';
+import ApprovedWork from '@/models/ApprovedWork';
 import { Plus, Eye, Edit2 } from 'lucide-react';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
 import Pagination from '@/components/Pagination';
@@ -59,19 +60,41 @@ export default async function PackagesListPage({ searchParams }: Props) {
     const totalItems = await Package.countDocuments(query);
     const totalPages = Math.ceil(totalItems / limit);
 
-    const packagesRaw = await Package.find(query)
-        .sort(sortObj)
-        .skip(skip)
-        .limit(limit)
-        .lean();
+    const [packagesRaw, allApprovedWorks] = await Promise.all([
+        Package.find(query)
+            .sort(sortObj)
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+        ApprovedWork.find({}).select('workName subDivision workType').lean() as Promise<any[]>
+    ]);
         
-    const packages = packagesRaw.map((p: any) => ({
-        ...p,
-        _id: p._id.toString(),
-        approvedWorks: p.works && p.works.length > 0
-            ? p.works.map((w: any) => w.workName).filter(Boolean)
-            : []
-    }));
+    const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const workSubDivisionMap = new Map<string, string>();
+    const workTypeMap = new Map<string, string>();
+    allApprovedWorks.forEach((aw: any) => {
+        if (aw.workName) {
+            const key = normalize(aw.workName);
+            workSubDivisionMap.set(key, aw.subDivision || '');
+            workTypeMap.set(key, aw.workType || '');
+        }
+    });
+
+    const packages = packagesRaw.map((p: any) => {
+        const firstWorkName = p.works && p.works[0]?.workName;
+        const normalizedKey = firstWorkName ? normalize(firstWorkName) : '';
+        const inferredSubDivision = normalizedKey ? workSubDivisionMap.get(normalizedKey) : '';
+        const inferredWorkType = normalizedKey ? workTypeMap.get(normalizedKey) : '';
+        return {
+            ...p,
+            _id: p._id.toString(),
+            subDivision: p.subDivision || inferredSubDivision || '',
+            workType: p.workType || inferredWorkType || '',
+            approvedWorks: p.works && p.works.length > 0
+                ? p.works.map((w: any) => w.workName).filter(Boolean)
+                : []
+        };
+    });
 
     const columns: Column[] = [
         { 
@@ -89,6 +112,20 @@ export default async function PackagesListPage({ searchParams }: Props) {
                     {row.packageName}
                 </Link>
             )
+        },
+        { 
+            key: 'subDivision', 
+            label: 'Sub Division', 
+            sortable: true,
+            minWidth: '150px',
+            render: (row) => row.subDivision || '-'
+        },
+        { 
+            key: 'workType', 
+            label: 'Work Type', 
+            sortable: true,
+            minWidth: '120px',
+            render: (row) => row.workType || '-'
         },
         { 
             key: 'approvedWorks', 

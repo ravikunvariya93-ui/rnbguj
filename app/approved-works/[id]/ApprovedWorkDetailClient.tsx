@@ -221,7 +221,7 @@ export default function ApprovedWorkDetailClient({
             });
         } else if (section === 'package') {
             setPkgForm({
-                packageName: pkg?.packageName || work.workName + " Package",
+                packageName: pkg?.packageName || work.workName + (work.workType ? " " + work.workType + " Package" : " Package"),
                 subDivision: pkg?.subDivision || work.subDivision || '',
                 dtpConsultant: pkg?.dtpConsultant || '',
                 works: pkg?.works || [{ workId: ts?._id, workName: work.workName, amount: (ts?.tsAmount || 0) * 100000 }],
@@ -398,7 +398,7 @@ export default function ApprovedWorkDetailClient({
         const duration = woForm.workDurationMonths || loa.workDurationMonths || '';
         
         setWoForm((prev: any) => {
-            if (prev.timeLimitStartsFrom === calcDateStr && prev.workDurationMonths === duration) return prev;
+            if (prev.timeLimitStartsFrom) return prev;
             return { ...prev, timeLimitStartsFrom: calcDateStr, workDurationMonths: duration };
         });
     }, [loa]);
@@ -2159,8 +2159,8 @@ export default function ApprovedWorkDetailClient({
                                             </tr>
                                             <tr>
                                                 <td className="excel-label">Time Limit Starts From</td>
-                                                <td className="excel-value font-semibold text-slate-500 bg-slate-50 px-3 py-2">
-                                                    {woForm.timeLimitStartsFrom || '-'}
+                                                <td className="excel-value">
+                                                    <input type="text" placeholder="DD/MM/YYYY" name="timeLimitStartsFrom" value={woForm.timeLimitStartsFrom} onChange={handleWoFieldChange} className="excel-cell-input" />
                                                 </td>
                                                 <td className="excel-label">Stipulated Completion Date</td>
                                                 <td className="excel-value font-semibold text-slate-500 bg-slate-50 px-3 py-2">

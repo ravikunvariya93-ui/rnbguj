@@ -80,6 +80,26 @@ export default function PackageDetailClient({
         return approvedWorks.find((aw: any) => normalize(aw.workName) === target);
     }, [approvedWorks]);
 
+    const displayedSubDivision = useMemo(() => {
+        if (pkg.subDivision) return pkg.subDivision;
+        const firstWorkName = pkg.works && pkg.works[0]?.workName;
+        if (firstWorkName) {
+            const aw = findApprovedWork(firstWorkName);
+            if (aw?.subDivision) return aw.subDivision;
+        }
+        return '';
+    }, [pkg, findApprovedWork]);
+
+    const displayedWorkType = useMemo(() => {
+        if (pkg.workType) return pkg.workType;
+        const firstWorkName = pkg.works && pkg.works[0]?.workName;
+        if (firstWorkName) {
+            const aw = findApprovedWork(firstWorkName);
+            if (aw?.workType) return aw.workType;
+        }
+        return '';
+    }, [pkg, findApprovedWork]);
+
     const getLengthOrChainage = useCallback((aw: any) => {
         if (!aw) return '-';
         const parts = [];
@@ -234,6 +254,7 @@ export default function PackageDetailClient({
             setPkgForm({
                 packageName: pkg.packageName || '',
                 subDivision: pkg.subDivision || '',
+                workType: pkg.workType || '',
                 dtpConsultant: pkg.dtpConsultant || '',
                 works: pkg.works || [],
             });
@@ -301,6 +322,7 @@ export default function PackageDetailClient({
 
             setWoForm({
                 loaId: loa?._id || '',
+                notRequired: workOrder?.notRequired || false,
                 agreementYear: defaultYear,
                 agreementNo: defaultNo,
                 agreementDate: workOrder?.agreementDate ? formatDateForInput(workOrder.agreementDate) : '',
@@ -351,9 +373,10 @@ export default function PackageDetailClient({
     };
 
     const handleWoFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
+        const { name, value, type } = e.target as HTMLInputElement;
+        const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
         setWoForm((prev: any) => {
-            const next = { ...prev, [name]: value };
+            const next = { ...prev, [name]: val };
             if (name === 'workOrderDate') {
                 next.timeLimitStartsFrom = value;
             }
@@ -404,7 +427,7 @@ export default function PackageDetailClient({
         const duration = woForm.workDurationMonths || loa.workDurationMonths || '';
         
         setWoForm((prev: any) => {
-            if (prev.timeLimitStartsFrom === calcDateStr && prev.workDurationMonths === duration) return prev;
+            if (prev.timeLimitStartsFrom) return prev;
             return { ...prev, timeLimitStartsFrom: calcDateStr, workDurationMonths: duration };
         });
     }, [loa]);
@@ -464,10 +487,6 @@ export default function PackageDetailClient({
     // Save Handlers
     const handleSavePackage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!pkgForm.works || pkgForm.works.length === 0) {
-            alert("Please add at least one work to the package.");
-            return;
-        }
         setLoading(true);
         try {
             const sanitizedWorks = pkgForm.works.map((w: any) => ({
@@ -1090,7 +1109,7 @@ export default function PackageDetailClient({
             { name: 'Tendering', done: !!tender },
             { name: 'Approval', done: !!approval || (approval?.notRequired) || isTenderApprovalNotRequired },
             { name: 'LOA Issued', done: !!loa },
-            { name: 'Work Order', done: !!workOrder },
+            { name: 'Work Order', done: !!workOrder || (workOrder?.notRequired) },
             { name: 'Bills', done: bills && bills.length > 0 },
         ];
         stages.forEach((s, i) => { if (i > 0 && s.done) score++; });
@@ -1125,7 +1144,7 @@ export default function PackageDetailClient({
                                 Package Module
                             </span>
                             <span className="text-xs text-slate-500 font-mono">
-                                Sub-Division: {pkg.subDivision || 'N/A'}
+                                Sub-Division: {displayedSubDivision || 'N/A'}
                             </span>
                         </div>
                         <h1 className="text-xl md:text-2xl font-bold text-slate-800 break-words mt-1">
@@ -1235,6 +1254,21 @@ export default function PackageDetailClient({
                                                         <option value="Trisha Engineers Consultancy">Trisha Engineers Consultancy</option>
                                                         <option value="Pramukham Engineers Consultancy">Pramukham Engineers Consultancy</option>
                                                         <option value="Kalyan Computers">Kalyan Computers</option>
+                                                        <option value="Karansinh Janaksinh Rana">Karansinh Janaksinh Rana</option>
+                                                        <option value="MCWAY MANAGEMENTS LIMITED">MCWAY MANAGEMENTS LIMITED</option>
+                                                        <option value="Infinizy Civil Consultant">Infinizy Civil Consultant</option>
+                                                    </select>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td className="excel-label">Work Type</td>
+                                                <td className="excel-value w-[30%]" colSpan={3}>
+                                                    <select value={pkgForm.workType || ''} onChange={(e) => setPkgForm((prev: any) => ({ ...prev, workType: e.target.value }))} className="excel-cell-select bg-white">
+                                                        <option value="">-- Select Work Type --</option>
+                                                        <option value="Road">Road</option>
+                                                        <option value="Building">Building</option>
+                                                        <option value="Structure">Structure</option>
+                                                        <option value="Service">Service</option>
                                                     </select>
                                                 </td>
                                             </tr>
@@ -1341,9 +1375,13 @@ export default function PackageDetailClient({
                                         <tbody>
                                             <tr>
                                                 <td className="excel-label">Sub-Division</td>
-                                                <td className="excel-value w-[30%]">{pkg.subDivision || '-'}</td>
+                                                <td className="excel-value w-[30%]">{displayedSubDivision || '-'}</td>
                                                 <td className="excel-label">DTP Consultant</td>
                                                 <td className="excel-value w-[30%]">{pkg.dtpConsultant || '-'}</td>
+                                            </tr>
+                                            <tr>
+                                                <td className="excel-label">Work Type</td>
+                                                <td className="excel-value w-[30%]" colSpan={3}>{displayedWorkType || '-'}</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -2212,16 +2250,18 @@ export default function PackageDetailClient({
                 <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
                     <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${workOrder ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                            <div className={`p-2 rounded-lg ${(workOrder || workOrder?.notRequired) ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
                                 <Settings className="w-5 h-5" />
                             </div>
                             <div>
                                 <div className="flex items-center gap-2">
                                     <h3 className="font-bold text-slate-800">6. Work Order & Deposits</h3>
                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                        workOrder ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                        workOrder?.notRequired 
+                                            ? 'bg-slate-100 text-slate-800' 
+                                            : workOrder ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                                     }`}>
-                                        {workOrder ? '✅ Done' : '⏳ Pending'}
+                                        {workOrder?.notRequired ? '🚫 Not Required' : workOrder ? '✅ Done' : '⏳ Pending'}
                                     </span>
                                 </div>
                                 <p className="text-xs text-slate-400 font-medium">Agreement Details, Security Deposits, Work Order timelines</p>
@@ -2243,147 +2283,166 @@ export default function PackageDetailClient({
                                 <div className="overflow-x-auto">
                                     <table className="excel-table">
                                         <tbody>
-                                            <tr className="bg-[#107c41]/10">
-                                                <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Agreement Details</th>
-                                            </tr>
                                             <tr>
-                                                <td className="excel-label">Agreement Year</td>
-                                                <td className="excel-value w-[30%]">
-                                                    <select name="agreementYear" value={woForm.agreementYear} onChange={handleWoFieldChange} className="excel-cell-select bg-white">
-                                                        <option value="2024-25">2024-25</option>
-                                                        <option value="2025-26">2025-26</option>
-                                                        <option value="2026-27">2026-27</option>
-                                                    </select>
-                                                </td>
-                                                <td className="excel-label">Agreement No.</td>
-                                                <td className="excel-value w-[30%]">
-                                                    <input type="text" name="agreementNo" value={woForm.agreementNo} onChange={handleWoFieldChange} className="excel-cell-input" />
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td className="excel-label">Agreement Date</td>
+                                                <td className="excel-label">Requirement</td>
                                                 <td className="excel-value" colSpan={3}>
-                                                    <input type="text" placeholder="DD/MM/YYYY" name="agreementDate" value={woForm.agreementDate} onChange={handleWoFieldChange} className="excel-cell-input" />
+                                                    <label className="inline-flex items-center gap-2 cursor-pointer py-1">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            name="notRequired" 
+                                                            checked={woForm.notRequired || false} 
+                                                            onChange={handleWoFieldChange} 
+                                                            className="w-4 h-4 text-[#107c41] border-slate-200 rounded cursor-pointer" 
+                                                        />
+                                                        <span className="text-xs font-bold text-slate-700">Work Order Not Required</span>
+                                                    </label>
                                                 </td>
                                             </tr>
+                                            {!woForm.notRequired && (
+                                                <>
+                                                    <tr className="bg-[#107c41]/10">
+                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Agreement Details</th>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">Agreement Year</td>
+                                                        <td className="excel-value w-[30%]">
+                                                            <select name="agreementYear" value={woForm.agreementYear} onChange={handleWoFieldChange} className="excel-cell-select bg-white">
+                                                                <option value="2024-25">2024-25</option>
+                                                                <option value="2025-26">2025-26</option>
+                                                                <option value="2026-27">2026-27</option>
+                                                            </select>
+                                                        </td>
+                                                        <td className="excel-label">Agreement No.</td>
+                                                        <td className="excel-value w-[30%]">
+                                                            <input type="text" name="agreementNo" value={woForm.agreementNo} onChange={handleWoFieldChange} className="excel-cell-input" />
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">Agreement Date</td>
+                                                        <td className="excel-value" colSpan={3}>
+                                                            <input type="text" placeholder="DD/MM/YYYY" name="agreementDate" value={woForm.agreementDate} onChange={handleWoFieldChange} className="excel-cell-input" />
+                                                        </td>
+                                                    </tr>
 
-                                            <tr className="bg-[#107c41]/10">
-                                                <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Security Deposit Details</th>
-                                            </tr>
-                                            <tr>
-                                                <td className="excel-label">SD Type</td>
-                                                <td className="excel-value">
-                                                    <select name="securityDepositType" value={woForm.securityDepositType} onChange={handleWoFieldChange} className="excel-cell-select bg-white">
-                                                        <option value="FDR">FDR</option>
-                                                        <option value="Bank Guarantee">Bank Guarantee</option>
-                                                    </select>
-                                                </td>
-                                                <td className="excel-label">Bank Name</td>
-                                                <td className="excel-value">
-                                                    <div className="flex gap-2 items-center">
-                                                        <div className="flex-grow">
-                                                            <SearchableSelect
-                                                                placeholder="Search bank..."
-                                                                options={banks}
-                                                                value={banks.find(b => b.name === woForm.securityDepositBankName)?._id || ''}
-                                                                onChange={(id) => {
-                                                                    const selected = banks.find(b => b._id === id);
-                                                                    setWoForm((prev: any) => ({ ...prev, securityDepositBankName: selected ? selected.name : '' }));
-                                                                }}
-                                                                displayField="name"
-                                                            />
-                                                        </div>
-                                                        <button type="button" onClick={() => { setActiveBankField('security'); setIsBankModalOpen(true); }} className="px-2 py-1 text-[10px] font-bold text-white bg-[#107c41] rounded-md whitespace-nowrap cursor-pointer hover:bg-[#0f5b30]">+ Add</button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td className="excel-label">SD Number</td>
-                                                <td className="excel-value">
-                                                    <input type="text" name="securityDepositNumber" value={woForm.securityDepositNumber} onChange={handleWoFieldChange} className="excel-cell-input" />
-                                                </td>
-                                                <td className="excel-label">SD Amount (₹)</td>
-                                                <td className="excel-value">
-                                                    <input type="number" name="securityDepositAmount" value={woForm.securityDepositAmount} onChange={handleWoFieldChange} className="excel-cell-input font-mono" />
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td className="excel-label">SD Date</td>
-                                                <td className="excel-value" colSpan={3}>
-                                                    <input type="text" placeholder="DD/MM/YYYY" name="securityDepositDate" value={woForm.securityDepositDate} onChange={handleWoFieldChange} className="excel-cell-input" />
-                                                </td>
-                                            </tr>
+                                                    <tr className="bg-[#107c41]/10">
+                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Security Deposit Details</th>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">SD Type</td>
+                                                        <td className="excel-value">
+                                                            <select name="securityDepositType" value={woForm.securityDepositType} onChange={handleWoFieldChange} className="excel-cell-select bg-white">
+                                                                <option value="FDR">FDR</option>
+                                                                <option value="Bank Guarantee">Bank Guarantee</option>
+                                                            </select>
+                                                        </td>
+                                                        <td className="excel-label">Bank Name</td>
+                                                        <td className="excel-value">
+                                                            <div className="flex gap-2 items-center">
+                                                                <div className="flex-grow">
+                                                                    <SearchableSelect
+                                                                        placeholder="Search bank..."
+                                                                        options={banks}
+                                                                        value={banks.find(b => b.name === woForm.securityDepositBankName)?._id || ''}
+                                                                        onChange={(id) => {
+                                                                            const selected = banks.find(b => b._id === id);
+                                                                            setWoForm((prev: any) => ({ ...prev, securityDepositBankName: selected ? selected.name : '' }));
+                                                                        }}
+                                                                        displayField="name"
+                                                                    />
+                                                                </div>
+                                                                <button type="button" onClick={() => { setActiveBankField('security'); setIsBankModalOpen(true); }} className="px-2 py-1 text-[10px] font-bold text-white bg-[#107c41] rounded-md whitespace-nowrap cursor-pointer hover:bg-[#0f5b30]">+ Add</button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">SD Number</td>
+                                                        <td className="excel-value">
+                                                            <input type="text" name="securityDepositNumber" value={woForm.securityDepositNumber} onChange={handleWoFieldChange} className="excel-cell-input" />
+                                                        </td>
+                                                        <td className="excel-label">SD Amount (₹)</td>
+                                                        <td className="excel-value">
+                                                            <input type="number" name="securityDepositAmount" value={woForm.securityDepositAmount} onChange={handleWoFieldChange} className="excel-cell-input font-mono" />
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">SD Date</td>
+                                                        <td className="excel-value" colSpan={3}>
+                                                            <input type="text" placeholder="DD/MM/YYYY" name="securityDepositDate" value={woForm.securityDepositDate} onChange={handleWoFieldChange} className="excel-cell-input" />
+                                                        </td>
+                                                    </tr>
 
-                                            <tr className="bg-[#107c41]/10">
-                                                <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Additional Security Deposit (ASD)</th>
-                                            </tr>
-                                            <tr>
-                                                <td className="excel-label">ASD Type</td>
-                                                <td className="excel-value">
-                                                    <select name="additionalSecurityDepositType" value={woForm.additionalSecurityDepositType} onChange={handleWoFieldChange} className="excel-cell-select bg-white">
-                                                        <option value="FDR">FDR</option>
-                                                        <option value="Bank Guarantee">Bank Guarantee</option>
-                                                    </select>
-                                                </td>
-                                                <td className="excel-label">Bank Name</td>
-                                                <td className="excel-value">
-                                                    <div className="flex gap-2 items-center">
-                                                        <div className="flex-grow">
-                                                            <SearchableSelect
-                                                                placeholder="Search bank..."
-                                                                options={banks}
-                                                                value={banks.find(b => b.name === woForm.additionalSecurityDepositBankName)?._id || ''}
-                                                                onChange={(id) => {
-                                                                    const selected = banks.find(b => b._id === id);
-                                                                    setWoForm((prev: any) => ({ ...prev, additionalSecurityDepositBankName: selected ? selected.name : '' }));
-                                                                }}
-                                                                displayField="name"
-                                                            />
-                                                        </div>
-                                                        <button type="button" onClick={() => { setActiveBankField('additional'); setIsBankModalOpen(true); }} className="px-2 py-1 text-[10px] font-bold text-white bg-[#107c41] rounded-md whitespace-nowrap cursor-pointer hover:bg-[#0f5b30]">+ Add</button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td className="excel-label">ASD Number</td>
-                                                <td className="excel-value">
-                                                    <input type="text" name="additionalSecurityDepositNumber" value={woForm.additionalSecurityDepositNumber} onChange={handleWoFieldChange} className="excel-cell-input" />
-                                                </td>
-                                                <td className="excel-label">ASD Amount (₹)</td>
-                                                <td className="excel-value">
-                                                    <input type="number" name="additionalSecurityDepositAmount" value={woForm.additionalSecurityDepositAmount} onChange={handleWoFieldChange} className="excel-cell-input font-mono" />
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td className="excel-label">ASD Date</td>
-                                                <td className="excel-value" colSpan={3}>
-                                                    <input type="text" placeholder="DD/MM/YYYY" name="additionalSecurityDepositDate" value={woForm.additionalSecurityDepositDate} onChange={handleWoFieldChange} className="excel-cell-input" />
-                                                </td>
-                                            </tr>
+                                                    <tr className="bg-[#107c41]/10">
+                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Additional Security Deposit (ASD)</th>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">ASD Type</td>
+                                                        <td className="excel-value">
+                                                            <select name="additionalSecurityDepositType" value={woForm.additionalSecurityDepositType} onChange={handleWoFieldChange} className="excel-cell-select bg-white">
+                                                                <option value="FDR">FDR</option>
+                                                                <option value="Bank Guarantee">Bank Guarantee</option>
+                                                            </select>
+                                                        </td>
+                                                        <td className="excel-label">Bank Name</td>
+                                                        <td className="excel-value">
+                                                            <div className="flex gap-2 items-center">
+                                                                <div className="flex-grow">
+                                                                    <SearchableSelect
+                                                                        placeholder="Search bank..."
+                                                                        options={banks}
+                                                                        value={banks.find(b => b.name === woForm.additionalSecurityDepositBankName)?._id || ''}
+                                                                        onChange={(id) => {
+                                                                            const selected = banks.find(b => b._id === id);
+                                                                            setWoForm((prev: any) => ({ ...prev, additionalSecurityDepositBankName: selected ? selected.name : '' }));
+                                                                        }}
+                                                                        displayField="name"
+                                                                    />
+                                                                </div>
+                                                                <button type="button" onClick={() => { setActiveBankField('additional'); setIsBankModalOpen(true); }} className="px-2 py-1 text-[10px] font-bold text-white bg-[#107c41] rounded-md whitespace-nowrap cursor-pointer hover:bg-[#0f5b30]">+ Add</button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">ASD Number</td>
+                                                        <td className="excel-value">
+                                                            <input type="text" name="additionalSecurityDepositNumber" value={woForm.additionalSecurityDepositNumber} onChange={handleWoFieldChange} className="excel-cell-input" />
+                                                        </td>
+                                                        <td className="excel-label">ASD Amount (₹)</td>
+                                                        <td className="excel-value">
+                                                            <input type="number" name="additionalSecurityDepositAmount" value={woForm.additionalSecurityDepositAmount} onChange={handleWoFieldChange} className="excel-cell-input font-mono" />
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">ASD Date</td>
+                                                        <td className="excel-value" colSpan={3}>
+                                                            <input type="text" placeholder="DD/MM/YYYY" name="additionalSecurityDepositDate" value={woForm.additionalSecurityDepositDate} onChange={handleWoFieldChange} className="excel-cell-input" />
+                                                        </td>
+                                                    </tr>
 
-                                            <tr className="bg-[#107c41]/10">
-                                                <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Work Order Issuance Timelines</th>
-                                            </tr>
-                                            <tr>
-                                                <td className="excel-label">Work Order WS No.</td>
-                                                <td className="excel-value">
-                                                    <input type="text" name="workOrderWorksheetNo" value={woForm.workOrderWorksheetNo} onChange={handleWoFieldChange} className="excel-cell-input" />
-                                                </td>
-                                                <td className="excel-label">Work Order Date</td>
-                                                <td className="excel-value">
-                                                    <input type="text" placeholder="DD/MM/YYYY" name="workOrderDate" value={woForm.workOrderDate} onChange={handleWoFieldChange} className="excel-cell-input" />
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td className="excel-label">Time Limit Starts From</td>
-                                                <td className="excel-value font-semibold text-slate-500 bg-slate-50 px-3 py-2">
-                                                    {woForm.timeLimitStartsFrom || '-'}
-                                                </td>
-                                                <td className="excel-label">Stipulated Completion Date</td>
-                                                <td className="excel-value font-semibold text-slate-500 bg-slate-50 px-3 py-2">
-                                                    {woForm.stipulatedCompletionDate || '-'}
-                                                </td>
-                                            </tr>
+                                                    <tr className="bg-[#107c41]/10">
+                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Work Order Issuance Timelines</th>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">Work Order WS No.</td>
+                                                        <td className="excel-value">
+                                                            <input type="text" name="workOrderWorksheetNo" value={woForm.workOrderWorksheetNo} onChange={handleWoFieldChange} className="excel-cell-input" />
+                                                        </td>
+                                                        <td className="excel-label">Work Order Date</td>
+                                                        <td className="excel-value">
+                                                            <input type="text" placeholder="DD/MM/YYYY" name="workOrderDate" value={woForm.workOrderDate} onChange={handleWoFieldChange} className="excel-cell-input" />
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">Time Limit Starts From</td>
+                                                        <td className="excel-value">
+                                                            <input type="text" placeholder="DD/MM/YYYY" name="timeLimitStartsFrom" value={woForm.timeLimitStartsFrom} onChange={handleWoFieldChange} className="excel-cell-input" />
+                                                        </td>
+                                                        <td className="excel-label">Stipulated Completion Date</td>
+                                                        <td className="excel-value font-semibold text-slate-500 bg-slate-50 px-3 py-2">
+                                                            {woForm.stipulatedCompletionDate || '-'}
+                                                        </td>
+                                                    </tr>
+                                                </>
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
@@ -2394,54 +2453,70 @@ export default function PackageDetailClient({
                             </form>
                         ) : workOrder ? (
                             <div>
-                                <div className="overflow-x-auto">
-                                    <table className="excel-table">
-                                        <tbody>
-                                            <tr className="bg-[#107c41]/10">
-                                                <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Agreement & Work Order</th>
-                                            </tr>
-                                            <tr>
-                                                <td className="excel-label">Agreement Year</td>
-                                                <td className="excel-value w-[30%]">{workOrder.agreementYear || '-'}</td>
-                                                <td className="excel-label">Agreement Details</td>
-                                                <td className="excel-value w-[30%]">No: {workOrder.agreementNo || '-'} &nbsp;|&nbsp; Date: {workOrder.agreementDate ? new Date(workOrder.agreementDate).toLocaleDateString('en-GB') : '-'}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="excel-label">Work Order Details</td>
-                                                <td className="excel-value font-mono">WS No: {workOrder.workOrderWorksheetNo || '-'} &nbsp;|&nbsp; Date: {workOrder.workOrderDate ? new Date(workOrder.workOrderDate).toLocaleDateString('en-GB') : '-'}</td>
-                                                <td className="excel-label">Completion Target</td>
-                                                <td className="excel-value">{workOrder.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate).toLocaleDateString('en-GB') : '-'}</td>
-                                            </tr>
-                                            <tr className="bg-[#107c41]/10">
-                                                <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Security Deposits</th>
-                                            </tr>
-                                            <tr>
-                                                <td className="excel-label">Security Deposit</td>
-                                                <td className="excel-value font-mono" colSpan={3}>
-                                                    Type: {workOrder.securityDepositType || '-'} &nbsp;|&nbsp; Bank: {workOrder.securityDepositBankName || '-'} &nbsp;|&nbsp; No: {workOrder.securityDepositNumber || '-'} &nbsp;|&nbsp; Amount: <strong className="text-emerald-700">₹{workOrder.securityDepositAmount?.toLocaleString('en-IN') || 0}</strong>
-                                                </td>
-                                            </tr>
-                                            {workOrder.additionalSecurityDepositAmount > 0 && (
-                                                <tr>
-                                                    <td className="excel-label">Additional SD</td>
-                                                    <td className="excel-value font-mono" colSpan={3}>
-                                                        Type: {workOrder.additionalSecurityDepositType || '-'} &nbsp;|&nbsp; Bank: {workOrder.additionalSecurityDepositBankName || '-'} &nbsp;|&nbsp; No: {workOrder.additionalSecurityDepositNumber || '-'} &nbsp;|&nbsp; Amount: <strong className="text-emerald-700">₹{workOrder.additionalSecurityDepositAmount?.toLocaleString('en-IN') || 0}</strong>
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end">
-                                    <Link 
-                                        href={`/packages/${packageId}/print-work-order`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-2 text-xs font-bold text-[#107c41] bg-[#107c41]/5 hover:bg-[#107c41]/10 border border-[#107c41]/20 px-4 py-2 rounded-xl transition-all cursor-pointer"
-                                    >
-                                        <Printer className="w-4 h-4" /> Print Work Order
-                                    </Link>
-                                </div>
+                                {workOrder.notRequired ? (
+                                    <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-semibold text-slate-600 italic">
+                                        🚫 Work Order is marked as <strong>Not Required</strong> for this package.
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="overflow-x-auto">
+                                            <table className="excel-table">
+                                                <tbody>
+                                                    <tr className="bg-[#107c41]/10">
+                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Agreement & Work Order</th>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">Agreement Year</td>
+                                                        <td className="excel-value w-[30%]">{workOrder.agreementYear || '-'}</td>
+                                                        <td className="excel-label">Agreement Details</td>
+                                                        <td className="excel-value w-[30%]">No: {workOrder.agreementNo || '-'} &nbsp;|&nbsp; Date: {workOrder.agreementDate ? new Date(workOrder.agreementDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">Work Order Details</td>
+                                                        <td className="excel-value font-mono">WS No: {workOrder.workOrderWorksheetNo || '-'} &nbsp;|&nbsp; Date: {workOrder.workOrderDate ? new Date(workOrder.workOrderDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                        <td className="excel-label">Completion Target</td>
+                                                        <td className="excel-value">{workOrder.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                    </tr>
+                                                    <tr className="bg-[#107c41]/10">
+                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Security Deposits</th>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">Security Deposit</td>
+                                                        <td className="excel-value font-mono" colSpan={3}>
+                                                            Type: {workOrder.securityDepositType || '-'} &nbsp;|&nbsp; Bank: {workOrder.securityDepositBankName || '-'} &nbsp;|&nbsp; No: {workOrder.securityDepositNumber || '-'} &nbsp;|&nbsp; Amount: <strong className="text-emerald-700">₹{workOrder.securityDepositAmount?.toLocaleString('en-IN') || 0}</strong>
+                                                        </td>
+                                                    </tr>
+                                                    {workOrder.additionalSecurityDepositAmount > 0 && (
+                                                        <tr>
+                                                            <td className="excel-label">Additional SD</td>
+                                                            <td className="excel-value font-mono" colSpan={3}>
+                                                                Type: {workOrder.additionalSecurityDepositType || '-'} &nbsp;|&nbsp; Bank: {workOrder.additionalSecurityDepositBankName || '-'} &nbsp;|&nbsp; No: {workOrder.additionalSecurityDepositNumber || '-'} &nbsp;|&nbsp; Amount: <strong className="text-emerald-700">₹{workOrder.additionalSecurityDepositAmount?.toLocaleString('en-IN') || 0}</strong>
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end gap-3">
+                                            <Link 
+                                                href={`/packages/${packageId}/print-agreement`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-2 text-xs font-bold text-[#107c41] bg-[#107c41]/5 hover:bg-[#107c41]/10 border border-[#107c41]/20 px-4 py-2 rounded-xl transition-all cursor-pointer"
+                                            >
+                                                <Printer className="w-4 h-4" /> Print Agreement
+                                            </Link>
+                                            <Link 
+                                                href={`/packages/${packageId}/print-work-order`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-2 text-xs font-bold text-[#107c41] bg-[#107c41]/5 hover:bg-[#107c41]/10 border border-[#107c41]/20 px-4 py-2 rounded-xl transition-all cursor-pointer"
+                                            >
+                                                <Printer className="w-4 h-4" /> Print Work Order
+                                            </Link>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         ) : (
                             <div className="text-center py-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">

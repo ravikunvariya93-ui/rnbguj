@@ -19,6 +19,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
     // Basic info
     const [packageName, setPackageName] = useState(initialData.packageName || '');
     const [subDivision, setSubDivision] = useState(initialData.subDivision || '');
+    const [workType, setWorkType] = useState(initialData.workType || '');
     const [dtpConsultant, setDtpConsultant] = useState(initialData.dtpConsultant || '');
 
     // Selected works list
@@ -111,6 +112,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
             const submissionData = {
                 packageName,
                 subDivision,
+                workType,
                 dtpConsultant,
                 works: selectedWorks
             };
@@ -182,6 +184,22 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                         <option value="Talaja">Talaja</option>
                         <option value="Shihor">Shihor</option>
                         <option value="Vallabhipur">Vallabhipur</option>
+                    </select>
+                </div>
+
+                <div className="sm:col-span-6">
+                    <label htmlFor="workType" className="block text-sm font-medium text-gray-700"> Work Type </label>
+                    <select
+                        id="workType"
+                        value={workType}
+                        onChange={(e) => setWorkType(e.target.value)}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                    >
+                        <option value="">-- Select Work Type --</option>
+                        <option value="Road">Road</option>
+                        <option value="Building">Building</option>
+                        <option value="Structure">Structure</option>
+                        <option value="Service">Service</option>
                     </select>
                 </div>
 

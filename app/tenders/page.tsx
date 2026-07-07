@@ -27,15 +27,17 @@ export default async function TendersListPage({ searchParams }: Props) {
     await dbConnect();
     const params = await searchParams;
 
-    // Fetch agencies and years for filters
-    const [rawAgencies, years] = await Promise.all([
+    // Fetch agencies, years, and sub-divisions for filters
+    const [rawAgencies, years, rawSubDivisions] = await Promise.all([
         Agency.find({}).select('name').sort({ name: 1 }).lean() as Promise<any[]>,
-        Tender.distinct('tenderNoticeYear') as Promise<string[]>
+        Tender.distinct('tenderNoticeYear') as Promise<string[]>,
+        Package.distinct('subDivision') as Promise<string[]>
     ]);
     const agencies = rawAgencies.map((a: any) => ({
         ...a,
         _id: a._id.toString()
     }));
+    const subDivisions = rawSubDivisions.filter(Boolean).sort();
     
     let query: any = {};
     let filterLabels: string[] = [];
@@ -182,6 +184,9 @@ export default async function TendersListPage({ searchParams }: Props) {
         ];
     }
 
+    if (params.subDivision) {
+        filterLabels.push(`Sub Division: ${params.subDivision}`);
+    }
     if (params.noticeYear) {
         query.tenderNoticeYear = params.noticeYear;
         filterLabels.push(`Notice Year: ${params.noticeYear}`);
@@ -340,10 +345,10 @@ export default async function TendersListPage({ searchParams }: Props) {
             addHref="/tenders/new"
             addLabel="Add New Tender"
             searchPlaceholder="Search by Tender ID, Package, or Contractor..."
-            filterActive={!!params.filter || !!params.search || !!params.noticeYear || !!params.noticeNo || !!params.contractorName || !!params.trialNo}
+            filterActive={!!params.filter || !!params.search || !!params.noticeYear || !!params.noticeNo || !!params.contractorName || !!params.trialNo || !!params.subDivision}
             clearFiltersHref="/tenders"
         >
-            <TendersFilterBar agencies={agencies} years={years} />
+            <TendersFilterBar agencies={agencies} years={years} subDivisions={subDivisions} />
             <div className="mb-6 flex flex-wrap items-center gap-2">
                 <Link
                     href="/tenders"
