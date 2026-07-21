@@ -20,7 +20,60 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
     const [packageName, setPackageName] = useState(initialData.packageName || '');
     const [subDivision, setSubDivision] = useState(initialData.subDivision || '');
     const [workType, setWorkType] = useState(initialData.workType || '');
+    const [buildingType, setBuildingType] = useState(initialData.buildingType || '');
+    const [buildingTypeOptions, setBuildingTypeOptions] = useState<string[]>([]);
+    const [isAddingNewBuildingType, setIsAddingNewBuildingType] = useState(false);
+    const [newBuildingTypeValue, setNewBuildingTypeValue] = useState('');
     const [dtpConsultant, setDtpConsultant] = useState(initialData.dtpConsultant || '');
+
+    useEffect(() => {
+        const fetchBuildingTypes = async () => {
+            try {
+                const res = await fetch('/api/metadata/building-types');
+                if (res.ok) {
+                    const dbBuildingTypes = await res.json();
+                    const DEFAULT_BUILDING_TYPES = [
+                        "Residential",
+                        "Non-Residential",
+                        "Hospital",
+                        "School",
+                        "Office"
+                    ];
+                    const initialBuildingType = initialData.buildingType ? [initialData.buildingType] : [];
+                    const combined = Array.from(new Set([...DEFAULT_BUILDING_TYPES, ...initialBuildingType, ...dbBuildingTypes])).sort();
+                    setBuildingTypeOptions(combined);
+                }
+            } catch (error) {
+                console.error("Failed to fetch building types", error);
+            }
+        };
+        fetchBuildingTypes();
+    }, [initialData.buildingType]);
+
+    const handleBuildingTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        if (e.target.value === 'ADD_NEW') {
+            setIsAddingNewBuildingType(true);
+        } else {
+            setBuildingType(e.target.value);
+        }
+    };
+
+    const handleAddNewBuildingType = () => {
+        if (newBuildingTypeValue.trim()) {
+            const val = newBuildingTypeValue.trim();
+            if (!buildingTypeOptions.includes(val)) {
+                setBuildingTypeOptions(prev => [...prev, val].sort());
+            }
+            setBuildingType(val);
+            setIsAddingNewBuildingType(false);
+            setNewBuildingTypeValue('');
+        }
+    };
+
+    const cancelAddNewBuildingType = () => {
+        setIsAddingNewBuildingType(false);
+        setNewBuildingTypeValue('');
+    };
 
     // Selected works list
     const [selectedWorks, setSelectedWorks] = useState<{ workId: string, workName: string, amount: number }[]>(initialData.works || []);
@@ -113,6 +166,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                 packageName,
                 subDivision,
                 workType,
+                buildingType: workType === 'Building' ? buildingType : undefined,
                 dtpConsultant,
                 works: selectedWorks
             };
@@ -192,7 +246,12 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                     <select
                         id="workType"
                         value={workType}
-                        onChange={(e) => setWorkType(e.target.value)}
+                        onChange={(e) => {
+                            setWorkType(e.target.value);
+                            if (e.target.value !== 'Building') {
+                                setBuildingType('');
+                            }
+                        }}
                         className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
                     >
                         <option value="">-- Select Work Type --</option>
@@ -202,6 +261,59 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                         <option value="Service">Service</option>
                     </select>
                 </div>
+
+                {workType === 'Building' && (
+                    <div className="sm:col-span-6">
+                        <label htmlFor="buildingType" className="block text-sm font-medium text-gray-700"> Building Type </label>
+                        {isAddingNewBuildingType ? (
+                            <div className="flex gap-2 items-center mt-1">
+                                <input
+                                    type="text"
+                                    className="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                                    value={newBuildingTypeValue}
+                                    onChange={(e) => setNewBuildingTypeValue(e.target.value)}
+                                    placeholder="Enter new building type..."
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleAddNewBuildingType();
+                                        } else if (e.key === 'Escape') {
+                                            e.preventDefault();
+                                            cancelAddNewBuildingType();
+                                        }
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleAddNewBuildingType}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white rounded px-4 py-2 text-sm font-medium transition-colors cursor-pointer"
+                                >
+                                    Add
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={cancelAddNewBuildingType}
+                                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 rounded px-4 py-2 text-sm font-medium transition-colors cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        ) : (
+                            <select
+                                id="buildingType"
+                                value={buildingType}
+                                onChange={handleBuildingTypeChange}
+                                className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border bg-white"
+                            >
+                                <option value="">-- Select Building Type --</option>
+                                {buildingTypeOptions.map(option => (
+                                    <option key={option} value={option}>{option}</option>
+                                ))}
+                                <option value="ADD_NEW" className="text-blue-600 font-bold">+ Add New Building Type</option>
+                            </select>
+                        )}
+                    </div>
+                )}
 
                 <div className="sm:col-span-6">
                     <label htmlFor="dtpConsultant" className="block text-sm font-medium text-gray-700">DTP Consultant</label>

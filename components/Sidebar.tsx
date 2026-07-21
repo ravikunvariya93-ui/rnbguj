@@ -24,6 +24,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         { name: 'TS', href: '/technical-sanctions', icon: Layers, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
         { name: 'Package', href: '/packages', icon: Package, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
         { name: 'Tender', href: '/tenders', icon: FileText, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
+        { name: 'Agreement', href: '/agreements', icon: ClipboardList, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
         { name: 'Bill', href: '/bills', icon: FileText, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
         { name: 'User Management', href: '/admin/users', icon: Users, roles: ['ADMIN'] },
     ];

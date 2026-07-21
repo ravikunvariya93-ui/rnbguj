@@ -4,6 +4,7 @@ export interface IPackage extends Document {
     packageName: string;
     subDivision?: string;
     workType?: string;
+    buildingType?: string;
     works: {
         workId: mongoose.Schema.Types.ObjectId;
         workName: string;
@@ -18,6 +19,7 @@ const PackageSchema: Schema = new Schema({
     packageName: { type: String, required: true },
     subDivision: { type: String },
     workType: { type: String },
+    buildingType: { type: String },
     works: [{
         workId: { type: mongoose.Schema.Types.ObjectId, ref: 'TechnicalSanction' },
         workName: { type: String },

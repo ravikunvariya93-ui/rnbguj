@@ -128,6 +128,9 @@ export default function PackageDetailClient({
     // Dropdown dependency states
     const [banks, setBanks] = useState<any[]>([]);
     const [agencies, setAgencies] = useState<any[]>([]);
+    const [buildingTypeOptions, setBuildingTypeOptions] = useState<string[]>([]);
+    const [isAddingNewBuildingType, setIsAddingNewBuildingType] = useState(false);
+    const [newBuildingTypeValue, setNewBuildingTypeValue] = useState('');
     const [isBankModalOpen, setIsBankModalOpen] = useState(false);
     const [newBankName, setNewBankName] = useState('');
     const [bankSaving, setBankSaving] = useState(false);
@@ -193,24 +196,39 @@ export default function PackageDetailClient({
         setBills(initialBills);
     }, [initialPkg, initialDtp, initialTender, initialApproval, initialLoa, initialWorkOrder, initialBills]);
 
-    // Fetch banks & agencies
+    // Fetch banks & agencies & building types
     useEffect(() => {
         const fetchDeps = async () => {
             try {
-                const [bankRes, agencyRes] = await Promise.all([
+                const [bankRes, agencyRes, buildingRes] = await Promise.all([
                     fetch('/api/banks'),
-                    fetch('/api/agencies')
+                    fetch('/api/agencies'),
+                    fetch('/api/metadata/building-types')
                 ]);
                 const bankData = await bankRes.json();
                 const agencyData = await agencyRes.json();
                 if (bankData.success) setBanks(bankData.data);
                 if (agencyData.success) setAgencies(agencyData.data);
+
+                if (buildingRes.ok) {
+                    const dbBuildingTypes = await buildingRes.json();
+                    const DEFAULT_BUILDING_TYPES = [
+                        "Residential",
+                        "Non-Residential",
+                        "Hospital",
+                        "School",
+                        "Office"
+                    ];
+                    const initialBuildingType = pkg.buildingType ? [pkg.buildingType] : [];
+                    const combined = Array.from(new Set([...DEFAULT_BUILDING_TYPES, ...initialBuildingType, ...dbBuildingTypes])).sort();
+                    setBuildingTypeOptions(combined);
+                }
             } catch (err) {
                 console.error("Failed to load drop down details", err);
             }
         };
         fetchDeps();
-    }, []);
+    }, [pkg.buildingType]);
 
     // Get unassigned Technical Sanctions for Package Edit mode
     const fetchAvailableWorks = async () => {
@@ -246,6 +264,31 @@ export default function PackageDetailClient({
         }
     };
 
+    const handleBuildingTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        if (e.target.value === 'ADD_NEW') {
+            setIsAddingNewBuildingType(true);
+        } else {
+            setPkgForm((prev: any) => ({ ...prev, buildingType: e.target.value }));
+        }
+    };
+
+    const handleAddNewBuildingType = () => {
+        if (newBuildingTypeValue.trim()) {
+            const val = newBuildingTypeValue.trim();
+            if (!buildingTypeOptions.includes(val)) {
+                setBuildingTypeOptions(prev => [...prev, val].sort());
+            }
+            setPkgForm((prev: any) => ({ ...prev, buildingType: val }));
+            setIsAddingNewBuildingType(false);
+            setNewBuildingTypeValue('');
+        }
+    };
+
+    const cancelAddNewBuildingType = () => {
+        setIsAddingNewBuildingType(false);
+        setNewBuildingTypeValue('');
+    };
+
     // Toggle Edit Modes
     const handleStartEdit = (section: SectionType) => {
         setEditingSection(section);
@@ -255,6 +298,7 @@ export default function PackageDetailClient({
                 packageName: pkg.packageName || '',
                 subDivision: pkg.subDivision || '',
                 workType: pkg.workType || '',
+                buildingType: pkg.buildingType || '',
                 dtpConsultant: pkg.dtpConsultant || '',
                 works: pkg.works || [],
             });
@@ -496,6 +540,7 @@ export default function PackageDetailClient({
             }));
             const submissionData = {
                 ...pkgForm,
+                buildingType: pkgForm.workType === 'Building' ? pkgForm.buildingType : undefined,
                 works: sanitizedWorks
             };
             const res = await fetch(`/api/packages/${packageId}`, {
@@ -1262,8 +1307,16 @@ export default function PackageDetailClient({
                                             </tr>
                                             <tr>
                                                 <td className="excel-label">Work Type</td>
-                                                <td className="excel-value w-[30%]" colSpan={3}>
-                                                    <select value={pkgForm.workType || ''} onChange={(e) => setPkgForm((prev: any) => ({ ...prev, workType: e.target.value }))} className="excel-cell-select bg-white">
+                                                <td className="excel-value w-[30%]" colSpan={pkgForm.workType === 'Building' ? 1 : 3}>
+                                                    <select
+                                                        value={pkgForm.workType || ''}
+                                                        onChange={(e) => setPkgForm((prev: any) => ({
+                                                            ...prev,
+                                                            workType: e.target.value,
+                                                            buildingType: e.target.value === 'Building' ? prev.buildingType : ''
+                                                        }))}
+                                                        className="excel-cell-select bg-white"
+                                                    >
                                                         <option value="">-- Select Work Type --</option>
                                                         <option value="Road">Road</option>
                                                         <option value="Building">Building</option>
@@ -1271,6 +1324,59 @@ export default function PackageDetailClient({
                                                         <option value="Service">Service</option>
                                                     </select>
                                                 </td>
+                                                {pkgForm.workType === 'Building' && (
+                                                    <>
+                                                        <td className="excel-label">Building Type</td>
+                                                        <td className="excel-value w-[30%]">
+                                                            {isAddingNewBuildingType ? (
+                                                                <div className="flex gap-1 items-center px-1 py-0.5">
+                                                                    <input
+                                                                        type="text"
+                                                                        className="excel-cell-input bg-white w-full border border-slate-300 rounded px-1.5 py-0.5 text-xs"
+                                                                        value={newBuildingTypeValue}
+                                                                        onChange={(e) => setNewBuildingTypeValue(e.target.value)}
+                                                                        placeholder="New type..."
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') {
+                                                                                e.preventDefault();
+                                                                                handleAddNewBuildingType();
+                                                                            } else if (e.key === 'Escape') {
+                                                                                e.preventDefault();
+                                                                                cancelAddNewBuildingType();
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={handleAddNewBuildingType}
+                                                                        className="bg-blue-600 hover:bg-blue-700 text-white rounded px-2 py-0.5 text-[10px] font-semibold cursor-pointer"
+                                                                    >
+                                                                        Add
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={cancelAddNewBuildingType}
+                                                                        className="bg-slate-200 hover:bg-slate-300 text-slate-700 rounded px-2 py-0.5 text-[10px] font-semibold cursor-pointer"
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <select
+                                                                    value={pkgForm.buildingType || ''}
+                                                                    onChange={handleBuildingTypeChange}
+                                                                    className="excel-cell-select bg-white"
+                                                                >
+                                                                    <option value="">-- Select Building Type --</option>
+                                                                    {buildingTypeOptions.map(option => (
+                                                                        <option key={option} value={option}>{option}</option>
+                                                                    ))}
+                                                                    <option value="ADD_NEW" className="text-blue-600 font-bold">+ Add New Building Type</option>
+                                                                </select>
+                                                            )}
+                                                        </td>
+                                                    </>
+                                                )}
                                             </tr>
                                         </tbody>
                                     </table>
@@ -1381,7 +1487,13 @@ export default function PackageDetailClient({
                                             </tr>
                                             <tr>
                                                 <td className="excel-label">Work Type</td>
-                                                <td className="excel-value w-[30%]" colSpan={3}>{displayedWorkType || '-'}</td>
+                                                <td className="excel-value w-[30%]" colSpan={pkg.workType === 'Building' ? 1 : 3}>{displayedWorkType || '-'}</td>
+                                                {pkg.workType === 'Building' && (
+                                                    <>
+                                                        <td className="excel-label">Building Type</td>
+                                                        <td className="excel-value w-[30%]">{pkg.buildingType || '-'}</td>
+                                                    </>
+                                                )}
                                             </tr>
                                         </tbody>
                                     </table>

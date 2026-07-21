@@ -1,6 +1,7 @@
 import React, { useId } from 'react';
 import SortableHeader from './SortableHeader';
 import ExportTableButton from './ExportTableButton';
+import PrintTableButton from './PrintTableButton';
 
 interface Column {
   key: string;
@@ -33,8 +34,9 @@ export default function DataTable({ columns, data, emptyMessage = 'No data avail
   return (
     <div className="space-y-3">
       {data.length > 0 && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2 screen-only">
           <ExportTableButton tableId={tableId} filename={exportFilename || 'Export.xlsx'} />
+          <PrintTableButton />
         </div>
       )}
       <div className="overflow-x-auto border border-slate-300 shadow-sm rounded-md">

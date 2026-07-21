@@ -217,8 +217,25 @@ body {
     box-shadow: none !important;
   }
 
-  @page {
-    size: A4;
+  /* Hide ListPageLayout header, search bar, and filter bars when printing */
+  div.sm\:flex.sm\:items-center,
+  div.mt-6.flex.justify-start.items-center,
+  div.bg-slate-50.rounded-2xl,
+  div.mb-6.flex.flex-wrap.items-center.gap-2 {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
     margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  div.mt-6 {
+    margin-top: 0 !important;
+  }
+
+  @page {
+    size: landscape;
+    margin: 1cm !important;
   }
 }
