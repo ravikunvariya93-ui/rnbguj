@@ -39,7 +39,7 @@ export default async function AgreementsListPage({ searchParams }: Props) {
     // Fetch filters metadata (subdivisions are no longer required)
     const [rawAgencies, years] = await Promise.all([
         Agency.find({}).select('name').sort({ name: 1 }).lean() as Promise<any[]>,
-        WorkOrder.distinct('agreementYear') as Promise<string[]>
+        WorkOrder.distinct('agreementYear', { notRequired: { $ne: true } }) as Promise<string[]>
     ]);
 
     const agencies = rawAgencies.map((a: any) => ({
@@ -47,7 +47,7 @@ export default async function AgreementsListPage({ searchParams }: Props) {
         _id: a._id.toString()
     }));
 
-    let query: any = {};
+    let query: any = { notRequired: { $ne: true } };
     let filterLabels: string[] = [];
 
     // Search filter

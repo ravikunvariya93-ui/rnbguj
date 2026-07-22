@@ -131,6 +131,9 @@ export default function PackageDetailClient({
     const [buildingTypeOptions, setBuildingTypeOptions] = useState<string[]>([]);
     const [isAddingNewBuildingType, setIsAddingNewBuildingType] = useState(false);
     const [newBuildingTypeValue, setNewBuildingTypeValue] = useState('');
+    const [budgetHeadOptions, setBudgetHeadOptions] = useState<string[]>([]);
+    const [isAddingNewBudgetHead, setIsAddingNewBudgetHead] = useState(false);
+    const [newBudgetHeadValue, setNewBudgetHeadValue] = useState('');
     const [isBankModalOpen, setIsBankModalOpen] = useState(false);
     const [newBankName, setNewBankName] = useState('');
     const [bankSaving, setBankSaving] = useState(false);
@@ -223,12 +226,20 @@ export default function PackageDetailClient({
                     const combined = Array.from(new Set([...DEFAULT_BUILDING_TYPES, ...initialBuildingType, ...dbBuildingTypes])).sort();
                     setBuildingTypeOptions(combined);
                 }
+
+                const budgetRes = await fetch('/api/metadata/budget-heads');
+                if (budgetRes.ok) {
+                    const dbBudgetHeads = await budgetRes.json();
+                    const initialBudgetHead = pkg.budgetHead ? [pkg.budgetHead] : [];
+                    const combined = Array.from(new Set([...initialBudgetHead, ...dbBudgetHeads])).filter(Boolean).sort();
+                    setBudgetHeadOptions(combined as string[]);
+                }
             } catch (err) {
                 console.error("Failed to load drop down details", err);
             }
         };
         fetchDeps();
-    }, [pkg.buildingType]);
+    }, [pkg.buildingType, pkg.budgetHead]);
 
     // Get unassigned Technical Sanctions for Package Edit mode
     const fetchAvailableWorks = async () => {
@@ -289,6 +300,52 @@ export default function PackageDetailClient({
         setNewBuildingTypeValue('');
     };
 
+    const handleBudgetHeadChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        if (e.target.value === 'ADD_NEW') {
+            setIsAddingNewBudgetHead(true);
+        } else {
+            setPkgForm((prev: any) => ({ ...prev, budgetHead: e.target.value }));
+        }
+    };
+
+    const handleAddNewBudgetHead = () => {
+        if (newBudgetHeadValue.trim()) {
+            const val = newBudgetHeadValue.trim();
+            if (!budgetHeadOptions.includes(val)) {
+                setBudgetHeadOptions(prev => [...prev, val].sort());
+            }
+            setPkgForm((prev: any) => ({ ...prev, budgetHead: val }));
+            setIsAddingNewBudgetHead(false);
+            setNewBudgetHeadValue('');
+        }
+    };
+
+    const cancelAddNewBudgetHead = () => {
+        setIsAddingNewBudgetHead(false);
+        setNewBudgetHeadValue('');
+    };
+
+    // Auto-inherit Budget Head from selected approved works if same
+    useEffect(() => {
+        if (!pkgForm.works || pkgForm.works.length === 0 || approvedWorks.length === 0 || editingSection !== 'package') return;
+
+        const normalize = (name: string) => name.toLowerCase().replace(/\s+/g, ' ').trim();
+        
+        const matchedBudgetHeads = pkgForm.works.map((sw: any) => {
+            const normalizedName = normalize(sw.workName);
+            const aw = approvedWorks.find((aw: any) => normalize(aw.workName) === normalizedName);
+            return aw?.budgetHead || null;
+        }).filter(Boolean);
+
+        if (matchedBudgetHeads.length > 0) {
+            const first = matchedBudgetHeads[0];
+            const allSame = matchedBudgetHeads.every((bh: string) => bh === first);
+            if (allSame && first) {
+                setPkgForm((prev: any) => ({ ...prev, budgetHead: first }));
+            }
+        }
+    }, [pkgForm.works, approvedWorks, editingSection]);
+
     // Toggle Edit Modes
     const handleStartEdit = (section: SectionType) => {
         setEditingSection(section);
@@ -301,6 +358,7 @@ export default function PackageDetailClient({
                 buildingType: pkg.buildingType || '',
                 dtpConsultant: pkg.dtpConsultant || '',
                 works: pkg.works || [],
+                budgetHead: pkg.budgetHead || '',
             });
         } else if (section === 'dtp') {
             setDtpForm({
@@ -358,16 +416,17 @@ export default function PackageDetailClient({
                 acceptanceLetterDate: loa?.acceptanceLetterDate ? formatDateForInput(loa.acceptanceLetterDate) : '',
             });
         } else if (section === 'workOrder') {
+            const isNotReq = workOrder?.notRequired || false;
             const hasExistingNo = !!workOrder?.agreementNo;
             const defaultYear = workOrder?.agreementYear || '2026-27';
-            const defaultNo = hasExistingNo
+            const defaultNo = isNotReq ? '' : (hasExistingNo
                 ? workOrder.agreementNo
-                : String((maxAgreementNos[defaultYear] || 0) + 1);
+                : String((maxAgreementNos[defaultYear] || 0) + 1));
 
             setWoForm({
                 loaId: loa?._id || '',
-                notRequired: workOrder?.notRequired || false,
-                agreementYear: defaultYear,
+                notRequired: isNotReq,
+                agreementYear: isNotReq ? '' : defaultYear,
                 agreementNo: defaultNo,
                 agreementDate: workOrder?.agreementDate ? formatDateForInput(workOrder.agreementDate) : '',
                 securityDepositType: workOrder?.securityDepositType || 'FDR',
@@ -421,10 +480,20 @@ export default function PackageDetailClient({
         const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
         setWoForm((prev: any) => {
             const next = { ...prev, [name]: val };
+            if (name === 'notRequired') {
+                if (val) {
+                    next.agreementNo = '';
+                    next.agreementYear = '';
+                } else if (!next.agreementNo) {
+                    const defaultYear = prev.agreementYear || workOrder?.agreementYear || '2026-27';
+                    next.agreementYear = defaultYear;
+                    next.agreementNo = workOrder?.agreementNo || String((maxAgreementNos[defaultYear] || 0) + 1);
+                }
+            }
             if (name === 'workOrderDate') {
                 next.timeLimitStartsFrom = value;
             }
-            if (name === 'agreementYear' && (!workOrder || !workOrder.agreementNo)) {
+            if (name === 'agreementYear' && !next.notRequired && (!workOrder || !workOrder.agreementNo)) {
                 next.agreementNo = String((maxAgreementNos[value] || 0) + 1);
             }
             return next;
@@ -838,6 +907,11 @@ export default function PackageDetailClient({
         setLoading(true);
         try {
             const data = { ...woForm, loaId: loa._id };
+            if (data.notRequired) {
+                data.agreementNo = '';
+                data.agreementYear = '';
+                data.agreementDate = null;
+            }
             if (data.agreementDate) {
                 const parsed = parseDateStr(data.agreementDate);
                 if (parsed) data.agreementDate = parsed.toISOString();
@@ -1378,6 +1452,57 @@ export default function PackageDetailClient({
                                                     </>
                                                 )}
                                             </tr>
+                                            <tr>
+                                                <td className="excel-label">Budget Head</td>
+                                                <td className="excel-value" colSpan={3}>
+                                                    {isAddingNewBudgetHead ? (
+                                                        <div className="flex gap-1 items-center px-1 py-0.5">
+                                                            <input
+                                                                type="text"
+                                                                className="excel-cell-input bg-white w-full border border-slate-300 rounded px-1.5 py-0.5 text-xs"
+                                                                value={newBudgetHeadValue}
+                                                                onChange={(e) => setNewBudgetHeadValue(e.target.value)}
+                                                                placeholder="New budget head..."
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        e.preventDefault();
+                                                                        handleAddNewBudgetHead();
+                                                                    } else if (e.key === 'Escape') {
+                                                                        e.preventDefault();
+                                                                        cancelAddNewBudgetHead();
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleAddNewBudgetHead}
+                                                                className="bg-blue-600 hover:bg-blue-700 text-white rounded px-2 py-0.5 text-[10px] font-semibold cursor-pointer"
+                                                            >
+                                                                Add
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={cancelAddNewBudgetHead}
+                                                                className="bg-slate-200 hover:bg-slate-300 text-slate-700 rounded px-2 py-0.5 text-[10px] font-semibold cursor-pointer"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <select
+                                                            value={pkgForm.budgetHead || ''}
+                                                            onChange={handleBudgetHeadChange}
+                                                            className="excel-cell-select bg-white font-medium"
+                                                        >
+                                                            <option value="">-- Select Budget Head --</option>
+                                                            {budgetHeadOptions.map(option => (
+                                                                <option key={option} value={option}>{option}</option>
+                                                            ))}
+                                                            <option value="ADD_NEW" className="text-blue-600 font-bold">+ Add New Budget Head</option>
+                                                        </select>
+                                                    )}
+                                                </td>
+                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -1494,6 +1619,10 @@ export default function PackageDetailClient({
                                                         <td className="excel-value w-[30%]">{pkg.buildingType || '-'}</td>
                                                     </>
                                                 )}
+                                            </tr>
+                                            <tr>
+                                                <td className="excel-label">Budget Head</td>
+                                                <td className="excel-value" colSpan={3}>{pkg.budgetHead || '-'}</td>
                                             </tr>
                                         </tbody>
                                     </table>

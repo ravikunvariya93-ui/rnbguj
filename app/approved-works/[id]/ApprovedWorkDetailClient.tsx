@@ -277,15 +277,17 @@ export default function ApprovedWorkDetailClient({
                 acceptanceLetterDate: loa?.acceptanceLetterDate ? formatDateForInput(loa.acceptanceLetterDate) : '',
             });
         } else if (section === 'workOrder') {
+            const isNotReq = workOrder?.notRequired || false;
             const hasExistingNo = !!workOrder?.agreementNo;
             const defaultYear = workOrder?.agreementYear || '2026-27';
-            const defaultNo = hasExistingNo
+            const defaultNo = isNotReq ? '' : (hasExistingNo
                 ? workOrder.agreementNo
-                : String((maxAgreementNos[defaultYear] || 0) + 1);
+                : String((maxAgreementNos[defaultYear] || 0) + 1));
 
             setWoForm({
                 loaId: loa?._id || '',
-                agreementYear: defaultYear,
+                notRequired: isNotReq,
+                agreementYear: isNotReq ? '' : defaultYear,
                 agreementNo: defaultNo,
                 agreementDate: workOrder?.agreementDate ? formatDateForInput(workOrder.agreementDate) : '',
                 securityDepositType: workOrder?.securityDepositType || 'FDR',
@@ -345,13 +347,24 @@ export default function ApprovedWorkDetailClient({
     };
 
     const handleWoFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
+        const { name, value, type } = e.target as HTMLInputElement;
+        const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
         setWoForm((prev: any) => {
-            const next = { ...prev, [name]: value };
+            const next = { ...prev, [name]: val };
+            if (name === 'notRequired') {
+                if (val) {
+                    next.agreementNo = '';
+                    next.agreementYear = '';
+                } else if (!next.agreementNo) {
+                    const defaultYear = prev.agreementYear || workOrder?.agreementYear || '2026-27';
+                    next.agreementYear = defaultYear;
+                    next.agreementNo = workOrder?.agreementNo || String((maxAgreementNos[defaultYear] || 0) + 1);
+                }
+            }
             if (name === 'workOrderDate') {
                 next.timeLimitStartsFrom = value;
             }
-            if (name === 'agreementYear' && (!workOrder || !workOrder.agreementNo)) {
+            if (name === 'agreementYear' && !next.notRequired && (!workOrder || !workOrder.agreementNo)) {
                 next.agreementNo = String((maxAgreementNos[value] || 0) + 1);
             }
             return next;
@@ -634,6 +647,11 @@ export default function ApprovedWorkDetailClient({
         setLoading(true);
         try {
             const data = { ...woForm, loaId: loa._id };
+            if (data.notRequired) {
+                data.agreementNo = '';
+                data.agreementYear = '';
+                data.agreementDate = null;
+            }
             if (data.agreementDate) {
                 const parsed = parseDateStr(data.agreementDate);
                 if (parsed) data.agreementDate = parsed.toISOString();
@@ -1993,16 +2011,16 @@ export default function ApprovedWorkDetailClient({
                 <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
                     <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${workOrder ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                            <div className={`p-2 rounded-lg ${(workOrder || workOrder?.notRequired) ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
                                 <Settings className="w-5 h-5" />
                             </div>
                             <div>
                                 <div className="flex items-center gap-2">
                                     <h3 className="font-bold text-slate-800">8. Work Order & Deposits</h3>
                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                        workOrder ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                        workOrder?.notRequired ? 'bg-slate-100 text-slate-700 border border-slate-300' : workOrder ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                                     }`}>
-                                        {workOrder ? '✅ Done' : '⏳ Pending'}
+                                        {workOrder?.notRequired ? '🚫 Not Required' : workOrder ? '✅ Done' : '⏳ Pending'}
                                     </span>
                                 </div>
                                 <p className="text-xs text-slate-400 font-medium">Agreement Details, Security Deposits, Work Order timelines</p>
@@ -2025,9 +2043,26 @@ export default function ApprovedWorkDetailClient({
                                 <div className="overflow-x-auto">
                                     <table className="excel-table">
                                         <tbody>
-                                            <tr className="bg-[#107c41]/10">
-                                                <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Agreement Details</th>
+                                            <tr>
+                                                <td className="excel-label">Requirement</td>
+                                                <td className="excel-value" colSpan={3}>
+                                                    <label className="inline-flex items-center gap-2 cursor-pointer py-1">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            name="notRequired" 
+                                                            checked={woForm.notRequired || false} 
+                                                            onChange={handleWoFieldChange} 
+                                                            className="w-4 h-4 text-[#107c41] border-slate-200 rounded cursor-pointer" 
+                                                        />
+                                                        <span className="text-xs font-bold text-slate-700">Work Order Not Required</span>
+                                                    </label>
+                                                </td>
                                             </tr>
+                                            {!woForm.notRequired && (
+                                                <>
+                                                    <tr className="bg-[#107c41]/10">
+                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Agreement Details</th>
+                                                    </tr>
                                             <tr>
                                                 <td className="excel-label">Agreement Year</td>
                                                 <td className="excel-value w-[30%]">
@@ -2167,6 +2202,8 @@ export default function ApprovedWorkDetailClient({
                                                     {woForm.stipulatedCompletionDate || '-'}
                                                 </td>
                                             </tr>
+                                        </>
+                                    )}
                                         </tbody>
                                     </table>
                                 </div>
@@ -2177,6 +2214,10 @@ export default function ApprovedWorkDetailClient({
                                     </button>
                                 </div>
                             </form>
+                        ) : workOrder?.notRequired ? (
+                            <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 font-semibold text-sm">
+                                Work Order is not required for this work.
+                            </div>
                         ) : workOrder ? (
                             <div className="overflow-x-auto">
                                 <table className="excel-table">

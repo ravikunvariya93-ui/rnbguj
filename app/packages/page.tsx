@@ -66,17 +66,19 @@ export default async function PackagesListPage({ searchParams }: Props) {
             .skip(skip)
             .limit(limit)
             .lean(),
-        ApprovedWork.find({}).select('workName subDivision workType').lean() as Promise<any[]>
+        ApprovedWork.find({}).select('workName subDivision workType budgetHead').lean() as Promise<any[]>
     ]);
         
     const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
     const workSubDivisionMap = new Map<string, string>();
     const workTypeMap = new Map<string, string>();
+    const workBudgetHeadMap = new Map<string, string>();
     allApprovedWorks.forEach((aw: any) => {
         if (aw.workName) {
             const key = normalize(aw.workName);
             workSubDivisionMap.set(key, aw.subDivision || '');
             workTypeMap.set(key, aw.workType || '');
+            workBudgetHeadMap.set(key, aw.budgetHead || '');
         }
     });
 
@@ -85,11 +87,27 @@ export default async function PackagesListPage({ searchParams }: Props) {
         const normalizedKey = firstWorkName ? normalize(firstWorkName) : '';
         const inferredSubDivision = normalizedKey ? workSubDivisionMap.get(normalizedKey) : '';
         const inferredWorkType = normalizedKey ? workTypeMap.get(normalizedKey) : '';
+        
+        let inferredBudgetHead = '';
+        if (p.works && p.works.length > 0) {
+            const heads = p.works.map((w: any) => {
+                const key = normalize(w.workName);
+                return workBudgetHeadMap.get(key) || '';
+            }).filter(Boolean);
+            if (heads.length > 0) {
+                const first = heads[0];
+                if (heads.every((h: string) => h === first)) {
+                    inferredBudgetHead = first;
+                }
+            }
+        }
+
         return {
             ...p,
             _id: p._id.toString(),
             subDivision: p.subDivision || inferredSubDivision || '',
             workType: p.workType || inferredWorkType || '',
+            budgetHead: p.budgetHead || inferredBudgetHead || '',
             approvedWorks: p.works && p.works.length > 0
                 ? p.works.map((w: any) => w.workName).filter(Boolean)
                 : []
@@ -126,6 +144,13 @@ export default async function PackagesListPage({ searchParams }: Props) {
             sortable: true,
             minWidth: '120px',
             render: (row) => row.workType || '-'
+        },
+        {
+            key: 'budgetHead',
+            label: 'Budget Head',
+            sortable: true,
+            minWidth: '150px',
+            render: (row) => row.budgetHead || '-'
         },
         { 
             key: 'approvedWorks', 

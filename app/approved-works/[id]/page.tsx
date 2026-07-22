@@ -66,7 +66,7 @@ export default async function ApprovedWorkDetailPage({ params }: { params: Promi
         : [];
 
     // Fetch all work orders to determine the maximum agreement number per year
-    const allWorkOrders = await WorkOrder.find({}, 'agreementYear agreementNo').lean() as any[];
+    const allWorkOrders = await WorkOrder.find({ notRequired: { $ne: true } }, 'agreementYear agreementNo').lean() as any[];
     const maxAgreementNos: Record<string, number> = {};
     for (const wo of allWorkOrders) {
         if (wo.agreementYear && wo.agreementNo) {

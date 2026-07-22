@@ -75,6 +75,72 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
         setNewBuildingTypeValue('');
     };
 
+    // Budget Head info
+    const [budgetHead, setBudgetHead] = useState(initialData.budgetHead || '');
+    const [budgetHeadOptions, setBudgetHeadOptions] = useState<string[]>([]);
+    const [isAddingNewBudgetHead, setIsAddingNewBudgetHead] = useState(false);
+    const [newBudgetHeadValue, setNewBudgetHeadValue] = useState('');
+    const [approvedWorks, setApprovedWorks] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchBudgetHeads = async () => {
+            try {
+                const res = await fetch('/api/metadata/budget-heads');
+                if (res.ok) {
+                    const dbBudgetHeads = await res.json();
+                    const initialBudgetHead = initialData.budgetHead ? [initialData.budgetHead] : [];
+                    const combined = Array.from(new Set([...initialBudgetHead, ...dbBudgetHeads])).filter(Boolean).sort();
+                    setBudgetHeadOptions(combined as string[]);
+                }
+            } catch (error) {
+                console.error("Failed to fetch budget heads", error);
+            }
+        };
+        fetchBudgetHeads();
+    }, [initialData.budgetHead]);
+
+    useEffect(() => {
+        const fetchApprovedWorks = async () => {
+            try {
+                const res = await fetch('/api/approved-works');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success) {
+                        setApprovedWorks(data.data);
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch approved works", error);
+            }
+        };
+        fetchApprovedWorks();
+    }, []);
+
+    const handleBudgetHeadChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        if (e.target.value === 'ADD_NEW') {
+            setIsAddingNewBudgetHead(true);
+        } else {
+            setBudgetHead(e.target.value);
+        }
+    };
+
+    const handleAddNewBudgetHead = () => {
+        if (newBudgetHeadValue.trim()) {
+            const val = newBudgetHeadValue.trim();
+            if (!budgetHeadOptions.includes(val)) {
+                setBudgetHeadOptions(prev => [...prev, val].sort());
+            }
+            setBudgetHead(val);
+            setIsAddingNewBudgetHead(false);
+            setNewBudgetHeadValue('');
+        }
+    };
+
+    const cancelAddNewBudgetHead = () => {
+        setIsAddingNewBudgetHead(false);
+        setNewBudgetHeadValue('');
+    };
+
     // Selected works list
     const [selectedWorks, setSelectedWorks] = useState<{ workId: string, workName: string, amount: number }[]>(initialData.works || []);
 
@@ -147,6 +213,27 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
         }
     };
 
+    // Auto-inherit Budget Head from selected approved works if same
+    useEffect(() => {
+        if (selectedWorks.length === 0 || approvedWorks.length === 0) return;
+
+        const normalize = (name: string) => name.toLowerCase().replace(/\s+/g, ' ').trim();
+        
+        const matchedBudgetHeads = selectedWorks.map(sw => {
+            const normalizedName = normalize(sw.workName);
+            const aw = approvedWorks.find(aw => normalize(aw.workName) === normalizedName);
+            return aw?.budgetHead || null;
+        }).filter(Boolean); // Only count non-empty budget heads
+
+        if (matchedBudgetHeads.length > 0) {
+            const first = matchedBudgetHeads[0];
+            const allSame = matchedBudgetHeads.every(bh => bh === first);
+            if (allSame && first) {
+                setBudgetHead(first);
+            }
+        }
+    }, [selectedWorks, approvedWorks]);
+
     const handleRemoveWork = (id: string) => {
         setSelectedWorks(prev => prev.filter(w => w.workId !== id));
     };
@@ -167,6 +254,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                 subDivision,
                 workType,
                 buildingType: workType === 'Building' ? buildingType : undefined,
+                budgetHead,
                 dtpConsultant,
                 works: selectedWorks
             };
@@ -333,6 +421,57 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                         <option value="MCWAY MANAGEMENTS LIMITED">MCWAY MANAGEMENTS LIMITED</option>
                         <option value="Infinizy Civil Consultant">Infinizy Civil Consultant</option>
                     </select>
+                </div>
+
+                <div className="sm:col-span-6">
+                    <label htmlFor="budgetHead" className="block text-sm font-medium text-gray-700"> Budget Head </label>
+                    {isAddingNewBudgetHead ? (
+                        <div className="flex gap-2 items-center mt-1">
+                            <input
+                                type="text"
+                                className="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                                value={newBudgetHeadValue}
+                                onChange={(e) => setNewBudgetHeadValue(e.target.value)}
+                                placeholder="Enter new budget head..."
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleAddNewBudgetHead();
+                                    } else if (e.key === 'Escape') {
+                                        e.preventDefault();
+                                        cancelAddNewBudgetHead();
+                                    }
+                                }}
+                            />
+                            <button
+                                type="button"
+                                onClick={handleAddNewBudgetHead}
+                                className="bg-blue-600 hover:bg-blue-700 text-white rounded px-4 py-2 text-sm font-medium transition-colors cursor-pointer"
+                            >
+                                Add
+                            </button>
+                            <button
+                                type="button"
+                                onClick={cancelAddNewBudgetHead}
+                                className="bg-gray-200 hover:bg-gray-300 text-gray-700 rounded px-4 py-2 text-sm font-medium transition-colors cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    ) : (
+                        <select
+                            id="budgetHead"
+                            value={budgetHead}
+                            onChange={handleBudgetHeadChange}
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border bg-white"
+                        >
+                            <option value="">-- Select Budget Head --</option>
+                            {budgetHeadOptions.map(option => (
+                                <option key={option} value={option}>{option}</option>
+                            ))}
+                            <option value="ADD_NEW" className="text-blue-600 font-bold">+ Add New Budget Head</option>
+                        </select>
+                    )}
                 </div>
 
                 <div className="sm:col-span-6">

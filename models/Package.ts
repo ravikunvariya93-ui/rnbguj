@@ -11,6 +11,7 @@ export interface IPackage extends Document {
         amount: number; // Snapshot of amount
     }[];
     dtpConsultant?: string;
+    budgetHead?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -20,6 +21,7 @@ const PackageSchema: Schema = new Schema({
     subDivision: { type: String },
     workType: { type: String },
     buildingType: { type: String },
+    budgetHead: { type: String },
     works: [{
         workId: { type: mongoose.Schema.Types.ObjectId, ref: 'TechnicalSanction' },
         workName: { type: String },

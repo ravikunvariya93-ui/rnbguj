@@ -27,6 +27,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const { id } = await params;
     try {
         const body = await req.json();
+        if (body.notRequired) {
+            body.agreementNo = '';
+            body.agreementYear = '';
+            body.agreementDate = null;
+        }
         const workOrder = await WorkOrder.findByIdAndUpdate(id, body, { new: true, runValidators: true });
         if (!workOrder) {
             return NextResponse.json({ success: false, error: 'Work Order not found' }, { status: 404 });

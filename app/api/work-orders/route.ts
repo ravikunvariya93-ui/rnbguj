@@ -14,6 +14,11 @@ export async function POST(req: Request) {
     await dbConnect();
     try {
         const body = await req.json();
+        if (body.notRequired) {
+            body.agreementNo = '';
+            body.agreementYear = '';
+            body.agreementDate = null;
+        }
         const workOrder = await WorkOrder.create(body);
         return NextResponse.json({ success: true, data: workOrder }, { status: 201 });
     } catch (error) {

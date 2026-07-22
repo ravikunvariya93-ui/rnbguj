@@ -78,7 +78,7 @@ export default async function PrintWorkOrderPage({ params }: Props) {
     // Fetch linked ApprovedWorks to find budget heads
     const workNames = pkgRaw.works ? pkgRaw.works.map((w: any) => w.workName) : [];
     const matchedApprovedWorks = await ApprovedWork.find({ workName: { $in: workNames } }).lean();
-    const budgetHeads = Array.from(new Set(matchedApprovedWorks.map((aw: any) => aw.budgetHead).filter(Boolean)));
+    const budgetHeads = Array.from(new Set([pkgRaw.budgetHead, ...matchedApprovedWorks.map((aw: any) => aw.budgetHead)].filter(Boolean)));
 
     // Serialize data to avoid any passing of rich objects (e.g. Mongoose Document, ObjectIds, Dates) to the Client Component
     const packageData = JSON.parse(JSON.stringify(pkgRaw));
