@@ -38,10 +38,14 @@ export async function buildDashboardFilter(params: ListPageSearchParams): Promis
         let pkgQuery: any = {};
         if (params.subDivision) pkgQuery.subDivision = params.subDivision;
         if (metadataFiltersArr.length > 0) {
-            pkgQuery.$or = [
+            const orConditions: any[] = [
                 { "works.workName": { $in: validWorkNames } },
                 { "works.workId": { $in: tsIds } }
             ];
+            if (params.workType) {
+                orConditions.push({ workType: params.workType });
+            }
+            pkgQuery.$or = orConditions;
         }
         
         const matchingPkgs = await Package.find(pkgQuery).select('_id').lean();

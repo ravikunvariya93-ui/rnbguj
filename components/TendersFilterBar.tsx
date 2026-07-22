@@ -8,9 +8,10 @@ interface TendersFilterBarProps {
     agencies: any[];
     years: string[];
     subDivisions: string[];
+    workTypes?: string[];
 }
 
-export default function TendersFilterBar({ agencies, years, subDivisions }: TendersFilterBarProps) {
+export default function TendersFilterBar({ agencies, years, subDivisions, workTypes = [] }: TendersFilterBarProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -20,6 +21,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions }: Tend
     const [contractorName, setContractorName] = useState(searchParams.get('contractorName') || '');
     const [trialNo, setTrialNo] = useState(searchParams.get('trialNo') || '');
     const [subDivision, setSubDivision] = useState(searchParams.get('subDivision') || '');
+    const [workType, setWorkType] = useState(searchParams.get('workType') || '');
 
     // Synchronize local state with searchParams (handles clear filters, back/forward actions)
     useEffect(() => {
@@ -28,6 +30,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions }: Tend
         setContractorName(searchParams.get('contractorName') || '');
         setTrialNo(searchParams.get('trialNo') || '');
         setSubDivision(searchParams.get('subDivision') || '');
+        setWorkType(searchParams.get('workType') || '');
     }, [searchParams]);
 
     const handleApplyFilters = () => {
@@ -51,6 +54,9 @@ export default function TendersFilterBar({ agencies, years, subDivisions }: Tend
         if (subDivision) params.set('subDivision', subDivision);
         else params.delete('subDivision');
 
+        if (workType) params.set('workType', workType);
+        else params.delete('workType');
+
         router.push(`${pathname}?${params.toString()}`);
     };
 
@@ -61,6 +67,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions }: Tend
         params.delete('contractorName');
         params.delete('trialNo');
         params.delete('subDivision');
+        params.delete('workType');
         params.set('page', '1');
 
         setNoticeYear('');
@@ -68,11 +75,12 @@ export default function TendersFilterBar({ agencies, years, subDivisions }: Tend
         setContractorName('');
         setTrialNo('');
         setSubDivision('');
+        setWorkType('');
 
         router.push(`${pathname}?${params.toString()}`);
     };
 
-    const hasActiveFilters = !!(noticeYear || noticeNo || contractorName || trialNo || subDivision);
+    const hasActiveFilters = !!(noticeYear || noticeNo || contractorName || trialNo || subDivision || workType);
 
     return (
         <div className="bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-200 shadow-2xs">
@@ -81,7 +89,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions }: Tend
                 <span>Filter Tenders</span>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
                 {/* Sub Division */}
                 <div>
                     <label htmlFor="filterSubDivision" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Sub Division</label>
@@ -94,6 +102,22 @@ export default function TendersFilterBar({ agencies, years, subDivisions }: Tend
                         <option value="">All Sub Divisions</option>
                         {subDivisions.map(sd => (
                             <option key={sd} value={sd}>{sd}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Work Type */}
+                <div>
+                    <label htmlFor="filterWorkType" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Work Type</label>
+                    <select
+                        id="filterWorkType"
+                        value={workType}
+                        onChange={(e) => setWorkType(e.target.value)}
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border focus:border-blue-500 shadow-2xs"
+                    >
+                        <option value="">All Work Types</option>
+                        {workTypes.map(wt => (
+                            <option key={wt} value={wt}>{wt}</option>
                         ))}
                     </select>
                 </div>

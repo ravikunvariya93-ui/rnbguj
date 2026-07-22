@@ -400,7 +400,9 @@ export default function WorkOrderLetterClient({
                         max-width: 100% !important;
                         margin: 0 !important;
                         padding: 0 !important;
-                                        body.wo-printing .printable-container {
+                    }
+
+                    body.wo-printing .printable-container {
                         padding: 0.8cm 1.2cm !important;
                         width: 100% !important;
                         max-width: 100% !important;

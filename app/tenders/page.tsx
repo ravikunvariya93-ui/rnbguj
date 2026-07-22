@@ -6,6 +6,7 @@ import Approval from '@/models/Approval';
 import Package from '@/models/Package';
 import WorkOrder from '@/models/WorkOrder';
 import Agency from '@/models/Agency';
+import ApprovedWork from '@/models/ApprovedWork';
 import Link from 'next/link';
 import { Plus, Eye, Edit2 } from 'lucide-react';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
@@ -27,17 +28,33 @@ export default async function TendersListPage({ searchParams }: Props) {
     await dbConnect();
     const params = await searchParams;
 
-    // Fetch agencies, years, and sub-divisions for filters
-    const [rawAgencies, years, rawSubDivisions] = await Promise.all([
-        Agency.find({}).select('name').sort({ name: 1 }).lean() as Promise<any[]>,
+    // Fetch agencies, years, sub-divisions, work types, and approved works for inference
+    const [rawAgencies, years, rawSubDivisions, rawWorkTypesAw, rawWorkTypesPkg, allApprovedWorks] = await Promise.all([
+        Agency.find({}).select('name mobileNo').sort({ name: 1 }).lean() as Promise<any[]>,
         Tender.distinct('tenderNoticeYear') as Promise<string[]>,
-        Package.distinct('subDivision') as Promise<string[]>
+        Package.distinct('subDivision') as Promise<string[]>,
+        ApprovedWork.distinct('workType') as Promise<string[]>,
+        Package.distinct('workType') as Promise<string[]>,
+        ApprovedWork.find({}).select('workName workType').lean() as Promise<any[]>
     ]);
     const agencies = rawAgencies.map((a: any) => ({
         ...a,
         _id: a._id.toString()
     }));
+    const agencyMobileMap = new Map(rawAgencies.map((a: any) => [a.name, a.mobileNo]));
     const subDivisions = rawSubDivisions.filter(Boolean).sort();
+    const PREDEFINED_WORK_TYPES = ['Road', 'Building', 'Structure', 'Other'];
+    const workTypes = Array.from(new Set([...PREDEFINED_WORK_TYPES, ...rawWorkTypesAw, ...rawWorkTypesPkg]))
+        .filter(Boolean)
+        .sort();
+
+    const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const workTypeMap = new Map<string, string>();
+    allApprovedWorks.forEach((aw: any) => {
+        if (aw.workName) {
+            workTypeMap.set(normalize(aw.workName), aw.workType || '');
+        }
+    });
     
     let query: any = {};
     let filterLabels: string[] = [];
@@ -187,6 +204,9 @@ export default async function TendersListPage({ searchParams }: Props) {
     if (params.subDivision) {
         filterLabels.push(`Sub Division: ${params.subDivision}`);
     }
+    if (params.workType) {
+        filterLabels.push(`Work Type: ${params.workType}`);
+    }
     if (params.noticeYear) {
         query.tenderNoticeYear = params.noticeYear;
         filterLabels.push(`Notice Year: ${params.noticeYear}`);
@@ -206,7 +226,7 @@ export default async function TendersListPage({ searchParams }: Props) {
 
     const { page, limit, skip } = parsePagination(params);
     let sortObj: any = {};
-    if (params.sort && params.order) {
+    if (params.sort && params.order && params.sort !== 'workType') {
         const orderVal = params.order === 'asc' ? 1 : -1;
         sortObj[params.sort] = orderVal;
         if (params.sort !== 'tenderNoticeYear') sortObj.tenderNoticeYear = -1;
@@ -220,7 +240,7 @@ export default async function TendersListPage({ searchParams }: Props) {
     const totalPages = Math.ceil(totalItems / limit);
 
     const tendersRaw = await Tender.find(query)
-        .populate({ path: 'packageId', select: 'works.workName', model: Package })
+        .populate({ path: 'packageId', select: 'works.workName workType', model: Package })
         .collation({ locale: "en_US", numericOrdering: true })
         .sort(sortObj)
         .skip(skip)
@@ -247,6 +267,13 @@ export default async function TendersListPage({ searchParams }: Props) {
         const loa = loaMap.get(tIdStr);
         const workOrder = loa ? workOrderMap.get(loa._id.toString()) : null;
 
+        const pkg = t.packageId;
+        const firstWorkName = pkg?.works && pkg.works[0]?.workName;
+        const normalizedKey = firstWorkName ? normalize(firstWorkName) : '';
+        const inferredWorkType = normalizedKey ? workTypeMap.get(normalizedKey) : '';
+        const workType = pkg?.workType || inferredWorkType || '-';
+        const contractorMobile = (t.contractorName && agencyMobileMap.get(t.contractorName)) || (t as any).contractorMobile || '-';
+
         const isApprovalNotRequired = approval?.notRequired === true || (
             (t.estimatedAmount !== undefined && t.estimatedAmount !== null)
                 ? Number(t.estimatedAmount) < 5000000
@@ -260,6 +287,8 @@ export default async function TendersListPage({ searchParams }: Props) {
         return {
             ...t,
             _id: tIdStr,
+            workType,
+            contractorMobile,
             proposalDate,
             tenderApprovalDate,
             acceptanceLetterDate,
@@ -267,10 +296,24 @@ export default async function TendersListPage({ searchParams }: Props) {
         };
     });
 
+    if (params.sort === 'workType' && params.order) {
+        const orderVal = params.order === 'asc' ? 1 : -1;
+        tenders.sort((a: any, b: any) => {
+            const valA = (a.workType || '').toString();
+            const valB = (b.workType || '').toString();
+            return valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' }) * orderVal;
+        });
+    }
+
     const columns: Column[] = [
+        { 
+            key: 'srNo', 
+            label: 'Sr. No.', 
+            align: 'center',
+            render: (row, index) => skip + index + 1
+        },
         { key: 'tenderNoticeYear', label: 'Notice Year', sortable: true },
         { key: 'noticeNo', label: 'Notice No.', sortable: true },
-        { key: 'srNo', label: 'Sr. No.', align: 'center' },
         { 
             key: 'packageName', 
             label: 'Package Name', 
@@ -293,7 +336,15 @@ export default async function TendersListPage({ searchParams }: Props) {
                 </div>
             ) 
         },
+        { 
+            key: 'workType', 
+            label: 'Work Type', 
+            sortable: true, 
+            minWidth: '120px', 
+            render: (row) => row.workType || '-' 
+        },
         { key: 'contractorName', label: 'Contractor Name', sortable: true, minWidth: '150px' },
+        { key: 'contractorMobile', label: 'Mobile No.', minWidth: '120px', render: (row) => row.contractorMobile || '-' },
         { key: 'trialNo', label: 'Trial', sortable: true, align: 'center' },
         {
             key: 'proposalDate',
@@ -321,21 +372,6 @@ export default async function TendersListPage({ searchParams }: Props) {
         }
     ];
 
-    const renderActions = (row: any) => (
-        <div className="flex items-center justify-end space-x-2">
-            <Link href={`/tenders/${row._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
-                <Eye className="w-5 h-5" />
-            </Link>
-            <Link href={`/tenders/new?packageId=${row.packageId?._id || row.packageId}&reInvite=true`} className="text-green-600 hover:text-green-900 p-1" title="Re-tender this package">
-                <Plus className="w-5 h-5" />
-            </Link>
-            <Link href={`/tenders/${row._id}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Tender">
-                <Edit2 className="w-5 h-5" />
-            </Link>
-            <GenericDeleteButton itemId={row._id} itemName={row.tenderId} apiPath="/api/tenders" />
-        </div>
-    );
-
     const filterLabel = filterLabels.length > 0 ? `Filtered by: ${filterLabels.join(' | ')}` : "List of all tenders.";
 
     return (
@@ -345,10 +381,10 @@ export default async function TendersListPage({ searchParams }: Props) {
             addHref="/tenders/new"
             addLabel="Add New Tender"
             searchPlaceholder="Search by Tender ID, Package, or Contractor..."
-            filterActive={!!params.filter || !!params.search || !!params.noticeYear || !!params.noticeNo || !!params.contractorName || !!params.trialNo || !!params.subDivision}
+            filterActive={!!params.filter || !!params.search || !!params.noticeYear || !!params.noticeNo || !!params.contractorName || !!params.trialNo || !!params.subDivision || !!params.workType}
             clearFiltersHref="/tenders"
         >
-            <TendersFilterBar agencies={agencies} years={years} subDivisions={subDivisions} />
+            <TendersFilterBar agencies={agencies} years={years} subDivisions={subDivisions} workTypes={workTypes} />
             <div className="mb-6 flex flex-wrap items-center gap-2">
                 <Link
                     href="/tenders"
@@ -405,7 +441,6 @@ export default async function TendersListPage({ searchParams }: Props) {
                 columns={columns} 
                 data={tenders} 
                 emptyMessage="No tenders found matching the criteria."
-                actions={renderActions}
             />
             <Suspense fallback={<div className="h-10 w-full bg-gray-50 animate-pulse mt-4 rounded-md" />}>
                 <Pagination currentPage={page} totalPages={totalPages} />
