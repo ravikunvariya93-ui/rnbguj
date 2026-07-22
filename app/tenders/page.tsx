@@ -314,6 +314,7 @@ export default async function TendersListPage({ searchParams }: Props) {
         },
         { key: 'tenderNoticeYear', label: 'Notice Year', sortable: true },
         { key: 'noticeNo', label: 'Notice No.', sortable: true },
+        { key: 'tenderSrNo', label: 'Sub Notice No.', sortable: true, align: 'center', render: (row) => row.srNo || '-' },
         { 
             key: 'packageName', 
             label: 'Package Name', 
