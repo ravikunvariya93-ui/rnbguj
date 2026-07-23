@@ -226,12 +226,13 @@ export default async function TendersListPage({ searchParams }: Props) {
 
     const { page, limit, skip } = parsePagination(params);
     let sortObj: any = {};
-    if (params.sort && params.order && params.sort !== 'workType') {
+    if (params.sort && params.order && params.sort !== 'workType' && params.sort !== 'contractorMobile') {
         const orderVal = params.order === 'asc' ? 1 : -1;
-        sortObj[params.sort] = orderVal;
-        if (params.sort !== 'tenderNoticeYear') sortObj.tenderNoticeYear = -1;
-        if (params.sort !== 'noticeNo') sortObj.noticeNo = 1;
-        if (params.sort !== 'srNo') sortObj.srNo = 1;
+        const dbSortField = params.sort === 'tenderSrNo' ? 'srNo' : params.sort;
+        sortObj[dbSortField] = orderVal;
+        if (dbSortField !== 'tenderNoticeYear') sortObj.tenderNoticeYear = -1;
+        if (dbSortField !== 'noticeNo') sortObj.noticeNo = 1;
+        if (dbSortField !== 'srNo') sortObj.srNo = 1;
     } else {
         sortObj = { tenderNoticeYear: -1, noticeNo: 1, srNo: 1 };
     }
@@ -303,6 +304,13 @@ export default async function TendersListPage({ searchParams }: Props) {
             const valB = (b.workType || '').toString();
             return valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' }) * orderVal;
         });
+    } else if (params.sort === 'contractorMobile' && params.order) {
+        const orderVal = params.order === 'asc' ? 1 : -1;
+        tenders.sort((a: any, b: any) => {
+            const valA = (a.contractorMobile || '').toString();
+            const valB = (b.contractorMobile || '').toString();
+            return valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' }) * orderVal;
+        });
     }
 
     const columns: Column[] = [
@@ -310,6 +318,7 @@ export default async function TendersListPage({ searchParams }: Props) {
             key: 'srNo', 
             label: 'Sr. No.', 
             align: 'center',
+            sortable: true,
             render: (row, index) => skip + index + 1
         },
         { key: 'tenderNoticeYear', label: 'Notice Year', sortable: true },
@@ -345,11 +354,23 @@ export default async function TendersListPage({ searchParams }: Props) {
             render: (row) => row.workType || '-' 
         },
         { key: 'contractorName', label: 'Contractor Name', sortable: true, minWidth: '150px' },
-        { key: 'contractorMobile', label: 'Mobile No.', minWidth: '120px', render: (row) => row.contractorMobile || '-' },
+        { key: 'contractorMobile', label: 'Mobile No.', sortable: true, minWidth: '120px', render: (row) => row.contractorMobile || '-' },
+        { 
+            key: 'remarks', 
+            label: 'Tender Remarks', 
+            sortable: true,
+            minWidth: '250px', 
+            render: (row) => (
+                <div className="whitespace-normal break-words">
+                    {row.remarks || '-'}
+                </div>
+            ) 
+        },
         { key: 'trialNo', label: 'Trial', sortable: true, align: 'center' },
         {
             key: 'proposalDate',
             label: 'Propasal Date',
+            sortable: true,
             render: (row) => row.proposalDate === 'Not Required' ? (
                 <span className="text-slate-500 italic font-semibold">Not Required</span>
             ) : <span className="text-slate-600">{formatShortDate(row.proposalDate)}</span>
@@ -357,6 +378,7 @@ export default async function TendersListPage({ searchParams }: Props) {
         {
             key: 'tenderApprovalDate',
             label: 'Approval Date',
+            sortable: true,
             render: (row) => row.tenderApprovalDate === 'Not Required' ? (
                 <span className="text-slate-500 italic font-semibold">Not Required</span>
             ) : <span className="text-slate-600">{formatShortDate(row.tenderApprovalDate)}</span>
@@ -364,11 +386,13 @@ export default async function TendersListPage({ searchParams }: Props) {
         {
             key: 'acceptanceLetterDate',
             label: 'LOA Date',
+            sortable: true,
             render: (row) => <span className="text-slate-600">{formatShortDate(row.acceptanceLetterDate)}</span>
         },
         {
             key: 'workOrderDate',
             label: 'Work Order Date',
+            sortable: true,
             render: (row) => <span className="text-slate-600">{formatShortDate(row.workOrderDate)}</span>
         }
     ];
