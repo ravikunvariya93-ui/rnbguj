@@ -142,10 +142,16 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
     };
 
     // Selected works list
-    const [selectedWorks, setSelectedWorks] = useState<{ workId: string, workName: string, amount: number }[]>(initialData.works || []);
+    const [selectedWorks, setSelectedWorks] = useState<{ workId: string | null, workName: string, amount: number, tsNotRequired?: boolean }[]>(initialData.works || []);
 
     // Available works from DB (Technical Sanctions)
     const [availableWorks, setAvailableWorks] = useState<{ _id: string, workName: string, tsAmount: number }[]>([]);
+
+    // All packages from DB
+    const [allPackagesData, setAllPackagesData] = useState<any[]>([]);
+
+    // T.S. Not Required Checkbox State
+    const [tsNotRequiredCheckbox, setTsNotRequiredCheckbox] = useState(false);
 
     // Temporary selection state for the dropdown
     const [currentSelectionId, setCurrentSelectionId] = useState('');
@@ -162,6 +168,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                 const dataPackages = await resPackages.json();
 
                 if (dataTS.success && dataPackages.success) {
+                    setAllPackagesData(dataPackages.data);
                     // Extract all workIds that are already in any OTHER package in the database
                     const otherPackages = isEditing 
                         ? dataPackages.data.filter((p: any) => p._id !== initialData._id)
@@ -196,20 +203,38 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
     const handleAddWork = () => {
         if (!currentSelectionId) return;
 
-        const workToAdd = availableWorks.find(w => w._id === currentSelectionId);
-        if (workToAdd) {
-            // Check if already added
-            if (selectedWorks.some(sw => sw.workId === workToAdd._id)) {
-                alert("Work already added to this package.");
-                return;
+        if (tsNotRequiredCheckbox) {
+            const workToAdd = approvedWorks.find(w => w._id === currentSelectionId);
+            if (workToAdd) {
+                if (selectedWorks.some(sw => sw.workName === workToAdd.workName)) {
+                    alert("Work already added to this package.");
+                    return;
+                }
+                setSelectedWorks(prev => [...prev, {
+                    workId: null,
+                    workName: workToAdd.workName,
+                    amount: (workToAdd.jobNumberAmount || 0) * 100000,
+                    tsNotRequired: true
+                }]);
+                setCurrentSelectionId('');
             }
+        } else {
+            const workToAdd = availableWorks.find(w => w._id === currentSelectionId);
+            if (workToAdd) {
+                // Check if already added
+                if (selectedWorks.some(sw => sw.workId === workToAdd._id)) {
+                    alert("Work already added to this package.");
+                    return;
+                }
 
-            setSelectedWorks(prev => [...prev, {
-                workId: workToAdd._id,
-                workName: workToAdd.workName,
-                amount: (workToAdd.tsAmount || 0) * 100000
-            }]);
-            setCurrentSelectionId(''); // Reset selection
+                setSelectedWorks(prev => [...prev, {
+                    workId: workToAdd._id,
+                    workName: workToAdd.workName,
+                    amount: (workToAdd.tsAmount || 0) * 100000,
+                    tsNotRequired: false
+                }]);
+                setCurrentSelectionId(''); // Reset selection
+            }
         }
     };
 
@@ -234,8 +259,12 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
         }
     }, [selectedWorks, approvedWorks]);
 
-    const handleRemoveWork = (id: string) => {
-        setSelectedWorks(prev => prev.filter(w => w.workId !== id));
+    const handleRemoveWork = (workName: string, id: string | null) => {
+        setSelectedWorks(prev => prev.filter(w => {
+            if (id && w.workId === id) return false;
+            if (w.workName === workName) return false;
+            return true;
+        }));
     };
 
     const handleWorkSelect = (id: string) => {
@@ -286,14 +315,32 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
 
     // Prepare options for SearchableSelect
     const workOptions = useMemo(() => {
-        return availableWorks
-            .filter(w => !selectedWorks.some(sw => sw.workId === w._id))
-            .map(w => ({
-                _id: w._id,
-                packageName: w.workName,
-                'TS Amount': w.tsAmount ? `₹${w.tsAmount} Lacs` : 'N/A'
-            }));
-    }, [availableWorks, selectedWorks]);
+        if (tsNotRequiredCheckbox) {
+            // Find approved works that are not already added to selectedWorks
+            return approvedWorks
+                .filter(aw => {
+                    const inCurrent = selectedWorks.some(sw => sw.workName === aw.workName);
+                    if (inCurrent) return false;
+                    const inOther = allPackagesData.some((p: any) => 
+                        p._id !== initialData._id && p.works?.some((w: any) => w.workName === aw.workName)
+                    );
+                    return !inOther;
+                })
+                .map(aw => ({
+                    _id: aw._id,
+                    packageName: aw.workName,
+                    'TS Amount': 'T.S. Not Required'
+                }));
+        } else {
+            return availableWorks
+                .filter(w => !selectedWorks.some(sw => sw.workId === w._id))
+                .map(w => ({
+                    _id: w._id,
+                    packageName: w.workName,
+                    'TS Amount': w.tsAmount ? `₹${w.tsAmount} Lacs` : 'N/A'
+                }));
+        }
+    }, [availableWorks, selectedWorks, tsNotRequiredCheckbox, approvedWorks, allPackagesData, initialData._id]);
 
     return (
         <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-gray-200 bg-white p-8 shadow rounded-lg">
@@ -489,6 +536,19 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                                 helperField="TS Amount"
                             />
                         </div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <input 
+                                type="checkbox" 
+                                id="tsNotRequiredCheckbox" 
+                                checked={tsNotRequiredCheckbox} 
+                                onChange={(e) => {
+                                    setTsNotRequiredCheckbox(e.target.checked);
+                                    setCurrentSelectionId('');
+                                }} 
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <label htmlFor="tsNotRequiredCheckbox" className="text-xs font-bold text-slate-700 select-none">T.S. Not Required</label>
+                        </div>
                         <button
                             type="button"
                             onClick={handleAddWork}
@@ -508,14 +568,18 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                         ) : (
                             <ul className="divide-y divide-gray-200">
                                 {selectedWorks.map((work, index) => (
-                                    <li key={work.workId} className="py-3 flex justify-between items-center">
+                                    <li key={work.workId || work.workName} className="py-3 flex justify-between items-center">
                                         <div>
                                             <p className="text-sm font-medium text-gray-900">{work.workName}</p>
-                                            <p className="text-xs text-gray-500">TS Amount: ₹{(work.amount / 100000).toFixed(2)} Lacs</p>
+                                            {work.tsNotRequired ? (
+                                                <p className="text-xs text-amber-600 font-semibold">T.S. Not Required</p>
+                                            ) : (
+                                                <p className="text-xs text-gray-500">TS Amount: ₹{(work.amount / 100000).toFixed(2)} Lacs</p>
+                                            )}
                                         </div>
                                         <button
                                             type="button"
-                                            onClick={() => handleRemoveWork(work.workId)}
+                                            onClick={() => handleRemoveWork(work.workName, work.workId)}
                                             className="text-red-600 hover:text-red-900 p-1"
                                         >
                                             <Trash2 className="w-4 h-4" />

@@ -112,7 +112,7 @@ export default async function Home({ searchParams }: Props) {
         needApprovedWorks ? ApprovedWork.find(approvedWorkQuery).select('_id workName approvalYear workType').lean() : Promise.resolve([]),
         needPackages ? Package.find({}).select('_id packageName works.workName').lean() : Promise.resolve([]),
         needTS ? TechnicalSanction.find({}).select('workName').lean() : Promise.resolve([]),
-        needDTPs ? DTP.find({}).select('tsId dtpApprovalDate').lean() : Promise.resolve([]),
+        needDTPs ? DTP.find({}).select('tsId dtpApprovalDate tenderAmount').lean() : Promise.resolve([]),
         loadMaster ? ApprovedWork.find(approvedWorkQuery).lean() : Promise.resolve([]),
         loadMaster ? TechnicalSanction.find({}).lean() : Promise.resolve([]),
         loadMaster ? Package.find({}).lean() : Promise.resolve([]),
@@ -361,7 +361,7 @@ export default async function Home({ searchParams }: Props) {
                 const safeName = normalizeString(work.workName as string);
                 const pkg = workNameToPkg.get(safeName);
                 const dtp = pkg ? pkgIdToDTP.get(pkg._id.toString()) : null;
-                const hasApprovedDTP = Boolean(dtp && dtp.dtpApprovalDate);
+                const hasApprovedDTP = Boolean(dtp && (dtp.dtpApprovalDate || (dtp.tenderAmount !== undefined && dtp.tenderAmount !== null)));
                 
                 if (hasApprovedDTP) {
                     summaryMap[year].dtpPrepared++;

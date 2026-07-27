@@ -9,6 +9,7 @@ export interface IPackage extends Document {
         workId: mongoose.Schema.Types.ObjectId;
         workName: string;
         amount: number; // Snapshot of amount
+        tsNotRequired?: boolean;
     }[];
     dtpConsultant?: string;
     budgetHead?: string;
@@ -26,6 +27,7 @@ const PackageSchema: Schema = new Schema({
         workId: { type: mongoose.Schema.Types.ObjectId, ref: 'TechnicalSanction' },
         workName: { type: String },
         amount: { type: Number },
+        tsNotRequired: { type: Boolean, default: false }
     }],
     dtpConsultant: { type: String },
 }, {

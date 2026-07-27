@@ -161,14 +161,14 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
     let totalItems = 0;
 
     if (params.filter && params.filter !== 'none') {
-        const allDTPs = await DTP.find({}).select('tsId dtpApprovalDate').lean();
+        const allDTPs = await DTP.find({}).select('tsId dtpApprovalDate tenderAmount').lean();
         const allTenders = await Tender.find({}).sort({ trialNo: 1 }).select('packageId proposalDate tenderApprovalDate').lean();
         const allApprovals = await Approval.find({}).select('tenderId proposalDate tenderApprovalDate notRequired').lean();
         const allLOAs = await LOA.find({}).select('tenderId').lean();
         const allWorkOrders = await WorkOrder.find({}).select('loaId').lean();
 
         const dtpPkgIds = new Set(allDTPs.map(d => d.tsId?.toString()));
-        const approvedDtpPkgIds = new Set(allDTPs.filter(d => Boolean(d.dtpApprovalDate)).map(d => d.tsId?.toString()));
+        const approvedDtpPkgIds = new Set(allDTPs.filter(d => Boolean(d.dtpApprovalDate || (d.tenderAmount !== undefined && d.tenderAmount !== null))).map(d => d.tsId?.toString()));
         const tenderPkgIds = new Set(allTenders.map(t => t.packageId?.toString()));
         const approvalByTenderId = new Map<string, any>();
         allApprovals.forEach(a => {

@@ -8,6 +8,7 @@ import ApprovedWork from '@/models/ApprovedWork';
 import { Plus, Eye, Edit2 } from 'lucide-react';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
 import Pagination from '@/components/Pagination';
+import PackagesFilterBar from '@/components/PackagesFilterBar';
 import ListPageLayout from '@/components/ListPageLayout';
 import DataTable from '@/components/DataTable';
 import { buildDashboardFilter, parsePagination, parseSort } from '@/lib/queryHelpers';
@@ -23,27 +24,101 @@ export default async function PackagesListPage({ searchParams }: Props) {
     await dbConnect();
     const params = await searchParams;
     
+    // Fetch unique/distinct values for filter selectors
+    const [subDivisionsPkg, subDivisionsAw, workTypesPkg, workTypesAw, budgetHeadsPkg, budgetHeadsAw, dtpConsultants] = await Promise.all([
+        Package.distinct('subDivision'),
+        ApprovedWork.distinct('subDivision'),
+        Package.distinct('workType'),
+        ApprovedWork.distinct('workType'),
+        Package.distinct('budgetHead'),
+        ApprovedWork.distinct('budgetHead'),
+        Package.distinct('dtpConsultant')
+    ]);
+    const subDivisions = Array.from(new Set([...subDivisionsPkg, ...subDivisionsAw])).filter(Boolean).sort() as string[];
+    const workTypes = Array.from(new Set([...workTypesPkg, ...workTypesAw])).filter(Boolean).sort() as string[];
+    const budgetHeads = Array.from(new Set([...budgetHeadsPkg, ...budgetHeadsAw])).filter(Boolean).sort() as string[];
+    const consultants = dtpConsultants.filter(Boolean).sort() as string[];
+
     let query: any = {};
     let filterLabels: string[] = [];
 
-    const dashboardFilter = await buildDashboardFilter(params);
-    if (dashboardFilter.hasFilter && dashboardFilter.packageIds) {
-        if (query._id) {
-            query._id.$in = dashboardFilter.packageIds;
-        } else {
-            query._id = { $in: dashboardFilter.packageIds };
-        }
-        filterLabels.push("Dashboard Filters Applied");
+    const andConditions: any[] = [];
+
+    if (params.subDivision) {
+        const worksInSubDiv = await ApprovedWork.find({ subDivision: params.subDivision }).select('workName').lean();
+        const workNamesInSubDiv = worksInSubDiv.map((aw: any) => aw.workName).filter(Boolean);
+        andConditions.push({
+            $or: [
+                { subDivision: params.subDivision },
+                { 'works.workName': { $in: workNamesInSubDiv } }
+            ]
+        });
+        filterLabels.push(`Sub Division: ${params.subDivision}`);
+    }
+
+    if (params.workType) {
+        const worksInWorkType = await ApprovedWork.find({ workType: params.workType }).select('workName').lean();
+        const workNamesInWorkType = worksInWorkType.map((aw: any) => aw.workName).filter(Boolean);
+        andConditions.push({
+            $or: [
+                { workType: params.workType },
+                { 'works.workName': { $in: workNamesInWorkType } }
+            ]
+        });
+        filterLabels.push(`Work Type: ${params.workType}`);
+    }
+
+    if (params.budgetHead) {
+        const worksInBudgetHead = await ApprovedWork.find({ budgetHead: params.budgetHead }).select('workName').lean();
+        const workNamesInBudgetHead = worksInBudgetHead.map((aw: any) => aw.workName).filter(Boolean);
+        andConditions.push({
+            $or: [
+                { budgetHead: params.budgetHead },
+                { 'works.workName': { $in: workNamesInBudgetHead } }
+            ]
+        });
+        filterLabels.push(`Budget Head: ${params.budgetHead}`);
+    }
+
+    if (params.dtpConsultant) {
+        andConditions.push({ dtpConsultant: params.dtpConsultant });
+        filterLabels.push(`DTP Consultant: ${params.dtpConsultant}`);
+    }
+
+    if (params.hasWorks === 'yes') {
+        andConditions.push({ 'works.0': { $exists: true } });
+        filterLabels.push("With Approved Works");
+    } else if (params.hasWorks === 'no') {
+        andConditions.push({
+            $or: [
+                { works: { $exists: false } },
+                { works: { $size: 0 } }
+            ]
+        });
+        filterLabels.push("Without Approved Works");
     }
 
     if (params.filter === 'pending_dtp') {
         const packagesWithDTP = await DTP.find().distinct('tsId');
-        query._id = { ...query._id, $nin: packagesWithDTP };
+        andConditions.push({ _id: { $nin: packagesWithDTP } });
         filterLabels.push("Pending DTP");
     } else if (params.filter === 'pending_tender') {
         const packagesWithTender = await Tender.find().distinct('packageId');
-        query._id = { ...query._id, $nin: packagesWithTender };
+        andConditions.push({ _id: { $nin: packagesWithTender } });
         filterLabels.push("Pending Tender");
+    }
+
+    const hasDashboardSpecificParams = !!(params.estimateConsultant || params.approvalYear || params.roadCategory || params.schemeName || params.natureOfWork);
+    if (hasDashboardSpecificParams) {
+        const dashboardFilter = await buildDashboardFilter(params);
+        if (dashboardFilter.hasFilter && dashboardFilter.packageIds) {
+            andConditions.push({ _id: { $in: dashboardFilter.packageIds } });
+            filterLabels.push("Dashboard Filters Applied");
+        }
+    }
+
+    if (andConditions.length > 0) {
+        query.$and = andConditions;
     }
 
     if (params.search) {
@@ -198,9 +273,47 @@ export default async function PackagesListPage({ searchParams }: Props) {
             addHref="/packages/new"
             addLabel="Add New Package"
             searchPlaceholder="Search by package name..."
-            filterActive={!!params.filter || !!params.search}
+            filterActive={!!params.filter || !!params.search || !!params.subDivision || !!params.workType || !!params.budgetHead || !!params.dtpConsultant || !!params.hasWorks}
             clearFiltersHref="/packages"
         >
+            <PackagesFilterBar 
+                subDivisions={subDivisions} 
+                workTypes={workTypes} 
+                budgetHeads={budgetHeads} 
+                consultants={consultants} 
+            />
+            <div className="mb-6 flex flex-wrap items-center gap-2">
+                <Link
+                    href="/packages"
+                    className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
+                        !params.filter
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                >
+                    All Packages
+                </Link>
+                <Link
+                    href="/packages?filter=pending_dtp"
+                    className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
+                        params.filter === 'pending_dtp'
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                >
+                    Pending DTP
+                </Link>
+                <Link
+                    href="/packages?filter=pending_tender"
+                    className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
+                        params.filter === 'pending_tender'
+                            ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                >
+                    Pending Tender
+                </Link>
+            </div>
             <DataTable 
                 columns={columns} 
                 data={packages} 

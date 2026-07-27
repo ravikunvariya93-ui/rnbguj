@@ -149,6 +149,8 @@ export default function PackageDetailClient({
 
     // Package Edit Works States
     const [availableWorks, setAvailableWorks] = useState<any[]>([]);
+    const [allPackagesData, setAllPackagesData] = useState<any[]>([]);
+    const [tsNotRequiredCheckbox, setTsNotRequiredCheckbox] = useState(false);
     const [currentSelectionId, setCurrentSelectionId] = useState('');
 
     // Bill Modal States
@@ -263,6 +265,7 @@ export default function PackageDetailClient({
                         }
                     });
 
+                setAllPackagesData(dataPackages.data);
                 const givenTS = dataTS.data.filter((ts: any) => 
                     ts.tsDate && 
                     ts.tsAmount && 
@@ -565,34 +568,59 @@ export default function PackageDetailClient({
     // Package add/remove works inline handlers
     const handleAddWorkToPkg = () => {
         if (!currentSelectionId) return;
-        const workToAdd = availableWorks.find(w => w._id === currentSelectionId);
-        if (workToAdd) {
-            const isAlreadyAdded = pkgForm.works?.some((sw: any) => {
-                const swId = sw.workId && typeof sw.workId === 'object' ? sw.workId._id : sw.workId;
-                return String(swId) === String(workToAdd._id);
-            });
-            if (isAlreadyAdded) {
-                alert("Work already added to this package.");
-                return;
+
+        if (tsNotRequiredCheckbox) {
+            const workToAdd = approvedWorks.find(w => w._id === currentSelectionId);
+            if (workToAdd) {
+                const isAlreadyAdded = pkgForm.works?.some((sw: any) => sw.workName === workToAdd.workName);
+                if (isAlreadyAdded) {
+                    alert("Work already added to this package.");
+                    return;
+                }
+                setPkgForm((prev: any) => ({
+                    ...prev,
+                    works: [...(prev.works || []), {
+                        workId: null,
+                        workName: workToAdd.workName,
+                        amount: (workToAdd.jobNumberAmount || 0) * 100000,
+                        tsNotRequired: true
+                    }]
+                }));
+                setCurrentSelectionId('');
             }
-            setPkgForm((prev: any) => ({
-                ...prev,
-                works: [...(prev.works || []), {
-                    workId: workToAdd,
-                    workName: workToAdd.workName,
-                    amount: (workToAdd.tsAmount || 0) * 100000
-                }]
-            }));
-            setCurrentSelectionId('');
+        } else {
+            const workToAdd = availableWorks.find(w => w._id === currentSelectionId);
+            if (workToAdd) {
+                const isAlreadyAdded = pkgForm.works?.some((sw: any) => {
+                    const swId = sw.workId && typeof sw.workId === 'object' ? sw.workId._id : sw.workId;
+                    return String(swId) === String(workToAdd._id);
+                });
+                if (isAlreadyAdded) {
+                    alert("Work already added to this package.");
+                    return;
+                }
+                setPkgForm((prev: any) => ({
+                    ...prev,
+                    works: [...(prev.works || []), {
+                        workId: workToAdd,
+                        workName: workToAdd.workName,
+                        amount: (workToAdd.tsAmount || 0) * 100000,
+                        tsNotRequired: false
+                    }]
+                }));
+                setCurrentSelectionId('');
+            }
         }
     };
 
-    const handleRemoveWorkFromPkg = (workIdStr: string) => {
+    const handleRemoveWorkFromPkg = (workName: string, workIdStr: string | null) => {
         setPkgForm((prev: any) => ({
             ...prev,
             works: (prev.works || []).filter((w: any) => {
                 const id = w.workId && typeof w.workId === 'object' ? w.workId._id : w.workId;
-                return String(id) !== String(workIdStr);
+                if (workIdStr && String(id) === String(workIdStr)) return false;
+                if (w.workName === workName) return false;
+                return true;
             })
         }));
     };
@@ -605,7 +633,8 @@ export default function PackageDetailClient({
             const sanitizedWorks = pkgForm.works.map((w: any) => ({
                 workId: w.workId && typeof w.workId === 'object' ? w.workId._id : w.workId,
                 workName: w.workName,
-                amount: w.amount
+                amount: w.amount,
+                tsNotRequired: w.tsNotRequired || false
             }));
             const submissionData = {
                 ...pkgForm,
@@ -1237,17 +1266,34 @@ export default function PackageDetailClient({
     }, [dtp, tender, approval, loa, workOrder, bills]);
 
     const pkgOptions = useMemo(() => {
-        return availableWorks
-            .filter(w => !pkgForm.works?.some((sw: any) => {
-                const swId = sw.workId && typeof sw.workId === 'object' ? sw.workId._id : sw.workId;
-                return String(swId) === String(w._id);
-            }))
-            .map(w => ({
-                _id: w._id,
-                packageName: w.workName,
-                'TS Amount': w.tsAmount ? `₹${w.tsAmount} Lacs` : 'N/A'
-            }));
-    }, [availableWorks, pkgForm.works]);
+        if (tsNotRequiredCheckbox) {
+            return approvedWorks
+                .filter(aw => {
+                    const inCurrent = pkgForm.works?.some((sw: any) => sw.workName === aw.workName);
+                    if (inCurrent) return false;
+                    const inOther = allPackagesData.some((p: any) => 
+                        p._id !== packageId && p.works?.some((w: any) => w.workName === aw.workName)
+                    );
+                    return !inOther;
+                })
+                .map(aw => ({
+                    _id: aw._id,
+                    packageName: aw.workName,
+                    'TS Amount': 'T.S. Not Required'
+                }));
+        } else {
+            return availableWorks
+                .filter(w => !pkgForm.works?.some((sw: any) => {
+                    const swId = sw.workId && typeof sw.workId === 'object' ? sw.workId._id : sw.workId;
+                    return String(swId) === String(w._id);
+                }))
+                .map(w => ({
+                    _id: w._id,
+                    packageName: w.workName,
+                    'TS Amount': w.tsAmount ? `₹${w.tsAmount} Lacs` : 'N/A'
+                }));
+        }
+    }, [availableWorks, pkgForm.works, tsNotRequiredCheckbox, approvedWorks, allPackagesData, packageId]);
 
     return (
         <div className="space-y-8 pb-16">
@@ -1521,6 +1567,19 @@ export default function PackageDetailClient({
                                                 helperField="TS Amount"
                                             />
                                         </div>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <input 
+                                                type="checkbox" 
+                                                id="detailTsNotRequiredCheckbox" 
+                                                checked={tsNotRequiredCheckbox} 
+                                                onChange={(e) => {
+                                                    setTsNotRequiredCheckbox(e.target.checked);
+                                                    setCurrentSelectionId('');
+                                                }} 
+                                                className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+                                            />
+                                            <label htmlFor="detailTsNotRequiredCheckbox" className="text-xs font-bold text-slate-700 select-none">T.S. Not Required</label>
+                                        </div>
                                         <button type="button" onClick={handleAddWorkToPkg} disabled={!currentSelectionId} className="px-4 py-2 bg-[#107c41] text-white rounded-xl text-sm font-semibold disabled:opacity-50 h-[38px] flex items-center cursor-pointer transition-all">Add</button>
                                     </div>
 
@@ -1557,12 +1616,12 @@ export default function PackageDetailClient({
                                                         const roadCat = aw?.roadCategory || '-';
                                                         const wType = aw?.workType || '-';
                                                         const nature = aw?.natureOfWork || '-';
-                                                        const tsDate = w.workId?.tsDate ? formatShortDate(w.workId.tsDate) : '-';
-                                                        const tsAuth = w.workId?.tsAuthority || '-';
+                                                        const tsDate = w.tsNotRequired ? 'Not Required' : (w.workId?.tsDate ? formatShortDate(w.workId.tsDate) : '-');
+                                                        const tsAuth = w.tsNotRequired ? 'Not Required' : (w.workId?.tsAuthority || '-');
                                                         const keyId = w.workId && typeof w.workId === 'object' ? w.workId._id : w.workId;
 
                                                         return (
-                                                            <tr key={keyId} className="hover:bg-slate-50">
+                                                            <tr key={keyId || w.workName} className="hover:bg-slate-50">
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-center font-mono text-slate-600">{i + 1}</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 font-medium text-slate-800">{w.workName}</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-center font-medium text-slate-600">{appYear}</td>
@@ -1576,9 +1635,32 @@ export default function PackageDetailClient({
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-center font-mono text-slate-600">{tsDate}</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-center text-slate-600">{tsAuth}</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-center">
-                                                                    <button type="button" onClick={() => handleRemoveWorkFromPkg(keyId)} className="text-rose-600 p-1 hover:bg-rose-50 rounded-lg cursor-pointer">
-                                                                        <Trash2 className="w-4 h-4" />
-                                                                    </button>
+                                                                    <div className="flex items-center justify-center gap-2">
+                                                                        <button 
+                                                                            type="button" 
+                                                                            onClick={() => {
+                                                                                setPkgForm((prev: any) => ({
+                                                                                    ...prev,
+                                                                                    works: prev.works.map((item: any, idx: number) => {
+                                                                                        if (idx === i) {
+                                                                                            return { ...item, tsNotRequired: !item.tsNotRequired };
+                                                                                        }
+                                                                                        return item;
+                                                                                    })
+                                                                                }));
+                                                                            }} 
+                                                                            className={`px-2 py-1 text-[10px] font-bold rounded-lg border transition-all ${
+                                                                                w.tsNotRequired 
+                                                                                    ? 'bg-amber-100 border-amber-300 text-amber-800' 
+                                                                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                                                            }`}
+                                                                        >
+                                                                            {w.tsNotRequired ? 'TS Not Req' : 'TS Req'}
+                                                                        </button>
+                                                                        <button type="button" onClick={() => handleRemoveWorkFromPkg(w.workName, keyId)} className="text-rose-600 p-1 hover:bg-rose-50 rounded-lg cursor-pointer">
+                                                                            <Trash2 className="w-4 h-4" />
+                                                                        </button>
+                                                                    </div>
                                                                 </td>
                                                             </tr>
                                                         );
@@ -1662,12 +1744,12 @@ export default function PackageDetailClient({
                                                         const roadCat = aw?.roadCategory || '-';
                                                         const wType = aw?.workType || '-';
                                                         const nature = aw?.natureOfWork || '-';
-                                                        const tsDate = work.workId?.tsDate ? formatShortDate(work.workId.tsDate) : '-';
-                                                        const tsAuth = work.workId?.tsAuthority || '-';
+                                                        const tsDate = work.tsNotRequired ? 'Not Required' : (work.workId?.tsDate ? formatShortDate(work.workId.tsDate) : '-');
+                                                        const tsAuth = work.tsNotRequired ? 'Not Required' : (work.workId?.tsAuthority || '-');
                                                         const keyId = work.workId && typeof work.workId === 'object' ? work.workId._id : work.workId;
 
                                                         return (
-                                                            <tr key={keyId} className="hover:bg-slate-50">
+                                                            <tr key={keyId || work.workName} className="hover:bg-slate-50">
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-center font-mono text-slate-600">{i + 1}</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 font-medium text-slate-800">{work.workName}</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-center font-medium text-slate-600">{appYear}</td>

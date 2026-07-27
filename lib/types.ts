@@ -17,6 +17,9 @@ export interface ListPageSearchParams {
   noticeNo?: string;
   contractorName?: string;
   trialNo?: string;
+  budgetHead?: string;
+  dtpConsultant?: string;
+  hasWorks?: string;
 }
 
 export interface EntityFormProps<T = any> {
