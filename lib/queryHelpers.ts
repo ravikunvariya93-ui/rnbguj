@@ -9,7 +9,12 @@ export async function buildDashboardFilter(params: ListPageSearchParams): Promis
     if (params.estimateConsultant) metadataFiltersArr.push({ estimateConsultant: params.estimateConsultant });
     if (params.approvalYear) metadataFiltersArr.push({ approvalYear: params.approvalYear });
     if (params.roadCategory) metadataFiltersArr.push({ roadCategory: params.roadCategory });
-    if (params.workType) metadataFiltersArr.push({ workType: params.workType });
+    if (params.workType) {
+        const types = params.workType.split(',').map(t => t.trim()).filter(Boolean);
+        if (types.length > 0) {
+            metadataFiltersArr.push({ workType: { $in: types } });
+        }
+    }
     if (params.schemeName) metadataFiltersArr.push({ schemeName: params.schemeName });
     if (params.natureOfWork) {
         if (params.natureOfWork === 'Unclassified') {
@@ -43,7 +48,10 @@ export async function buildDashboardFilter(params: ListPageSearchParams): Promis
                 { "works.workId": { $in: tsIds } }
             ];
             if (params.workType) {
-                orConditions.push({ workType: params.workType });
+                const types = params.workType.split(',').map(t => t.trim()).filter(Boolean);
+                if (types.length > 0) {
+                    orConditions.push({ workType: { $in: types } });
+                }
             }
             pkgQuery.$or = orConditions;
         }

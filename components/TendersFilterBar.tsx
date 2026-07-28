@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { Filter, X } from 'lucide-react';
+import { Filter, X, ChevronDown } from 'lucide-react';
 
 interface TendersFilterBarProps {
     agencies: any[];
@@ -22,6 +22,20 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
     const [trialNo, setTrialNo] = useState(searchParams.get('trialNo') || '');
     const [subDivision, setSubDivision] = useState(searchParams.get('subDivision') || '');
     const [workType, setWorkType] = useState(searchParams.get('workType') || '');
+    const [isWorkTypeOpen, setIsWorkTypeOpen] = useState(false);
+
+    // Close dropdown on click outside
+    useEffect(() => {
+        if (!isWorkTypeOpen) return;
+        const handleOutsideClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (!target.closest('#work-type-dropdown-container')) {
+                setIsWorkTypeOpen(false);
+            }
+        };
+        document.addEventListener('click', handleOutsideClick);
+        return () => document.removeEventListener('click', handleOutsideClick);
+    }, [isWorkTypeOpen]);
 
     // Synchronize local state with searchParams (handles clear filters, back/forward actions)
     useEffect(() => {
@@ -81,6 +95,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
     };
 
     const hasActiveFilters = !!(noticeYear || noticeNo || contractorName || trialNo || subDivision || workType);
+    const selectedWorkTypes = workType ? workType.split(',').filter(Boolean) : [];
 
     return (
         <div className="bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-200 shadow-2xs">
@@ -107,19 +122,50 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                 </div>
 
                 {/* Work Type */}
-                <div>
-                    <label htmlFor="filterWorkType" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Work Type</label>
-                    <select
-                        id="filterWorkType"
-                        value={workType}
-                        onChange={(e) => setWorkType(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border focus:border-blue-500 shadow-2xs"
+                <div className="relative" id="work-type-dropdown-container">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Work Type</label>
+                    <button
+                        type="button"
+                        onClick={() => setIsWorkTypeOpen(!isWorkTypeOpen)}
+                        className="flex items-center justify-between w-full rounded-xl border border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs text-left cursor-pointer"
                     >
-                        <option value="">All Work Types</option>
-                        {workTypes.map(wt => (
-                            <option key={wt} value={wt}>{wt}</option>
-                        ))}
-                    </select>
+                        <span className="truncate">
+                            {selectedWorkTypes.length === 0
+                                ? 'All Work Types'
+                                : selectedWorkTypes.join(', ')}
+                        </span>
+                        <ChevronDown className="w-4 h-4 ml-1 text-slate-400 shrink-0" />
+                    </button>
+                    
+                    {isWorkTypeOpen && (
+                        <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white p-2 shadow-md max-h-60 overflow-y-auto">
+                            {workTypes.map((wt) => {
+                                const isChecked = selectedWorkTypes.includes(wt);
+                                return (
+                                    <label
+                                        key={wt}
+                                        className="flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 rounded-lg text-sm text-slate-700 cursor-pointer select-none"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            onChange={() => {
+                                                let newSelected = [...selectedWorkTypes];
+                                                if (isChecked) {
+                                                    newSelected = newSelected.filter(t => t !== wt);
+                                                } else {
+                                                    newSelected.push(wt);
+                                                }
+                                                setWorkType(newSelected.join(','));
+                                            }}
+                                            className="rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                        />
+                                        <span>{wt}</span>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
 
                 {/* Notice Year */}

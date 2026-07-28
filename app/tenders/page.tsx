@@ -346,6 +346,23 @@ export default async function TendersListPage({ searchParams }: Props) {
                 </div>
             ) 
         },
+        {
+            key: 'includedWorks',
+            label: 'Included Works',
+            minWidth: '250px',
+            render: (row) => {
+                const works = row.packageId?.works || [];
+                return works.length > 0 ? (
+                    <div className="space-y-1">
+                        {works.map((work: any, idx: number) => (
+                            <div key={idx} className="text-xs leading-tight text-slate-600">
+                                {idx + 1}. {work.workName || '-'}
+                            </div>
+                        ))}
+                    </div>
+                ) : <span className="text-slate-400 italic text-xs">No works found</span>;
+            }
+        },
         { 
             key: 'workType', 
             label: 'Work Type', 
@@ -367,22 +384,6 @@ export default async function TendersListPage({ searchParams }: Props) {
             ) 
         },
         { key: 'trialNo', label: 'Trial', sortable: true, align: 'center' },
-        {
-            key: 'proposalDate',
-            label: 'Propasal Date',
-            sortable: true,
-            render: (row) => row.proposalDate === 'Not Required' ? (
-                <span className="text-slate-500 italic font-semibold">Not Required</span>
-            ) : <span className="text-slate-600">{formatShortDate(row.proposalDate)}</span>
-        },
-        {
-            key: 'tenderApprovalDate',
-            label: 'Approval Date',
-            sortable: true,
-            render: (row) => row.tenderApprovalDate === 'Not Required' ? (
-                <span className="text-slate-500 italic font-semibold">Not Required</span>
-            ) : <span className="text-slate-600">{formatShortDate(row.tenderApprovalDate)}</span>
-        },
         {
             key: 'acceptanceLetterDate',
             label: 'LOA Date',
