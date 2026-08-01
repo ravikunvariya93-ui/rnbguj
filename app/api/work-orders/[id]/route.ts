@@ -38,11 +38,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             return NextResponse.json({ success: false, error: 'Work Order not found' }, { status: 404 });
         }
 
-        // Trigger SMS asynchronously
+        // Trigger SMS and await to ensure it completes in Serverless environments (like Vercel)
         if (workOrder && workOrder._id) {
-            checkAndSendWorkOrderSMS(workOrder._id.toString()).catch((err) => {
+            try {
+                await checkAndSendWorkOrderSMS(workOrder._id.toString());
+            } catch (err) {
                 console.error('[SMS PUT Trigger Error]', err);
-            });
+            }
         }
 
         return NextResponse.json({ success: true, data: workOrder });

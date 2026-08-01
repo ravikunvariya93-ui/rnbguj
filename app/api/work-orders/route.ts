@@ -22,11 +22,13 @@ export async function POST(req: Request) {
         }
         const workOrder = await WorkOrder.create(body);
         
-        // Trigger SMS asynchronously
+        // Trigger SMS and await to ensure it completes in Serverless environments (like Vercel)
         if (workOrder && workOrder._id) {
-            checkAndSendWorkOrderSMS(workOrder._id.toString()).catch((err) => {
+            try {
+                await checkAndSendWorkOrderSMS(workOrder._id.toString());
+            } catch (err) {
                 console.error('[SMS POST Trigger Error]', err);
-            });
+            }
         }
 
         return NextResponse.json({ success: true, data: workOrder }, { status: 201 });
