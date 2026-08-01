@@ -101,33 +101,26 @@ export async function checkAndSendWorkOrderSMS(workOrderId: string): Promise<boo
             return false;
         }
 
-        // Resolve recipients (Contractor + Executive Engineer + Deputy Executive Engineer)
+        // Resolve recipients (Executive Engineer + Deputy Executive Engineer)
         const overrideMobile = process.env.SMS_RECIPIENT_OVERRIDE;
         const eeMobile = process.env.EXECUTIVE_ENGINEER_MOBILE || '9909155370';
         const recipients: string[] = [];
 
         if (overrideMobile) {
             // Override mode redirects all copies to the override number
-            // 1. Contractor copy
+            // 1. Executive Engineer copy
             recipients.push(overrideMobile.trim());
-            // 2. Executive Engineer copy
-            recipients.push(overrideMobile.trim());
-            // 3. Concerned Deputy Executive Engineer copy
+            // 2. Concerned Deputy Executive Engineer copy
             if (pkg && pkg.subDivision && getSubDivisionMobile(pkg.subDivision)) {
                 recipients.push(overrideMobile.trim());
             }
         } else {
-            // 1. Contractor recipient
-            if (agency.mobileNo && agency.mobileNo.trim()) {
-                recipients.push(agency.mobileNo.trim());
-            }
-
-            // 2. Executive Engineer recipient
+            // 1. Executive Engineer recipient
             if (eeMobile && eeMobile.trim()) {
                 recipients.push(eeMobile.trim());
             }
 
-            // 3. Concerned Deputy Executive Engineer (Sub Division) recipient
+            // 2. Concerned Deputy Executive Engineer (Sub Division) recipient
             if (pkg && pkg.subDivision) {
                 const subDivMobile = getSubDivisionMobile(pkg.subDivision);
                 if (subDivMobile) {
