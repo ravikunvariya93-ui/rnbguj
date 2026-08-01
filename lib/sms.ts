@@ -101,28 +101,40 @@ export async function checkAndSendWorkOrderSMS(workOrderId: string): Promise<boo
             return false;
         }
 
-        // Resolve recipients (Contractor + Sub Division)
+        // Resolve recipients (Contractor + Executive Engineer + Deputy Executive Engineer)
         const overrideMobile = process.env.SMS_RECIPIENT_OVERRIDE;
+        const eeMobile = process.env.EXECUTIVE_ENGINEER_MOBILE || '9909155370';
         const recipients: string[] = [];
 
-        // 4a. Contractor recipient
-        const mainMobile = overrideMobile ? overrideMobile.trim() : (agency.mobileNo || '').trim();
-        if (mainMobile) {
-            recipients.push(mainMobile);
-        }
+        if (overrideMobile) {
+            // Override mode redirects all copies to the override number
+            // 1. Contractor copy
+            recipients.push(overrideMobile.trim());
+            // 2. Executive Engineer copy
+            recipients.push(overrideMobile.trim());
+            // 3. Concerned Deputy Executive Engineer copy
+            if (pkg && pkg.subDivision && getSubDivisionMobile(pkg.subDivision)) {
+                recipients.push(overrideMobile.trim());
+            }
+        } else {
+            // 1. Contractor recipient
+            if (agency.mobileNo && agency.mobileNo.trim()) {
+                recipients.push(agency.mobileNo.trim());
+            }
 
-        // 4b. Concerned Sub Division recipient
-        if (pkg && pkg.subDivision) {
-            const subDivMobile = getSubDivisionMobile(pkg.subDivision);
-            if (subDivMobile) {
-                if (overrideMobile) {
-                    console.log(`[SMS Service] Subdivision alert would go to ${subDivMobile}, redirecting to override number.`);
-                    recipients.push(overrideMobile.trim());
-                } else {
+            // 2. Executive Engineer recipient
+            if (eeMobile && eeMobile.trim()) {
+                recipients.push(eeMobile.trim());
+            }
+
+            // 3. Concerned Deputy Executive Engineer (Sub Division) recipient
+            if (pkg && pkg.subDivision) {
+                const subDivMobile = getSubDivisionMobile(pkg.subDivision);
+                if (subDivMobile) {
                     recipients.push(subDivMobile);
+                } else {
+                    console.log(`[SMS Service] No subdivision mobile number found matching: "${pkg.subDivision}"`);
                 }
-            } else {
-                console.log(`[SMS Service] No subdivision mobile number found matching: "${pkg.subDivision}"`);
             }
         }
 
