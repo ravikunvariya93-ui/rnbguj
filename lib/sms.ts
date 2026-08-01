@@ -84,13 +84,10 @@ export async function checkAndSendWorkOrderSMS(workOrderId: string): Promise<boo
 
         // 5. Draft the SMS message
         const formattedDate = formatDate(workOrder.workOrderDate);
-        const agreementInfo = workOrder.agreementNo 
-            ? `Agreement No: ${workOrder.agreementNo} of ${workOrder.agreementYear || ''}` 
-            : 'Agreement pending';
         const packageName = pkg?.packageName || 'N/A';
 
         // Custom template for the notification
-        const message = `Dear ${agency.name}, Work Order No. ${workOrder.workOrderWorksheetNo} dated ${formattedDate} has been issued for Package: ${packageName}. ${agreementInfo}. - Panchayat R&B Div, Bhavnagar`;
+        const message = `Work Order has been issued for Package: ${packageName} to ${agency.name} on ${formattedDate}. - Tender Clerk`;
 
         console.log(`[SMS Service] Attempting to send SMS to ${mobileNo}...`);
         
