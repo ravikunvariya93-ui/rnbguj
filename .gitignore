@@ -45,3 +45,6 @@ next-env.d.ts
 
 # Office temporary files
 ~$*
+
+# Local SMS logs
+sms_sent.log

@@ -4,6 +4,7 @@ import LOA from '@/models/LOA';
 import Tender from '@/models/Tender';
 import Package from '@/models/Package';
 import { NextResponse } from 'next/server';
+import { checkAndSendWorkOrderSMS } from '@/lib/sms';
 
 // Ensure models are registered for populate
 void LOA;
@@ -20,6 +21,14 @@ export async function POST(req: Request) {
             body.agreementDate = null;
         }
         const workOrder = await WorkOrder.create(body);
+        
+        // Trigger SMS asynchronously
+        if (workOrder && workOrder._id) {
+            checkAndSendWorkOrderSMS(workOrder._id.toString()).catch((err) => {
+                console.error('[SMS POST Trigger Error]', err);
+            });
+        }
+
         return NextResponse.json({ success: true, data: workOrder }, { status: 201 });
     } catch (error) {
         console.error(error);

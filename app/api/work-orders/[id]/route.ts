@@ -3,6 +3,7 @@ import WorkOrder from '@/models/WorkOrder';
 import LOA from '@/models/LOA';
 import Tender from '@/models/Tender';
 import { NextResponse } from 'next/server';
+import { checkAndSendWorkOrderSMS } from '@/lib/sms';
 
 // Ensure models are registered for populate
 void LOA;
@@ -36,6 +37,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         if (!workOrder) {
             return NextResponse.json({ success: false, error: 'Work Order not found' }, { status: 404 });
         }
+
+        // Trigger SMS asynchronously
+        if (workOrder && workOrder._id) {
+            checkAndSendWorkOrderSMS(workOrder._id.toString()).catch((err) => {
+                console.error('[SMS PUT Trigger Error]', err);
+            });
+        }
+
         return NextResponse.json({ success: true, data: workOrder });
     } catch (error) {
         return NextResponse.json({ success: false, error: 'Failed to update Work Order' }, { status: 400 });

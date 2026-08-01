@@ -21,6 +21,7 @@ export interface IWorkOrder extends Document {
     workDurationMonths: number;
     stipulatedCompletionDate: Date;
     notRequired?: boolean;
+    smsSent?: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -28,6 +29,7 @@ export interface IWorkOrder extends Document {
 const WorkOrderSchema: Schema = new Schema({
     loaId: { type: mongoose.Schema.Types.ObjectId, ref: 'LOA', required: true },
     notRequired: { type: Boolean, default: false },
+    smsSent: { type: Boolean, default: false },
     agreementYear: { type: String },
     agreementNo: { type: String },
     agreementDate: { type: Date },
