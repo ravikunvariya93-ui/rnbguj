@@ -22,6 +22,32 @@ function formatDate(date: Date | string): string {
  * Core function to check if a Work Order has the required details and send an SMS notification
  * to the associated Agency/Contractor.
  */
+const SUB_DIVISION_MOBILES: Record<string, string> = {
+    'mahuva': '8980324727',
+    'palitana': '8980324727',
+    'vallabhipur': '9558944988',
+    'talaja': '7016606240',
+    'bhavnagar': '7878719949',
+    'shihor': '7016571621'
+};
+
+/**
+ * Helper to match sub-division name to a phone number
+ */
+function getSubDivisionMobile(subDivisionName: string): string | null {
+    const lowerName = subDivisionName.toLowerCase();
+    for (const [key, val] of Object.entries(SUB_DIVISION_MOBILES)) {
+        if (lowerName.includes(key)) {
+            return val;
+        }
+    }
+    return null;
+}
+
+/**
+ * Core function to check if a Work Order has the required details and send an SMS notification
+ * to the associated Agency/Contractor and the concerned Sub Division.
+ */
 export async function checkAndSendWorkOrderSMS(workOrderId: string): Promise<boolean> {
     try {
         await dbConnect();
@@ -75,10 +101,33 @@ export async function checkAndSendWorkOrderSMS(workOrderId: string): Promise<boo
             return false;
         }
 
+        // Resolve recipients (Contractor + Sub Division)
         const overrideMobile = process.env.SMS_RECIPIENT_OVERRIDE;
-        const mobileNo = overrideMobile ? overrideMobile.trim() : (agency.mobileNo || '').trim();
-        if (!mobileNo) {
-            console.log(`[SMS Service] Skipping SMS: No mobile number found for Agency: "${agency.name}" and no SMS_RECIPIENT_OVERRIDE is configured.`);
+        const recipients: string[] = [];
+
+        // 4a. Contractor recipient
+        const mainMobile = overrideMobile ? overrideMobile.trim() : (agency.mobileNo || '').trim();
+        if (mainMobile) {
+            recipients.push(mainMobile);
+        }
+
+        // 4b. Concerned Sub Division recipient
+        if (pkg && pkg.subDivision) {
+            const subDivMobile = getSubDivisionMobile(pkg.subDivision);
+            if (subDivMobile) {
+                if (overrideMobile) {
+                    console.log(`[SMS Service] Subdivision alert would go to ${subDivMobile}, redirecting to override number.`);
+                    recipients.push(overrideMobile.trim());
+                } else {
+                    recipients.push(subDivMobile);
+                }
+            } else {
+                console.log(`[SMS Service] No subdivision mobile number found matching: "${pkg.subDivision}"`);
+            }
+        }
+
+        if (recipients.length === 0) {
+            console.log(`[SMS Service] Skipping SMS: No recipient mobile numbers found.`);
             return false;
         }
 
@@ -89,10 +138,10 @@ export async function checkAndSendWorkOrderSMS(workOrderId: string): Promise<boo
         // Custom template for the notification
         const message = `Work Order has been issued for Package: ${packageName} to ${agency.name} on ${formattedDate}. - Tender Clerk`;
 
-        console.log(`[SMS Service] Attempting to send SMS to ${mobileNo}...`);
+        console.log(`[SMS Service] Attempting to send SMS to recipients:`, recipients);
         
         // 6. Dispatch SMS (depending on environment config)
-        let success = false;
+        let successCount = 0;
         
         const textbeeApiKey = process.env.TEXTBEE_API_KEY;
         const textbeeDeviceId = process.env.TEXTBEE_DEVICE_ID;
@@ -103,10 +152,11 @@ export async function checkAndSendWorkOrderSMS(workOrderId: string): Promise<boo
 
         if (textbeeApiKey && textbeeDeviceId) {
             // A. textbee.dev integration (Turns Android phone into SMS gateway)
+            // Supports multiple recipients natively in a single API call
             const textbeeUrl = `https://api.textbee.dev/api/v1/gateway/devices/${textbeeDeviceId}/send-sms`;
-            const formattedMobile = mobileNo.startsWith('+') ? mobileNo : `+91${mobileNo}`;
+            const formattedRecipients = recipients.map(r => r.startsWith('+') ? r : `+91${r}`);
 
-            console.log(`[SMS Service] Dispatching SMS via textbee.dev to ${formattedMobile}`);
+            console.log(`[SMS Service] Dispatching SMS via textbee.dev to recipients:`, formattedRecipients);
 
             const response = await fetch(textbeeUrl, {
                 method: 'POST',
@@ -115,28 +165,21 @@ export async function checkAndSendWorkOrderSMS(workOrderId: string): Promise<boo
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    recipients: [formattedMobile],
+                    recipients: formattedRecipients,
                     message: message
                 })
             });
 
             if (response.ok) {
                 console.log(`[SMS Service] textbee.dev SMS dispatched successfully.`);
-                success = true;
+                successCount = recipients.length;
             } else {
                 const errorText = await response.text();
                 console.error(`[SMS Service] textbee.dev API failed (Status: ${response.status}): ${errorText}`);
             }
         } else if (gatewayUrl) {
-            // A. HTTP SMS Gateway Integration (Custom URL)
+            // B. HTTP SMS Gateway Integration (Custom URL) - Loops over each recipient
             const method = (process.env.SMS_GATEWAY_METHOD || 'GET').toUpperCase();
-            
-            // Format URL-encoded params or inject placeholder variables
-            const encodedMessage = encodeURIComponent(message);
-            const targetUrl = gatewayUrl
-                .replace('{number}', encodeURIComponent(mobileNo))
-                .replace('{message}', encodedMessage);
-
             let headers: Record<string, string> = {};
             if (process.env.SMS_GATEWAY_HEADERS) {
                 try {
@@ -146,81 +189,87 @@ export async function checkAndSendWorkOrderSMS(workOrderId: string): Promise<boo
                 }
             }
 
-            console.log(`[SMS Service] Dispatching request to custom gateway via ${method}: ${targetUrl}`);
-            
-            const response = await fetch(targetUrl, {
-                method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...headers
-                },
-                body: method === 'POST' && process.env.SMS_GATEWAY_BODY 
-                    ? process.env.SMS_GATEWAY_BODY
-                        .replace('{number}', mobileNo)
-                        .replace('{message}', message)
-                    : undefined
-            });
+            for (const number of recipients) {
+                const encodedMessage = encodeURIComponent(message);
+                const targetUrl = gatewayUrl
+                    .replace('{number}', encodeURIComponent(number))
+                    .replace('{message}', encodedMessage);
 
-            if (response.ok) {
-                console.log(`[SMS Service] Gateway response successful (Status: ${response.status})`);
-                success = true;
-            } else {
-                const errorText = await response.text();
-                console.error(`[SMS Service] Gateway request failed (Status: ${response.status}): ${errorText}`);
+                console.log(`[SMS Service] Dispatching request to custom gateway for ${number} via ${method}`);
+                
+                const response = await fetch(targetUrl, {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...headers
+                    },
+                    body: method === 'POST' && process.env.SMS_GATEWAY_BODY 
+                        ? process.env.SMS_GATEWAY_BODY
+                            .replace('{number}', number)
+                            .replace('{message}', message)
+                        : undefined
+                });
+
+                if (response.ok) {
+                    successCount++;
+                } else {
+                    const errorText = await response.text();
+                    console.error(`[SMS Service] Gateway request failed for ${number} (Status: ${response.status}): ${errorText}`);
+                }
             }
         } else if (twilioSid && twilioAuthToken && twilioFrom) {
-            // B. Twilio Integration
+            // C. Twilio Integration - Loops over each recipient
             const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
             const credentials = Buffer.from(`${twilioSid}:${twilioAuthToken}`).toString('base64');
-            
             const useWhatsApp = process.env.TWILIO_USE_WHATSAPP === 'true';
-            const formattedMobile = mobileNo.startsWith('+') ? mobileNo : `+91${mobileNo}`;
-            
-            const fromField = useWhatsApp 
-                ? (twilioFrom.startsWith('whatsapp:') ? twilioFrom : `whatsapp:${twilioFrom}`)
-                : twilioFrom;
-            const toField = useWhatsApp 
-                ? `whatsapp:${formattedMobile}`
-                : formattedMobile;
 
-            console.log(`[SMS Service] Dispatching via Twilio (${useWhatsApp ? 'WhatsApp' : 'SMS'}) to ${toField}`);
-            
-            const response = await fetch(twilioUrl, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Basic ${credentials}`,
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams({
-                    From: fromField,
-                    To: toField,
-                    Body: message
-                }).toString()
-            });
+            for (const number of recipients) {
+                const formattedMobile = number.startsWith('+') ? number : `+91${number}`;
+                const fromField = useWhatsApp 
+                    ? (twilioFrom.startsWith('whatsapp:') ? twilioFrom : `whatsapp:${twilioFrom}`)
+                    : twilioFrom;
+                const toField = useWhatsApp 
+                    ? `whatsapp:${formattedMobile}`
+                    : formattedMobile;
 
-            if (response.ok) {
-                console.log(`[SMS Service] Twilio message dispatched successfully.`);
-                success = true;
-            } else {
-                const errorData = await response.json();
-                console.error(`[SMS Service] Twilio request failed:`, errorData);
+                console.log(`[SMS Service] Dispatching via Twilio to ${toField}`);
+                
+                const response = await fetch(twilioUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Basic ${credentials}`,
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        From: fromField,
+                        To: toField,
+                        Body: message
+                    }).toString()
+                });
+
+                if (response.ok) {
+                    successCount++;
+                } else {
+                    const errorData = await response.json();
+                    console.error(`[SMS Service] Twilio request failed for ${toField}:`, errorData);
+                }
             }
         } else {
-            // C. Sandbox Fallback Mode (Logs to project root)
+            // D. Sandbox Fallback Mode
             console.log(`[SMS Service] Running in Sandbox Mode (No credentials set)`);
-            success = true; // Mark as true so we flag as sent in sandbox
+            successCount = recipients.length;
         }
 
-        // 7. Write to local log file (always do this for developer audit/sandbox verification)
+        // 7. Write to local log file for developer audit/sandbox verification
         const logPath = path.join(process.cwd(), 'sms_sent.log');
         const timestamp = new Date().toISOString();
-        const logEntry = `[${timestamp}] TO: ${mobileNo} | AGENCY: ${agency.name} | MSG: "${message}" | STATUS: ${success ? 'SUCCESS' : 'FAILED'}\n`;
+        const logEntry = `[${timestamp}] TO: ${recipients.join(', ')} | AGENCY: ${agency.name} | MSG: "${message}" | STATUS: ${successCount === recipients.length ? 'SUCCESS' : `${successCount}/${recipients.length} SENT`}\n`;
         fs.appendFileSync(logPath, logEntry, 'utf8');
 
-        // 8. Update Work Order DB state if successfully processed
-        if (success) {
+        // 8. Update Work Order DB state if successfully processed for all/some recipients
+        if (successCount > 0) {
             await WorkOrder.findByIdAndUpdate(workOrderId, { smsSent: true });
-            console.log(`[SMS Service] SMS sent successfully. Flagged smsSent=true on Work Order.`);
+            console.log(`[SMS Service] Notification processed successfully. Flagged smsSent=true on Work Order.`);
             return true;
         }
 
