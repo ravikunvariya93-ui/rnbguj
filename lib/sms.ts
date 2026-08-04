@@ -28,7 +28,7 @@ const SUB_DIVISION_MOBILES: Record<string, string> = {
     'vallabhipur': '9558944988',
     'talaja': '7016606240',
     'bhavnagar': '7878719949',
-    'shihor': '7016571621,9909155370'
+    'shihor': '7016571621'
 };
 
 /**
@@ -104,41 +104,32 @@ export async function checkAndSendWorkOrderSMS(workOrderId: string): Promise<boo
         // Resolve recipients (Executive Engineer + Deputy Executive Engineer)
         const overrideMobile = process.env.SMS_RECIPIENT_OVERRIDE;
         const eeMobile = process.env.EXECUTIVE_ENGINEER_MOBILE || '9909155370';
-        const rawRecipients: string[] = [];
+        const recipients: string[] = [];
 
         if (overrideMobile) {
             // Override mode redirects all copies to the override number
             // 1. Executive Engineer copy
-            rawRecipients.push(overrideMobile.trim());
+            recipients.push(overrideMobile.trim());
             // 2. Concerned Deputy Executive Engineer copy
             if (pkg && pkg.subDivision && getSubDivisionMobile(pkg.subDivision)) {
-                rawRecipients.push(overrideMobile.trim());
+                recipients.push(overrideMobile.trim());
             }
         } else {
             // 1. Executive Engineer recipient
             if (eeMobile && eeMobile.trim()) {
-                rawRecipients.push(eeMobile.trim());
+                recipients.push(eeMobile.trim());
             }
 
             // 2. Concerned Deputy Executive Engineer (Sub Division) recipient
             if (pkg && pkg.subDivision) {
-                const subDivMobileStr = getSubDivisionMobile(pkg.subDivision);
-                if (subDivMobileStr) {
-                    const subDivMobiles = subDivMobileStr.split(',');
-                    for (const subDivMobile of subDivMobiles) {
-                        const cleanMobile = subDivMobile.trim();
-                        if (cleanMobile) {
-                            rawRecipients.push(cleanMobile);
-                        }
-                    }
+                const subDivMobile = getSubDivisionMobile(pkg.subDivision);
+                if (subDivMobile) {
+                    recipients.push(subDivMobile);
                 } else {
                     console.log(`[SMS Service] No subdivision mobile number found matching: "${pkg.subDivision}"`);
                 }
             }
         }
-
-        // De-duplicate recipients to prevent sending multiple messages to the same number
-        const recipients = Array.from(new Set(rawRecipients));
 
         if (recipients.length === 0) {
             console.log(`[SMS Service] Skipping SMS: No recipient mobile numbers found.`);
