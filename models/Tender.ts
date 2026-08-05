@@ -1,5 +1,13 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
+export interface IBidder {
+    rank: string;
+    contractorName: string;
+    aboveBelow: string;
+    percentage: number;
+    totalAmount: number;
+}
+
 export interface ITender extends Document {
     packageId: mongoose.Schema.Types.ObjectId;
     packageName: string;
@@ -21,6 +29,7 @@ export interface ITender extends Document {
     contractPrice: number;
     aboveBelowPercentage: number;
     aboveBelowInWord: string;
+    bidders: IBidder[];
 
     // Proposal & Approval
     proposalDate: Date;
@@ -81,6 +90,13 @@ const TenderSchema: Schema = new Schema({
     contractPrice: { type: Number },
     aboveBelowPercentage: { type: Number },
     aboveBelowInWord: { type: String, enum: ['Above', 'Below', 'At Par', 'Equals'], default: 'Below' },
+    bidders: [{
+        rank: { type: String },
+        contractorName: { type: String },
+        aboveBelow: { type: String },
+        percentage: { type: Number },
+        totalAmount: { type: Number },
+    }],
 
     // Proposal & Approval
     proposalDate: { type: Date },

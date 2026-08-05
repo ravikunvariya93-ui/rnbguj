@@ -31,9 +31,11 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
     // DTP — linked to Package._id
     const dtp = await DTP.findOne({ tsId: pkg._id }).lean() as any;
 
+    // Fetch all tenders for the package (all trials/attempts) sorted by trialNo descending
+    const tenders = await Tender.find({ packageId: pkg._id }).sort({ trialNo: -1 }).lean() as any[];
+
     // Tender — linked to Package._id (latest non-cancelled)
-    const tender = await Tender.findOne({ packageId: pkg._id, cancelled: { $ne: true } })
-        .sort({ trialNo: -1 }).lean() as any;
+    const tender = tenders.find(t => !t.cancelled) || null;
 
     // Approval + LOA + BOQ
     const [approval, loa, boq] = tender
@@ -72,6 +74,7 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
             approvedWorks={serialize(approvedWorks)}
             dtp={dtp ? serialize(dtp) : null}
             tender={tender ? serialize(tender) : null}
+            tenders={serialize(tenders)}
             boq={boq ? serialize(boq) : null}
             approval={approval ? serialize(approval) : null}
             loa={loa ? serialize(loa) : null}

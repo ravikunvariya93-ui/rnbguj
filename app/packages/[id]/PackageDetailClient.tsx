@@ -18,6 +18,7 @@ interface PackageDetailClientProps {
     approvedWorks: any[];
     dtp: any;
     tender: any;
+    tenders?: any[];
     boq: any;
     approval: any;
     loa: any;
@@ -34,6 +35,7 @@ export default function PackageDetailClient({
     approvedWorks,
     dtp: initialDtp,
     tender: initialTender,
+    tenders: initialTenders = [],
     boq: initialBoq,
     approval: initialApproval,
     loa: initialLoa,
@@ -47,6 +49,8 @@ export default function PackageDetailClient({
     const [pkg, setPkg] = useState(initialPkg);
     const [dtp, setDtp] = useState(initialDtp);
     const [tender, setTender] = useState(initialTender);
+    const [tenders, setTenders] = useState<any[]>(initialTenders || []);
+    const [selectedTrialId, setSelectedTrialId] = useState<string | null>(null);
     const [boq, setBoq] = useState(initialBoq);
     const [boqForm, setBoqForm] = useState<any>({ items: [], totalAmount: 0 });
     const [parsingBoq, setParsingBoq] = useState(false);
@@ -190,16 +194,34 @@ export default function PackageDetailClient({
         netPaidAmount: 0,
     });
 
+    // PDF Parse States
+    const [parsingTenderPdf, setParsingTenderPdf] = useState(false);
+    const [parsedBidders, setParsedBidders] = useState<any[]>([]);
+    const [parsedTenderInfo, setParsedTenderInfo] = useState<any>(null);
+    const [isBiddersModalOpen, setIsBiddersModalOpen] = useState(false);
+
     // Sync state with props
     useEffect(() => {
         setPkg(initialPkg);
         setDtp(initialDtp);
         setTender(initialTender);
+        setTenders(initialTenders || []);
         setApproval(initialApproval);
         setLoa(initialLoa);
         setWorkOrder(initialWorkOrder);
         setBills(initialBills);
-    }, [initialPkg, initialDtp, initialTender, initialApproval, initialLoa, initialWorkOrder, initialBills]);
+    }, [initialPkg, initialDtp, initialTender, initialTenders, initialApproval, initialLoa, initialWorkOrder, initialBills]);
+
+    // Sync selectedTrialId state when active tender or tenders change
+    useEffect(() => {
+        if (tender?._id) {
+            setSelectedTrialId(tender._id);
+        } else if (tenders && tenders.length > 0) {
+            setSelectedTrialId(tenders[0]._id);
+        } else {
+            setSelectedTrialId(null);
+        }
+    }, [tender, tenders]);
 
     // Fetch banks & agencies & building types
     useEffect(() => {
@@ -375,18 +397,20 @@ export default function PackageDetailClient({
                 remarks: dtp?.remarks || '',
             });
         } else if (section === 'tender') {
+            const latestTender = tenders && tenders.length > 0 ? tenders[0] : null;
+            const nextTrialNo = latestTender ? (latestTender.trialNo || 1) + 1 : 1;
             setTenderForm({
                 packageId: packageId,
                 packageName: pkg.packageName || '',
-                tenderId: tender?.tenderId || '',
-                tenderNoticeYear: tender?.tenderNoticeYear || '2026-27',
-                noticeNo: tender?.noticeNo || '',
-                srNo: tender?.srNo || '',
-                trialNo: tender?.trialNo || 1,
+                tenderId: tender?.tenderId || latestTender?.tenderId || '',
+                tenderNoticeYear: tender?.tenderNoticeYear || latestTender?.tenderNoticeYear || '2026-27',
+                noticeNo: tender?.noticeNo || latestTender?.noticeNo || '',
+                srNo: tender?.srNo || latestTender?.srNo || '',
+                trialNo: tender?.trialNo || nextTrialNo,
                 tenderCreationDate: tender?.tenderCreationDate ? formatDateForInput(tender.tenderCreationDate) : '',
                 lastDateOfSubmission: tender?.lastDateOfSubmission ? formatDateForInput(tender.lastDateOfSubmission) : '',
                 tenderValidityDate: tender?.tenderValidityDate ? formatDateForInput(tender.tenderValidityDate) : '',
-                reInvite: tender?.reInvite || false,
+                reInvite: tender?.reInvite || (latestTender ? true : false),
                 cancelled: tender?.cancelled || false,
                 cancellationReason: tender?.cancellationReason || '',
                 contractorName: tender?.contractorName || '',
@@ -796,6 +820,61 @@ export default function PackageDetailClient({
             showToast('error', 'Error parsing PDF');
         } finally {
             setParsingBoq(false);
+        }
+    };
+
+    const handleTenderPdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setParsingTenderPdf(true);
+        const uploadData = new FormData();
+        uploadData.append('file', file);
+
+        try {
+            const res = await fetch('/api/tenders/parse-pdf', {
+                method: 'POST',
+                body: uploadData
+            });
+            const data = await res.json();
+            if (data.success && data.bidders && data.bidders.length > 0) {
+                const bidders = data.bidders;
+                const info = data.tenderInfo;
+                setParsedBidders(bidders);
+                setParsedTenderInfo(info);
+
+                // Auto-fill from L1 bidder
+                const l1 = bidders.find((b: any) => b.rank === 'L1') || bidders[0];
+                setTenderForm((prev: any) => ({
+                    ...prev,
+                    tenderId: prev.tenderId || info?.tenderId || '',
+                    tenderNoticeYear: prev.tenderNoticeYear || info?.noticeYear || '2026-27',
+                    noticeNo: prev.noticeNo || info?.noticeNo || '',
+                    srNo: prev.srNo || info?.srNo || '',
+                    contractorName: l1.contractorName || '',
+                    aboveBelowInWord: l1.aboveBelow === 'EQUALS' ? 'At Par' : (l1.aboveBelow === 'ABOVE' ? 'Above' : 'Below'),
+                    aboveBelowPercentage: l1.percentage !== undefined ? l1.percentage : '',
+                    contractPrice: l1.totalAmount !== undefined ? l1.totalAmount : '',
+                    bidders: bidders.map((b: any) => ({
+                        rank: b.rank,
+                        contractorName: b.contractorName,
+                        aboveBelow: b.aboveBelow,
+                        percentage: b.percentage,
+                        totalAmount: b.totalAmount,
+                    })),
+                }));
+
+                setIsBiddersModalOpen(true);
+                showToast('success', `Parsed ${bidders.length} bidders — form auto-filled from ${l1.rank}.`);
+            } else {
+                showToast('error', data.error || 'Could not extract any comparative bidder details from the PDF.');
+            }
+        } catch (error) {
+            console.error(error);
+            showToast('error', 'Error parsing PDF');
+        } finally {
+            setParsingTenderPdf(false);
+            e.target.value = '';
         }
     };
 
@@ -1295,6 +1374,11 @@ export default function PackageDetailClient({
         }
     }, [availableWorks, pkgForm.works, tsNotRequiredCheckbox, approvedWorks, allPackagesData, packageId]);
 
+    const displayTender = useMemo(() => {
+        if (!selectedTrialId) return null;
+        return tenders.find((t: any) => t._id === selectedTrialId) || null;
+    }, [selectedTrialId, tenders]);
+
     return (
         <div className="space-y-8 pb-16">
             {/* Top Toolbar */}
@@ -1779,9 +1863,8 @@ export default function PackageDetailClient({
                         )}
                     </div>
                
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* 2. DTP Approval Section */}
-                    <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
+                {/* 2. DTP Approval Section */}
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md mt-6">
                         <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className={`p-2 rounded-lg ${dtp ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
@@ -1918,8 +2001,8 @@ export default function PackageDetailClient({
                         </div>
                     </div>
 
-                    {/* 3. Tender Section */}
-                    <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
+                {/* 3. Tender Section */}
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md mt-6">
                         <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className={`p-2 rounded-lg ${tender ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
@@ -1933,6 +2016,11 @@ export default function PackageDetailClient({
                                         }`}>
                                             {tender ? (tender.cancelled ? '🚫 Cancelled' : '✅ Done') : '⏳ Pending'}
                                         </span>
+                                        {tenders && tenders.length > 0 && (
+                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+                                                {tenders.length} {tenders.length === 1 ? 'attempt' : 'attempts'}
+                                            </span>
+                                        )}
                                     </div>
                                     <p className="text-xs text-slate-400 font-medium">Bidding trial details, rates, and agency selection</p>
                                 </div>
@@ -1946,6 +2034,34 @@ export default function PackageDetailClient({
                         <div className="p-6">
                             {editingSection === 'tender' ? (
                                 <form onSubmit={handleSaveTender} className="space-y-4">
+                                    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-slate-50 border border-slate-200 p-4 rounded-2xl mb-4">
+                                        <div>
+                                            <h4 className="text-xs font-bold text-slate-800">💡 Import from PDF</h4>
+                                            <p className="text-[10px] text-slate-500 mt-0.5">Upload nProcure comparative statement PDF to auto-fill bidder details.</p>
+                                        </div>
+                                        <div>
+                                            <label className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-4 py-2 rounded-xl cursor-pointer transition-all">
+                                                {parsingTenderPdf ? (
+                                                    <>
+                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                        Parsing PDF...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Upload className="w-3.5 h-3.5" />
+                                                        Upload Tender PDF
+                                                    </>
+                                                )}
+                                                <input
+                                                    type="file"
+                                                    accept=".pdf"
+                                                    onChange={handleTenderPdfUpload}
+                                                    disabled={parsingTenderPdf}
+                                                    className="hidden"
+                                                />
+                                            </label>
+                                        </div>
+                                    </div>
                                     <div className="overflow-x-auto">
                                         <table className="excel-table">
                                             <tbody>
@@ -2069,55 +2185,133 @@ export default function PackageDetailClient({
                                         <button type="submit" className="px-5 py-2 bg-[#107c41] text-white rounded-xl text-sm font-semibold hover:bg-[#0f5b30] cursor-pointer">Save Tender</button>
                                     </div>
                                 </form>
-                            ) : tender ? (
+                            ) : displayTender ? (
                                 <div className="overflow-x-auto space-y-4">
-                                    {tender.cancelled && (
-                                        <div className="bg-rose-50 border border-rose-200 p-3 rounded-xl text-xs font-semibold text-rose-800 mb-2">
-                                            🚫 <strong>Tender Cancelled:</strong> {tender.cancellationReason || 'No reason specified'} &nbsp;|&nbsp; Trial No: {tender.trialNo}
+                                    {/* Trial/Attempt selection tabs */}
+                                    {tenders && tenders.length > 1 && (
+                                        <div className="flex flex-wrap gap-2 mb-4 border-b border-slate-100 pb-3">
+                                            {tenders.map((t: any) => {
+                                                const isSel = t._id === selectedTrialId;
+                                                return (
+                                                    <button
+                                                        key={t._id}
+                                                        type="button"
+                                                        onClick={() => setSelectedTrialId(t._id)}
+                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                                                            isSel
+                                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                                                : t.cancelled
+                                                                ? 'bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100'
+                                                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                                        }`}
+                                                    >
+                                                        Trial #{t.trialNo} {t.cancelled ? '🚫' : '✅'}
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     )}
+
+                                    {displayTender.cancelled && (
+                                        <div className="bg-rose-50 border border-rose-200 p-3 rounded-xl text-xs font-semibold text-rose-800 mb-2">
+                                            🚫 <strong>Tender Cancelled (Trial #{displayTender.trialNo}):</strong> {displayTender.cancellationReason || 'No reason specified'}
+                                        </div>
+                                    )}
+
+                                    {!tender && (
+                                        <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-xs font-semibold text-amber-800 mb-2 animate-none">
+                                            ⏳ <strong>No Active Tender:</strong> All previous trials have been cancelled. Click "Add Tender" to start a new trial.
+                                        </div>
+                                    )}
+
                                     <table className="excel-table">
                                         <tbody>
                                             <tr>
                                                 <td className="excel-label">Tender ID</td>
-                                                <td className="excel-value w-[30%]">{tender.tenderId || '-'}</td>
+                                                <td className="excel-value w-[30%]">{displayTender.tenderId || '-'}</td>
                                                 <td className="excel-label">Tender Notice Year</td>
-                                                <td className="excel-value w-[30%]">{tender.tenderNoticeYear || '-'}</td>
+                                                <td className="excel-value w-[30%]">{displayTender.tenderNoticeYear || '-'}</td>
                                             </tr>
                                             <tr>
                                                 <td className="excel-label">Notice / Sr No.</td>
                                                 <td className="excel-value">
-                                                    No: {tender.noticeNo || '-'} &nbsp;|&nbsp; Sr: {tender.srNo || '-'}
+                                                    No: {displayTender.noticeNo || '-'} &nbsp;|&nbsp; Sr: {displayTender.srNo || '-'}
                                                 </td>
                                                 <td className="excel-label">Trial No.</td>
-                                                <td className="excel-value font-mono">{tender.trialNo || '-'}</td>
+                                                <td className="excel-value font-mono">{displayTender.trialNo || '-'}</td>
                                             </tr>
                                             <tr>
                                                 <td className="excel-label">Creation Date</td>
-                                                <td className="excel-value">{tender.tenderCreationDate ? new Date(tender.tenderCreationDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                <td className="excel-value">{displayTender.tenderCreationDate ? new Date(displayTender.tenderCreationDate).toLocaleDateString('en-GB') : '-'}</td>
                                                 <td className="excel-label">Last Submission Date</td>
-                                                <td className="excel-value">{tender.lastDateOfSubmission ? new Date(tender.lastDateOfSubmission).toLocaleDateString('en-GB') : '-'}</td>
+                                                <td className="excel-value">{displayTender.lastDateOfSubmission ? new Date(displayTender.lastDateOfSubmission).toLocaleDateString('en-GB') : '-'}</td>
                                             </tr>
                                             <tr>
                                                 <td className="excel-label">Tender Validity Date</td>
-                                                <td className="excel-value font-mono">{tender.tenderValidityDate ? new Date(tender.tenderValidityDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                <td className="excel-value font-mono">{displayTender.tenderValidityDate ? new Date(displayTender.tenderValidityDate).toLocaleDateString('en-GB') : '-'}</td>
                                                 <td className="excel-label">Contractor Name</td>
-                                                <td className="excel-value">{tender.contractorName || '-'}</td>
+                                                <td className="excel-value">{displayTender.contractorName || '-'}</td>
                                             </tr>
                                             <tr>
                                                 <td className="excel-label">Above / Below %</td>
                                                 <td className="excel-value font-mono">
-                                                    {tender.aboveBelowPercentage !== undefined ? `${tender.aboveBelowPercentage}% ${tender.aboveBelowInWord || ''}` : '-'}
+                                                    {displayTender.aboveBelowPercentage !== undefined ? `${displayTender.aboveBelowPercentage}% ${displayTender.aboveBelowInWord || ''}` : '-'}
                                                 </td>
                                                 <td className="excel-label">Final Contract Price</td>
-                                                <td className="excel-value text-emerald-700 font-bold font-mono">₹{tender.contractPrice ? tender.contractPrice.toLocaleString('en-IN') : '-'}</td>
+                                                <td className="excel-value text-emerald-700 font-bold font-mono">₹{displayTender.contractPrice ? displayTender.contractPrice.toLocaleString('en-IN') : '-'}</td>
                                             </tr>
                                             <tr>
                                                 <td className="excel-label">Remarks</td>
-                                                <td className="excel-value" colSpan={3}>{tender.remarks || '-'}</td>
+                                                <td className="excel-value" colSpan={3}>{displayTender.remarks || '-'}</td>
                                             </tr>
                                         </tbody>
                                     </table>
+
+                                    {/* Comparative Bidders Table */}
+                                    {displayTender.bidders && displayTender.bidders.length > 0 && (
+                                        <div className="mt-4">
+                                            <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block"></span>
+                                                Comparative Statement — All Bidders
+                                            </h4>
+                                            <div className="border border-slate-200 rounded-xl overflow-hidden">
+                                                <table className="w-full text-left border-collapse text-xs">
+                                                    <thead>
+                                                        <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
+                                                            <th className="px-3 py-2 text-center w-[8%]">Rank</th>
+                                                            <th className="px-3 py-2">Name of Party</th>
+                                                            <th className="px-3 py-2 text-right w-[15%]">Above / Below</th>
+                                                            <th className="px-3 py-2 text-right w-[15%]">Percentage (%)</th>
+                                                            <th className="px-3 py-2 text-right w-[20%]">Total Amount (₹)</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {displayTender.bidders.map((b: any, idx: number) => {
+                                                            const isWinner = b.contractorName === displayTender.contractorName;
+                                                            return (
+                                                                <tr key={idx} className={`transition-colors ${isWinner ? 'bg-emerald-50/50' : 'hover:bg-slate-50/60'}`}>
+                                                                    <td className="px-3 py-1.5 text-center">
+                                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                                                            isWinner ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+                                                                        }`}>
+                                                                            {b.rank}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="px-3 py-1.5 text-slate-800 font-medium">
+                                                                        {b.contractorName}
+                                                                        {isWinner && <span className="ml-2 text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">✓ Contract Awarded</span>}
+                                                                    </td>
+                                                                    <td className="px-3 py-1.5 text-right text-slate-500">{b.aboveBelow}</td>
+                                                                    <td className="px-3 py-1.5 text-right font-mono text-slate-700 font-semibold">{b.percentage}%</td>
+                                                                    <td className="px-3 py-1.5 text-right font-mono text-emerald-700 font-semibold">{b.totalAmount ? b.totalAmount.toLocaleString('en-IN') : '-'}</td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="text-center py-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
@@ -2128,7 +2322,6 @@ export default function PackageDetailClient({
                         </div>
                     </div>
                 </div>
-            </div>
 
             {/* BOQ Section */}
             <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md mt-6">
@@ -3168,6 +3361,65 @@ export default function PackageDetailClient({
                                     Confirm & Create Re-Tender
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* BIDDERS LIST FROM PDF MODAL */}
+            {isBiddersModalOpen && (
+                <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden border border-slate-100 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-800">Comparative Statement</h3>
+                                <p className="text-[10px] text-slate-400 mt-0.5">Tender ID: {parsedTenderInfo?.tenderId} &nbsp;|&nbsp; Notice: {parsedTenderInfo?.noticeNo} ({parsedTenderInfo?.noticeYear}) &nbsp;|&nbsp; Sr No: {parsedTenderInfo?.srNo} &nbsp;|&nbsp; ECV: ₹{parsedTenderInfo?.estimatedAmount ? parsedTenderInfo.estimatedAmount.toLocaleString('en-IN') : '-'}</p>
+                            </div>
+                            <button type="button" onClick={() => setIsBiddersModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full"><X className="w-5 h-5" /></button>
+                        </div>
+                        <div className="p-6 max-h-[65vh] overflow-y-auto">
+                            <div className="border border-slate-200 rounded-xl overflow-hidden">
+                                <table className="w-full text-left border-collapse text-xs">
+                                    <thead>
+                                        <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
+                                            <th className="px-4 py-2 text-center w-[8%]">Rank</th>
+                                            <th className="px-4 py-2">Name of Party</th>
+                                            <th className="px-4 py-2 text-right">Above / Below</th>
+                                            <th className="px-4 py-2 text-right">Percentage (%)</th>
+                                            <th className="px-4 py-2 text-right">Total Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {parsedBidders.map((b: any, idx: number) => {
+                                            const isL1 = b.rank === 'L1';
+                                            return (
+                                                <tr key={idx} className={`${isL1 ? 'bg-emerald-50/40' : ''}`}>
+                                                    <td className="px-4 py-2 text-center">
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                                            isL1 ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+                                                        }`}>
+                                                            {b.rank}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-2 font-medium text-slate-800">{b.contractorName}</td>
+                                                    <td className="px-4 py-2 text-right text-slate-500">{b.aboveBelow}</td>
+                                                    <td className="px-4 py-2 text-right font-mono text-slate-700 font-bold">{b.percentage}%</td>
+                                                    <td className="px-4 py-2 text-right font-mono text-emerald-700 font-bold">₹{b.totalAmount ? b.totalAmount.toLocaleString('en-IN') : '-'}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/70 flex justify-end">
+                            <button
+                                type="button"
+                                onClick={() => setIsBiddersModalOpen(false)}
+                                className="px-5 py-2 bg-[#107c41] hover:bg-[#0f5b30] text-white rounded-xl text-sm font-semibold cursor-pointer"
+                            >
+                                Save & Close
+                            </button>
                         </div>
                     </div>
                 </div>
