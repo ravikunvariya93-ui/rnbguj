@@ -6,6 +6,11 @@ export interface IBidder {
     aboveBelow: string;
     percentage: number;
     totalAmount: number;
+    tenderFeeBankName?: string;
+    tenderFeeDdNo?: string;
+    tenderFeeDdDate?: Date;
+    tenderFeeDdAmount?: number;
+    tenderFeeChallanDate?: Date;
 }
 
 export interface ITender extends Document {
@@ -96,6 +101,11 @@ const TenderSchema: Schema = new Schema({
         aboveBelow: { type: String },
         percentage: { type: Number },
         totalAmount: { type: Number },
+        tenderFeeBankName: { type: String },
+        tenderFeeDdNo: { type: String },
+        tenderFeeDdDate: { type: Date },
+        tenderFeeDdAmount: { type: Number },
+        tenderFeeChallanDate: { type: Date },
     }],
 
     // Proposal & Approval

@@ -14,6 +14,7 @@ import Pagination from '@/components/Pagination';
 import ListPageLayout from '@/components/ListPageLayout';
 import DataTable from '@/components/DataTable';
 import TendersFilterBar from '@/components/TendersFilterBar';
+import ViewBiddersModalButton from '@/components/ViewBiddersModalButton';
 import { buildDashboardFilter, parsePagination, parseSort } from '@/lib/queryHelpers';
 import type { ListPageSearchParams, Column } from '@/lib/types';
 import { formatShortDate } from '@/lib/dateUtils';
@@ -323,12 +324,11 @@ export default async function TendersListPage({ searchParams }: Props) {
         },
         { key: 'tenderNoticeYear', label: 'Notice Year', sortable: true },
         { key: 'noticeNo', label: 'Notice No.', sortable: true },
-        { key: 'tenderSrNo', label: 'Sub Notice No.', sortable: true, align: 'center', render: (row) => row.srNo || '-' },
+        { key: 'tenderSrNo', label: 'Sub Sr.', sortable: true, align: 'center', render: (row) => row.srNo || '-' },
         { 
             key: 'packageName', 
             label: 'Package Name', 
             sortable: true, 
-            minWidth: '200px', 
             render: (row) => (
                 <div className="flex flex-col gap-1">
                     {row.packageId?._id ? (
@@ -346,56 +346,49 @@ export default async function TendersListPage({ searchParams }: Props) {
                 </div>
             ) 
         },
-        {
-            key: 'includedWorks',
-            label: 'Included Works',
-            minWidth: '250px',
-            render: (row) => {
-                const works = row.packageId?.works || [];
-                return works.length > 0 ? (
-                    <div className="space-y-1">
-                        {works.map((work: any, idx: number) => (
-                            <div key={idx} className="text-xs leading-tight text-slate-600">
-                                {idx + 1}. {work.workName || '-'}
-                            </div>
-                        ))}
-                    </div>
-                ) : <span className="text-slate-400 italic text-xs">No works found</span>;
-            }
-        },
         { 
             key: 'workType', 
             label: 'Work Type', 
             sortable: true, 
-            minWidth: '120px', 
             render: (row) => row.workType || '-' 
         },
-        { key: 'contractorName', label: 'Contractor Name', sortable: true, minWidth: '150px' },
-        { key: 'contractorMobile', label: 'Mobile No.', sortable: true, minWidth: '120px', render: (row) => row.contractorMobile || '-' },
-        { 
-            key: 'remarks', 
-            label: 'Tender Remarks', 
-            sortable: true,
-            minWidth: '250px', 
+        { key: 'contractorName', label: 'Contractor Name', sortable: true },
+        { key: 'contractorMobile', label: 'Mobile No.', sortable: true, render: (row) => row.contractorMobile || '-' },
+        {
+            key: 'bidders',
+            label: 'Bidders',
+            align: 'center',
             render: (row) => (
-                <div className="whitespace-normal break-words">
-                    {row.remarks || '-'}
-                </div>
-            ) 
+                <ViewBiddersModalButton
+                    bidders={row.bidders || []}
+                    tenderId={row.tenderId}
+                    packageName={row.packageName}
+                    contractorName={row.contractorName}
+                />
+            )
         },
-        { key: 'trialNo', label: 'Trial', sortable: true, align: 'center' },
         {
             key: 'acceptanceLetterDate',
             label: 'LOA Date',
             sortable: true,
-            render: (row) => <span className="text-slate-600">{formatShortDate(row.acceptanceLetterDate)}</span>
+            render: (row) => <span className="text-slate-600 font-mono text-[11px]">{formatShortDate(row.acceptanceLetterDate)}</span>
         },
         {
             key: 'workOrderDate',
             label: 'Work Order Date',
             sortable: true,
-            render: (row) => <span className="text-slate-600">{formatShortDate(row.workOrderDate)}</span>
-        }
+            render: (row) => <span className="text-slate-600 font-mono text-[11px]">{formatShortDate(row.workOrderDate)}</span>
+        },
+        { 
+            key: 'remarks', 
+            label: 'Remarks', 
+            sortable: true,
+            render: (row) => (
+                <div className="whitespace-normal break-words max-w-[140px] text-[11px]">
+                    {row.remarks || '-'}
+                </div>
+            ) 
+        },
     ];
 
     const filterLabel = filterLabels.length > 0 ? `Filtered by: ${filterLabels.join(' | ')}` : "List of all tenders.";

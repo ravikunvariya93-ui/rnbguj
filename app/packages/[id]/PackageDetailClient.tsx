@@ -7,7 +7,7 @@ import {
     ArrowLeft, Save, Edit2, Plus, Trash2, CheckCircle2, XCircle, X, Loader2, 
     Calendar, FileText, Settings, Award, Check, ChevronDown, ListPlus, Printer, 
     Receipt, DollarSign, Eye, AlertCircle, FileCheck, Layers, ClipboardCheck,
-    Briefcase, FileSpreadsheet, Percent, Building2, User2, Clock, Upload
+    Briefcase, FileSpreadsheet, Percent, Building2, User2, Clock, Upload, CreditCard
 } from 'lucide-react';
 import { parseDateStr, formatDate, formatDateForInput, formatShortDate } from '@/lib/dateUtils';
 import SearchableSelect from '@/components/SearchableSelect';
@@ -156,6 +156,11 @@ export default function PackageDetailClient({
     const [allPackagesData, setAllPackagesData] = useState<any[]>([]);
     const [tsNotRequiredCheckbox, setTsNotRequiredCheckbox] = useState(false);
     const [currentSelectionId, setCurrentSelectionId] = useState('');
+
+    // Tender Fee Modal States
+    const [isTenderFeeModalOpen, setIsTenderFeeModalOpen] = useState(false);
+    const [tenderFeeBidders, setTenderFeeBidders] = useState<any[]>([]);
+    const [savingTenderFee, setSavingTenderFee] = useState(false);
 
     // Bill Modal States
     const [isBillModalOpen, setIsBillModalOpen] = useState(false);
@@ -875,6 +880,74 @@ export default function PackageDetailClient({
         } finally {
             setParsingTenderPdf(false);
             e.target.value = '';
+        }
+    };
+
+    const handleOpenTenderFeeModal = () => {
+        if (!displayTender || !displayTender.bidders || displayTender.bidders.length === 0) {
+            showToast('error', 'No bidders found for this tender trial. Please add or import bidders first.');
+            return;
+        }
+        const todayStr = formatShortDate(new Date());
+        setTenderFeeBidders(displayTender.bidders.map((b: any) => ({
+            ...b,
+            tenderFeeBankName: b.tenderFeeBankName || '',
+            tenderFeeDdNo: b.tenderFeeDdNo || '',
+            tenderFeeDdDate: b.tenderFeeDdDate ? formatShortDate(b.tenderFeeDdDate) : '',
+            tenderFeeDdAmount: b.tenderFeeDdAmount !== undefined && b.tenderFeeDdAmount !== null ? b.tenderFeeDdAmount : '',
+            tenderFeeChallanDate: b.tenderFeeChallanDate ? formatShortDate(b.tenderFeeChallanDate) : todayStr,
+        })));
+        setIsTenderFeeModalOpen(true);
+    };
+
+    const handleTenderFeeChange = (index: number, field: string, value: any) => {
+        setTenderFeeBidders((prev: any[]) => prev.map((item, idx) => {
+            if (idx === index) {
+                return { ...item, [field]: value };
+            }
+            return item;
+        }));
+    };
+
+    const handleSaveTenderFees = async () => {
+        if (!displayTender) return;
+        setSavingTenderFee(true);
+        try {
+            const updatedBidders = tenderFeeBidders.map((b: any) => {
+                const bidderObj: any = {
+                    rank: b.rank,
+                    contractorName: b.contractorName,
+                    aboveBelow: b.aboveBelow,
+                    percentage: b.percentage,
+                    totalAmount: b.totalAmount,
+                    tenderFeeBankName: b.tenderFeeBankName || '',
+                    tenderFeeDdNo: b.tenderFeeDdNo || '',
+                    tenderFeeDdAmount: b.tenderFeeDdAmount !== '' ? Number(b.tenderFeeDdAmount) : undefined,
+                };
+                if (b.tenderFeeDdDate) {
+                    const p = parseDateStr(b.tenderFeeDdDate);
+                    if (p) bidderObj.tenderFeeDdDate = p.toISOString();
+                }
+                if (b.tenderFeeChallanDate) {
+                    const p = parseDateStr(b.tenderFeeChallanDate);
+                    if (p) bidderObj.tenderFeeChallanDate = p.toISOString();
+                }
+                return bidderObj;
+            });
+
+            const res = await fetch(`/api/tenders/${displayTender._id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bidders: updatedBidders }),
+            });
+            if (!res.ok) throw new Error('Failed to save Tender Fee details.');
+            showToast('success', 'Tender Fee details saved successfully!');
+            setIsTenderFeeModalOpen(false);
+            router.refresh();
+        } catch (err: any) {
+            showToast('error', err.message);
+        } finally {
+            setSavingTenderFee(false);
         }
     };
 
@@ -2269,15 +2342,25 @@ export default function PackageDetailClient({
 
                                     {/* Comparative Bidders Table */}
                                     {displayTender.bidders && displayTender.bidders.length > 0 && (
-                                        <div className="mt-4">
-                                            <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block"></span>
-                                                Comparative Statement — All Bidders
-                                            </h4>
-                                            <div className="border border-slate-200 rounded-xl overflow-hidden">
+                                        <div className="mt-6">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                                                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+                                                    Comparative Statement — All Bidders
+                                                </h4>
+                                                <button 
+                                                    type="button" 
+                                                    onClick={handleOpenTenderFeeModal}
+                                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-2xs"
+                                                >
+                                                    <CreditCard className="w-3.5 h-3.5" />
+                                                    Manage Tender Fees
+                                                </button>
+                                            </div>
+                                            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
                                                 <table className="w-full text-left border-collapse text-xs">
                                                     <thead>
-                                                        <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
+                                                        <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                                                             <th className="px-3 py-2 text-center w-[8%]">Rank</th>
                                                             <th className="px-3 py-2">Name of Party</th>
                                                             <th className="px-3 py-2 text-right w-[15%]">Above / Below</th>
@@ -2290,20 +2373,20 @@ export default function PackageDetailClient({
                                                             const isWinner = b.contractorName === displayTender.contractorName;
                                                             return (
                                                                 <tr key={idx} className={`transition-colors ${isWinner ? 'bg-emerald-50/50' : 'hover:bg-slate-50/60'}`}>
-                                                                    <td className="px-3 py-1.5 text-center">
+                                                                    <td className="px-3 py-2 text-center">
                                                                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                                                             isWinner ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
                                                                         }`}>
                                                                             {b.rank}
                                                                         </span>
                                                                     </td>
-                                                                    <td className="px-3 py-1.5 text-slate-800 font-medium">
+                                                                    <td className="px-3 py-2 text-slate-800 font-medium">
                                                                         {b.contractorName}
                                                                         {isWinner && <span className="ml-2 text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">✓ Contract Awarded</span>}
                                                                     </td>
-                                                                    <td className="px-3 py-1.5 text-right text-slate-500">{b.aboveBelow}</td>
-                                                                    <td className="px-3 py-1.5 text-right font-mono text-slate-700 font-semibold">{b.percentage}%</td>
-                                                                    <td className="px-3 py-1.5 text-right font-mono text-emerald-700 font-semibold">{b.totalAmount ? b.totalAmount.toLocaleString('en-IN') : '-'}</td>
+                                                                    <td className="px-3 py-2 text-right text-slate-500">{b.aboveBelow}</td>
+                                                                    <td className="px-3 py-2 text-right font-mono text-slate-700 font-semibold">{b.percentage}%</td>
+                                                                    <td className="px-3 py-2 text-right font-mono text-emerald-700 font-semibold">{b.totalAmount ? `₹${b.totalAmount.toLocaleString('en-IN')}` : '-'}</td>
                                                                 </tr>
                                                             );
                                                         })}
@@ -3419,6 +3502,132 @@ export default function PackageDetailClient({
                                 className="px-5 py-2 bg-[#107c41] hover:bg-[#0f5b30] text-white rounded-xl text-sm font-semibold cursor-pointer"
                             >
                                 Save & Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MANAGE TENDER FEES MODAL */}
+            {isTenderFeeModalOpen && (
+                <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl overflow-hidden border border-slate-100 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-800">Manage Tender Fee Details for Bidders</h3>
+                                <p className="text-[10px] text-slate-400 mt-0.5">Tender ID: {displayTender?.tenderId} &nbsp;|&nbsp; Trial #{displayTender?.trialNo}</p>
+                            </div>
+                            <button type="button" onClick={() => setIsTenderFeeModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full"><X className="w-5 h-5" /></button>
+                        </div>
+                        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                            <p className="text-xs text-slate-500">
+                                Enter or update the Bank Name, DD Number, DD Date, DD Amount, and Date of Generating Challan for each bidder below.
+                            </p>
+                            
+                            <div className="space-y-4">
+                                {tenderFeeBidders.map((b: any, idx: number) => {
+                                    const isL1 = b.rank === 'L1';
+                                    return (
+                                        <div key={idx} className={`p-4 rounded-xl border ${isL1 ? 'bg-emerald-50/30 border-emerald-200' : 'bg-slate-50/50 border-slate-200'}`}>
+                                            <div className="flex flex-wrap items-center gap-2 mb-3">
+                                                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                                                    isL1 ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
+                                                }`}>
+                                                    {b.rank}
+                                                </span>
+                                                <span className="font-bold text-sm text-slate-800">{b.contractorName}</span>
+                                                <span className="text-xs text-slate-500 font-mono ml-auto">
+                                                    Bid: {b.percentage}% {b.aboveBelow} ({b.totalAmount ? `₹${b.totalAmount.toLocaleString('en-IN')}` : '-'})
+                                                </span>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+                                                <div>
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <label className="block text-[10px] font-bold text-slate-500 uppercase">Name of Bank</label>
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => setIsBankModalOpen(true)}
+                                                            className="text-[9px] text-blue-600 hover:underline font-bold"
+                                                        >
+                                                            + Add
+                                                        </button>
+                                                    </div>
+                                                    <select 
+                                                        value={b.tenderFeeBankName || ''} 
+                                                        onChange={(e) => handleTenderFeeChange(idx, 'tenderFeeBankName', e.target.value)} 
+                                                        className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 font-medium"
+                                                    >
+                                                        <option value="">-- Select Bank --</option>
+                                                        {banks.map((bank: any) => (
+                                                            <option key={bank._id || bank.name} value={bank.name}>
+                                                                {bank.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tender Fee DD No.</label>
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="e.g. 514820" 
+                                                        value={b.tenderFeeDdNo || ''} 
+                                                        onChange={(e) => handleTenderFeeChange(idx, 'tenderFeeDdNo', e.target.value)} 
+                                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white font-mono focus:ring-1 focus:ring-blue-500" 
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">DD Date</label>
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="DD/MM/YYYY" 
+                                                        value={b.tenderFeeDdDate || ''} 
+                                                        onChange={(e) => handleTenderFeeChange(idx, 'tenderFeeDdDate', e.target.value)} 
+                                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white font-mono focus:ring-1 focus:ring-blue-500" 
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">DD Amount (₹)</label>
+                                                    <input 
+                                                        type="number" 
+                                                        placeholder="e.g. 1500" 
+                                                        value={b.tenderFeeDdAmount !== undefined ? b.tenderFeeDdAmount : ''} 
+                                                        onChange={(e) => handleTenderFeeChange(idx, 'tenderFeeDdAmount', e.target.value)} 
+                                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white font-mono text-right focus:ring-1 focus:ring-blue-500" 
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Date of Generating Challan</label>
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="DD/MM/YYYY" 
+                                                        value={b.tenderFeeChallanDate || ''} 
+                                                        onChange={(e) => handleTenderFeeChange(idx, 'tenderFeeChallanDate', e.target.value)} 
+                                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white font-mono focus:ring-1 focus:ring-blue-500" 
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/70 flex justify-end gap-2">
+                            <button 
+                                type="button" 
+                                onClick={() => setIsTenderFeeModalOpen(false)} 
+                                className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold hover:bg-slate-100 cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                type="button" 
+                                disabled={savingTenderFee} 
+                                onClick={handleSaveTenderFees} 
+                                className="px-5 py-2 bg-[#107c41] hover:bg-[#0f5b30] text-white rounded-xl text-sm font-semibold disabled:opacity-50 cursor-pointer flex items-center gap-2"
+                            >
+                                {savingTenderFee ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                                Save Tender Fees
                             </button>
                         </div>
                     </div>
