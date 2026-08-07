@@ -2529,7 +2529,8 @@ export default function ApprovedWorkDetailClient({
                             </div>
                             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
                                 <button type="button" onClick={handleCloseContractorModal} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold">Cancel</button>
-                                <button type="submit" disabled={contractorSaving} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700">
+                                <button type="submit" disabled={contractorSaving} className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
+                                    {contractorSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                     {contractorSaving ? 'Saving...' : editingContractorId ? 'Save Changes' : 'Save Contractor'}
                                 </button>
                             </div>
@@ -2553,8 +2554,9 @@ export default function ApprovedWorkDetailClient({
                             </div>
                             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
                                 <button type="button" onClick={() => setIsBankModalOpen(false)} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold">Cancel</button>
-                                <button type="submit" disabled={bankSaving} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700">
-                                    {bankSaving ? 'Saving...' : 'Save Bank'}
+                                <button type="submit" disabled={bankSaving} className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
+                                    {bankSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                    {bankSaving ? 'Saving Bank...' : 'Save Bank'}
                                 </button>
                             </div>
                         </form>

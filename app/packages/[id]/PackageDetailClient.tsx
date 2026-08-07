@@ -3375,7 +3375,8 @@ export default function PackageDetailClient({
                             </div>
                             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
                                 <button type="button" onClick={handleCloseContractorModal} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold">Cancel</button>
-                                <button type="submit" disabled={contractorSaving} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700">
+                                <button type="submit" disabled={contractorSaving} className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
+                                    {contractorSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                     {contractorSaving ? 'Saving...' : editingContractorId ? 'Save Changes' : 'Save Contractor'}
                                 </button>
                             </div>
@@ -3387,7 +3388,7 @@ export default function PackageDetailClient({
             {/* BANK ADD MODAL */}
             {isBankModalOpen && (
                 <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-sm overflow-hidden border border-slate-100 flex flex-col animate-in fade-in zoom-in-95 duration-200">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden border border-slate-100 flex flex-col animate-in fade-in zoom-in-95 duration-200">
                         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
                             <h3 className="text-sm font-bold text-slate-800">Add New Bank</h3>
                             <button type="button" onClick={() => setIsBankModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full"><X className="w-5 h-5" /></button>
@@ -3399,7 +3400,10 @@ export default function PackageDetailClient({
                             </div>
                             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
                                 <button type="button" onClick={() => setIsBankModalOpen(false)} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold">Cancel</button>
-                                <button type="submit" disabled={bankSaving} className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700">Save Bank</button>
+                                <button type="submit" disabled={bankSaving} className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
+                                    {bankSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                    {bankSaving ? 'Saving Bank...' : 'Save Bank'}
+                                </button>
                             </div>
                         </form>
                     </div>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Loader2 } from 'lucide-react';
 
 interface DeleteButtonProps {
     itemId: string;
@@ -48,10 +48,10 @@ export default function GenericDeleteButton({ itemId, itemName, apiPath, redirec
         <button
             onClick={handleDelete}
             disabled={isDeleting}
-            className="text-red-600 hover:text-red-900 transition-colors p-1 disabled:opacity-50"
+            className="text-red-600 hover:text-red-900 transition-colors p-1 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Delete Item"
         >
-            <Trash2 className="w-5 h-5" />
+            {isDeleting ? <Loader2 className="w-5 h-5 animate-spin text-red-600" /> : <Trash2 className="w-5 h-5" />}
         </button>
     );
 }

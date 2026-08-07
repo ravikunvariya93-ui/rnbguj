@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { utils, writeFile } from 'xlsx';
-import { Download } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 
 interface ExportTableButtonProps {
     tableId: string;
@@ -10,26 +10,34 @@ interface ExportTableButtonProps {
 }
 
 export default function ExportTableButton({ tableId, filename = "Export.xlsx" }: ExportTableButtonProps) {
+    const [isExporting, setIsExporting] = useState(false);
+
     const handleExport = () => {
-        const table = document.getElementById(tableId);
-        if (table) {
-            // Converts the HTML table directly to an Excel workbook
-            // This preserves the exact columns and rows shown in the UI
-            const wb = utils.table_to_book(table, { sheet: "Sheet 1" });
-            writeFile(wb, filename);
-        } else {
-            console.error(`ExportTableButton: Table with id '${tableId}' not found.`);
-        }
+        setIsExporting(true);
+        setTimeout(() => {
+            try {
+                const table = document.getElementById(tableId);
+                if (table) {
+                    const wb = utils.table_to_book(table, { sheet: "Sheet 1" });
+                    writeFile(wb, filename);
+                } else {
+                    console.error(`ExportTableButton: Table with id '${tableId}' not found.`);
+                }
+            } finally {
+                setIsExporting(false);
+            }
+        }, 100);
     };
 
     return (
         <button 
             onClick={handleExport} 
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md shadow-sm hover:bg-slate-50 hover:text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500"
+            disabled={isExporting}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md shadow-sm hover:bg-slate-50 hover:text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Export to Excel"
         >
-            <Download className="w-4 h-4 text-slate-500" />
-            <span>Export to Excel</span>
+            {isExporting ? <Loader2 className="w-4 h-4 text-slate-500 animate-spin" /> : <Download className="w-4 h-4 text-slate-500" />}
+            <span>{isExporting ? 'Exporting...' : 'Export to Excel'}</span>
         </button>
     );
 }

@@ -29,14 +29,16 @@ export default async function TendersListPage({ searchParams }: Props) {
     await dbConnect();
     const params = await searchParams;
 
-    // Fetch agencies, years, sub-divisions, work types, and approved works for inference
-    const [rawAgencies, years, rawSubDivisions, rawWorkTypesAw, rawWorkTypesPkg, allApprovedWorks] = await Promise.all([
+    // Fetch agencies, years, sub-divisions, work types, approved works, and building types for inference
+    const [rawAgencies, years, rawSubDivisions, rawWorkTypesAw, rawWorkTypesPkg, allApprovedWorks, rawBuildingTypesAw, rawBuildingTypesPkg] = await Promise.all([
         Agency.find({}).select('name mobileNo').sort({ name: 1 }).lean() as Promise<any[]>,
         Tender.distinct('tenderNoticeYear') as Promise<string[]>,
         Package.distinct('subDivision') as Promise<string[]>,
         ApprovedWork.distinct('workType') as Promise<string[]>,
         Package.distinct('workType') as Promise<string[]>,
-        ApprovedWork.find({}).select('workName workType').lean() as Promise<any[]>
+        ApprovedWork.find({}).select('workName workType buildingType').lean() as Promise<any[]>,
+        ApprovedWork.distinct('buildingType') as Promise<string[]>,
+        Package.distinct('buildingType') as Promise<string[]>
     ]);
     const agencies = rawAgencies.map((a: any) => ({
         ...a,
@@ -48,6 +50,9 @@ export default async function TendersListPage({ searchParams }: Props) {
     const workTypes = Array.from(new Set([...PREDEFINED_WORK_TYPES, ...rawWorkTypesAw, ...rawWorkTypesPkg]))
         .filter(Boolean)
         .sort();
+    const buildingTypes = Array.from(new Set([...rawBuildingTypesAw, ...rawBuildingTypesPkg]))
+        .filter(Boolean)
+        .sort() as string[];
 
     const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
     const workTypeMap = new Map<string, string>();
@@ -202,12 +207,61 @@ export default async function TendersListPage({ searchParams }: Props) {
         ];
     }
 
+    const packageFilters: any[] = [];
     if (params.subDivision) {
+        const worksInSubDiv = await ApprovedWork.find({ subDivision: params.subDivision }).select('workName').lean();
+        const workNames = worksInSubDiv.map((aw: any) => aw.workName).filter(Boolean);
+        packageFilters.push({
+            $or: [
+                { subDivision: params.subDivision },
+                { 'works.workName': { $in: workNames } }
+            ]
+        });
         filterLabels.push(`Sub Division: ${params.subDivision}`);
     }
+
     if (params.workType) {
-        filterLabels.push(`Work Type: ${params.workType}`);
+        const selectedWorkTypes = params.workType.split(',').filter(Boolean);
+        if (selectedWorkTypes.length > 0) {
+            const worksInWorkType = await ApprovedWork.find({ workType: { $in: selectedWorkTypes } }).select('workName').lean();
+            const workNames = worksInWorkType.map((aw: any) => aw.workName).filter(Boolean);
+            packageFilters.push({
+                $or: [
+                    { workType: { $in: selectedWorkTypes } },
+                    { 'works.workName': { $in: workNames } }
+                ]
+            });
+            filterLabels.push(`Work Type: ${selectedWorkTypes.join(', ')}`);
+        }
     }
+
+    if (params.buildingType) {
+        const selectedBuildingTypes = params.buildingType.split(',').filter(Boolean);
+        if (selectedBuildingTypes.length > 0) {
+            const worksInBuildingType = await ApprovedWork.find({ buildingType: { $in: selectedBuildingTypes } }).select('workName').lean();
+            const workNames = worksInBuildingType.map((aw: any) => aw.workName).filter(Boolean);
+            packageFilters.push({
+                $or: [
+                    { buildingType: { $in: selectedBuildingTypes } },
+                    { 'works.workName': { $in: workNames } }
+                ]
+            });
+            filterLabels.push(`Building Type: ${selectedBuildingTypes.join(', ')}`);
+        }
+    }
+
+    if (packageFilters.length > 0) {
+        const matchingPackages = await Package.find({ $and: packageFilters }).distinct('_id');
+        const matchingPkgIdStrs = matchingPackages.map((id: any) => id.toString());
+        if (query.packageId && query.packageId.$in) {
+            const existingSet = new Set((query.packageId.$in as any[]).map((id: any) => id.toString()));
+            const intersected = matchingPkgIdStrs.filter(idStr => existingSet.has(idStr));
+            query.packageId = { $in: intersected };
+        } else {
+            query.packageId = { $in: matchingPkgIdStrs };
+        }
+    }
+
     if (params.noticeYear) {
         query.tenderNoticeYear = params.noticeYear;
         filterLabels.push(`Notice Year: ${params.noticeYear}`);
@@ -400,10 +454,10 @@ export default async function TendersListPage({ searchParams }: Props) {
             addHref="/tenders/new"
             addLabel="Add New Tender"
             searchPlaceholder="Search by Tender ID, Package, or Contractor..."
-            filterActive={!!params.filter || !!params.search || !!params.noticeYear || !!params.noticeNo || !!params.contractorName || !!params.trialNo || !!params.subDivision || !!params.workType}
+            filterActive={!!params.filter || !!params.search || !!params.noticeYear || !!params.noticeNo || !!params.contractorName || !!params.trialNo || !!params.subDivision || !!params.workType || !!params.buildingType}
             clearFiltersHref="/tenders"
         >
-            <TendersFilterBar agencies={agencies} years={years} subDivisions={subDivisions} workTypes={workTypes} />
+            <TendersFilterBar agencies={agencies} years={years} subDivisions={subDivisions} workTypes={workTypes} buildingTypes={buildingTypes} />
             <div className="mb-6 flex flex-wrap items-center gap-2">
                 <Link
                     href="/tenders"

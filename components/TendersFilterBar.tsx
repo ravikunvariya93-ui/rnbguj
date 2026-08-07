@@ -9,9 +9,10 @@ interface TendersFilterBarProps {
     years: string[];
     subDivisions: string[];
     workTypes?: string[];
+    buildingTypes?: string[];
 }
 
-export default function TendersFilterBar({ agencies, years, subDivisions, workTypes = [] }: TendersFilterBarProps) {
+export default function TendersFilterBar({ agencies, years, subDivisions, workTypes = [], buildingTypes = [] }: TendersFilterBarProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -22,20 +23,25 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
     const [trialNo, setTrialNo] = useState(searchParams.get('trialNo') || '');
     const [subDivision, setSubDivision] = useState(searchParams.get('subDivision') || '');
     const [workType, setWorkType] = useState(searchParams.get('workType') || '');
+    const [buildingType, setBuildingType] = useState(searchParams.get('buildingType') || '');
     const [isWorkTypeOpen, setIsWorkTypeOpen] = useState(false);
+    const [isBuildingTypeOpen, setIsBuildingTypeOpen] = useState(false);
 
     // Close dropdown on click outside
     useEffect(() => {
-        if (!isWorkTypeOpen) return;
+        if (!isWorkTypeOpen && !isBuildingTypeOpen) return;
         const handleOutsideClick = (e: MouseEvent) => {
             const target = e.target as HTMLElement;
             if (!target.closest('#work-type-dropdown-container')) {
                 setIsWorkTypeOpen(false);
             }
+            if (!target.closest('#building-type-dropdown-container')) {
+                setIsBuildingTypeOpen(false);
+            }
         };
         document.addEventListener('click', handleOutsideClick);
         return () => document.removeEventListener('click', handleOutsideClick);
-    }, [isWorkTypeOpen]);
+    }, [isWorkTypeOpen, isBuildingTypeOpen]);
 
     // Synchronize local state with searchParams (handles clear filters, back/forward actions)
     useEffect(() => {
@@ -45,6 +51,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
         setTrialNo(searchParams.get('trialNo') || '');
         setSubDivision(searchParams.get('subDivision') || '');
         setWorkType(searchParams.get('workType') || '');
+        setBuildingType(searchParams.get('buildingType') || '');
     }, [searchParams]);
 
     const handleApplyFilters = () => {
@@ -71,6 +78,9 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
         if (workType) params.set('workType', workType);
         else params.delete('workType');
 
+        if (buildingType) params.set('buildingType', buildingType);
+        else params.delete('buildingType');
+
         router.push(`${pathname}?${params.toString()}`);
     };
 
@@ -82,6 +92,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
         params.delete('trialNo');
         params.delete('subDivision');
         params.delete('workType');
+        params.delete('buildingType');
         params.set('page', '1');
 
         setNoticeYear('');
@@ -90,12 +101,14 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
         setTrialNo('');
         setSubDivision('');
         setWorkType('');
+        setBuildingType('');
 
         router.push(`${pathname}?${params.toString()}`);
     };
 
-    const hasActiveFilters = !!(noticeYear || noticeNo || contractorName || trialNo || subDivision || workType);
+    const hasActiveFilters = !!(noticeYear || noticeNo || contractorName || trialNo || subDivision || workType || buildingType);
     const selectedWorkTypes = workType ? workType.split(',').filter(Boolean) : [];
+    const selectedBuildingTypes = buildingType ? buildingType.split(',').filter(Boolean) : [];
 
     return (
         <div className="bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-200 shadow-2xs">
@@ -104,7 +117,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                 <span>Filter Tenders</span>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 items-end">
                 {/* Sub Division */}
                 <div>
                     <label htmlFor="filterSubDivision" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Sub Division</label>
@@ -138,7 +151,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                     </button>
                     
                     {isWorkTypeOpen && (
-                        <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white p-2 shadow-md max-h-60 overflow-y-auto">
+                        <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white p-2 shadow-md max-h-60 overflow-y-auto min-w-[180px]">
                             {workTypes.map((wt) => {
                                 const isChecked = selectedWorkTypes.includes(wt);
                                 return (
@@ -164,6 +177,57 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                                     </label>
                                 );
                             })}
+                        </div>
+                    )}
+                </div>
+
+                {/* Building Type */}
+                <div className="relative" id="building-type-dropdown-container">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Building Type</label>
+                    <button
+                        type="button"
+                        onClick={() => setIsBuildingTypeOpen(!isBuildingTypeOpen)}
+                        className="flex items-center justify-between w-full rounded-xl border border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs text-left cursor-pointer"
+                    >
+                        <span className="truncate">
+                            {selectedBuildingTypes.length === 0
+                                ? 'All Building Types'
+                                : selectedBuildingTypes.join(', ')}
+                        </span>
+                        <ChevronDown className="w-4 h-4 ml-1 text-slate-400 shrink-0" />
+                    </button>
+                    
+                    {isBuildingTypeOpen && (
+                        <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white p-2 shadow-md max-h-60 overflow-y-auto min-w-[180px]">
+                            {buildingTypes.length > 0 ? (
+                                buildingTypes.map((bt) => {
+                                    const isChecked = selectedBuildingTypes.includes(bt);
+                                    return (
+                                        <label
+                                            key={bt}
+                                            className="flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 rounded-lg text-sm text-slate-700 cursor-pointer select-none"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={isChecked}
+                                                onChange={() => {
+                                                    let newSelected = [...selectedBuildingTypes];
+                                                    if (isChecked) {
+                                                        newSelected = newSelected.filter(t => t !== bt);
+                                                    } else {
+                                                        newSelected.push(bt);
+                                                    }
+                                                    setBuildingType(newSelected.join(','));
+                                                }}
+                                                className="rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                            />
+                                            <span>{bt}</span>
+                                        </label>
+                                    );
+                                })
+                            ) : (
+                                <div className="px-2.5 py-2 text-xs text-slate-400 italic">No building types found</div>
+                            )}
                         </div>
                     )}
                 </div>

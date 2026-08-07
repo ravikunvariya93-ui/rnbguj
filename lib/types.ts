@@ -20,6 +20,7 @@ export interface ListPageSearchParams {
   budgetHead?: string;
   dtpConsultant?: string;
   hasWorks?: string;
+  buildingType?: string;
 }
 
 export interface EntityFormProps<T = any> {

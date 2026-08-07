@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save, RefreshCw, Plus, Trash2, X } from 'lucide-react';
+import { Save, RefreshCw, Plus, Trash2, X, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import SearchableSelect from './SearchableSelect';
 
@@ -531,7 +531,18 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
     const packageWorks = selectedWorkOrderObj?.loaId?.tenderId?.packageId?.works || [];
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-gray-200 bg-white shadow rounded-lg">
+        <>
+            {(loading || fetchingAbstract) && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs transition-opacity duration-300">
+                    <div className="bg-white rounded-2xl shadow-2xl px-8 py-6 flex flex-col items-center gap-3 border border-slate-100">
+                        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+                        <p className="text-sm font-semibold text-slate-700">
+                            {fetchingAbstract ? 'Fetching BOQ Abstract...' : 'Processing & Saving Bill...'}
+                        </p>
+                    </div>
+                </div>
+            )}
+            <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-gray-200 bg-white shadow rounded-lg">
             
             {/* General Information Section */}
             <div className="p-8 pb-4">
@@ -1324,12 +1335,14 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
                 <div className="pt-8">
                     <div className="flex justify-end">
                         <Link href="/bills" className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</Link>
-                        <button type="submit" disabled={loading} className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50">
-                            <Save className="w-4 h-4 mr-2" /> {loading ? 'Saving...' : 'Save Bill & Abstract'}
+                        <button type="submit" disabled={loading || fetchingAbstract} className="ml-3 inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                            {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                            {loading ? 'Saving...' : 'Save Bill & Abstract'}
                         </button>
                     </div>
                 </div>
             </div>
         </form>
+        </>
     );
 }
