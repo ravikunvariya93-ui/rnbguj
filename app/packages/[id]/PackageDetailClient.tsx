@@ -7,10 +7,11 @@ import {
     ArrowLeft, Save, Edit2, Plus, Trash2, CheckCircle2, XCircle, X, Loader2, 
     Calendar, FileText, Settings, Award, Check, ChevronDown, ListPlus, Printer, 
     Receipt, DollarSign, Eye, AlertCircle, FileCheck, Layers, ClipboardCheck,
-    Briefcase, FileSpreadsheet, Percent, Building2, User2, Clock, Upload, CreditCard
+    Briefcase, FileSpreadsheet, Percent, Building2, User2, Clock, Upload, CreditCard, CheckSquare
 } from 'lucide-react';
 import { parseDateStr, formatDate, formatDateForInput, formatShortDate } from '@/lib/dateUtils';
 import SearchableSelect from '@/components/SearchableSelect';
+import BillForm from '@/components/BillForm';
 
 interface PackageDetailClientProps {
     packageId: string;
@@ -1309,13 +1310,23 @@ export default function PackageDetailClient({
         const netPay = parseFloat((gross - prevPaid - dismantle - excessExtra + (priceAdjSign * priceAdj) - adminAppr - withheld).toFixed(2));
         const netPaySafe = Math.max(netPay, 0);
 
-        const it = parseFloat((netPaySafe * 0.02).toFixed(2));
-        const gst = parseFloat((netPaySafe * 0.02).toFixed(2));
-        const cess = parseFloat((netPaySafe * 0.01).toFixed(2));
-        const sd = parseFloat((netPaySafe * 0.06).toFixed(2));
-        const fmd = parseFloat((netPaySafe * 0.05).toFixed(2));
-        const tpi = netPaySafe > 10000000 ? 100000 : 50000;
-        const esmp = Number(nextForm.runningBillNumber) === 1 ? 20000 : 0;
+        const it = netPaySafe > 0 ? Math.ceil((netPaySafe * 0.02) / 10) * 10 : 0;
+        const gst = netPaySafe > 0 ? Math.ceil((netPaySafe * 0.02) / 10) * 10 : 0;
+        const cess = netPaySafe > 0 ? Math.ceil((netPaySafe * 0.01) / 10) * 10 : 0;
+
+        const contractPrice = tender?.contractPrice || tender?.estimatedAmount || 0;
+        const sdBase = netPaySafe > 0 ? Math.ceil((netPaySafe * 0.06) / 100) * 100 : 0;
+        const sdMax = contractPrice > 0 ? Math.ceil((contractPrice * 0.05) / 100) * 100 : 0;
+        const sd = sdMax > 0 ? Math.min(sdBase, sdMax) : sdBase;
+        const isBuilding = String(pkg?.workType || '').toLowerCase().includes('building');
+        const fmd = isBuilding ? 0 : parseFloat((netPaySafe * 0.05).toFixed(2));
+        const currentBHead = String(pkg?.budgetHead || '').trim().toLowerCase();
+        const isMMGSY = currentBHead.includes('5054 mmgsy normal') || currentBHead.includes('5054 mmgsy scsp') || currentBHead.includes('mmgsy');
+
+        const tpi = isMMGSY ? (netPaySafe > 10000000 ? 100000 : 50000) : 0;
+        const billNoStr = String(nextForm.runningBillNumber || '').trim().toLowerCase();
+        const isFirstBill = Number(nextForm.runningBillNumber) === 1 || billNoStr === '1' || billNoStr.includes('1st') || billNoStr.includes('first');
+        const esmp = (isMMGSY && isFirstBill) ? 20000 : 0;
 
         const asphalt = parseFloat(nextForm.asphaltDeposit) || 0;
         const core = parseFloat(nextForm.coreSampleDeposit) || 0;
@@ -2599,10 +2610,10 @@ export default function PackageDetailClient({
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{item.description}</td>
-                                                <td className="px-4 py-3 text-sm text-slate-900 text-right font-medium font-mono">{item.quantity?.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-sm text-slate-900 text-right font-medium font-mono">{item.quantity != null ? Number(item.quantity).toLocaleString('en-IN') : '-'}</td>
                                                 <td className="px-4 py-3 text-sm text-slate-500 font-medium">{item.unit}</td>
-                                                <td className="px-4 py-3 text-sm text-slate-900 text-right font-medium font-mono">₹{item.rate?.toLocaleString()}</td>
-                                                <td className="px-4 py-3 text-sm text-slate-900 text-right font-bold text-blue-600 font-mono">₹{item.amount?.toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-sm text-slate-900 text-right font-medium font-mono">₹{item.rate != null ? Number(item.rate).toLocaleString('en-IN') : '-'}</td>
+                                                <td className="px-4 py-3 text-sm text-slate-900 text-right font-bold text-blue-600 font-mono">₹{item.amount != null ? Number(item.amount).toLocaleString('en-IN') : '-'}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -3186,6 +3197,9 @@ export default function PackageDetailClient({
                                                 <td className="border border-slate-200 px-4 py-1.5 text-right font-mono font-extrabold text-emerald-700">₹{bill.netPaidAmount?.toLocaleString('en-IN') || 0}</td>
                                                 <td className="border border-slate-200 px-4 py-1.5">
                                                     <div className="flex items-center justify-center gap-2">
+                                                        <Link href={`/bills/${bill._id}/checklist`} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md cursor-pointer" title="View Checklist">
+                                                            <CheckSquare className="w-4 h-4" />
+                                                        </Link>
                                                         <button onClick={() => handleOpenBillModal(bill)} className="p-1 text-blue-600 hover:bg-blue-50 rounded-md cursor-pointer" title="Edit Bill">
                                                             <Edit2 className="w-4 h-4" />
                                                         </button>
@@ -3205,137 +3219,47 @@ export default function PackageDetailClient({
                                 <p className="text-slate-500 font-semibold text-sm">No billing entries logged yet.</p>
                             </div>
                         )}
+                        {/* INLINE FULL-WIDTH BILL FORM */}
+                        {isBillModalOpen && (
+                            <div className="mt-6 border border-blue-200 bg-white rounded-2xl p-6 shadow-xs transition-all duration-300 animate-in fade-in slide-in-from-top-4">
+                                <div className="pb-4 mb-6 border-b border-slate-200 flex justify-between items-center">
+                                    <div className="flex items-center gap-2">
+                                        <span className="p-1.5 bg-blue-100 text-blue-700 rounded-lg">
+                                            <Receipt className="w-4 h-4" />
+                                        </span>
+                                        <h3 className="text-base font-bold text-slate-800">
+                                            {editingBill ? 'Edit Bill Details' : 'Add New Bill & Abstract'}
+                                        </h3>
+                                    </div>
+                                    <button type="button" onClick={() => { setIsBillModalOpen(false); setEditingBill(null); }} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-all cursor-pointer">
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+                                <BillForm 
+                                    initialData={editingBill || {}} 
+                                    isEditing={!!editingBill} 
+                                    initialWorkOrderId={workOrder?._id} 
+                                    initialTenderPercentage={tender?.aboveBelowPercentage}
+                                    initialTenderDirection={tender?.aboveBelowInWord}
+                                    initialWorks={pkg?.works}
+                                    contractPrice={tender?.contractPrice || tender?.estimatedAmount}
+                                    submittedSD={workOrder?.securityDepositAmount || tender?.securityDepositAmount}
+                                    workType={pkg?.workType}
+                                    budgetHead={pkg?.budgetHead}
+                                    onCancel={() => { setIsBillModalOpen(false); setEditingBill(null); }}
+                                    onSuccess={() => {
+                                        setIsBillModalOpen(false);
+                                        setEditingBill(null);
+                                        showToast('success', editingBill ? 'Bill details updated successfully.' : 'Bill created successfully.');
+                                        router.refresh();
+                                    }}
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
 
             </div>
-
-            {/* BILL LOGGING/EDIT MODAL */}
-            {isBillModalOpen && (
-                <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs transition-opacity duration-300">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden relative border border-slate-100 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
-                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
-                            <h3 className="text-lg font-bold text-slate-800">
-                                {editingBill ? 'Edit Bill Details' : 'Log New Bill'}
-                            </h3>
-                            <button type="button" onClick={() => { setIsBillModalOpen(false); setEditingBill(null); }} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-all">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-                        <form onSubmit={handleSaveBill} className="flex-1 overflow-y-auto p-6 space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Bill Type</label>
-                                    <select name="billType" value={billForm.billType} onChange={handleBillFormChange} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white">
-                                        <option value="Running">Running Bill</option>
-                                        <option value="Final">Final Bill</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Bill Number</label>
-                                    <select name="runningBillNumber" value={billForm.runningBillNumber} onChange={handleBillFormChange} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white">
-                                        {[...Array(50)].map((_, i) => (
-                                            <option key={i+1} value={i+1}>{i+1}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Bill Date (DD/MM/YYYY)</label>
-                                    <input type="text" placeholder="DD/MM/YYYY" required name="billDate" value={billForm.billDate} onChange={handleBillFormChange} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Gross Bill Amount (₹) *</label>
-                                    <input type="number" required name="grossAmount" value={billForm.grossAmount} onChange={handleBillFormChange} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-800" />
-                                </div>
-                            </div>
-
-                            {/* AUDIT MEMO DEDUCTIONS BREAKDOWN */}
-                            <div className="border-t border-slate-100 pt-6">
-                                <h4 className="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wider">Statutory Deductions & Audit Memo</h4>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-slate-50/70 p-5 rounded-2xl border border-slate-100 text-xs">
-                                    <div>
-                                        <label className="block font-bold text-slate-400 uppercase mb-1">Income Tax (2%)</label>
-                                        <input type="number" name="incomeTax" value={billForm.incomeTax} readOnly className="w-full px-3 py-1.5 border border-slate-100 bg-white rounded-lg font-mono text-slate-700" />
-                                    </div>
-                                    <div>
-                                        <label className="block font-bold text-slate-400 uppercase mb-1">GST (2%)</label>
-                                        <input type="number" name="gst" value={billForm.gst} readOnly className="w-full px-3 py-1.5 border border-slate-100 bg-white rounded-lg font-mono text-slate-700" />
-                                    </div>
-                                    <div>
-                                        <label className="block font-bold text-slate-400 uppercase mb-1">Labour Cess (1%)</label>
-                                        <input type="number" name="labourCess" value={billForm.labourCess} readOnly className="w-full px-3 py-1.5 border border-slate-100 bg-white rounded-lg font-mono text-slate-700" />
-                                    </div>
-                                    <div>
-                                        <label className="block font-bold text-slate-400 uppercase mb-1">Security Deposit (6%)</label>
-                                        <input type="number" name="securityDeposit" value={billForm.securityDeposit} readOnly className="w-full px-3 py-1.5 border border-slate-100 bg-white rounded-lg font-mono text-slate-700" />
-                                    </div>
-                                    <div>
-                                        <label className="block font-bold text-slate-400 uppercase mb-1">Free Maintenance (5%)</label>
-                                        <input type="number" name="freeMaintenanceDeposit" value={billForm.freeMaintenanceDeposit} readOnly className="w-full px-3 py-1.5 border border-slate-100 bg-white rounded-lg font-mono text-slate-700" />
-                                    </div>
-                                    <div>
-                                        <label className="block font-bold text-slate-400 uppercase mb-1">TPI charges</label>
-                                        <input type="number" name="tpi" value={billForm.tpi} readOnly className="w-full px-3 py-1.5 border border-slate-100 bg-white rounded-lg font-mono text-slate-700" />
-                                    </div>
-                                    <div>
-                                        <label className="block font-bold text-slate-400 uppercase mb-1">ESMP Charges</label>
-                                        <input type="number" name="esmp" value={billForm.esmp} readOnly className="w-full px-3 py-1.5 border border-slate-100 bg-white rounded-lg font-mono text-slate-700" />
-                                    </div>
-                                    <div>
-                                        <label className="block font-bold text-slate-400 uppercase mb-1">Dismantle Credit (Deduct)</label>
-                                        <input type="number" name="dismantleCredit" value={billForm.dismantleCredit} onChange={handleBillFormChange} className="w-full px-3 py-1.5 border border-slate-200 bg-white rounded-lg font-mono" />
-                                    </div>
-                                    <div>
-                                        <label className="block font-bold text-slate-400 uppercase mb-1">Asphalt Deposit</label>
-                                        <input type="number" name="asphaltDeposit" value={billForm.asphaltDeposit} onChange={handleBillFormChange} className="w-full px-3 py-1.5 border border-slate-200 bg-white rounded-lg font-mono" />
-                                    </div>
-                                    <div>
-                                        <label className="block font-bold text-slate-400 uppercase mb-1">Core Sample Deposit</label>
-                                        <input type="number" name="coreSampleDeposit" value={billForm.coreSampleDeposit} onChange={handleBillFormChange} className="w-full px-3 py-1.5 border border-slate-200 bg-white rounded-lg font-mono" />
-                                    </div>
-                                    <div>
-                                        <label className="block font-bold text-slate-400 uppercase mb-1">Time Limit Deposit</label>
-                                        <input type="number" name="timeLimitDeposit" value={billForm.timeLimitDeposit} onChange={handleBillFormChange} className="w-full px-3 py-1.5 border border-slate-200 bg-white rounded-lg font-mono" />
-                                    </div>
-                                    <div>
-                                        <label className="block font-bold text-slate-400 uppercase mb-1">Testing Charges</label>
-                                        <input type="number" name="testingCharges" value={billForm.testingCharges} onChange={handleBillFormChange} className="w-full px-3 py-1.5 border border-slate-200 bg-white rounded-lg font-mono" />
-                                    </div>
-                                    <div>
-                                        <label className="block font-bold text-slate-400 uppercase mb-1">Other Deductions</label>
-                                        <input type="number" name="otherDeposit" value={billForm.otherDeposit} onChange={handleBillFormChange} className="w-full px-3 py-1.5 border border-slate-200 bg-white rounded-lg font-mono" />
-                                    </div>
-                                    <div className="col-span-2 md:col-span-4 border-t border-slate-200/60 my-2"></div>
-                                    <div className="col-span-2 md:col-span-2">
-                                        <span className="font-bold text-slate-400 uppercase text-[10px] block mb-1">Total Deductions</span>
-                                        <span className="text-lg font-extrabold text-rose-600 font-mono">₹{billForm.totalDeduction?.toLocaleString('en-IN')}</span>
-                                    </div>
-                                    <div className="col-span-2 md:col-span-2">
-                                        <span className="font-bold text-slate-400 uppercase text-[10px] block mb-1">Net Paid Amount</span>
-                                        <span className="text-lg font-extrabold text-emerald-600 font-mono">₹{billForm.netPaidAmount?.toLocaleString('en-IN')}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Passing Date (DD/MM/YYYY)</label>
-                                    <input type="text" placeholder="DD/MM/YYYY" name="passingDate" value={billForm.passingDate} onChange={handleBillFormChange} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Bill Remarks</label>
-                                    <input type="text" name="remarks" value={billForm.remarks} onChange={handleBillFormChange} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
-                                </div>
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-                                <button type="button" onClick={() => { setIsBillModalOpen(false); setEditingBill(null); }} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold">Cancel</button>
-                                <button type="submit" className="px-5 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700">Save Bill</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
 
             {/* CONTRACTOR ADD MODAL */}
             {isContractorModalOpen && (

@@ -115,11 +115,13 @@ export async function POST(req: Request) {
                         // Check surrounding context to decide if it's qty/rate/amount
                         // A real quantity number is typically followed by "One" or a unit word
                         const nextWord = j + 1 < words.length ? words[j + 1] : '';
-                        const isFollowedByUnit = /^(One|Per|Nos?\.?|Cum|Rmt\.?|MT|Kg|Sqm|Metre|Meter|Each|Set|Pair|Ltr|KL|Litre|Running)$/i.test(nextWord);
+                        const afterNextWord = j + 2 < words.length ? words[j + 2] : '';
+                        const isFollowedByUnit = /^(One|Per|Nos?\.?|Numbers?|Cum|Rmt?\.?|Rmtr|RM|Mtr|Metre|Meter|MT|Kg|Kgs|Sqm?\.?|Sq\.?mt|Each|Set|Pair|Ltr?\.?|Litre|Lit|KL|Running|Points?|Job)$/i.test(nextWord);
+                        const isDimensionMultiplier = /^[xX\*]$/i.test(afterNextWord) || /^x\d/i.test(afterNextWord);
 
                         if (numbersFound.length === 0) {
                             // Looking for QUANTITY
-                            if ((isStandaloneDecimal || isStandaloneInteger) && isFollowedByUnit) {
+                            if ((isStandaloneDecimal || isStandaloneInteger) && isFollowedByUnit && !isDimensionMultiplier) {
                                 numbersFound.push({ value: parseFloat(w), index: j });
                             } else {
                                 descWords.push(w);
@@ -142,7 +144,25 @@ export async function POST(req: Request) {
                         } else if (numbersFound.length === 2) {
                             // After rate, the next decimal/integer is the amount
                             if (isStandaloneDecimal || (isStandaloneInteger && parseFloat(w) > 10)) {
-                                numbersFound.push({ value: parseFloat(w), index: j });
+                                const q = numbersFound[0].value;
+                                const r = numbersFound[1].value;
+                                const a = parseFloat(w);
+                                const expectedAmt = q * r;
+                                const isMathValid = Math.abs(expectedAmt - a) < 2.0 || Math.abs(expectedAmt - a) / (a || 1) < 0.02;
+
+                                if (!isMathValid) {
+                                    // Candidate quantity was actually part of description!
+                                    // Reject candidate quantity, push its value into descWords, backtrack j, and reset.
+                                    const candidateQtyObj = numbersFound[0];
+                                    descWords.push(candidateQtyObj.value.toString());
+                                    j = candidateQtyObj.index;
+                                    numbersFound = [];
+                                    unitWords = [];
+                                    j++;
+                                    continue;
+                                }
+
+                                numbersFound.push({ value: a, index: j });
                                 break; // We have all three: qty, rate, amount
                             }
                         }

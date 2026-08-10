@@ -3,6 +3,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export interface IBillItem {
     itemNo: string;
     description: string;
+    boqQuantity?: number;
     quantity: number;
     fullRate: number;
     partRate?: number;
@@ -27,6 +28,9 @@ export interface IBill extends Document {
     grossAmount: number;
     netPaidAmount?: number;
     passingDate?: Date;
+    actualCompletionDate?: Date;
+    lastRecordEntryDate?: Date;
+    mbNumber?: string;
     remarks?: string;
     labourCessApplicable: boolean;
     items: IBillItem[];
@@ -63,6 +67,7 @@ export interface IBill extends Document {
 const BillItemSchema = new Schema({
     itemNo: { type: String, required: true },
     description: { type: String, required: true },
+    boqQuantity: { type: Number, default: 0 },
     quantity: { type: Number, required: true },
     fullRate: { type: Number, required: true },
     partRate: { type: Number },
@@ -92,6 +97,9 @@ const BillSchema: Schema = new Schema({
     grossAmount: { type: Number, required: true },
     netPaidAmount: { type: Number },
     passingDate: { type: Date },
+    actualCompletionDate: { type: Date },
+    lastRecordEntryDate: { type: Date },
+    mbNumber: { type: String },
     remarks: { type: String },
     labourCessApplicable: { type: Boolean, default: false },
     items: [BillItemSchema],

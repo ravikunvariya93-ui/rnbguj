@@ -9,6 +9,7 @@ import SearchableSelect from './SearchableSelect';
 interface IBillItem {
     itemNo: string;
     description: string;
+    boqQuantity?: number;
     quantity: number;
     fullRate: number;
     partRate: number;
@@ -27,6 +28,8 @@ interface BillFormData {
     grossAmount: number;
     netPaidAmount: any;
     passingDate: string;
+    actualCompletionDate?: string;
+    lastRecordEntryDate?: string;
     remarks: string;
     auditMemoPreviouslyPaid: any;
     dismantleCredit: any;
@@ -57,6 +60,29 @@ interface BillFormData {
 interface BillFormProps {
     initialData?: any;
     isEditing?: boolean;
+    initialWorkOrderId?: string;
+    initialTenderPercentage?: number;
+    initialTenderDirection?: string;
+    initialWorks?: any[];
+    contractPrice?: number;
+    submittedSD?: number;
+    workType?: string;
+    budgetHead?: string;
+    onSuccess?: () => void;
+    onCancel?: () => void;
+}
+
+export function calculateSecurityDeposit(netPayVal: number, contractPriceVal: number = 0): number {
+    const netPay = Math.max(netPayVal || 0, 0);
+    const sdBase = netPay > 0 ? Math.ceil((netPay * 0.06) / 100) * 100 : 0;
+    
+    const contractPrice = Math.max(contractPriceVal || 0, 0);
+    if (contractPrice > 0) {
+        const sdMax = Math.ceil((contractPrice * 0.05) / 100) * 100;
+        return Math.min(sdBase, sdMax);
+    }
+    
+    return sdBase;
 }
 
 function parseDateStr(dateStr: string): Date | null {
@@ -87,26 +113,68 @@ function formatDateForInput(dateString: string): string {
     }
 }
 
-export default function BillForm({ initialData = {}, isEditing = false }: BillFormProps) {
+function getTodayDateFormatted(): string {
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const year = today.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
+export default function BillForm({ 
+    initialData = {}, 
+    isEditing = false, 
+    initialWorkOrderId = '', 
+    initialTenderPercentage,
+    initialTenderDirection,
+    initialWorks = [],
+    contractPrice,
+    submittedSD,
+    workType = '',
+    budgetHead = '',
+    onSuccess, 
+    onCancel 
+}: BillFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [fetchingAbstract, setFetchingAbstract] = useState(false);
     const [workOrders, setWorkOrders] = useState<any[]>([]);
-    const [tenderPercentage, setTenderPercentage] = useState(0);
-    const [tenderDirection, setTenderDirection] = useState('Above');
+    const [tenderPercentage, setTenderPercentage] = useState<number>(
+        initialTenderPercentage !== undefined ? initialTenderPercentage : 0
+    );
+    const [tenderDirection, setTenderDirection] = useState<string>(
+        initialTenderDirection === 'Equals' ? 'At Par' : (initialTenderDirection || 'Above')
+    );
+    const [contractPriceState, setContractPriceState] = useState<number>(contractPrice || 0);
+    const [submittedSDState, setSubmittedSDState] = useState<number>(submittedSD || 0);
+    const [workTypeState, setWorkTypeState] = useState<string>(workType || '');
+    const [budgetHeadState, setBudgetHeadState] = useState<string>(budgetHead || '');
+    const [abstractFetched, setAbstractFetched] = useState(false);
 
     const sanitized = Object.fromEntries(
         Object.entries(initialData).map(([k, v]) => [k, v == null ? '' : v])
     ) as any;
 
+    const formattedInitialWorks = (initialData.works && initialData.works.length > 0)
+        ? initialData.works
+        : (initialWorks && initialWorks.length > 0)
+            ? initialWorks.map((w: any, i: number) => ({
+                srNo: String(i + 1),
+                nameOfWork: w.workName || w.nameOfWork || '',
+                amount: 0
+            }))
+            : [];
+
     const [formData, setFormData] = useState<BillFormData>({
-        workOrderId: '',
+        workOrderId: initialWorkOrderId || '',
         billType: 'Running',
         runningBillNumber: '1',
-        billDate: '',
+        billDate: sanitized.billDate ? formatDateForInput(sanitized.billDate) : getTodayDateFormatted(),
         grossAmount: 0,
         netPaidAmount: sanitized.netPaidAmount || '',
         passingDate: '',
+        actualCompletionDate: sanitized.actualCompletionDate ? formatDateForInput(sanitized.actualCompletionDate) : '',
+        lastRecordEntryDate: sanitized.lastRecordEntryDate ? formatDateForInput(sanitized.lastRecordEntryDate) : '',
         remarks: '',
         auditMemoPreviouslyPaid: sanitized.auditMemoPreviouslyPaid ?? 0,
         dismantleCredit: sanitized.dismantleCredit ?? 0,
@@ -133,7 +201,7 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
         ...sanitized,
         labourCessApplicable: sanitized.labourCessApplicable ?? false,
         items: initialData.items || [] as IBillItem[],
-        works: initialData.works || [] as any[],
+        works: formattedInitialWorks,
     });
 
     useEffect(() => {
@@ -153,11 +221,38 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
     }, []);
 
     useEffect(() => {
+        if (contractPrice !== undefined) setContractPriceState(contractPrice);
+        if (submittedSD !== undefined) setSubmittedSDState(submittedSD);
+        if (workType !== undefined) setWorkTypeState(workType);
+        if (budgetHead !== undefined) setBudgetHeadState(budgetHead);
+    }, [contractPrice, submittedSD, workType, budgetHead]);
+
+    useEffect(() => {
+        if (initialTenderPercentage !== undefined) {
+            setTenderPercentage(initialTenderPercentage);
+        }
+        if (initialTenderDirection) {
+            let dir = initialTenderDirection;
+            if (dir === 'Equals') dir = 'At Par';
+            setTenderDirection(dir);
+        }
+    }, [initialTenderPercentage, initialTenderDirection]);
+
+    useEffect(() => {
+        if (!isEditing && initialWorkOrderId && !abstractFetched) {
+            setAbstractFetched(true);
+            handleWorkOrderSelect(initialWorkOrderId);
+        }
+    }, [initialWorkOrderId, isEditing, abstractFetched]);
+
+    useEffect(() => {
         if (isEditing && initialData) {
             setFormData((prev: any) => ({
                 ...prev,
                 billDate: formatDateForInput(initialData.billDate),
                 passingDate: formatDateForInput(initialData.passingDate),
+                actualCompletionDate: formatDateForInput(initialData.actualCompletionDate),
+                lastRecordEntryDate: formatDateForInput(initialData.lastRecordEntryDate),
                 workOrderId: initialData.workOrderId?._id || initialData.workOrderId || '',
             }));
         }
@@ -167,10 +262,21 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
         if (formData.workOrderId && workOrders.length > 0) {
             const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
             if (selectedWorkOrder?.loaId?.tenderId) {
-                const pct = selectedWorkOrder.loaId.tenderId.aboveBelowPercentage || 0;
-                const dir = selectedWorkOrder.loaId.tenderId.aboveBelowInWord || 'Above';
+                const pct = selectedWorkOrder.loaId.tenderId.aboveBelowPercentage !== undefined ? selectedWorkOrder.loaId.tenderId.aboveBelowPercentage : 0;
+                let dir = selectedWorkOrder.loaId.tenderId.aboveBelowInWord || 'Above';
+                if (dir === 'Equals') dir = 'At Par';
+                const cp = selectedWorkOrder.loaId.tenderId.contractPrice || selectedWorkOrder.loaId.tenderId.estimatedAmount || 0;
+                const ssd = selectedWorkOrder.securityDepositAmount || 0;
+                const wType = selectedWorkOrder.loaId.tenderId.packageId?.workType || '';
+                const bHead = selectedWorkOrder.loaId.tenderId.packageId?.budgetHead || '';
+
                 setTenderPercentage(pct);
                 setTenderDirection(dir);
+                if (cp) setContractPriceState(cp);
+                if (ssd) setSubmittedSDState(ssd);
+                if (wType) setWorkTypeState(wType);
+                if (bHead) setBudgetHeadState(bHead);
+
                 if (formData.items && formData.items.length > 0) {
                     calculateTotals(formData.items, pct, dir);
                 }
@@ -178,15 +284,26 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
         }
     }, [formData.workOrderId, workOrders]);
 
-    const getDeductionsForNetPayable = (netPayVal: number, runningBillNo: number) => {
+    const getDeductionsForNetPayable = (netPayVal: number, runningBillNo: number, cPrice?: number, sSD?: number, wType?: string, bHead?: string) => {
         const netPay = Math.max(netPayVal, 0);
-        const incomeTax = parseFloat((netPay * 0.02).toFixed(2));
-        const gst = parseFloat((netPay * 0.02).toFixed(2));
-        const labourCess = parseFloat((netPay * 0.01).toFixed(2));
-        const securityDeposit = parseFloat((netPay * 0.06).toFixed(2));
-        const freeMaintenanceDeposit = parseFloat((netPay * 0.05).toFixed(2));
-        const tpi = netPay > 10000000 ? 100000 : 50000;
-        const esmp = runningBillNo === 1 ? 20000 : 0;
+        const incomeTax = netPay > 0 ? Math.ceil((netPay * 0.02) / 10) * 10 : 0;
+        const gst = netPay > 0 ? Math.ceil((netPay * 0.02) / 10) * 10 : 0;
+        const labourCess = netPay > 0 ? Math.ceil((netPay * 0.01) / 10) * 10 : 0;
+
+        const cp = cPrice !== undefined ? cPrice : contractPriceState;
+        const securityDeposit = calculateSecurityDeposit(netPay, cp);
+
+        const currentWType = wType || workTypeState || '';
+        const isBuilding = String(currentWType).toLowerCase().includes('building');
+        const freeMaintenanceDeposit = isBuilding ? 0 : parseFloat((netPay * 0.05).toFixed(2));
+
+        const currentBHead = String(bHead || budgetHeadState || '').trim().toLowerCase();
+        const isMMGSY = currentBHead.includes('5054 mmgsy normal') || currentBHead.includes('5054 mmgsy scsp') || currentBHead.includes('mmgsy');
+
+        const tpi = isMMGSY ? (netPay > 10000000 ? 100000 : 50000) : 0;
+        const billNoStr = String(runningBillNo || '').trim().toLowerCase();
+        const isFirstBill = Number(runningBillNo) === 1 || billNoStr === '1' || billNoStr.includes('1st') || billNoStr.includes('first');
+        const esmp = (isMMGSY && isFirstBill) ? 20000 : 0;
         return {
             incomeTax,
             gst,
@@ -277,16 +394,38 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
         }
     };
 
+    useEffect(() => {
+        if (initialWorks && initialWorks.length > 0) {
+            setFormData((prev: any) => {
+                if (!prev.works || prev.works.length === 0) {
+                    const formatted = initialWorks.map((w: any, i: number) => ({
+                        srNo: String(i + 1),
+                        nameOfWork: w.workName || w.nameOfWork || '',
+                        amount: 0
+                    }));
+                    return { ...prev, works: formatted };
+                }
+                return prev;
+            });
+        }
+    }, [initialWorks]);
+
     const handleWorkOrderSelect = async (id: string) => {
         const selectedWorkOrderObj = workOrders.find((wo: any) => wo._id === id);
         const pkgWorks = selectedWorkOrderObj?.loaId?.tenderId?.packageId?.works || [];
         const mappedWorks = pkgWorks.map((pw: any, i: number) => ({
             srNo: String(i + 1),
-            nameOfWork: pw.workName,
+            nameOfWork: pw.workName || pw.nameOfWork || '',
             amount: 0
         }));
 
-        setFormData((prev: any) => ({ ...prev, workOrderId: id, works: mappedWorks }));
+        setFormData((prev: any) => ({ 
+            ...prev, 
+            workOrderId: id, 
+            works: (prev.works && prev.works.length > 0)
+                ? prev.works
+                : (mappedWorks.length > 0 ? mappedWorks : prev.works)
+        }));
         
         // Fetch abstract if not editing (or if they change work order)
         if (id) {
@@ -295,8 +434,18 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
                 const res = await fetch(`/api/bills/abstract?workOrderId=${id}`);
                 const data = await res.json();
                 if (data.success) {
-                    setFormData((prev: any) => ({ ...prev, items: data.data }));
-                    calculateTotals(data.data);
+                    const pct = data.tenderPercentage !== undefined ? data.tenderPercentage : tenderPercentage;
+                    const dir = data.tenderDirection || tenderDirection;
+                    setTenderPercentage(pct);
+                    setTenderDirection(dir);
+                    setFormData((prev: any) => ({ 
+                        ...prev, 
+                        items: data.data,
+                        works: (prev.works && prev.works.length > 0)
+                            ? prev.works
+                            : (data.works && data.works.length > 0 ? data.works : prev.works)
+                    }));
+                    calculateTotals(data.data, pct, dir);
                 } else {
                     alert('Error fetching abstract: ' + data.error);
                 }
@@ -468,6 +617,13 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
 
             submissionData.billDate = parseDateOutput(formData.billDate) as any;
             submissionData.passingDate = parseDateOutput(formData.passingDate) as any;
+            if (formData.billType === 'Final') {
+                submissionData.actualCompletionDate = parseDateOutput(formData.actualCompletionDate || '') as any;
+                submissionData.lastRecordEntryDate = undefined;
+            } else {
+                submissionData.lastRecordEntryDate = parseDateOutput(formData.lastRecordEntryDate || '') as any;
+                submissionData.actualCompletionDate = undefined;
+            }
             submissionData.grossAmount = Number(formData.grossAmount) as any;
             submissionData.netPaidAmount = Number(formData.netPaidAmount || 0) as any;
             submissionData.runningBillNumber = Number(formData.runningBillNumber) as any;
@@ -511,8 +667,12 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
                 throw new Error(errData.error || 'Failed to save Bill');
             }
 
-            router.push('/bills');
-            router.refresh();
+            if (onSuccess) {
+                onSuccess();
+            } else {
+                router.push('/bills');
+                router.refresh();
+            }
         } catch (error) {
             console.error(error);
             alert((error as any).message || 'Error saving Bill');
@@ -548,16 +708,18 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
             <div className="p-8 pb-4">
                 <h3 className="text-lg leading-6 font-medium text-gray-900 mb-6">Bill Details</h3>
                 <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                    <div className="sm:col-span-6">
-                        <SearchableSelect 
-                            label="Select Work Order / Package"
-                            required
-                            options={workOrderOptions}
-                            value={formData.workOrderId}
-                            onChange={handleWorkOrderSelect}
-                            placeholder="Search by package name..."
-                        />
-                    </div>
+                    {!initialWorkOrderId && (
+                        <div className="sm:col-span-6">
+                            <SearchableSelect 
+                                label="Select Work Order / Package"
+                                required
+                                options={workOrderOptions}
+                                value={formData.workOrderId}
+                                onChange={handleWorkOrderSelect}
+                                placeholder="Search by package name..."
+                            />
+                        </div>
+                    )}
 
                     <div className="sm:col-span-2">
                         <label htmlFor="billType" className="block text-sm font-medium text-gray-700">Bill Type</label>
@@ -604,6 +766,35 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
                             className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" required
                         />
                     </div>
+
+                    {formData.billType === 'Final' ? (
+                        <div className="sm:col-span-2">
+                            <label htmlFor="actualCompletionDate" className="block text-sm font-medium text-gray-700">Date of Completion (Actual)</label>
+                            <input 
+                                type="text" placeholder="DD/MM/YYYY" name="actualCompletionDate" id="actualCompletionDate" 
+                                value={formData.actualCompletionDate || ''} onChange={handleChange} 
+                                className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                            />
+                        </div>
+                    ) : (
+                        <div className="sm:col-span-2">
+                            <label htmlFor="lastRecordEntryDate" className="block text-sm font-medium text-gray-700">Last Record Entry / Measurement Date</label>
+                            <input 
+                                type="text" placeholder="DD/MM/YYYY" name="lastRecordEntryDate" id="lastRecordEntryDate" 
+                                value={formData.lastRecordEntryDate || ''} onChange={handleChange} 
+                                className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                            />
+                        </div>
+                    )}
+
+                    <div className="sm:col-span-2">
+                        <label htmlFor="mbNumber" className="block text-sm font-medium text-gray-700">Measurement Book (M.B.) Number</label>
+                        <input 
+                            type="text" placeholder="e.g. 2295" name="mbNumber" id="mbNumber" 
+                            value={(formData as any).mbNumber || ''} onChange={handleChange} 
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -636,6 +827,7 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
                                 <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider">Item No.</th>
                                 <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider w-1/4">Description</th>
                                 <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider">Unit</th>
+                                <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider bg-slate-100">Qty (BOQ)</th>
                                 <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider">Full Rate (₹)</th>
                                 <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-blue-700 bg-blue-50 tracking-wider border-l border-blue-100 min-w-[140px]">Upto Date Qty</th>
                                 <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-blue-700 bg-blue-50 tracking-wider border-r border-blue-100 min-w-[140px]">Part Rate (₹)</th>
@@ -648,8 +840,15 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
                         <tbody className="bg-white divide-y divide-gray-200">
                             {formData.items.length === 0 ? (
                                 <tr>
-                                    <td colSpan={10} className="px-6 py-12 text-center text-sm text-gray-500 bg-gray-50/50">
-                                        Select a Work Order above to load the BOQ items abstract.
+                                    <td colSpan={11} className="px-6 py-12 text-center text-sm text-gray-500 bg-gray-50/50">
+                                        {fetchingAbstract ? (
+                                            <div className="flex items-center justify-center gap-2 text-blue-600">
+                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                                <span className="font-medium">Loading BOQ items abstract...</span>
+                                            </div>
+                                        ) : (
+                                            <span>{initialWorkOrderId ? 'No BOQ items found for this work order.' : 'Select a Work Order above to load the BOQ items abstract.'}</span>
+                                        )}
                                     </td>
                                 </tr>
                             ) : (
@@ -694,6 +893,9 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
                                             ) : (
                                                 <span className="whitespace-nowrap">{item.unit}</span>
                                             )}
+                                        </td>
+                                        <td className="px-3 py-2 text-sm text-slate-700 font-mono font-medium bg-slate-50/50">
+                                            {item.boqQuantity != null ? item.boqQuantity : '-'}
                                         </td>
                                         <td className="px-3 py-2 text-sm text-slate-700 font-mono">
                                             {item.itemType === 'Extra' ? (
@@ -810,7 +1012,7 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
                                 <tfoot className="bg-slate-100 font-semibold border-t-2 border-slate-200">
                                     {/* Row 1: Total Amount */}
                                     <tr className="border-b border-slate-200">
-                                        <td colSpan={6} className="px-3 py-2.5 text-right text-sm text-slate-700">Total Amount:</td>
+                                        <td colSpan={7} className="px-3 py-2.5 text-right text-sm text-slate-700">Total Amount:</td>
                                         <td className="px-3 py-2.5 text-sm text-slate-800 font-mono">
                                             {totalUptoDate.toFixed(2)}
                                         </td>
@@ -824,7 +1026,7 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
                                     </tr>
                                     {/* Row 2: % Above/Below */}
                                     <tr className="border-b border-slate-200 bg-slate-50/50">
-                                        <td colSpan={6} className="px-3 py-2 text-right text-sm text-slate-600">{tenderPercentage}% {tenderDirection}:</td>
+                                        <td colSpan={7} className="px-3 py-2 text-right text-sm text-slate-600">{tenderPercentage}% {tenderDirection}:</td>
                                         <td className="px-3 py-2 text-sm text-slate-600 font-mono">
                                             {tenderDirection === 'Below' ? '-' : ''}{uptoDateAdj.toFixed(2)}
                                         </td>
@@ -838,7 +1040,7 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
                                     </tr>
                                     {/* Row 3: Net Amount */}
                                     <tr className="border-b border-slate-200">
-                                        <td colSpan={6} className="px-3 py-2.5 text-right text-sm text-slate-700 font-semibold">Net Amount:</td>
+                                        <td colSpan={7} className="px-3 py-2.5 text-right text-sm text-slate-700 font-semibold">Net Amount:</td>
                                         <td className="px-3 py-2.5 text-sm text-slate-800 font-mono">
                                             {uptoDateNet.toFixed(2)}
                                         </td>
@@ -852,7 +1054,7 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
                                     </tr>
                                     {/* Row 4: Add 18% GST */}
                                     <tr className="border-b border-slate-200 bg-slate-50/50">
-                                        <td colSpan={6} className="px-3 py-2 text-right text-sm text-slate-600">
+                                        <td colSpan={7} className="px-3 py-2 text-right text-sm text-slate-600">
                                             <div className="flex items-center justify-end space-x-2">
                                                 <input
                                                     type="checkbox"
@@ -882,7 +1084,7 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
                                     </tr>
                                     {/* Row 5: Net Payable Amount */}
                                     <tr className="bg-emerald-50 font-bold border-b border-slate-200">
-                                        <td colSpan={6} className="px-3 py-3 text-right text-sm text-emerald-800 text-base">Net Payable Amount:</td>
+                                        <td colSpan={7} className="px-3 py-3 text-right text-sm text-emerald-800 text-base">Net Payable Amount:</td>
                                         <td className="px-3 py-3 text-sm text-emerald-800 font-mono text-base">
                                             {uptoDatePayable.toFixed(2)}
                                         </td>
@@ -896,7 +1098,7 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
                                     </tr>
                                     {/* Row 6: Say Amount */}
                                     <tr className="bg-emerald-100 font-bold border-b-4 border-emerald-300">
-                                        <td colSpan={6} className="px-3 py-3 text-right text-sm text-emerald-900 tracking-wider">Say Amount:</td>
+                                        <td colSpan={7} className="px-3 py-3 text-right text-sm text-emerald-900 tracking-wider">Say Amount:</td>
                                         <td className="px-3 py-3 text-sm text-emerald-900 font-mono">
                                             {Math.floor(uptoDatePayable).toFixed(2)}
                                         </td>
@@ -1014,6 +1216,147 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
                                 </tfoot>
                             );
                         })()}
+                    </table>
+                </div>
+            </div>
+
+            {/* Excess / Saving Statement Section */}
+            <div className="p-8 pt-4 border-t border-gray-200">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900">Excess / Saving Statement</h3>
+                </div>
+                
+                <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                    <table className="min-w-full divide-y divide-gray-200 text-xs">
+                        <thead className="bg-slate-50 font-bold text-slate-700">
+                            <tr className="border-b border-slate-200">
+                                <th rowSpan={2} className="px-3 py-3 text-left border-r border-slate-200">Item No.</th>
+                                <th rowSpan={2} className="px-3 py-3 text-left border-r border-slate-200 min-w-[200px]">Description</th>
+                                <th rowSpan={2} className="px-3 py-3 text-center border-r border-slate-200">Unit</th>
+                                
+                                <th colSpan={3} className="px-3 py-2 text-center bg-blue-50/80 text-blue-900 border-r border-slate-200 border-b border-blue-200 font-bold">As per Tender</th>
+                                <th colSpan={3} className="px-3 py-2 text-center bg-indigo-50/80 text-indigo-900 border-r border-slate-200 border-b border-indigo-200 font-bold">As per Bill</th>
+                                <th colSpan={2} className="px-3 py-2 text-center bg-rose-50/80 text-rose-900 border-r border-slate-200 border-b border-rose-200 font-bold">Excess</th>
+                                <th colSpan={2} className="px-3 py-2 text-center bg-emerald-50/80 text-emerald-900 border-b border-emerald-200 font-bold">Saving</th>
+                            </tr>
+                            <tr className="border-b border-slate-200">
+                                <th className="px-3 py-2 text-right bg-blue-50/40 text-blue-800">Qty</th>
+                                <th className="px-3 py-2 text-right bg-blue-50/40 text-blue-800">Rate (₹)</th>
+                                <th className="px-3 py-2 text-right bg-blue-50/40 text-blue-800 border-r border-slate-200">Amount (₹)</th>
+                                
+                                <th className="px-3 py-2 text-right bg-indigo-50/40 text-indigo-800">Qty</th>
+                                <th className="px-3 py-2 text-right bg-indigo-50/40 text-indigo-800">Rate (Payable) (₹)</th>
+                                <th className="px-3 py-2 text-right bg-indigo-50/40 text-indigo-800 border-r border-slate-200">Amount (₹)</th>
+                                
+                                <th className="px-3 py-2 text-right bg-rose-50/40 text-rose-800">Qty</th>
+                                <th className="px-3 py-2 text-right bg-rose-50/40 text-rose-800 border-r border-slate-200">Amount (₹)</th>
+                                
+                                <th className="px-3 py-2 text-right bg-emerald-50/40 text-emerald-800">Qty</th>
+                                <th className="px-3 py-2 text-right bg-emerald-50/40 text-emerald-800">Amount (₹)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {formData.items.length === 0 ? (
+                                <tr>
+                                    <td colSpan={13} className="px-6 py-8 text-center text-sm text-gray-500">
+                                        No line items available to calculate Excess / Saving Statement.
+                                    </td>
+                                </tr>
+                            ) : (
+                                formData.items.map((item: any, index: number) => {
+                                    const tenderQty = Number(item.boqQuantity || 0);
+                                    const tenderRate = Number(item.fullRate || 0);
+                                    const tenderAmt = tenderQty * tenderRate;
+
+                                    const billQty = Number(item.quantity || 0);
+                                    const billRate = Number(item.partRate != null ? item.partRate : item.fullRate || 0);
+                                    const billAmt = Number(item.uptoDateAmount != null ? item.uptoDateAmount : (billQty * billRate));
+
+                                    const diffQty = billQty - tenderQty;
+                                    const diffAmt = billAmt - tenderAmt;
+
+                                    const excessQty = diffQty > 0 ? diffQty : 0;
+                                    const excessAmt = diffAmt > 0 ? diffAmt : 0;
+
+                                    const savingQty = diffQty < 0 ? Math.abs(diffQty) : 0;
+                                    const savingAmt = diffAmt < 0 ? Math.abs(diffAmt) : 0;
+
+                                    return (
+                                        <tr key={index} className="hover:bg-slate-50 font-mono text-xs">
+                                            <td className="px-3 py-2 text-left font-sans text-slate-700 font-medium border-r border-slate-200">{item.itemNo}</td>
+                                            <td className="px-3 py-2 text-left font-sans text-slate-600 border-r border-slate-200 max-w-[240px] truncate" title={item.description}>{item.description}</td>
+                                            <td className="px-3 py-2 text-center font-sans text-slate-500 border-r border-slate-200">{item.unit}</td>
+                                            
+                                            {/* Tender */}
+                                            <td className="px-3 py-2 text-right text-slate-700">{tenderQty ? tenderQty.toFixed(2) : '0.00'}</td>
+                                            <td className="px-3 py-2 text-right text-slate-700">{tenderRate ? tenderRate.toFixed(2) : '0.00'}</td>
+                                            <td className="px-3 py-2 text-right text-blue-900 font-semibold border-r border-slate-200">{tenderAmt ? tenderAmt.toFixed(2) : '0.00'}</td>
+                                            
+                                            {/* Bill */}
+                                            <td className="px-3 py-2 text-right text-slate-700">{billQty ? billQty.toFixed(2) : '0.00'}</td>
+                                            <td className="px-3 py-2 text-right text-slate-700">{billRate ? billRate.toFixed(2) : '0.00'}</td>
+                                            <td className="px-3 py-2 text-right text-indigo-900 font-semibold border-r border-slate-200">{billAmt ? billAmt.toFixed(2) : '0.00'}</td>
+                                            
+                                            {/* Excess */}
+                                            <td className="px-3 py-2 text-right text-rose-700">{excessQty > 0 ? excessQty.toFixed(2) : '-'}</td>
+                                            <td className="px-3 py-2 text-right text-rose-900 font-bold border-r border-slate-200">{excessAmt > 0 ? `₹${excessAmt.toFixed(2)}` : '-'}</td>
+                                            
+                                            {/* Saving */}
+                                            <td className="px-3 py-2 text-right text-emerald-700">{savingQty > 0 ? savingQty.toFixed(2) : '-'}</td>
+                                            <td className="px-3 py-2 text-right text-emerald-900 font-bold">{savingAmt > 0 ? `₹${savingAmt.toFixed(2)}` : '-'}</td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                        {formData.items.length > 0 && (
+                            <tfoot className="bg-slate-100 font-bold text-xs border-t-2 border-slate-300">
+                                {(() => {
+                                    const totalTender = formData.items.reduce((s: number, i: any) => s + ((Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0))), 0);
+                                    const totalBill = formData.items.reduce((s: number, i: any) => s + (Number(i.uptoDateAmount || (Number(i.quantity || 0) * Number(i.partRate || i.fullRate || 0)))), 0);
+                                    
+                                    const totalExcess = formData.items.reduce((s: number, i: any) => {
+                                        const tAmt = (Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0));
+                                        const bAmt = Number(i.uptoDateAmount || (Number(i.quantity || 0) * Number(i.partRate || i.fullRate || 0)));
+                                        const diff = bAmt - tAmt;
+                                        return s + (diff > 0 ? diff : 0);
+                                    }, 0);
+
+                                    const totalSaving = formData.items.reduce((s: number, i: any) => {
+                                        const tAmt = (Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0));
+                                        const bAmt = Number(i.uptoDateAmount || (Number(i.quantity || 0) * Number(i.partRate || i.fullRate || 0)));
+                                        const diff = bAmt - tAmt;
+                                        return s + (diff < 0 ? Math.abs(diff) : 0);
+                                    }, 0);
+
+                                    const netDiff = totalExcess - totalSaving;
+
+                                    return (
+                                        <>
+                                            <tr>
+                                                <td colSpan={3} className="px-3 py-2.5 text-right font-sans text-slate-800 border-r border-slate-200 uppercase tracking-wider">Total:</td>
+                                                <td colSpan={2} className="px-3 py-2.5"></td>
+                                                <td className="px-3 py-2.5 text-right font-mono text-blue-900 border-r border-slate-200">₹{totalTender.toFixed(2)}</td>
+                                                <td colSpan={2} className="px-3 py-2.5"></td>
+                                                <td className="px-3 py-2.5 text-right font-mono text-indigo-900 border-r border-slate-200">₹{totalBill.toFixed(2)}</td>
+                                                <td></td>
+                                                <td className="px-3 py-2.5 text-right font-mono text-rose-900 border-r border-slate-200">₹{totalExcess.toFixed(2)}</td>
+                                                <td></td>
+                                                <td className="px-3 py-2.5 text-right font-mono text-emerald-900">₹{totalSaving.toFixed(2)}</td>
+                                            </tr>
+                                            <tr className="bg-slate-200 text-slate-900">
+                                                <td colSpan={9} className="px-3 py-2 text-right font-sans uppercase font-bold tracking-wider border-r border-slate-300">
+                                                    Net Statement Summary ({netDiff >= 0 ? 'Excess' : 'Saving'}):
+                                                </td>
+                                                <td colSpan={4} className={`px-3 py-2 text-right font-mono font-extrabold text-sm ${netDiff >= 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
+                                                    {netDiff >= 0 ? `+₹${netDiff.toFixed(2)} (Excess)` : `-₹${Math.abs(netDiff).toFixed(2)} (Saving)`}
+                                                </td>
+                                            </tr>
+                                        </>
+                                    );
+                                })()}
+                            </tfoot>
+                        )}
                     </table>
                 </div>
             </div>
@@ -1182,7 +1525,7 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="securityDepositDeduction" className="text-sm text-slate-600">Security Deposit:</label>
+                            <label htmlFor="securityDepositDeduction" className="text-sm text-slate-600">Security Deposit deducted from Bill:</label>
                             <input
                                 type="number"
                                 step="0.01"
@@ -1334,8 +1677,12 @@ export default function BillForm({ initialData = {}, isEditing = false }: BillFo
 
                 <div className="pt-8">
                     <div className="flex justify-end">
-                        <Link href="/bills" className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</Link>
-                        <button type="submit" disabled={loading || fetchingAbstract} className="ml-3 inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                        {onCancel ? (
+                            <button type="button" onClick={onCancel} className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer">Cancel</button>
+                        ) : (
+                            <Link href="/bills" className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</Link>
+                        )}
+                        <button type="submit" disabled={loading || fetchingAbstract} className="ml-3 inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer">
                             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                             {loading ? 'Saving...' : 'Save Bill & Abstract'}
                         </button>

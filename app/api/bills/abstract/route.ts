@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import WorkOrder from '@/models/WorkOrder';
 import LOA from '@/models/LOA';
+import Tender from '@/models/Tender';
+import Package from '@/models/Package';
 import BOQ from '@/models/BOQ';
 import Bill from '@/models/Bill';
 
@@ -16,7 +18,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ success: false, error: 'workOrderId is required' }, { status: 400 });
         }
 
-        // 1. Get WorkOrder -> LOA -> Tender
+        // 1. Get WorkOrder -> LOA -> Tender -> Package
         const workOrder = await WorkOrder.findById(workOrderId);
         if (!workOrder) {
             return NextResponse.json({ success: false, error: 'Work Order not found' }, { status: 404 });
@@ -27,6 +29,9 @@ export async function GET(request: Request) {
             return NextResponse.json({ success: false, error: 'LOA not found' }, { status: 404 });
         }
 
+        const tender = await Tender.findById(loa.tenderId);
+        const packageDoc = tender?.packageId ? await Package.findById(tender.packageId) : null;
+
         // 2. Get BOQ by Tender ID
         const boq = await BOQ.findOne({ tenderId: loa.tenderId });
         if (!boq) {
@@ -34,7 +39,6 @@ export async function GET(request: Request) {
         }
 
         // 3. Find previous bills for this WorkOrder to calculate previousPaidAmount
-        // (Assuming we just sum up the toBePaidAmount from previous bills for each item)
         const previousBills = await Bill.find({ workOrderId: workOrderId as any });
         
         const previousPaidMap: Record<string, number> = {};
@@ -56,9 +60,10 @@ export async function GET(request: Request) {
             return {
                 itemNo: boqItem.itemNo,
                 description: boqItem.description,
-                quantity: 0, // Default for new bill
+                boqQuantity: boqItem.quantity || 0,
+                quantity: 0,
                 fullRate: boqItem.rate,
-                partRate: boqItem.rate, // Default to full rate
+                partRate: boqItem.rate,
                 unit: boqItem.unit,
                 uptoDateAmount: 0,
                 previousPaidAmount: prevPaid,
@@ -67,7 +72,28 @@ export async function GET(request: Request) {
             };
         });
 
-        return NextResponse.json({ success: true, data: abstractItems });
+        const tenderPct = tender?.aboveBelowPercentage !== undefined ? tender.aboveBelowPercentage : 0;
+        let tenderDir = tender?.aboveBelowInWord || 'Above';
+        if (tenderDir === 'Equals') tenderDir = 'At Par';
+
+        const contractPrice = tender?.contractPrice || tender?.estimatedAmount || 0;
+        const submittedSD = workOrder?.securityDepositAmount || tender?.securityDepositAmount || 0;
+
+        const works = (packageDoc?.works || []).map((w: any, i: number) => ({
+            srNo: String(i + 1),
+            nameOfWork: w.workName || w.nameOfWork || '',
+            amount: 0
+        }));
+
+        return NextResponse.json({ 
+            success: true, 
+            data: abstractItems,
+            works,
+            tenderPercentage: tenderPct,
+            tenderDirection: tenderDir,
+            contractPrice,
+            submittedSD
+        });
 
     } catch (error) {
         console.error('Error fetching bill abstract:', error);

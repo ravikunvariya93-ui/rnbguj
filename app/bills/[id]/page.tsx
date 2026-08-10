@@ -4,7 +4,7 @@ import WorkOrder from '@/models/WorkOrder';
 import LOA from '@/models/LOA';
 import Tender from '@/models/Tender';
 import Link from 'next/link';
-import { ArrowLeft, Edit2, Trash2, Calendar, IndianRupee, FileText, LayoutList } from 'lucide-react';
+import { ArrowLeft, Edit2, Trash2, Calendar, IndianRupee, FileText, LayoutList, CheckSquare } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
 
@@ -42,6 +42,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
             fields: [
                 { label: 'Bill Type', value: bill.billType },
                 { label: 'Bill Number', value: `${bill.runningBillNumber}${bill.runningBillNumber === 1 ? 'st' : bill.runningBillNumber === 2 ? 'nd' : bill.runningBillNumber === 3 ? 'rd' : 'th'} and ${bill.billType} Bill` },
+                { label: 'M.B. Number', value: (bill as any).mbNumber || '-' },
                 { label: 'Remarks', value: bill.remarks || '-' },
             ]
         },
@@ -59,6 +60,10 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
             icon: Calendar,
             fields: [
                 { label: 'Bill Date', value: bill.billDate ? new Date(bill.billDate).toLocaleDateString('en-GB') : '-' },
+                ...(bill.billType === 'Final'
+                    ? [{ label: 'Date of Completion (Actual)', value: bill.actualCompletionDate ? new Date(bill.actualCompletionDate).toLocaleDateString('en-GB') : '-' }]
+                    : [{ label: 'Last Record Entry / Measurement Date', value: bill.lastRecordEntryDate ? new Date(bill.lastRecordEntryDate).toLocaleDateString('en-GB') : '-' }]
+                ),
                 { label: 'Passing Date', value: bill.passingDate ? new Date(bill.passingDate).toLocaleDateString('en-GB') : '-' },
                 { label: 'Created At', value: new Date(bill.createdAt).toLocaleDateString('en-GB') },
             ]
@@ -89,6 +94,12 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                     </div>
                 </div>
                 <div className="flex items-center space-x-3">
+                    <Link
+                        href={`/bills/${id}/checklist`}
+                        className="inline-flex items-center px-4 py-2 border border-emerald-600 rounded-md shadow-sm text-sm font-medium text-emerald-700 bg-white hover:bg-emerald-50 transition-colors"
+                    >
+                        <CheckSquare className="w-4 h-4 mr-2" /> Checklist
+                    </Link>
                     <GenericDeleteButton 
                         itemId={id} 
                         apiPath="/api/bills" 
@@ -144,6 +155,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider">No.</th>
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider w-1/4">Description</th>
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider">Unit</th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider bg-slate-100">Qty (BOQ)</th>
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider">Rate (₹)</th>
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-blue-700 bg-blue-50 tracking-wider border-l border-blue-100 min-w-[140px]">Upto Date Qty</th>
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-blue-700 bg-blue-50 tracking-wider border-r border-blue-100 min-w-[140px]">Part Rate (₹)</th>
@@ -155,7 +167,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                         <tbody className="bg-white divide-y divide-gray-200">
                             {(!bill.items || bill.items.length === 0) ? (
                                 <tr>
-                                    <td colSpan={9} className="px-6 py-12 text-center text-sm text-gray-500">
+                                    <td colSpan={10} className="px-6 py-12 text-center text-sm text-gray-500">
                                         No abstract items recorded for this bill.
                                     </td>
                                 </tr>
@@ -165,6 +177,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                                         <td className="px-4 py-4 text-sm text-slate-700 font-medium whitespace-nowrap">{item.itemNo}</td>
                                         <td className="px-4 py-4 text-xs text-slate-600 line-clamp-3" title={item.description}>{item.description}</td>
                                         <td className="px-4 py-4 text-xs text-slate-500 whitespace-nowrap">{item.unit}</td>
+                                        <td className="px-4 py-4 text-sm text-slate-700 font-mono font-medium bg-slate-50/50">{item.boqQuantity != null ? item.boqQuantity : '-'}</td>
                                         <td className="px-4 py-4 text-sm text-slate-700 font-mono">{item.fullRate?.toFixed(2)}</td>
                                         
                                         <td className="px-4 py-4 text-sm text-blue-800 font-mono font-medium border-l border-blue-100 bg-blue-50/30">
@@ -216,7 +229,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                                 <tfoot className="bg-slate-100 font-semibold border-t-2 border-slate-200">
                                     {/* Row 1: Total Amount */}
                                     <tr className="border-b border-slate-200">
-                                        <td colSpan={6} className="px-4 py-3.5 text-right text-sm text-slate-700 uppercase tracking-wider font-semibold">Total Amount:</td>
+                                        <td colSpan={7} className="px-4 py-3.5 text-right text-sm text-slate-700 uppercase tracking-wider font-semibold">Total Amount:</td>
                                         <td className="px-4 py-3.5 text-sm text-slate-800 font-mono">
                                             {totalUptoDate.toFixed(2)}
                                         </td>
@@ -229,7 +242,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                                     </tr>
                                     {/* Row 2: Tender percentage */}
                                     <tr className="border-b border-slate-200 bg-slate-50/50">
-                                        <td colSpan={6} className="px-4 py-3 text-right text-sm text-slate-600 uppercase tracking-wider font-normal">{pct}% {dir}:</td>
+                                        <td colSpan={7} className="px-4 py-3 text-right text-sm text-slate-600 uppercase tracking-wider font-normal">{pct}% {dir}:</td>
                                         <td className="px-4 py-3 text-sm text-slate-600 font-mono font-normal">
                                             {dir === 'Below' ? '-' : ''}{uptoDateAdj.toFixed(2)}
                                         </td>
@@ -242,7 +255,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                                     </tr>
                                     {/* Row 3: Net Amount */}
                                     <tr className="border-b border-slate-200">
-                                        <td colSpan={6} className="px-4 py-3.5 text-right text-sm text-slate-700 uppercase tracking-wider">Net Amount:</td>
+                                        <td colSpan={7} className="px-4 py-3.5 text-right text-sm text-slate-700 uppercase tracking-wider">Net Amount:</td>
                                         <td className="px-4 py-3.5 text-sm text-slate-800 font-mono">
                                             {uptoDateNet.toFixed(2)}
                                         </td>
@@ -255,7 +268,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                                     </tr>
                                     {/* Row 4: Add 18% GST */}
                                     <tr className="border-b border-slate-200 bg-slate-50/50">
-                                        <td colSpan={6} className="px-4 py-3 text-right text-sm text-slate-600 uppercase tracking-wider font-normal">Add 18% GST{isCess ? ' (Cess Applied)' : ''}:</td>
+                                        <td colSpan={7} className="px-4 py-3 text-right text-sm text-slate-600 uppercase tracking-wider font-normal">Add 18% GST{isCess ? ' (Cess Applied)' : ''}:</td>
                                         <td className="px-4 py-3 text-sm text-slate-600 font-mono font-normal">
                                             {uptoDateGst.toFixed(2)}
                                         </td>
@@ -268,7 +281,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                                     </tr>
                                     {/* Row 5: Net Payable Amount */}
                                     <tr className="bg-emerald-50 font-bold border-b border-slate-200">
-                                        <td colSpan={6} className="px-4 py-4 text-right text-sm text-emerald-800 uppercase tracking-wider">Net Payable Amount:</td>
+                                        <td colSpan={7} className="px-4 py-4 text-right text-sm text-emerald-800 uppercase tracking-wider">Net Payable Amount:</td>
                                         <td className="px-4 py-4 text-sm text-emerald-800 font-mono text-base font-bold">
                                             {uptoDatePayable.toFixed(2)}
                                         </td>
@@ -281,7 +294,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                                     </tr>
                                     {/* Row 6: Say Amount */}
                                     <tr className="bg-emerald-100 font-bold border-b-4 border-emerald-300">
-                                        <td colSpan={6} className="px-4 py-3.5 text-right text-sm text-emerald-900 tracking-wider">Say Amount:</td>
+                                        <td colSpan={7} className="px-4 py-3.5 text-right text-sm text-emerald-900 tracking-wider">Say Amount:</td>
                                         <td className="px-4 py-3.5 text-sm text-emerald-900 font-mono">
                                             {Math.floor(uptoDatePayable).toFixed(2)}
                                         </td>
@@ -295,6 +308,149 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                                 </tfoot>
                             );
                         })()}
+                    </table>
+                </div>
+            </div>
+
+            {/* Excess / Saving Statement Section */}
+            <div className="bg-white shadow rounded-lg border border-gray-200 overflow-hidden mb-8">
+                <div className="px-6 py-5 bg-slate-50 border-b border-gray-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <LayoutList className="w-5 h-5 text-slate-700" />
+                        <h2 className="text-lg font-bold text-slate-900 tracking-tight">Excess / Saving Statement</h2>
+                    </div>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-xs">
+                        <thead className="bg-slate-50 font-bold text-slate-700">
+                            <tr className="border-b border-slate-200">
+                                <th rowSpan={2} className="px-3 py-3 text-left border-r border-slate-200">Item No.</th>
+                                <th rowSpan={2} className="px-3 py-3 text-left border-r border-slate-200 min-w-[200px]">Description</th>
+                                <th rowSpan={2} className="px-3 py-3 text-center border-r border-slate-200">Unit</th>
+                                
+                                <th colSpan={3} className="px-3 py-2 text-center bg-blue-50/80 text-blue-900 border-r border-slate-200 border-b border-blue-200 font-bold">As per Tender</th>
+                                <th colSpan={3} className="px-3 py-2 text-center bg-indigo-50/80 text-indigo-900 border-r border-slate-200 border-b border-indigo-200 font-bold">As per Bill</th>
+                                <th colSpan={2} className="px-3 py-2 text-center bg-rose-50/80 text-rose-900 border-r border-slate-200 border-b border-rose-200 font-bold">Excess</th>
+                                <th colSpan={2} className="px-3 py-2 text-center bg-emerald-50/80 text-emerald-900 border-b border-emerald-200 font-bold">Saving</th>
+                            </tr>
+                            <tr className="border-b border-slate-200">
+                                <th className="px-3 py-2 text-right bg-blue-50/40 text-blue-800">Qty</th>
+                                <th className="px-3 py-2 text-right bg-blue-50/40 text-blue-800">Rate (₹)</th>
+                                <th className="px-3 py-2 text-right bg-blue-50/40 text-blue-800 border-r border-slate-200">Amount (₹)</th>
+                                
+                                <th className="px-3 py-2 text-right bg-indigo-50/40 text-indigo-800">Qty</th>
+                                <th className="px-3 py-2 text-right bg-indigo-50/40 text-indigo-800">Rate (Payable) (₹)</th>
+                                <th className="px-3 py-2 text-right bg-indigo-50/40 text-indigo-800 border-r border-slate-200">Amount (₹)</th>
+                                
+                                <th className="px-3 py-2 text-right bg-rose-50/40 text-rose-800">Qty</th>
+                                <th className="px-3 py-2 text-right bg-rose-50/40 text-rose-800 border-r border-slate-200">Amount (₹)</th>
+                                
+                                <th className="px-3 py-2 text-right bg-emerald-50/40 text-emerald-800">Qty</th>
+                                <th className="px-3 py-2 text-right bg-emerald-50/40 text-emerald-800">Amount (₹)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {(!bill.items || bill.items.length === 0) ? (
+                                <tr>
+                                    <td colSpan={13} className="px-6 py-8 text-center text-sm text-gray-500">
+                                        No line items available to calculate Excess / Saving Statement.
+                                    </td>
+                                </tr>
+                            ) : (
+                                bill.items.map((item: any, index: number) => {
+                                    const tenderQty = Number(item.boqQuantity || 0);
+                                    const tenderRate = Number(item.fullRate || 0);
+                                    const tenderAmt = tenderQty * tenderRate;
+
+                                    const billQty = Number(item.quantity || 0);
+                                    const billRate = Number(item.partRate != null ? item.partRate : item.fullRate || 0);
+                                    const billAmt = Number(item.uptoDateAmount != null ? item.uptoDateAmount : (billQty * billRate));
+
+                                    const diffQty = billQty - tenderQty;
+                                    const diffAmt = billAmt - tenderAmt;
+
+                                    const excessQty = diffQty > 0 ? diffQty : 0;
+                                    const excessAmt = diffAmt > 0 ? diffAmt : 0;
+
+                                    const savingQty = diffQty < 0 ? Math.abs(diffQty) : 0;
+                                    const savingAmt = diffAmt < 0 ? Math.abs(diffAmt) : 0;
+
+                                    return (
+                                        <tr key={index} className="hover:bg-slate-50 font-mono text-xs">
+                                            <td className="px-3 py-2 text-left font-sans text-slate-700 font-medium border-r border-slate-200">{item.itemNo}</td>
+                                            <td className="px-3 py-2 text-left font-sans text-slate-600 border-r border-slate-200 max-w-[240px] truncate" title={item.description}>{item.description}</td>
+                                            <td className="px-3 py-2 text-center font-sans text-slate-500 border-r border-slate-200">{item.unit}</td>
+                                            
+                                            {/* Tender */}
+                                            <td className="px-3 py-2 text-right text-slate-700">{tenderQty ? tenderQty.toFixed(2) : '0.00'}</td>
+                                            <td className="px-3 py-2 text-right text-slate-700">{tenderRate ? tenderRate.toFixed(2) : '0.00'}</td>
+                                            <td className="px-3 py-2 text-right text-blue-900 font-semibold border-r border-slate-200">{tenderAmt ? tenderAmt.toFixed(2) : '0.00'}</td>
+                                            
+                                            {/* Bill */}
+                                            <td className="px-3 py-2 text-right text-slate-700">{billQty ? billQty.toFixed(2) : '0.00'}</td>
+                                            <td className="px-3 py-2 text-right text-slate-700">{billRate ? billRate.toFixed(2) : '0.00'}</td>
+                                            <td className="px-3 py-2 text-right text-indigo-900 font-semibold border-r border-slate-200">{billAmt ? billAmt.toFixed(2) : '0.00'}</td>
+                                            
+                                            {/* Excess */}
+                                            <td className="px-3 py-2 text-right text-rose-700">{excessQty > 0 ? excessQty.toFixed(2) : '-'}</td>
+                                            <td className="px-3 py-2 text-right text-rose-900 font-bold border-r border-slate-200">{excessAmt > 0 ? `₹${excessAmt.toFixed(2)}` : '-'}</td>
+                                            
+                                            {/* Saving */}
+                                            <td className="px-3 py-2 text-right text-emerald-700">{savingQty > 0 ? savingQty.toFixed(2) : '-'}</td>
+                                            <td className="px-3 py-2 text-right text-emerald-900 font-bold">{savingAmt > 0 ? `₹${savingAmt.toFixed(2)}` : '-'}</td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                        {bill.items && bill.items.length > 0 && (
+                            <tfoot className="bg-slate-100 font-bold text-xs border-t-2 border-slate-300">
+                                {(() => {
+                                    const totalTender = bill.items.reduce((s: number, i: any) => s + ((Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0))), 0);
+                                    const totalBill = bill.items.reduce((s: number, i: any) => s + (Number(i.uptoDateAmount || (Number(i.quantity || 0) * Number(i.partRate || i.fullRate || 0)))), 0);
+                                    
+                                    const totalExcess = bill.items.reduce((s: number, i: any) => {
+                                        const tAmt = (Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0));
+                                        const bAmt = Number(i.uptoDateAmount || (Number(i.quantity || 0) * Number(i.partRate || i.fullRate || 0)));
+                                        const diff = bAmt - tAmt;
+                                        return s + (diff > 0 ? diff : 0);
+                                    }, 0);
+
+                                    const totalSaving = bill.items.reduce((s: number, i: any) => {
+                                        const tAmt = (Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0));
+                                        const bAmt = Number(i.uptoDateAmount || (Number(i.quantity || 0) * Number(i.partRate || i.fullRate || 0)));
+                                        const diff = bAmt - tAmt;
+                                        return s + (diff < 0 ? Math.abs(diff) : 0);
+                                    }, 0);
+
+                                    const netDiff = totalExcess - totalSaving;
+
+                                    return (
+                                        <>
+                                            <tr>
+                                                <td colSpan={3} className="px-3 py-2.5 text-right font-sans text-slate-800 border-r border-slate-200 uppercase tracking-wider">Total:</td>
+                                                <td colSpan={2} className="px-3 py-2.5"></td>
+                                                <td className="px-3 py-2.5 text-right font-mono text-blue-900 border-r border-slate-200">₹{totalTender.toFixed(2)}</td>
+                                                <td colSpan={2} className="px-3 py-2.5"></td>
+                                                <td className="px-3 py-2.5 text-right font-mono text-indigo-900 border-r border-slate-200">₹{totalBill.toFixed(2)}</td>
+                                                <td></td>
+                                                <td className="px-3 py-2.5 text-right font-mono text-rose-900 border-r border-slate-200">₹{totalExcess.toFixed(2)}</td>
+                                                <td></td>
+                                                <td className="px-3 py-2.5 text-right font-mono text-emerald-900">₹{totalSaving.toFixed(2)}</td>
+                                            </tr>
+                                            <tr className="bg-slate-200 text-slate-900">
+                                                <td colSpan={9} className="px-3 py-2 text-right font-sans uppercase font-bold tracking-wider border-r border-slate-300">
+                                                    Net Statement Summary ({netDiff >= 0 ? 'Excess' : 'Saving'}):
+                                                </td>
+                                                <td colSpan={4} className={`px-3 py-2 text-right font-mono font-extrabold text-sm ${netDiff >= 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
+                                                    {netDiff >= 0 ? `+₹${netDiff.toFixed(2)} (Excess)` : `-₹${Math.abs(netDiff).toFixed(2)} (Saving)`}
+                                                </td>
+                                            </tr>
+                                        </>
+                                    );
+                                })()}
+                            </tfoot>
+                        )}
                     </table>
                 </div>
             </div>
@@ -455,7 +611,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                                     <span className="text-sm text-slate-800 font-mono">₹{(bill.labourCess || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                 </div>
                                 <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                                    <span className="text-sm text-slate-600">Security Deposit:</span>
+                                    <span className="text-sm text-slate-600">Security Deposit deducted from Bill:</span>
                                     <span className="text-sm text-slate-800 font-mono">₹{(bill.securityDeposit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                 </div>
                                 <div className="flex justify-between items-center border-b border-slate-100 pb-2">
