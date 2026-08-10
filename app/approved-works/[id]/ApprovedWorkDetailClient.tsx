@@ -2356,6 +2356,7 @@ export default function ApprovedWorkDetailClient({
                                 <p className="text-slate-500 font-semibold text-sm">No billing entries logged yet.</p>
                                 <p className="text-slate-400 text-xs mt-0.5">Please log bills once Work Order details are set up.</p>
                             </div>
+                        )}
                         {/* INLINE FULL-WIDTH BILL FORM */}
                         {isBillModalOpen && (
                             <div className="mt-6 border border-blue-200 bg-white rounded-2xl p-6 shadow-xs transition-all duration-300 animate-in fade-in slide-in-from-top-4">
@@ -2395,6 +2396,7 @@ export default function ApprovedWorkDetailClient({
                         )}
                     </div>
                 </div>
+            </div>
 
             {/* CONTRACTOR ADD MODAL */}
             {isContractorModalOpen && (
