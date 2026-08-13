@@ -211,7 +211,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                                         <td className="px-4 py-4 text-sm text-slate-700 font-medium whitespace-nowrap">{item.itemNo}</td>
                                         <td className="px-4 py-4 text-xs text-slate-600 line-clamp-3" title={item.description}>{item.description}</td>
                                         <td className="px-4 py-4 text-xs text-slate-500 whitespace-nowrap">{item.unit}</td>
-                                        <td className="px-4 py-4 text-sm text-slate-700 font-mono font-medium bg-slate-50/50">{item.boqQuantity != null ? item.boqQuantity : '-'}</td>
+                                        <td className="px-4 py-4 text-sm text-slate-700 font-mono font-medium bg-slate-50/50">{item.boqQuantity != null ? Number(item.boqQuantity).toFixed(3) : '-'}</td>
                                         <td className="px-4 py-4 text-sm text-slate-700 font-mono">{item.fullRate?.toFixed(2)}</td>
                                         
                                         <td className="px-4 py-4 text-sm text-blue-800 font-mono font-medium border-l border-blue-100 bg-blue-50/30">

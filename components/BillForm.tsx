@@ -159,6 +159,7 @@ export default function BillForm({
     const [budgetHeadState, setBudgetHeadState] = useState<string>(budgetHead || '');
     const [abstractFetched, setAbstractFetched] = useState(false);
     const [previousSDTotal, setPreviousSDTotal] = useState<number>(0);
+    const [tableRawInputs, setTableRawInputs] = useState<Record<string, string>>({});
 
     const sanitized = Object.fromEntries(
         Object.entries(initialData).map(([k, v]) => [k, v == null ? '' : v])
@@ -601,6 +602,7 @@ export default function BillForm({
                         measurementChecking: [],
                         auditMemoPreviouslyPaid: data.previouslyPaid || 0,
                     }));
+                    setTableRawInputs({});
                     calculateTotals(data.data, pct, dir);
                 } else {
                     alert('Error fetching abstract: ' + data.error);
@@ -613,6 +615,7 @@ export default function BillForm({
             }
         } else {
             setFormData((prev: any) => ({ ...prev, items: [], measurementChecking: [] }));
+            setTableRawInputs({});
             calculateTotals([]);
         }
     };
@@ -1209,17 +1212,21 @@ export default function BillForm({
                                             )}
                                         </td>
                                         <td className="px-3 py-2 text-sm text-slate-700 font-mono font-medium bg-slate-50/50">
-                                            {item.boqQuantity != null ? item.boqQuantity : '-'}
+                                            {item.boqQuantity != null ? Number(item.boqQuantity).toFixed(3) : '-'}
                                         </td>
                                         <td className="px-3 py-2 text-sm text-slate-700 font-mono">
                                             {item.itemType === 'Extra' ? (
                                                 <input
                                                     type="number"
                                                     min="0"
-                                                    step="0.01"
-                                                    value={item.fullRate || ''}
-                                                    onChange={(e) => handleExtraItemFieldChange(index, 'fullRate', e.target.value)}
-                                                    className="block w-24 text-xs border-gray-300 rounded-md p-1 border focus:ring-blue-500 focus:border-blue-500"
+                                                    step="any"
+                                                    value={tableRawInputs[`${index}-fullRate`] !== undefined ? tableRawInputs[`${index}-fullRate`] : (item.fullRate === 0 ? '' : String(item.fullRate))}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        setTableRawInputs(prev => ({ ...prev, [`${index}-fullRate`]: val }));
+                                                        handleExtraItemFieldChange(index, 'fullRate', val);
+                                                    }}
+                                                    className="block w-24 text-xs border-gray-300 rounded-md p-1 border focus:ring-blue-500 focus:border-blue-500 font-mono"
                                                     placeholder="Rate (₹)"
                                                     required
                                                 />
@@ -1233,9 +1240,13 @@ export default function BillForm({
                                             <input
                                                 type="number"
                                                 min="0"
-                                                step="0.01"
-                                                value={item.quantity || ''}
-                                                onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                                                step="any"
+                                                value={tableRawInputs[`${index}-quantity`] !== undefined ? tableRawInputs[`${index}-quantity`] : (item.quantity === 0 ? '' : String(item.quantity))}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setTableRawInputs(prev => ({ ...prev, [`${index}-quantity`]: val }));
+                                                    handleItemChange(index, 'quantity', val);
+                                                }}
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter') {
                                                         e.preventDefault();
@@ -1247,17 +1258,21 @@ export default function BillForm({
                                                     }
                                                 }}
                                                 data-qty-index={index}
-                                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500"
+                                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
                                             />
                                         </td>
                                         <td className="px-3 py-2 border-r border-blue-100 bg-blue-50/30">
                                             <input
                                                 type="number"
                                                 min="0"
-                                                step="0.01"
-                                                value={item.partRate || ''}
-                                                onChange={(e) => handleItemChange(index, 'partRate', e.target.value)}
-                                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500"
+                                                step="any"
+                                                value={tableRawInputs[`${index}-partRate`] !== undefined ? tableRawInputs[`${index}-partRate`] : (item.partRate === 0 ? '' : String(item.partRate))}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setTableRawInputs(prev => ({ ...prev, [`${index}-partRate`]: val }));
+                                                    handleItemChange(index, 'partRate', val);
+                                                }}
+                                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
                                             />
                                         </td>
                                         
@@ -1268,10 +1283,14 @@ export default function BillForm({
                                             <input
                                                 type="number"
                                                 min="0"
-                                                step="0.01"
-                                                value={item.previousPaidAmount || ''}
-                                                onChange={(e) => handleItemChange(index, 'previousPaidAmount', e.target.value)}
-                                                className="block w-full sm:text-sm border-amber-200 rounded-md p-1.5 border focus:ring-amber-500 focus:border-amber-500"
+                                                step="any"
+                                                value={tableRawInputs[`${index}-previousPaidAmount`] !== undefined ? tableRawInputs[`${index}-previousPaidAmount`] : (item.previousPaidAmount === 0 ? '' : String(item.previousPaidAmount))}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setTableRawInputs(prev => ({ ...prev, [`${index}-previousPaidAmount`]: val }));
+                                                    handleItemChange(index, 'previousPaidAmount', val);
+                                                }}
+                                                className="block w-full sm:text-sm border-amber-200 rounded-md p-1.5 border focus:ring-amber-500 focus:border-amber-500 font-mono"
                                             />
                                         </td>
                                         
