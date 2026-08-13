@@ -3,6 +3,8 @@ import dbConnect from '@/lib/db';
 import ApprovedWork from '@/models/ApprovedWork';
 import Package from '@/models/Package';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     try {
         await dbConnect();

@@ -6,6 +6,7 @@ export interface IAgency extends Document {
     address?: string;
     mobileNo?: string;
     agencyType?: string;
+    gstNo?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -16,6 +17,7 @@ const AgencySchema: Schema = new Schema({
     address: { type: String },
     mobileNo: { type: String },
     agencyType: { type: String },
+    gstNo: { type: String },
 }, {
     timestamps: true,
 });

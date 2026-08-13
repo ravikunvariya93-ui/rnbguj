@@ -42,8 +42,12 @@ export async function GET(request: Request) {
         const previousBills = await Bill.find({ workOrderId: workOrderId as any });
         
         const previousPaidMap: Record<string, number> = {};
+        let totalPreviouslyPaid = 0;
         
         for (const bill of previousBills) {
+            // Sum grossAmount (or netPayableAmount) from each previous bill for the Audit Memo field
+            totalPreviouslyPaid += bill.grossAmount || bill.netPayableAmount || 0;
+
             if (bill.items && bill.items.length > 0) {
                 for (const item of bill.items) {
                     if (!previousPaidMap[item.itemNo]) {
@@ -92,7 +96,8 @@ export async function GET(request: Request) {
             tenderPercentage: tenderPct,
             tenderDirection: tenderDir,
             contractPrice,
-            submittedSD
+            submittedSD,
+            previouslyPaid: totalPreviouslyPaid
         });
 
     } catch (error) {

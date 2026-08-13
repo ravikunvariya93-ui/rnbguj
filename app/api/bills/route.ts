@@ -16,10 +16,16 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const page = parseInt(searchParams.get('page') || '1', 10);
         const limit = parseInt(searchParams.get('limit') || '100', 10);
+        const workOrderId = searchParams.get('workOrderId');
         const skip = (page - 1) * limit;
 
-        const total = await Bill.countDocuments({});
-        const bills = await Bill.find({})
+        const query: any = {};
+        if (workOrderId) {
+            query.workOrderId = workOrderId;
+        }
+
+        const total = await Bill.countDocuments(query);
+        const bills = await Bill.find(query)
             .populate({
                 path: 'workOrderId',
                 populate: {

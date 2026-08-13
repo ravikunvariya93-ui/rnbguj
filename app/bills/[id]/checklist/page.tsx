@@ -5,6 +5,7 @@ import WorkOrder from '@/models/WorkOrder';
 import LOA from '@/models/LOA';
 import Tender from '@/models/Tender';
 import Package from '@/models/Package';
+import Agency from '@/models/Agency';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
@@ -15,6 +16,7 @@ void WorkOrder;
 void LOA;
 void Tender;
 void Package;
+void Agency;
 
 function ordinaleGu(n: number): string {
     // Gujarati ordinal: ૧લ, ૨જ, ૩જ, ૪થ …
@@ -76,6 +78,14 @@ export default async function BillChecklistPage({ params }: { params: Promise<{ 
     const adminApprovalAmount = tender?.estimatedAmount ?? null;
     const workOrderAmount = tender?.contractPrice ?? null;
     const contractorName = tender?.contractorName || '-';
+    let contractorGstNo = '';
+    if (tender?.contractorName) {
+        const agency = await Agency.findOne({ name: tender.contractorName }).lean();
+        contractorGstNo = agency?.gstNo || '';
+    }
+    const contractorDisplay = contractorName !== '-' && contractorGstNo 
+        ? `${contractorName} (GST No: ${contractorGstNo})` 
+        : contractorName;
 
     const billNum = bill.runningBillNumber || 1;
     const billSuffix = billNum === 1 ? 'st' : billNum === 2 ? 'nd' : billNum === 3 ? 'rd' : 'th';
@@ -216,7 +226,7 @@ export default async function BillChecklistPage({ params }: { params: Promise<{ 
                         <tr>
                             <td style={{ textAlign: 'center' }}>૬</td>
                             <td className="dynamic">{billLabel}</td>
-                            <td className="dynamic" colSpan={4}>{contractorName}</td>
+                            <td className="dynamic" colSpan={4}>{contractorDisplay}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -250,11 +260,6 @@ export default async function BillChecklistPage({ params }: { params: Promise<{ 
                         ))}
                     </tbody>
                 </table>
-
-                {/* Footer note */}
-                <p style={{ fontSize: '13px', marginTop: '12px', lineHeight: '1.6' }}>
-                    ઉપરોક્ત ૧ થી ૨૪ ચેકલિસ્ટ મુજબની ક્રમાનુસાર ફાઇલ તૈયાર કરવામાં આવેલ છે અને ફાઇલમાં પાના નંબર આપવામાં આવેલ છે જેની અત્રેથી સંપૂર્ણ ચકાસણી કરવામાં આવેલ છે.
-                </p>
 
                 {/* Signature row */}
                 <div className="sign-row" style={{ marginTop: '32px', display: 'flex', justifyContent: 'space-between' }}>

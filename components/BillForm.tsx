@@ -28,6 +28,11 @@ interface BillFormData {
     grossAmount: number;
     netPaidAmount: any;
     passingDate: string;
+    praisaBillNo?: string;
+    praisaBillDate?: string;
+    voucherNo?: string;
+    voucherDate?: string;
+    measurementChecking: any[];
     actualCompletionDate?: string;
     lastRecordEntryDate?: string;
     remarks: string;
@@ -68,18 +73,20 @@ interface BillFormProps {
     submittedSD?: number;
     workType?: string;
     budgetHead?: string;
+    stipulatedCompletionDate?: string | Date;
     onSuccess?: () => void;
     onCancel?: () => void;
 }
 
-export function calculateSecurityDeposit(netPayVal: number, contractPriceVal: number = 0): number {
+export function calculateSecurityDeposit(netPayVal: number, contractPriceVal: number = 0, previousDeducted: number = 0): number {
     const netPay = Math.max(netPayVal || 0, 0);
     const sdBase = netPay > 0 ? Math.ceil((netPay * 0.06) / 100) * 100 : 0;
     
     const contractPrice = Math.max(contractPriceVal || 0, 0);
     if (contractPrice > 0) {
         const sdMax = Math.ceil((contractPrice * 0.05) / 100) * 100;
-        return Math.min(sdBase, sdMax);
+        const remainingMax = Math.max(0, sdMax - previousDeducted);
+        return Math.min(sdBase, remainingMax);
     }
     
     return sdBase;
@@ -103,11 +110,11 @@ function parseDateStr(dateStr: string): Date | null {
 function formatDateForInput(dateString: string): string {
     if (!dateString) return '';
     try {
-        const d = new Date(dateString);
-        if (isNaN(d.getTime())) return '';
-        const day = String(d.getDate()).padStart(2, '0');
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        return `${day}/${month}/${d.getFullYear()}`;
+        const dateObj = new Date(dateString);
+        if (isNaN(dateObj.getTime())) return '';
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        return `${day}/${month}/${dateObj.getFullYear()}`;
     } catch {
         return '';
     }
@@ -132,6 +139,7 @@ export default function BillForm({
     submittedSD,
     workType = '',
     budgetHead = '',
+    stipulatedCompletionDate,
     onSuccess, 
     onCancel 
 }: BillFormProps) {
@@ -150,6 +158,7 @@ export default function BillForm({
     const [workTypeState, setWorkTypeState] = useState<string>(workType || '');
     const [budgetHeadState, setBudgetHeadState] = useState<string>(budgetHead || '');
     const [abstractFetched, setAbstractFetched] = useState(false);
+    const [previousSDTotal, setPreviousSDTotal] = useState<number>(0);
 
     const sanitized = Object.fromEntries(
         Object.entries(initialData).map(([k, v]) => [k, v == null ? '' : v])
@@ -199,6 +208,16 @@ export default function BillForm({
         otherDeposit: sanitized.otherDeposit ?? 0,
         totalDeduction: sanitized.totalDeduction ?? 0,
         ...sanitized,
+        praisaBillNo: sanitized.praisaBillNo || '',
+        praisaBillDate: sanitized.praisaBillDate ? formatDateForInput(sanitized.praisaBillDate) : '',
+        voucherNo: sanitized.voucherNo || '',
+        voucherDate: sanitized.voucherDate ? formatDateForInput(sanitized.voucherDate) : '',
+        measurementChecking: (initialData.measurementChecking && initialData.measurementChecking.length > 0)
+            ? initialData.measurementChecking.map((mc: any) => ({
+                ...mc,
+                date: mc.date ? formatDateForInput(mc.date) : ''
+            }))
+            : [],
         labourCessApplicable: sanitized.labourCessApplicable ?? false,
         items: initialData.items || [] as IBillItem[],
         works: formattedInitialWorks,
@@ -207,7 +226,7 @@ export default function BillForm({
     useEffect(() => {
         const fetchWorkOrders = async () => {
             try {
-                const res = await fetch('/api/work-orders', { cache: 'no-store' });
+                const res = await fetch('/api/work-orders?limit=1000', { cache: 'no-store' });
                 const data = await res.json();
                 if (data.success) {
                     setWorkOrders(data.data);
@@ -254,6 +273,16 @@ export default function BillForm({
                 actualCompletionDate: formatDateForInput(initialData.actualCompletionDate),
                 lastRecordEntryDate: formatDateForInput(initialData.lastRecordEntryDate),
                 workOrderId: initialData.workOrderId?._id || initialData.workOrderId || '',
+                praisaBillNo: initialData.praisaBillNo || '',
+                praisaBillDate: initialData.praisaBillDate ? formatDateForInput(initialData.praisaBillDate) : '',
+                voucherNo: initialData.voucherNo || '',
+                voucherDate: initialData.voucherDate ? formatDateForInput(initialData.voucherDate) : '',
+                measurementChecking: (initialData.measurementChecking && initialData.measurementChecking.length > 0)
+                    ? initialData.measurementChecking.map((mc: any) => ({
+                        ...mc,
+                        date: mc.date ? formatDateForInput(mc.date) : ''
+                    }))
+                    : [],
             }));
         }
     }, [initialData, isEditing]);
@@ -284,14 +313,53 @@ export default function BillForm({
         }
     }, [formData.workOrderId, workOrders]);
 
-    const getDeductionsForNetPayable = (netPayVal: number, runningBillNo: number, cPrice?: number, sSD?: number, wType?: string, bHead?: string) => {
+    useEffect(() => {
+        async function fetchPreviousBills() {
+            if (!formData.workOrderId) {
+                setPreviousSDTotal(0);
+                return;
+            }
+            try {
+                const res = await fetch(`/api/bills?workOrderId=${formData.workOrderId}&limit=1000`);
+                const data = await res.json();
+                if (data.success && Array.isArray(data.data)) {
+                    const currentBillNo = Number(formData.runningBillNumber) || 1;
+                    const currentBillId = initialData?._id;
+                    const prevBills = data.data.filter((b: any) => {
+                        if (currentBillId && b._id === currentBillId) {
+                            return false;
+                        }
+                        return (b.runningBillNumber || 0) < currentBillNo;
+                    });
+                    const sum = prevBills.reduce((s: number, b: any) => s + (b.securityDeposit || 0), 0);
+                    setPreviousSDTotal(sum);
+                    setFormData((prev: any) => {
+                        return recalculateAuditMemoInternal(prev, undefined, sum);
+                    });
+                }
+            } catch (err) {
+                console.error('Error fetching previous bills:', err);
+            }
+        }
+        fetchPreviousBills();
+    }, [formData.workOrderId, formData.runningBillNumber, initialData?._id]);
+
+    const getDeductionsForNetPayable = (
+        netPayVal: number, 
+        runningBillNo: number, 
+        cPrice?: number, 
+        sSD?: number, 
+        wType?: string, 
+        bHead?: string,
+        prevSD?: number
+    ) => {
         const netPay = Math.max(netPayVal, 0);
         const incomeTax = netPay > 0 ? Math.ceil((netPay * 0.02) / 10) * 10 : 0;
         const gst = netPay > 0 ? Math.ceil((netPay * 0.02) / 10) * 10 : 0;
         const labourCess = netPay > 0 ? Math.ceil((netPay * 0.01) / 10) * 10 : 0;
 
         const cp = cPrice !== undefined ? cPrice : contractPriceState;
-        const securityDeposit = calculateSecurityDeposit(netPay, cp);
+        const securityDeposit = calculateSecurityDeposit(netPay, cp, prevSD !== undefined ? prevSD : previousSDTotal);
 
         const currentWType = wType || workTypeState || '';
         const isBuilding = String(currentWType).toLowerCase().includes('building');
@@ -315,7 +383,7 @@ export default function BillForm({
         };
     };
 
-    const recalculateAuditMemoInternal = (nextData: any) => {
+    const recalculateAuditMemoInternal = (nextData: any, updatedFields?: Partial<typeof formData>, prevSD?: number) => {
         const gross = parseFloat(nextData.grossAmount) || 0;
         const prevPaid = parseFloat(nextData.auditMemoPreviouslyPaid) || 0;
         const dismantle = parseFloat(nextData.dismantleCredit) || 0;
@@ -329,46 +397,126 @@ export default function BillForm({
         const netPay = parseFloat((gross - prevPaid - dismantle - excessExtra + (priceAdjSign * priceAdj) - adminAppr - withheld).toFixed(2));
         const oldNetPay = parseFloat(nextData.netPayableAmount) || 0;
 
-        const autoDeductions = getDeductionsForNetPayable(netPay, Number(nextData.runningBillNumber));
+        const autoDeductions = getDeductionsForNetPayable(netPay, Number(nextData.runningBillNumber), undefined, undefined, undefined, undefined, prevSD);
 
-        let it, gstDeduction, cessVal, sd, fmd, tpiVal, esmpVal;
+        const manualDeductionFields = new Set(updatedFields ? Object.keys(updatedFields) : []);
 
-        if (oldNetPay !== netPay) {
-            it = autoDeductions.incomeTax;
-            gstDeduction = autoDeductions.gst;
-            cessVal = autoDeductions.labourCess;
-            sd = autoDeductions.securityDeposit;
-            fmd = autoDeductions.freeMaintenanceDeposit;
-            tpiVal = autoDeductions.tpi;
-            esmpVal = autoDeductions.esmp;
-        } else {
-            it = nextData.incomeTax !== undefined ? (parseFloat(nextData.incomeTax) || 0) : autoDeductions.incomeTax;
-            gstDeduction = nextData.gst !== undefined ? (parseFloat(nextData.gst) || 0) : autoDeductions.gst;
-            cessVal = nextData.labourCess !== undefined ? (parseFloat(nextData.labourCess) || 0) : autoDeductions.labourCess;
-            sd = nextData.securityDeposit !== undefined ? (parseFloat(nextData.securityDeposit) || 0) : autoDeductions.securityDeposit;
-            fmd = nextData.freeMaintenanceDeposit !== undefined ? (parseFloat(nextData.freeMaintenanceDeposit) || 0) : autoDeductions.freeMaintenanceDeposit;
-            tpiVal = nextData.tpi !== undefined ? (parseFloat(nextData.tpi) || 0) : autoDeductions.tpi;
-            esmpVal = nextData.esmp !== undefined ? (parseFloat(nextData.esmp) || 0) : autoDeductions.esmp;
+        // ── When editing a saved bill, never auto-recalculate deductions ────────
+        // Always use whatever is stored (or what the user just typed). Only recompute totals.
+        if (isEditing) {
+            const storedIT    = parseFloat(nextData.incomeTax)              || 0;
+            const storedGST   = parseFloat(nextData.gst)                    || 0;
+            const storedCess  = parseFloat(nextData.labourCess)             || 0;
+            const storedSD    = parseFloat(nextData.securityDeposit)        || 0;
+            const storedFMD   = parseFloat(nextData.freeMaintenanceDeposit) || 0;
+            const storedTPI   = parseFloat(nextData.tpi)                    || 0;
+            const storedESMP  = parseFloat(nextData.esmp)                   || 0;
+            const storedTLD   = parseFloat(nextData.timeLimitDeposit)       || 0;
+            const storedAsph  = parseFloat(nextData.asphaltDeposit)         || 0;
+            const storedCore  = parseFloat(nextData.coreSampleDeposit)      || 0;
+            const storedTest  = parseFloat(nextData.testingCharges)         || 0;
+            const storedOther = parseFloat(nextData.otherDeposit)           || 0;
+
+            const editTotalDed = parseFloat((storedIT + storedGST + storedCess + storedSD + storedFMD + storedAsph + storedCore + storedTPI + storedESMP + storedTLD + storedTest + storedOther).toFixed(2));
+            const editNetPaid  = parseFloat((netPay - editTotalDed).toFixed(2));
+
+            return {
+                ...nextData,
+                netPayableAmount: netPay,
+                totalDeduction:   editTotalDed,
+                netPaidAmount:    editNetPaid,
+            };
         }
+
+        // ── New bill: auto-calculate deductions ──────────────────────────────
+        let it, gstDeduction, cessVal, sd, fmd, tpiVal, esmpVal;
+        const deductionChanged = oldNetPay !== netPay;
+        it = manualDeductionFields.has('incomeTax') ? (parseFloat(nextData.incomeTax) || 0)
+            : (deductionChanged ? autoDeductions.incomeTax : (nextData.incomeTax !== undefined ? (parseFloat(nextData.incomeTax) || 0) : autoDeductions.incomeTax));
+        gstDeduction = manualDeductionFields.has('gst') ? (parseFloat(nextData.gst) || 0)
+            : (deductionChanged ? autoDeductions.gst : (nextData.gst !== undefined ? (parseFloat(nextData.gst) || 0) : autoDeductions.gst));
+        cessVal = manualDeductionFields.has('labourCess') ? (parseFloat(nextData.labourCess) || 0)
+            : (deductionChanged ? autoDeductions.labourCess : (nextData.labourCess !== undefined ? (parseFloat(nextData.labourCess) || 0) : autoDeductions.labourCess));
+        sd = manualDeductionFields.has('securityDeposit') ? (parseFloat(nextData.securityDeposit) || 0)
+            : (deductionChanged ? autoDeductions.securityDeposit : (nextData.securityDeposit !== undefined ? (parseFloat(nextData.securityDeposit) || 0) : autoDeductions.securityDeposit));
+        fmd = manualDeductionFields.has('freeMaintenanceDeposit') ? (parseFloat(nextData.freeMaintenanceDeposit) || 0)
+            : (deductionChanged ? autoDeductions.freeMaintenanceDeposit : (nextData.freeMaintenanceDeposit !== undefined ? (parseFloat(nextData.freeMaintenanceDeposit) || 0) : autoDeductions.freeMaintenanceDeposit));
+        tpiVal = manualDeductionFields.has('tpi') ? (parseFloat(nextData.tpi) || 0)
+            : (deductionChanged ? autoDeductions.tpi : (nextData.tpi !== undefined ? (parseFloat(nextData.tpi) || 0) : autoDeductions.tpi));
+        esmpVal = manualDeductionFields.has('esmp') ? (parseFloat(nextData.esmp) || 0)
+            : (deductionChanged ? autoDeductions.esmp : (nextData.esmp !== undefined ? (parseFloat(nextData.esmp) || 0) : autoDeductions.esmp));
+
+        // Calculate Time Limit Deposit automatically
+        let calculatedTLD = 0;
+        const selectedWorkOrder = workOrders.find((wo: any) => wo._id === nextData.workOrderId);
+        const compTargetDate = stipulatedCompletionDate 
+            ? new Date(stipulatedCompletionDate) 
+            : (selectedWorkOrder?.stipulatedCompletionDate ? new Date(selectedWorkOrder.stipulatedCompletionDate) : null);
+        if (compTargetDate) {
+            const getDaysDiff = (date1: Date, date2: Date) => {
+                const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+                const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+                const diffTime = d1.getTime() - d2.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                return diffDays;
+            };
+
+            if (nextData.billType === 'Running') {
+                const lastRecordDate = nextData.lastRecordEntryDate ? parseDateStr(nextData.lastRecordEntryDate) : null;
+                if (lastRecordDate) {
+                    const daysDelay = Math.max(0, Math.min(100, getDaysDiff(lastRecordDate, compTargetDate)));
+                    const sayAmt = parseFloat(nextData.grossAmount) || 0;
+                    calculatedTLD = Math.ceil((0.001 * sayAmt * daysDelay) / 100) * 100;
+                }
+            } else if (nextData.billType === 'Final') {
+                const completionDate = nextData.actualCompletionDate ? parseDateStr(nextData.actualCompletionDate) : null;
+                if (completionDate) {
+                    const daysDelay = Math.max(0, Math.min(100, getDaysDiff(completionDate, compTargetDate)));
+                    const contractPriceVal = contractPrice 
+                        ? contractPrice 
+                        : (selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0);
+                    calculatedTLD = Math.ceil((0.001 * contractPriceVal * daysDelay) / 100) * 100;
+                }
+            }
+        }
+
+        const isAutoTrigger = !updatedFields || 
+                              'lastRecordEntryDate' in updatedFields || 
+                              'actualCompletionDate' in updatedFields || 
+                              'billType' in updatedFields || 
+                              'grossAmount' in updatedFields || 
+                              'workOrderId' in updatedFields;
+
+        const tldRaw = isAutoTrigger
+            ? calculatedTLD
+            : (nextData.timeLimitDeposit !== undefined && nextData.timeLimitDeposit !== '' && nextData.timeLimitDeposit !== 0
+                ? nextData.timeLimitDeposit
+                : calculatedTLD);
+        const tldNum = parseFloat(tldRaw) || 0;
 
         const asphalt = parseFloat(nextData.asphaltDeposit) || 0;
         const core = parseFloat(nextData.coreSampleDeposit) || 0;
-        const tld = parseFloat(nextData.timeLimitDeposit) || 0;
         const testing = parseFloat(nextData.testingCharges) || 0;
         const otherDep = parseFloat(nextData.otherDeposit) || 0;
 
-        const totalDed = parseFloat((it + gstDeduction + cessVal + sd + fmd + asphalt + core + tpiVal + esmpVal + tld + testing + otherDep).toFixed(2));
+        const totalDed = parseFloat((it + gstDeduction + cessVal + sd + fmd + asphalt + core + tpiVal + esmpVal + tldNum + testing + otherDep).toFixed(2));
         const netPaid = parseFloat((netPay - totalDed).toFixed(2));
 
         return {
             ...nextData,
-            incomeTax: it,
-            gst: gstDeduction,
-            labourCess: cessVal,
-            securityDeposit: sd,
-            freeMaintenanceDeposit: fmd,
-            tpi: tpiVal,
-            esmp: esmpVal,
+            // Preserve raw string for manually-typed fields so decimal input (e.g. "12.") isn't coerced to a number mid-typing.
+            incomeTax:             manualDeductionFields.has('incomeTax')             ? nextData.incomeTax             : it,
+            gst:                   manualDeductionFields.has('gst')                   ? nextData.gst                   : gstDeduction,
+            labourCess:            manualDeductionFields.has('labourCess')            ? nextData.labourCess            : cessVal,
+            securityDeposit:       manualDeductionFields.has('securityDeposit')       ? nextData.securityDeposit       : sd,
+            freeMaintenanceDeposit:manualDeductionFields.has('freeMaintenanceDeposit')? nextData.freeMaintenanceDeposit: fmd,
+            tpi:                   manualDeductionFields.has('tpi')                   ? nextData.tpi                   : tpiVal,
+            esmp:                  manualDeductionFields.has('esmp')                  ? nextData.esmp                  : esmpVal,
+            asphaltDeposit:        manualDeductionFields.has('asphaltDeposit')        ? nextData.asphaltDeposit        : nextData.asphaltDeposit,
+            coreSampleDeposit:     manualDeductionFields.has('coreSampleDeposit')     ? nextData.coreSampleDeposit     : nextData.coreSampleDeposit,
+            testingCharges:        manualDeductionFields.has('testingCharges')        ? nextData.testingCharges        : nextData.testingCharges,
+            otherDeposit:          manualDeductionFields.has('otherDeposit')          ? nextData.otherDeposit          : nextData.otherDeposit,
+            timeLimitDeposit: tldRaw,
             netPayableAmount: netPay,
             totalDeduction: totalDed,
             netPaidAmount: netPaid
@@ -384,6 +532,11 @@ export default function BillForm({
             setFormData((prev: any) => {
                 const nextData = { ...prev, [name]: value };
                 return recalculateAuditMemoInternal(nextData);
+            });
+        } else if (name === 'lastRecordEntryDate' || name === 'actualCompletionDate' || name === 'billDate' || name === 'billType') {
+            setFormData((prev: any) => {
+                const nextData = { ...prev, [name]: value };
+                return recalculateAuditMemoInternal(nextData, { [name]: value });
             });
         } else {
             setFormData((prev: any) => ({ ...prev, [name]: value }));
@@ -424,7 +577,8 @@ export default function BillForm({
             workOrderId: id, 
             works: (prev.works && prev.works.length > 0)
                 ? prev.works
-                : (mappedWorks.length > 0 ? mappedWorks : prev.works)
+                : (mappedWorks.length > 0 ? mappedWorks : prev.works),
+            measurementChecking: []
         }));
         
         // Fetch abstract if not editing (or if they change work order)
@@ -443,7 +597,9 @@ export default function BillForm({
                         items: data.data,
                         works: (prev.works && prev.works.length > 0)
                             ? prev.works
-                            : (data.works && data.works.length > 0 ? data.works : prev.works)
+                            : (data.works && data.works.length > 0 ? data.works : prev.works),
+                        measurementChecking: [],
+                        auditMemoPreviouslyPaid: data.previouslyPaid || 0,
                     }));
                     calculateTotals(data.data, pct, dir);
                 } else {
@@ -456,9 +612,26 @@ export default function BillForm({
                 setFetchingAbstract(false);
             }
         } else {
-            setFormData((prev: any) => ({ ...prev, items: [] }));
+            setFormData((prev: any) => ({ ...prev, items: [], measurementChecking: [] }));
             calculateTotals([]);
         }
+    };
+
+    const syncMCWithItems = (mc: any[], items: any[]) => {
+        if (!mc || mc.length === 0) return mc;
+        return mc.map((row: any) => {
+            const selectedItem = items.find((it: any) => it.itemNo === row.itemNo);
+            if (selectedItem) {
+                const rate = selectedItem.partRate > 0 ? selectedItem.partRate : selectedItem.fullRate;
+                const qty = parseFloat(row.quantity) || 0;
+                return {
+                    ...row,
+                    rate: rate,
+                    amount: parseFloat((qty * rate).toFixed(2))
+                };
+            }
+            return row;
+        });
     };
 
     const handleItemChange = (index: number, field: keyof IBillItem, value: string) => {
@@ -480,7 +653,10 @@ export default function BillForm({
         item.uptoDateAmount = parseFloat((item.quantity * item.partRate).toFixed(2));
         item.toBePaidAmount = parseFloat((item.uptoDateAmount - item.previousPaidAmount).toFixed(2));
         
-        setFormData((prev: any) => ({ ...prev, items: newItems }));
+        setFormData((prev: any) => {
+            const nextMC = syncMCWithItems(prev.measurementChecking || [], newItems);
+            return { ...prev, items: newItems, measurementChecking: nextMC };
+        });
         calculateTotals(newItems);
     };
 
@@ -541,7 +717,10 @@ export default function BillForm({
         item.toBePaidAmount = parseFloat((item.uptoDateAmount - item.previousPaidAmount).toFixed(2));
         
         newItems[index] = item;
-        setFormData((prev: any) => ({ ...prev, items: newItems }));
+        setFormData((prev: any) => {
+            const nextMC = syncMCWithItems(prev.measurementChecking || [], newItems);
+            return { ...prev, items: newItems, measurementChecking: nextMC };
+        });
         calculateTotals(newItems);
     };
 
@@ -571,14 +750,64 @@ export default function BillForm({
         });
     };
 
+    const addMeasurementCheckingRow = () => {
+        const today = getTodayDateFormatted();
+        setFormData((prev: any) => ({
+            ...prev,
+            measurementChecking: [
+                ...(prev.measurementChecking || []),
+                { date: today, itemNo: '', mbPageNo: '', quantity: 0, rate: 0, amount: 0 }
+            ]
+        }));
+    };
+
+    const removeMeasurementCheckingRow = (index: number) => {
+        setFormData((prev: any) => {
+            const nextMC = (prev.measurementChecking || []).filter((_: any, i: number) => i !== index);
+            return { ...prev, measurementChecking: nextMC };
+        });
+    };
+
+    const handleMeasurementCheckingChange = (index: number, field: string, value: any) => {
+        setFormData((prev: any) => {
+            const nextMC = [...(prev.measurementChecking || [])];
+            const row = { ...nextMC[index] };
+            
+            if (field === 'itemNo') {
+                row.itemNo = value;
+                const selectedItem = prev.items.find((it: any) => it.itemNo === value);
+                if (selectedItem) {
+                    row.rate = selectedItem.partRate > 0 ? selectedItem.partRate : selectedItem.fullRate;
+                } else {
+                    row.rate = 0;
+                }
+                const qty = parseFloat(row.quantity) || 0;
+                row.amount = parseFloat((qty * row.rate).toFixed(2));
+            } else if (field === 'quantity') {
+                row.quantity = value === '' ? 0 : parseFloat(value);
+                const rate = parseFloat(row.rate) || 0;
+                row.amount = parseFloat((row.quantity * rate).toFixed(2));
+            } else if (field === 'rate') {
+                row.rate = value === '' ? 0 : parseFloat(value);
+                const qty = parseFloat(row.quantity) || 0;
+                row.amount = parseFloat((qty * row.rate).toFixed(2));
+            } else {
+                row[field] = value;
+            }
+
+            nextMC[index] = row;
+            return { ...prev, measurementChecking: nextMC };
+        });
+    };
+
     const calculateTotals = (items: IBillItem[], pct?: number, dir?: string, cess?: boolean) => {
         const actualPct = pct !== undefined ? pct : tenderPercentage;
         const actualDir = dir !== undefined ? dir : tenderDirection;
         const isCess = cess !== undefined ? cess : formData.labourCessApplicable;
 
-        const totalToBePaid = items.reduce((sum, item) => sum + (item.toBePaidAmount || 0), 0);
-        const adjAmount = totalToBePaid * (actualPct / 100);
-        const netAmount = actualDir === 'Below' ? totalToBePaid - adjAmount : totalToBePaid + adjAmount;
+        const totalUptoDate = items.reduce((sum, item) => sum + (item.uptoDateAmount || 0), 0);
+        const adjAmount = totalUptoDate * (actualPct / 100);
+        const netAmount = actualDir === 'Below' ? totalUptoDate - adjAmount : totalUptoDate + adjAmount;
         
         const gstBase = isCess ? netAmount * 0.99 : netAmount;
         const gst18 = gstBase * 0.18;
@@ -595,7 +824,7 @@ export default function BillForm({
     const recalculateAuditMemo = (updatedFields: Partial<typeof formData>) => {
         setFormData((prev: any) => {
             const nextData = { ...prev, ...updatedFields };
-            return recalculateAuditMemoInternal(nextData);
+            return recalculateAuditMemoInternal(nextData, updatedFields);
         });
     };
 
@@ -609,7 +838,7 @@ export default function BillForm({
 
         try {
             const submissionData = { ...formData };
-            const parseDateOutput = (dateStr: string) => {
+            const parseDateOutput = (dateStr?: string) => {
                 if (!dateStr) return undefined;
                 const d = parseDateStr(dateStr);
                 return d ? d.toISOString() : undefined;
@@ -617,6 +846,21 @@ export default function BillForm({
 
             submissionData.billDate = parseDateOutput(formData.billDate) as any;
             submissionData.passingDate = parseDateOutput(formData.passingDate) as any;
+            submissionData.praisaBillDate = parseDateOutput(formData.praisaBillDate) as any;
+            submissionData.praisaBillNo = formData.praisaBillNo || undefined;
+            submissionData.voucherDate = parseDateOutput(formData.voucherDate) as any;
+            submissionData.voucherNo = formData.voucherNo || undefined;
+            if (formData.measurementChecking && formData.measurementChecking.length > 0) {
+                submissionData.measurementChecking = formData.measurementChecking.map((mc: any) => ({
+                    ...mc,
+                    date: parseDateOutput(mc.date) as any,
+                    quantity: Number(mc.quantity || 0),
+                    rate: Number(mc.rate || 0),
+                    amount: Number(mc.amount || 0)
+                }));
+            } else {
+                submissionData.measurementChecking = [];
+            }
             if (formData.billType === 'Final') {
                 submissionData.actualCompletionDate = parseDateOutput(formData.actualCompletionDate || '') as any;
                 submissionData.lastRecordEntryDate = undefined;
@@ -794,6 +1038,76 @@ export default function BillForm({
                             value={(formData as any).mbNumber || ''} onChange={handleChange} 
                             className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
                         />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                        <label htmlFor="praisaBillNo" className="block text-sm font-medium text-gray-700">PRAISA Bill No.</label>
+                        <input 
+                            type="text" placeholder="e.g. PR-123" name="praisaBillNo" id="praisaBillNo" 
+                            value={formData.praisaBillNo} onChange={handleChange} 
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                        />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                        <label htmlFor="praisaBillDate" className="block text-sm font-medium text-gray-700">PRAISA Bill Date</label>
+                        <input 
+                            type="text" placeholder="DD/MM/YYYY" name="praisaBillDate" id="praisaBillDate" 
+                            value={formData.praisaBillDate} onChange={handleChange} 
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                        />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                        <label htmlFor="voucherNo" className="block text-sm font-medium text-gray-700">Voucher No.</label>
+                        <input 
+                            type="text" placeholder="e.g. V-123" name="voucherNo" id="voucherNo" 
+                            value={formData.voucherNo || ''} onChange={handleChange} 
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                        />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                        <label htmlFor="voucherDate" className="block text-sm font-medium text-gray-700">Voucher Date</label>
+                        <input 
+                            type="text" placeholder="DD/MM/YYYY" name="voucherDate" id="voucherDate" 
+                            value={formData.voucherDate || ''} onChange={handleChange} 
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                        />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                        <label className="block text-sm font-medium text-slate-500 font-semibold">Delay</label>
+                        <div className="mt-1 p-2 bg-slate-50 border border-slate-200 rounded-md sm:text-sm font-mono font-bold text-slate-700">
+                            {(() => {
+                                const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
+                                const compTargetDate = stipulatedCompletionDate 
+                                    ? new Date(stipulatedCompletionDate) 
+                                    : (selectedWorkOrder?.stipulatedCompletionDate ? new Date(selectedWorkOrder.stipulatedCompletionDate) : null);
+                                if (!compTargetDate) return '-';
+
+                                const getDaysDiff = (date1: Date, date2: Date) => {
+                                    const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+                                    const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+                                    const diffTime = d1.getTime() - d2.getTime();
+                                    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                };
+
+                                let daysDelay = 0;
+                                if (formData.billType === 'Running') {
+                                    const lastRecordDate = formData.lastRecordEntryDate ? parseDateStr(formData.lastRecordEntryDate) : null;
+                                    if (lastRecordDate) {
+                                        daysDelay = Math.max(0, getDaysDiff(lastRecordDate, compTargetDate));
+                                    }
+                                } else {
+                                    const completionDate = formData.actualCompletionDate ? parseDateStr(formData.actualCompletionDate) : null;
+                                    if (completionDate) {
+                                        daysDelay = Math.max(0, getDaysDiff(completionDate, compTargetDate));
+                                    }
+                                }
+                                return `${daysDelay} days`;
+                            })()}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1220,6 +1534,159 @@ export default function BillForm({
                 </div>
             </div>
 
+            {/* Measurement Checking Section */}
+            <div className="p-8 pt-4 border-t border-gray-250">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900">Measurement Checking</h3>
+                    <button
+                        type="button"
+                        onClick={addMeasurementCheckingRow}
+                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-semibold rounded-md text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-all"
+                    >
+                        <Plus className="w-3.5 h-3.5 mr-1" /> Add Measurement Row
+                    </button>
+                </div>
+                
+                <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-slate-50">
+                            <tr>
+                                <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-44">Date</th>
+                                <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700">Item No.</th>
+                                <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-36">MB Page No.</th>
+                                <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-36">QTY.</th>
+                                <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-36">Rate (₹)</th>
+                                <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-36">Amount (₹)</th>
+                                <th className="px-3 py-3 text-center text-xs font-semibold text-slate-700 w-16">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {!formData.measurementChecking || formData.measurementChecking.length === 0 ? (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
+                                        No measurement checking records added yet. Click "Add Measurement Row" above.
+                                    </td>
+                                </tr>
+                            ) : (
+                                formData.measurementChecking.map((mc: any, index: number) => (
+                                    <tr key={index}>
+                                        <td className="px-3 py-2">
+                                            <input 
+                                                type="text" 
+                                                placeholder="DD/MM/YYYY"
+                                                value={mc.date || ''} 
+                                                onChange={(e) => handleMeasurementCheckingChange(index, 'date', e.target.value)} 
+                                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border"
+                                                required
+                                            />
+                                        </td>
+                                        
+                                        <td className="px-3 py-2">
+                                            <select
+                                                value={mc.itemNo || ''}
+                                                onChange={(e) => handleMeasurementCheckingChange(index, 'itemNo', e.target.value)}
+                                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border"
+                                                required
+                                            >
+                                                <option value="">Select Item No.</option>
+                                                {formData.items.map((item: any) => (
+                                                    <option key={item.itemNo} value={item.itemNo}>
+                                                        {item.itemNo} - {item.description.substring(0, 50)}...
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </td>
+                                        
+                                        <td className="px-3 py-2">
+                                            <input 
+                                                type="text" 
+                                                placeholder="MB Page No."
+                                                value={mc.mbPageNo || ''} 
+                                                onChange={(e) => handleMeasurementCheckingChange(index, 'mbPageNo', e.target.value)} 
+                                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border"
+                                                required
+                                            />
+                                        </td>
+                                        
+                                        <td className="px-3 py-2">
+                                            <input 
+                                                type="number" 
+                                                min="0"
+                                                step="0.001"
+                                                placeholder="QTY"
+                                                value={mc.quantity === 0 ? '' : mc.quantity} 
+                                                onChange={(e) => handleMeasurementCheckingChange(index, 'quantity', e.target.value)} 
+                                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border text-right font-mono"
+                                                required
+                                            />
+                                        </td>
+                                        
+                                        <td className="px-3 py-2">
+                                            <input 
+                                                type="number" 
+                                                value={mc.rate || ''} 
+                                                readOnly 
+                                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border bg-gray-50 text-right font-mono font-medium text-slate-600"
+                                                placeholder="0.00"
+                                            />
+                                        </td>
+                                        
+                                        <td className="px-3 py-2">
+                                            <input 
+                                                type="number" 
+                                                value={mc.amount || ''} 
+                                                readOnly 
+                                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border bg-gray-50 text-right font-mono font-bold text-slate-800"
+                                                placeholder="0.00"
+                                            />
+                                        </td>
+                                        
+                                        <td className="px-3 py-2 text-center">
+                                            <button
+                                                type="button"
+                                                onClick={() => removeMeasurementCheckingRow(index)}
+                                                className="text-red-500 hover:text-red-700 transition-colors p-1"
+                                                title="Delete Row"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                        {formData.items.length > 0 && (() => {
+                            const totalMCAmount = (formData.measurementChecking || []).reduce((s: number, mc: any) => s + (mc.amount || 0), 0);
+                            const totalBillAmount = formData.items.reduce((s: number, i: any) => s + (i.uptoDateAmount || 0), 0);
+                            const requiredMCAmount = totalBillAmount * 0.10;
+                            const isMet = totalMCAmount >= requiredMCAmount;
+                            const diff = totalMCAmount - requiredMCAmount;
+                            return (
+                                <tfoot className="bg-slate-100 font-semibold border-t-2 border-slate-200">
+                                    <tr className="border-b border-slate-200">
+                                        <td colSpan={5} className="px-3 py-2 text-right text-xs text-slate-500 uppercase tracking-wider">Required Measurement Amount (10% of Total Amount):</td>
+                                        <td className="px-3 py-2 text-xs font-mono font-bold text-right text-slate-700">₹{requiredMCAmount.toFixed(2)}</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr className={`border-b border-slate-200 ${isMet ? "bg-emerald-50" : "bg-rose-50"}`}>
+                                        <td colSpan={5} className={`px-3 py-2.5 text-right text-sm uppercase font-bold ${isMet ? "text-emerald-800" : "text-rose-800"}`}>Total Measurement Amount:</td>
+                                        <td className={`px-3 py-2.5 text-sm font-mono font-extrabold text-right ${isMet ? "text-emerald-900" : "text-rose-900"}`}>₹{totalMCAmount.toFixed(2)}</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr className="bg-slate-50">
+                                        <td colSpan={5} className="px-3 py-2 text-right text-xs text-slate-500 uppercase tracking-wider">Difference (+ / -):</td>
+                                        <td className={`px-3 py-2 text-xs font-mono font-bold text-right ${diff >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                                            {diff >= 0 ? '+' : ''}₹{diff.toFixed(2)}
+                                        </td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            );
+                        })()}
+                    </table>
+                </div>
+            </div>
+
             {/* Excess / Saving Statement Section */}
             <div className="p-8 pt-4 border-t border-gray-200">
                 <div className="flex justify-between items-center mb-4">
@@ -1372,8 +1839,17 @@ export default function BillForm({
                         <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-200 pb-2">Payables / Deductables</h4>
                         
                         <div className="grid grid-cols-2 gap-4 items-center">
-                            <span className="text-sm text-slate-600 font-semibold">Gross Amount:</span>
-                            <span className="text-sm text-slate-800 font-mono font-bold">₹{Number(formData.grossAmount).toFixed(2)}</span>
+                            <label htmlFor="grossAmount" className="text-sm text-slate-600 font-semibold">Gross Amount:</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                name="grossAmount"
+                                id="grossAmount"
+                                value={formData.grossAmount === 0 ? '' : formData.grossAmount}
+                                onChange={(e) => recalculateAuditMemo({ grossAmount: e.target.value as any })}
+                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono font-bold"
+                                placeholder="0.00"
+                            />
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 items-center">
@@ -1524,18 +2000,35 @@ export default function BillForm({
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="securityDepositDeduction" className="text-sm text-slate-600">Security Deposit deducted from Bill:</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="securityDeposit"
-                                id="securityDepositDeduction"
-                                value={formData.securityDeposit === 0 ? '' : formData.securityDeposit}
-                                onChange={(e) => recalculateAuditMemo({ securityDeposit: e.target.value })}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
-                                placeholder="0.00"
-                            />
+                        <div>
+                            <div className="grid grid-cols-2 gap-4 items-center">
+                                <label htmlFor="securityDepositDeduction" className="text-sm text-slate-600">Security Deposit deducted from Bill:</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    name="securityDeposit"
+                                    id="securityDepositDeduction"
+                                    value={formData.securityDeposit === 0 ? '' : formData.securityDeposit}
+                                    onChange={(e) => recalculateAuditMemo({ securityDeposit: e.target.value })}
+                                    className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                    placeholder="0.00"
+                                />
+                            </div>
+                            {(contractPriceState > 0 || previousSDTotal > 0) && (
+                                <div className="grid grid-cols-2 gap-4 mt-1">
+                                    <div></div>
+                                    <div className="text-[11px] text-slate-400 font-medium pl-1 space-y-0.5">
+                                        <div>
+                                            total deducted from previous bills: ₹{previousSDTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                        </div>
+                                        {contractPriceState > 0 && (
+                                            <div>
+                                                max can be deducted: ₹{(Math.ceil((contractPriceState * 0.05) / 100) * 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })} (5% of final contract price)
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 items-center">
@@ -1610,16 +2103,47 @@ export default function BillForm({
 
                         <div className="grid grid-cols-2 gap-4 items-center">
                             <label htmlFor="timeLimitDeposit" className="text-sm text-slate-600">Time Limit Deposit:</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="timeLimitDeposit"
-                                id="timeLimitDeposit"
-                                value={formData.timeLimitDeposit === 0 ? '' : formData.timeLimitDeposit}
-                                onChange={(e) => recalculateAuditMemo({ timeLimitDeposit: e.target.value })}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
-                                placeholder="0.00"
-                            />
+                            <div>
+                                <input
+                                    type="number"
+                                    step="1"
+                                    name="timeLimitDeposit"
+                                    id="timeLimitDeposit"
+                                    value={formData.timeLimitDeposit === 0 ? '' : formData.timeLimitDeposit}
+                                    onChange={(e) => recalculateAuditMemo({ timeLimitDeposit: e.target.value })}
+                                    className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                    placeholder="0.00"
+                                />
+                                {(() => {
+                                    const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
+                                    const compTargetDate = stipulatedCompletionDate 
+                                        ? new Date(stipulatedCompletionDate) 
+                                        : (selectedWorkOrder?.stipulatedCompletionDate ? new Date(selectedWorkOrder.stipulatedCompletionDate) : null);
+                                    if (!compTargetDate) return null;
+
+                                    const getDaysDiff = (date1: Date, date2: Date) => {
+                                        const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+                                        const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+                                        const diffTime = d1.getTime() - d2.getTime();
+                                        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                    };
+
+                                    let daysDelay = 0;
+                                    if (formData.billType === 'Running') {
+                                        const lastRecordDate = formData.lastRecordEntryDate ? parseDateStr(formData.lastRecordEntryDate) : null;
+                                        if (lastRecordDate) daysDelay = Math.max(0, getDaysDiff(lastRecordDate, compTargetDate));
+                                    } else {
+                                        const completionDate = formData.actualCompletionDate ? parseDateStr(formData.actualCompletionDate) : null;
+                                        if (completionDate) daysDelay = Math.max(0, getDaysDiff(completionDate, compTargetDate));
+                                    }
+
+                                    return (
+                                        <p className="text-[10px] text-slate-500 mt-1 font-medium leading-none">
+                                            Delay: <span className={daysDelay > 0 ? "text-amber-600 font-bold" : "text-slate-500 font-bold"}>{daysDelay} days</span> (Target: {compTargetDate.toLocaleDateString('en-GB')})
+                                        </p>
+                                    );
+                                })()}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 items-center">

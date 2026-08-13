@@ -34,6 +34,33 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
     const workOrder = bill.workOrderId as any;
     const loa = workOrder?.loaId as any;
     const tender = loa?.tenderId as any;
+    const finalContractPrice = tender?.contractPrice || tender?.estimatedAmount || 0;
+
+    const previousBills = await Bill.find({
+        workOrderId: workOrder?._id,
+        runningBillNumber: { $lt: bill.runningBillNumber || 1 }
+    }).lean();
+    const totalPreviousDeducted = previousBills.reduce((sum: number, b: any) => sum + (b.securityDeposit || 0), 0);
+
+    const compTargetDate = workOrder?.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate) : null;
+    let daysDelay = 0;
+    if (compTargetDate) {
+        const getDaysDiff = (date1: Date, date2: Date) => {
+            const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+            const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+            const diffTime = d1.getTime() - d2.getTime();
+            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        };
+        if (bill.billType === 'Running') {
+            if (bill.lastRecordEntryDate) {
+                daysDelay = Math.max(0, getDaysDiff(new Date(bill.lastRecordEntryDate), compTargetDate));
+            }
+        } else {
+            if (bill.actualCompletionDate) {
+                daysDelay = Math.max(0, getDaysDiff(new Date(bill.actualCompletionDate), compTargetDate));
+            }
+        }
+    }
 
     const sections = [
         {
@@ -42,6 +69,11 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
             fields: [
                 { label: 'Bill Type', value: bill.billType },
                 { label: 'Bill Number', value: `${bill.runningBillNumber}${bill.runningBillNumber === 1 ? 'st' : bill.runningBillNumber === 2 ? 'nd' : bill.runningBillNumber === 3 ? 'rd' : 'th'} and ${bill.billType} Bill` },
+                { label: 'PRAISA Bill No.', value: (bill as any).praisaBillNo || '-' },
+                { label: 'PRAISA Bill Date', value: (bill as any).praisaBillDate ? new Date((bill as any).praisaBillDate).toLocaleDateString('en-GB') : '-' },
+                { label: 'Voucher No.', value: (bill as any).voucherNo || '-' },
+                { label: 'Voucher Date', value: (bill as any).voucherDate ? new Date((bill as any).voucherDate).toLocaleDateString('en-GB') : '-' },
+                { label: 'Delay', value: compTargetDate ? `${daysDelay} days` : '-' },
                 { label: 'M.B. Number', value: (bill as any).mbNumber || '-' },
                 { label: 'Remarks', value: bill.remarks || '-' },
             ]
@@ -59,11 +91,13 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
             title: 'Important Dates',
             icon: Calendar,
             fields: [
+                { label: 'Stipulated Completion Date (Target)', value: compTargetDate ? new Date(compTargetDate).toLocaleDateString('en-GB') : '-' },
                 { label: 'Bill Date', value: bill.billDate ? new Date(bill.billDate).toLocaleDateString('en-GB') : '-' },
                 ...(bill.billType === 'Final'
                     ? [{ label: 'Date of Completion (Actual)', value: bill.actualCompletionDate ? new Date(bill.actualCompletionDate).toLocaleDateString('en-GB') : '-' }]
                     : [{ label: 'Last Record Entry / Measurement Date', value: bill.lastRecordEntryDate ? new Date(bill.lastRecordEntryDate).toLocaleDateString('en-GB') : '-' }]
                 ),
+                { label: 'Delay', value: compTargetDate ? `${daysDelay} days` : '-' },
                 { label: 'Passing Date', value: bill.passingDate ? new Date(bill.passingDate).toLocaleDateString('en-GB') : '-' },
                 { label: 'Created At', value: new Date(bill.createdAt).toLocaleDateString('en-GB') },
             ]
@@ -303,6 +337,91 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                                         </td>
                                         <td className="px-4 py-3.5 text-sm text-emerald-955 font-mono text-lg border-x border-emerald-300 bg-emerald-200/50 font-extrabold">
                                             ₹{Math.floor(toBePaidPayable).toFixed(2)}
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            );
+                        })()}
+                    </table>
+                </div>
+            </div>
+
+            {/* Measurement Checking Section */}
+            <div className="bg-white shadow rounded-lg border border-gray-200 overflow-hidden mb-8">
+                <div className="px-6 py-5 bg-slate-50 border-b border-gray-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <LayoutList className="w-5 h-5 text-slate-700" />
+                        <h2 className="text-lg font-bold text-slate-900 tracking-tight">Measurement Checking</h2>
+                    </div>
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                        {bill.measurementChecking?.length || 0} Records
+                    </span>
+                </div>
+                
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-slate-50">
+                            <tr>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider">Date</th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider">Item No.</th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider">MB Page No.</th>
+                                <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-slate-700 tracking-wider">QTY.</th>
+                                <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-slate-700 tracking-wider">Rate (₹)</th>
+                                <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-slate-700 tracking-wider bg-slate-100">Amount (₹)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {(!bill.measurementChecking || bill.measurementChecking.length === 0) ? (
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
+                                        No measurement checking records logged for this bill.
+                                    </td>
+                                </tr>
+                            ) : (
+                                bill.measurementChecking.map((mc: any, index: number) => (
+                                    <tr key={index} className="hover:bg-slate-50 transition-colors">
+                                        <td className="px-4 py-4 text-sm text-slate-700 whitespace-nowrap">
+                                            {mc.date ? new Date(mc.date).toLocaleDateString('en-GB') : '-'}
+                                        </td>
+                                        <td className="px-4 py-4 text-sm text-slate-700 font-medium whitespace-nowrap">
+                                            {mc.itemNo}
+                                        </td>
+                                        <td className="px-4 py-4 text-sm text-slate-500 whitespace-nowrap">
+                                            {mc.mbPageNo}
+                                        </td>
+                                        <td className="px-4 py-4 text-sm text-slate-700 text-right font-mono">
+                                            {mc.quantity?.toFixed(3)}
+                                        </td>
+                                        <td className="px-4 py-4 text-sm text-slate-750 text-right font-mono">
+                                            {mc.rate?.toFixed(2)}
+                                        </td>
+                                        <td className="px-4 py-4 text-sm font-bold text-slate-800 text-right font-mono bg-slate-50">
+                                            {mc.amount?.toFixed(2)}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                        {bill.items && bill.items.length > 0 && (() => {
+                            const totalMCAmount = (bill.measurementChecking || []).reduce((s: number, mc: any) => s + (mc.amount || 0), 0);
+                            const totalBillAmount = bill.items.reduce((s: number, i: any) => s + (i.uptoDateAmount || 0), 0);
+                            const requiredMCAmount = totalBillAmount * 0.10;
+                            const isMet = totalMCAmount >= requiredMCAmount;
+                            const diff = totalMCAmount - requiredMCAmount;
+                            return (
+                                <tfoot className="bg-slate-100 font-semibold border-t-2 border-slate-200">
+                                    <tr className="border-b border-slate-200">
+                                        <td colSpan={5} className="px-4 py-2 text-right text-xs text-slate-500 uppercase tracking-wider font-medium">Required Measurement Amount (10% of Total Amount):</td>
+                                        <td className="px-4 py-2 text-xs font-mono font-bold text-right text-slate-700">₹{requiredMCAmount.toFixed(2)}</td>
+                                    </tr>
+                                    <tr className={`border-b border-slate-200 ${isMet ? "bg-emerald-50" : "bg-rose-50"}`}>
+                                        <td colSpan={5} className={`px-4 py-3 text-right text-sm uppercase font-bold ${isMet ? "text-emerald-800" : "text-rose-800"}`}>Total Measurement Amount:</td>
+                                        <td className={`px-4 py-3 text-sm font-mono font-extrabold text-right ${isMet ? "text-emerald-900" : "text-rose-900"}`}>₹{totalMCAmount.toFixed(2)}</td>
+                                    </tr>
+                                    <tr className="bg-slate-50">
+                                        <td colSpan={5} className="px-4 py-2 text-right text-xs text-slate-500 uppercase tracking-wider font-medium">Difference (+ / -):</td>
+                                        <td className={`px-4 py-2 text-xs font-mono font-bold text-right ${diff >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                                            {diff >= 0 ? '+' : ''}₹{diff.toFixed(2)}
                                         </td>
                                     </tr>
                                 </tfoot>
@@ -610,9 +729,21 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                                     <span className="text-sm text-slate-600">Labour Cess:</span>
                                     <span className="text-sm text-slate-800 font-mono">₹{(bill.labourCess || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                 </div>
-                                <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                                    <span className="text-sm text-slate-600">Security Deposit deducted from Bill:</span>
-                                    <span className="text-sm text-slate-800 font-mono">₹{(bill.securityDeposit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                <div className="border-b border-slate-100 pb-2">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm text-slate-600">Security Deposit deducted from Bill:</span>
+                                        <span className="text-sm text-slate-800 font-mono">₹{(bill.securityDeposit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                    </div>
+                                    <div className="text-[11px] text-slate-400 text-right mt-0.5 font-medium space-y-0.5">
+                                        <div>
+                                            total deducted from previous bills: ₹{totalPreviousDeducted.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                        </div>
+                                        {finalContractPrice > 0 ? (
+                                            <div>
+                                                max can be deducted: ₹{(Math.ceil((finalContractPrice * 0.05) / 100) * 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })} (5% of final contract price)
+                                            </div>
+                                        ) : null}
+                                    </div>
                                 </div>
                                 <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                                     <span className="text-sm text-slate-600">Free Maintenance Deposit:</span>
@@ -635,8 +766,35 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                                     <span className="text-sm text-slate-800 font-mono">₹{(bill.esmp || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                 </div>
                                 <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                                    <span className="text-sm text-slate-600">Time Limit Deposit:</span>
-                                    <span className="text-sm text-slate-800 font-mono">₹{(bill.timeLimitDeposit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                                    <div className="flex flex-col">
+                                        <span className="text-sm text-slate-600">Time Limit Deposit:</span>
+                                        {(() => {
+                                            const compTargetDate = workOrder?.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate) : null;
+                                            if (!compTargetDate) return null;
+                                            const getDaysDiff = (date1: Date, date2: Date) => {
+                                                const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+                                                const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+                                                const diffTime = d1.getTime() - d2.getTime();
+                                                return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                            };
+                                            let daysDelay = 0;
+                                            if (bill.billType === 'Running') {
+                                                if (bill.lastRecordEntryDate) {
+                                                    daysDelay = Math.max(0, getDaysDiff(new Date(bill.lastRecordEntryDate), compTargetDate));
+                                                }
+                                            } else {
+                                                if (bill.actualCompletionDate) {
+                                                    daysDelay = Math.max(0, getDaysDiff(new Date(bill.actualCompletionDate), compTargetDate));
+                                                }
+                                            }
+                                            return (
+                                                <span className="text-[10px] text-slate-400 font-medium">
+                                                    Delay: {daysDelay} days (Target: {compTargetDate.toLocaleDateString('en-GB')})
+                                                </span>
+                                            );
+                                        })()}
+                                    </div>
+                                    <span className="text-sm text-slate-800 font-mono font-bold">₹{(bill.timeLimitDeposit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                                 </div>
                                 <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                                     <span className="text-sm text-slate-600">Testing Charges:</span>

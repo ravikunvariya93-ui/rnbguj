@@ -146,7 +146,7 @@ export default function PackageDetailClient({
 
     const [isContractorModalOpen, setIsContractorModalOpen] = useState(false);
     const [newContractor, setNewContractor] = useState({
-        name: '', proprietorName: '', address: '', mobileNo: '', agencyType: ''
+        name: '', proprietorName: '', address: '', mobileNo: '', agencyType: '', gstNo: ''
     });
     const [editingContractorId, setEditingContractorId] = useState<string | null>(null);
     const [contractorSaving, setContractorSaving] = useState(false);
@@ -1175,13 +1175,14 @@ export default function PackageDetailClient({
             address: selected.address || '',
             mobileNo: selected.mobileNo || '',
             agencyType: selected.agencyType || '',
+            gstNo: selected.gstNo || '',
         });
         setEditingContractorId(selected._id);
         setIsContractorModalOpen(true);
     };
 
     const handleCloseContractorModal = () => {
-        setNewContractor({ name: '', proprietorName: '', address: '', mobileNo: '', agencyType: '' });
+        setNewContractor({ name: '', proprietorName: '', address: '', mobileNo: '', agencyType: '', gstNo: '' });
         setEditingContractorId(null);
         setIsContractorModalOpen(false);
     };
@@ -1212,7 +1213,7 @@ export default function PackageDetailClient({
                     setTenderForm((prev: any) => ({ ...prev, contractorName: data.data.name }));
                     showToast('success', 'Contractor/Agency added successfully.');
                 }
-                setNewContractor({ name: '', proprietorName: '', address: '', mobileNo: '', agencyType: '' });
+                setNewContractor({ name: '', proprietorName: '', address: '', mobileNo: '', agencyType: '', gstNo: '' });
                 setEditingContractorId(null);
                 setIsContractorModalOpen(false);
             } else {
@@ -2230,6 +2231,17 @@ export default function PackageDetailClient({
                                                                 )}
                                                             </div>
                                                         </div>
+                                                        {tenderForm.contractorName && (() => {
+                                                            const sel = agencies.find(a => a.name === tenderForm.contractorName);
+                                                            if (!sel) return null;
+                                                            return (
+                                                                <div className="mt-1 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-600 flex flex-wrap gap-x-4 gap-y-0.5 font-normal">
+                                                                    {sel.proprietorName && <span><strong>Proprietor:</strong> {sel.proprietorName}</span>}
+                                                                    {sel.mobileNo && <span><strong>Mobile:</strong> {sel.mobileNo}</span>}
+                                                                    {sel.gstNo && <span><strong>GST No:</strong> <code className="font-mono font-bold text-slate-700">{sel.gstNo}</code></span>}
+                                                                </div>
+                                                            );
+                                                        })()}
                                                     </td>
                                                 </tr>
                                                 <tr>
@@ -3172,6 +3184,7 @@ export default function PackageDetailClient({
                                             <th className="border border-slate-300 px-4 py-1.5 bg-[#107c41] text-center w-20">Bill No.</th>
                                             <th className="border border-slate-300 px-4 py-1.5 bg-[#107c41] text-center w-24">Type</th>
                                             <th className="border border-slate-300 px-4 py-1.5 bg-[#107c41] text-center w-32">Bill Date</th>
+                                            <th className="border border-slate-300 px-4 py-1.5 bg-[#107c41] text-center w-28">Delay</th>
                                             <th className="border border-slate-300 px-4 py-1.5 bg-[#107c41] text-right">Gross Amount</th>
                                             <th className="border border-slate-300 px-4 py-1.5 bg-[#107c41] text-right">Deductions</th>
                                             <th className="border border-slate-300 px-4 py-1.5 bg-[#107c41] text-right text-emerald-100 font-bold">Net Paid</th>
@@ -3191,6 +3204,36 @@ export default function PackageDetailClient({
                                                 </td>
                                                 <td className="border border-slate-200 px-4 py-1.5 text-center font-semibold">
                                                     {bill.billDate ? new Date(bill.billDate).toLocaleDateString('en-GB') : '-'}
+                                                </td>
+                                                <td className="border border-slate-200 px-4 py-1.5 text-center font-semibold">
+                                                    {(() => {
+                                                        const compTargetDate = workOrder?.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate) : null;
+                                                        if (!compTargetDate) return '-';
+                                                        
+                                                        const getDaysDiff = (date1: Date, date2: Date) => {
+                                                            const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+                                                            const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+                                                            const diffTime = d1.getTime() - d2.getTime();
+                                                            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                                        };
+                                                        
+                                                        let daysDelay = 0;
+                                                        if (bill.billType === 'Running') {
+                                                            if (bill.lastRecordEntryDate) {
+                                                                daysDelay = Math.max(0, getDaysDiff(new Date(bill.lastRecordEntryDate), compTargetDate));
+                                                            }
+                                                        } else {
+                                                            if (bill.actualCompletionDate) {
+                                                                daysDelay = Math.max(0, getDaysDiff(new Date(bill.actualCompletionDate), compTargetDate));
+                                                            }
+                                                        }
+                                                        
+                                                        return daysDelay > 0 ? (
+                                                            <span className="text-rose-600 font-bold text-xs">{daysDelay} days</span>
+                                                        ) : (
+                                                            <span className="text-slate-500 text-xs">0 days</span>
+                                                        );
+                                                    })()}
                                                 </td>
                                                 <td className="border border-slate-200 px-4 py-1.5 text-right font-mono font-bold text-slate-800">₹{bill.grossAmount?.toLocaleString('en-IN')}</td>
                                                 <td className="border border-slate-200 px-4 py-1.5 text-right font-mono font-semibold text-rose-600">₹{bill.totalDeduction?.toLocaleString('en-IN') || 0}</td>
@@ -3246,6 +3289,7 @@ export default function PackageDetailClient({
                                     submittedSD={workOrder?.securityDepositAmount || tender?.securityDepositAmount}
                                     workType={pkg?.workType}
                                     budgetHead={pkg?.budgetHead}
+                                    stipulatedCompletionDate={workOrder?.stipulatedCompletionDate}
                                     onCancel={() => { setIsBillModalOpen(false); setEditingBill(null); }}
                                     onSuccess={() => {
                                         setIsBillModalOpen(false);
@@ -3294,8 +3338,14 @@ export default function PackageDetailClient({
                                         <option value="Proprietorship">Proprietorship</option>
                                         <option value="Partnership">Partnership</option>
                                         <option value="Private Limited">Private Limited</option>
+                                        <option value="Public Limited">Public Limited</option>
+                                        <option value="Other">Other</option>
                                     </select>
                                 </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">GST No.</label>
+                                <input type="text" value={newContractor.gstNo} onChange={(e) => setNewContractor(prev => ({ ...prev, gstNo: e.target.value.toUpperCase() }))} placeholder="e.g. 24AAAAA0000A1Z5" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-mono uppercase" />
                             </div>
                             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
                                 <button type="button" onClick={handleCloseContractorModal} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold">Cancel</button>

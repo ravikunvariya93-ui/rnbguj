@@ -39,6 +39,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
         address: '',
         mobileNo: '',
         agencyType: '',
+        gstNo: '',
     });
     const [contractorError, setContractorError] = useState('');
     const [contractorSaving, setContractorSaving] = useState(false);
@@ -267,6 +268,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                     address: '',
                     mobileNo: '',
                     agencyType: '',
+                    gstNo: '',
                 });
                 setIsContractorModalOpen(false);
             } else {
@@ -715,6 +717,17 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                                     <option value="Other">Other</option>
                                 </select>
                             </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">GST No.</label>
+                            <input 
+                                type="text" 
+                                value={newContractor.gstNo}
+                                onChange={(e) => setNewContractor(prev => ({ ...prev, gstNo: e.target.value.toUpperCase() }))}
+                                placeholder="e.g. 24AAAAA0000A1Z5"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono uppercase"
+                            />
                         </div>
 
                         {/* Footer / Buttons inside form */}

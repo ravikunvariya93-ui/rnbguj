@@ -102,7 +102,7 @@ export default function ApprovedWorkDetailClient({
     
     const [isContractorModalOpen, setIsContractorModalOpen] = useState(false);
     const [newContractor, setNewContractor] = useState({
-        name: '', proprietorName: '', address: '', mobileNo: '', agencyType: ''
+        name: '', proprietorName: '', address: '', mobileNo: '', agencyType: '', gstNo: ''
     });
     const [editingContractorId, setEditingContractorId] = useState<string | null>(null);
     const [contractorSaving, setContractorSaving] = useState(false);
@@ -734,13 +734,14 @@ export default function ApprovedWorkDetailClient({
             address: selected.address || '',
             mobileNo: selected.mobileNo || '',
             agencyType: selected.agencyType || '',
+            gstNo: selected.gstNo || '',
         });
         setEditingContractorId(selected._id);
         setIsContractorModalOpen(true);
     };
 
     const handleCloseContractorModal = () => {
-        setNewContractor({ name: '', proprietorName: '', address: '', mobileNo: '', agencyType: '' });
+        setNewContractor({ name: '', proprietorName: '', address: '', mobileNo: '', agencyType: '', gstNo: '' });
         setEditingContractorId(null);
         setIsContractorModalOpen(false);
     };
@@ -771,7 +772,7 @@ export default function ApprovedWorkDetailClient({
                     setTenderForm((prev: any) => ({ ...prev, contractorName: data.data.name }));
                     showToast('success', 'Contractor/Agency added successfully.');
                 }
-                setNewContractor({ name: '', proprietorName: '', address: '', mobileNo: '', agencyType: '' });
+                setNewContractor({ name: '', proprietorName: '', address: '', mobileNo: '', agencyType: '', gstNo: '' });
                 setEditingContractorId(null);
                 setIsContractorModalOpen(false);
             } else {
@@ -2431,8 +2432,14 @@ export default function ApprovedWorkDetailClient({
                                         <option value="Proprietorship">Proprietorship</option>
                                         <option value="Partnership">Partnership</option>
                                         <option value="Private Limited">Private Limited</option>
+                                        <option value="Public Limited">Public Limited</option>
+                                        <option value="Other">Other</option>
                                     </select>
                                 </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">GST No.</label>
+                                <input type="text" value={newContractor.gstNo} onChange={(e) => setNewContractor(prev => ({ ...prev, gstNo: e.target.value.toUpperCase() }))} placeholder="e.g. 24AAAAA0000A1Z5" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-mono uppercase" />
                             </div>
                             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
                                 <button type="button" onClick={handleCloseContractorModal} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold">Cancel</button>
