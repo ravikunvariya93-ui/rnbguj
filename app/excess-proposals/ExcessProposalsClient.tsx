@@ -291,7 +291,7 @@ export default function ExcessProposalsClient({ initialProposals, packages }: Pr
                                                         className="text-emerald-800 hover:text-emerald-950 hover:underline flex items-center gap-1.5"
                                                     >
                                                         <PackageIcon className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                                                        <span className="line-clamp-2">{pkgName}</span>
+                                                        <span>{pkgName}</span>
                                                     </Link>
                                                 ) : (
                                                     <span>{pkgName}</span>
