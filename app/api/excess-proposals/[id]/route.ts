@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { del } from '@vercel/blob';
 import dbConnect from '@/lib/db';
 import ExcessProposal from '@/models/ExcessProposal';
 import Package from '@/models/Package';
-import fs from 'fs/promises';
-import path from 'path';
-import { existsSync } from 'fs';
 
 // Ensure models are registered
 void Package;
@@ -87,16 +85,12 @@ export async function DELETE(
             return NextResponse.json({ error: 'Excess Proposal not found' }, { status: 404 });
         }
 
-        // Clean up attached PDF file if it exists on disk
-        if (proposal.pdfUrl && proposal.pdfUrl.startsWith('/uploads/')) {
+        // Clean up attached PDF file from Vercel Blob if it exists
+        if (proposal.pdfUrl && proposal.pdfUrl.includes('.public.blob.vercel-storage.com')) {
             try {
-                const relativePath = proposal.pdfUrl.replace(/^\//, '');
-                const filePath = path.join(process.cwd(), 'public', relativePath);
-                if (existsSync(filePath)) {
-                    await fs.unlink(filePath);
-                }
+                await del(proposal.pdfUrl);
             } catch (err) {
-                console.warn('Failed to delete file from disk:', err);
+                console.warn('Failed to delete file from Vercel Blob:', err);
             }
         }
 

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { put } from '@vercel/blob';
 import path from 'path';
-import fs from 'fs/promises';
-import { existsSync } from 'fs';
 
 export async function POST(req: NextRequest) {
     try {
@@ -20,27 +19,21 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Invalid file type. Only PDF and document files are permitted.' }, { status: 400 });
         }
 
-        // Target upload directory
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads', subfolder);
-        if (!existsSync(uploadDir)) {
-            await fs.mkdir(uploadDir, { recursive: true });
-        }
-
         // Sanitize and create unique filename
         const safeOriginalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
         const uniquePrefix = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
         const finalFilename = `${uniquePrefix}_${safeOriginalName}`;
-        const filePath = path.join(uploadDir, finalFilename);
 
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-        await fs.writeFile(filePath, buffer);
-
-        const fileUrl = `/uploads/${subfolder}/${finalFilename}`;
+        // Upload to Vercel Blob
+        const blob = await put(`${subfolder}/${finalFilename}`, file, {
+            access: 'public',
+            addRandomSuffix: false,
+            contentType: file.type,
+        });
 
         return NextResponse.json({
             success: true,
-            fileUrl,
+            fileUrl: blob.url,
             fileName: file.name,
             fileSize: file.size,
         });
