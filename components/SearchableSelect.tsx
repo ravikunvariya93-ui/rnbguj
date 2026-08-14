@@ -21,6 +21,8 @@ interface Props {
     label?: string;
     displayField?: string;
     helperField?: string;
+    className?: string;
+    inputClassName?: string;
 }
 
 export default function SearchableSelect({
@@ -32,6 +34,8 @@ export default function SearchableSelect({
     label,
     displayField,
     helperField,
+    className = '',
+    inputClassName = '',
 }: Props) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -111,7 +115,7 @@ export default function SearchableSelect({
     };
 
     return (
-        <div ref={dropdownRef} className="relative mt-1">
+        <div ref={dropdownRef} className={`relative ${className}`}>
             {label && (
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                     {label} {required && '*'}
@@ -124,7 +128,7 @@ export default function SearchableSelect({
                 <input
                     ref={inputRef}
                     type="text"
-                    className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm shadow-sm transition-all"
+                    className={`block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm shadow-xs transition-all ${inputClassName || 'bg-white'}`}
                     placeholder={placeholder}
                     value={searchTerm}
                     onFocus={() => setIsOpen(true)}

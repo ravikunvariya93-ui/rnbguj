@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
     ArrowLeft, Save, Edit2, Plus, Trash2, CheckCircle2, XCircle, X, Loader2, 
-    Calendar, FileText, Settings, Award, Check, ChevronDown, ListPlus, Printer, 
+    Calendar, FileText, Settings, Award, Check, ChevronDown, ChevronUp, ListPlus, Printer, 
     Receipt, DollarSign, Eye, AlertCircle, FileCheck, Layers, ClipboardCheck,
-    Briefcase, FileSpreadsheet, Percent, Building2, User2, Clock, Upload, CreditCard, CheckSquare
+    Briefcase, FileSpreadsheet, Percent, Building2, User2, Clock, Upload, CreditCard, CheckSquare, TrendingUp
 } from 'lucide-react';
 import { parseDateStr, formatDate, formatDateForInput, formatShortDate } from '@/lib/dateUtils';
 import SearchableSelect from '@/components/SearchableSelect';
@@ -25,6 +25,7 @@ interface PackageDetailClientProps {
     loa: any;
     workOrder: any;
     bills: any[];
+    excessProposals?: any[];
     maxAgreementNos?: Record<string, number>;
 }
 
@@ -42,6 +43,7 @@ export default function PackageDetailClient({
     loa: initialLoa,
     workOrder: initialWorkOrder,
     bills: initialBills,
+    excessProposals: initialExcessProposals = [],
     maxAgreementNos = {},
 }: PackageDetailClientProps) {
     const router = useRouter();
@@ -53,12 +55,30 @@ export default function PackageDetailClient({
     const [tenders, setTenders] = useState<any[]>(initialTenders || []);
     const [selectedTrialId, setSelectedTrialId] = useState<string | null>(null);
     const [boq, setBoq] = useState(initialBoq);
+    const [isBoqExpanded, setIsBoqExpanded] = useState<boolean>(false);
     const [boqForm, setBoqForm] = useState<any>({ items: [], totalAmount: 0 });
     const [parsingBoq, setParsingBoq] = useState(false);
     const [approval, setApproval] = useState(initialApproval);
     const [loa, setLoa] = useState(initialLoa);
     const [workOrder, setWorkOrder] = useState(initialWorkOrder);
     const [bills, setBills] = useState(initialBills);
+    const [excessProposals, setExcessProposals] = useState<any[]>(initialExcessProposals || []);
+
+    // Excess Proposal modal states
+    const [isExcessModalOpen, setIsExcessModalOpen] = useState(false);
+    const [editingExcessProposal, setEditingExcessProposal] = useState<any | null>(null);
+    const [uploadingExcessPdf, setUploadingExcessPdf] = useState(false);
+    const [savingExcessProposal, setSavingExcessProposal] = useState(false);
+    const [deletingExcessId, setDeletingExcessId] = useState<string | null>(null);
+    const [excessForm, setExcessForm] = useState({
+        proposalNo: '',
+        proposalDate: new Date().toISOString().split('T')[0],
+        pdfUrl: '',
+        fileName: '',
+        fileSize: 0,
+        remarks: '',
+        status: 'Submitted',
+    });
 
     // Active edit section
     const [editingSection, setEditingSection] = useState<SectionType | null>(null);
@@ -1312,7 +1332,7 @@ export default function PackageDetailClient({
         const netPaySafe = Math.max(netPay, 0);
 
         const it = netPaySafe > 0 ? Math.ceil((netPaySafe * 0.02) / 10) * 10 : 0;
-        const gst = netPaySafe > 0 ? Math.ceil((netPaySafe * 0.02) / 10) * 10 : 0;
+        const gst = it; // GST equal to Income Tax (IT)
         const cess = netPaySafe > 0 ? Math.ceil((netPaySafe * 0.01) / 10) * 10 : 0;
 
         const contractPrice = tender?.contractPrice || tender?.estimatedAmount || 0;
@@ -1320,7 +1340,7 @@ export default function PackageDetailClient({
         const sdMax = contractPrice > 0 ? Math.ceil((contractPrice * 0.05) / 100) * 100 : 0;
         const sd = sdMax > 0 ? Math.min(sdBase, sdMax) : sdBase;
         const isBuilding = String(pkg?.workType || '').toLowerCase().includes('building');
-        const fmd = isBuilding ? 0 : parseFloat((netPaySafe * 0.05).toFixed(2));
+        const fmd = isBuilding ? 0 : (netPaySafe > 0 ? Math.ceil((netPaySafe * 0.05) / 100) * 100 : 0);
         const currentBHead = String(pkg?.budgetHead || '').trim().toLowerCase();
         const isMMGSY = currentBHead.includes('5054 mmgsy normal') || currentBHead.includes('5054 mmgsy scsp') || currentBHead.includes('mmgsy');
 
@@ -1358,6 +1378,9 @@ export default function PackageDetailClient({
         const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
         setBillForm((prev: any) => {
             const next = { ...prev, [name]: val };
+            if (name === 'incomeTax') {
+                next.gst = val;
+            }
             return recalculateBillDeductions(next);
         });
     };
@@ -1411,23 +1434,147 @@ export default function PackageDetailClient({
         }
     };
 
+    const handleOpenAddExcessModal = () => {
+        setEditingExcessProposal(null);
+        setExcessForm({
+            proposalNo: '',
+            proposalDate: new Date().toISOString().split('T')[0],
+            pdfUrl: '',
+            fileName: '',
+            fileSize: 0,
+            remarks: '',
+            status: 'Submitted',
+        });
+        setIsExcessModalOpen(true);
+    };
 
-    // Calculate package timeline progress percent
-    const progressStats = useMemo(() => {
-        let score = 1; // Package exists
-        const stages = [
-            { name: 'Package', done: true },
-            { name: 'DTP Approval', done: !!dtp },
-            { name: 'Tendering', done: !!tender },
-            { name: 'Approval', done: !!approval || (approval?.notRequired) || isTenderApprovalNotRequired },
-            { name: 'LOA Issued', done: !!loa },
-            { name: 'Work Order', done: !!workOrder || (workOrder?.notRequired) },
-            { name: 'Bills', done: bills && bills.length > 0 },
-        ];
-        stages.forEach((s, i) => { if (i > 0 && s.done) score++; });
-        const percent = Math.round((score / stages.length) * 100);
-        return { percent, stages };
-    }, [dtp, tender, approval, loa, workOrder, bills]);
+    const handleOpenEditExcessModal = (p: any) => {
+        setEditingExcessProposal(p);
+        setExcessForm({
+            proposalNo: p.proposalNo || '',
+            proposalDate: p.proposalDate ? new Date(p.proposalDate).toISOString().split('T')[0] : '',
+            pdfUrl: p.pdfUrl || '',
+            fileName: p.fileName || '',
+            fileSize: p.fileSize || 0,
+            remarks: p.remarks || '',
+            status: p.status || 'Submitted',
+        });
+        setIsExcessModalOpen(true);
+    };
+
+    const handleExcessPdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploadingExcessPdf(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('folder', 'excess-proposals');
+
+            const res = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Failed to upload PDF');
+            }
+
+            setExcessForm(prev => ({
+                ...prev,
+                pdfUrl: data.fileUrl,
+                fileName: data.fileName,
+                fileSize: data.fileSize,
+            }));
+            showToast('success', 'PDF uploaded successfully.');
+        } catch (err: any) {
+            showToast('error', err.message || 'Error uploading file');
+        } finally {
+            setUploadingExcessPdf(false);
+        }
+    };
+
+    const handleSaveExcessProposal = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        setSavingExcessProposal(true);
+        try {
+            const url = editingExcessProposal 
+                ? `/api/excess-proposals/${editingExcessProposal._id}` 
+                : '/api/excess-proposals';
+            const method = editingExcessProposal ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...excessForm,
+                    packageId,
+                    workOrderId: workOrder?._id,
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Failed to save proposal');
+            }
+
+            if (editingExcessProposal) {
+                setExcessProposals(prev => prev.map(p => (p._id === editingExcessProposal._id ? data.data : p)));
+                showToast('success', 'Excess Proposal updated successfully.');
+            } else {
+                setExcessProposals(prev => [data.data, ...prev]);
+                showToast('success', 'Excess Proposal created successfully.');
+            }
+
+            setIsExcessModalOpen(false);
+        } catch (err: any) {
+            showToast('error', err.message || 'Error saving proposal');
+        } finally {
+            setSavingExcessProposal(false);
+        }
+    };
+
+    const handleDeleteExcessProposal = async (id: string, proposalNo: string) => {
+        if (!confirm(`Are you sure you want to delete Excess Proposal "${proposalNo}"?`)) return;
+
+        setDeletingExcessId(id);
+        try {
+            const res = await fetch(`/api/excess-proposals/${id}`, {
+                method: 'DELETE',
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Failed to delete proposal');
+            }
+
+            setExcessProposals(prev => prev.filter(p => p._id !== id));
+            showToast('success', 'Excess Proposal deleted successfully.');
+        } catch (err: any) {
+            showToast('error', err.message || 'Error deleting proposal');
+        } finally {
+            setDeletingExcessId(null);
+        }
+    };
+
+
+
+    const sortedBills = useMemo(() => {
+        if (!bills || !Array.isArray(bills)) return [];
+        return [...bills].sort((a, b) => {
+            const timeA = a.billDate ? new Date(a.billDate).getTime() : 0;
+            const timeB = b.billDate ? new Date(b.billDate).getTime() : 0;
+            if (timeA !== timeB) {
+                return timeA - timeB;
+            }
+            const numA = parseInt(a.runningBillNumber || '0', 10) || 0;
+            const numB = parseInt(b.runningBillNumber || '0', 10) || 0;
+            return numA - numB;
+        });
+    }, [bills]);
 
     const pkgOptions = useMemo(() => {
         if (tsNotRequiredCheckbox) {
@@ -1465,23 +1612,15 @@ export default function PackageDetailClient({
     }, [selectedTrialId, tenders]);
 
     return (
-        <div className="space-y-8 pb-16">
+        <div className="space-y-5 pb-16">
             {/* Top Toolbar */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/70 backdrop-blur-md border border-slate-200 p-5 rounded-2xl shadow-xs">
-                <div className="flex items-center gap-3">
-                    <Link href="/packages" className="p-2 hover:bg-slate-100 rounded-xl transition-all">
-                        <ArrowLeft className="w-5 h-5 text-slate-600" />
+            <div className="bg-white/80 backdrop-blur-md border border-slate-200/90 p-4 rounded-2xl shadow-2xs">
+                <div className="flex items-center gap-3 min-w-0">
+                    <Link href="/packages" className="p-2 hover:bg-slate-100 text-slate-600 rounded-xl transition-all border border-slate-200/60 shadow-2xs flex-shrink-0 cursor-pointer" title="Back to Packages">
+                        <ArrowLeft className="w-4 h-4" />
                     </Link>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800">
-                                Package Module
-                            </span>
-                            <span className="text-xs text-slate-500 font-mono">
-                                Sub-Division: {displayedSubDivision || 'N/A'}
-                            </span>
-                        </div>
-                        <h1 className="text-xl md:text-2xl font-bold text-slate-800 break-words mt-1">
+                    <div className="min-w-0">
+                        <h1 className="text-lg md:text-xl font-extrabold text-slate-800 break-words">
                             {pkg.packageName}
                         </h1>
                     </div>
@@ -1507,50 +1646,15 @@ export default function PackageDetailClient({
                 </div>
             )}
 
-            {/* Visual Progress Timeline */}
-            <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-xs">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-sm font-bold text-slate-600 uppercase tracking-wider">Package Progress</h2>
-                    <span className="text-sm font-extrabold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                        {progressStats.percent}% Stage Complete
-                    </span>
-                </div>
-                <div className="relative w-full h-2 bg-slate-100 rounded-full mb-8">
-                    <div className="absolute top-0 left-0 h-2 bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full transition-all duration-500" style={{ width: `${progressStats.percent}%` }} />
-                    <div className="absolute top-0 left-0 w-full flex justify-between -translate-y-2.5 px-1">
-                        {progressStats.stages.map((stage, i) => (
-                            <div key={i} className="flex flex-col items-center">
-                                <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-all shadow-xs ${
-                                    stage.done ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white text-slate-400 border-slate-200'
-                                }`}>
-                                    {stage.done ? <Check className="w-3.5 h-3.5" /> : i + 1}
-                                </div>
-                                <span className={`text-[10px] md:text-xs font-bold mt-2 hidden sm:block ${
-                                    stage.done ? 'text-slate-800' : 'text-slate-400'
-                                }`}>
-                                    {stage.name}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
             {/* STACKED SECTION CARDS */}
-            <div className="space-y-6">
+            <div className="space-y-5">
 
-                {/* 1. Package Overview Card */}
-                <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden hover:shadow-md transition-all">
-                    <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><Layers className="w-5 h-5" /></div>
-                            <div>
-                                <h3 className="font-bold text-slate-800">1. Package Identification & Works</h3>
-                                <p className="text-xs text-slate-400 font-medium">Core package parameters and assigned technical sanctions</p>
-                            </div>
-                        </div>
+                {/* 1. Package Overview Card (Full Width) */}
+                <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden hover:shadow-md transition-all">
+                    <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                        <h3 className="font-bold text-slate-800">Package Identification & Works</h3>
                         {editingSection !== 'package' && (
-                            <button onClick={() => handleStartEdit('package')} className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all">
+                            <button onClick={() => handleStartEdit('package')} className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all cursor-pointer">
                                 <Edit2 className="w-3.5 h-3.5" /> Modify Package
                             </button>
                         )}
@@ -1570,7 +1674,7 @@ export default function PackageDetailClient({
                                             <tr>
                                                 <td className="excel-label">Sub Division</td>
                                                 <td className="excel-value w-[30%]">
-                                                    <select value={pkgForm.subDivision} onChange={(e) => setPkgForm((prev: any) => ({ ...prev, subDivision: e.target.value }))} className="excel-cell-select bg-white">
+                                                    <select value={pkgForm.subDivision} onChange={(e) => setPkgForm((prev: any) => ({ ...prev, subDivision: e.target.value }))} className="excel-cell-select">
                                                         <option value="">-- Select --</option>
                                                         <option value="Bhavnagar">Bhavnagar</option>
                                                         <option value="Mahuva">Mahuva</option>
@@ -1582,7 +1686,7 @@ export default function PackageDetailClient({
                                                 </td>
                                                 <td className="excel-label">DTP Consultant</td>
                                                 <td className="excel-value w-[30%]">
-                                                    <select value={pkgForm.dtpConsultant} onChange={(e) => setPkgForm((prev: any) => ({ ...prev, dtpConsultant: e.target.value }))} className="excel-cell-select bg-white">
+                                                    <select value={pkgForm.dtpConsultant} onChange={(e) => setPkgForm((prev: any) => ({ ...prev, dtpConsultant: e.target.value }))} className="excel-cell-select">
                                                         <option value="">-- Select Consultant --</option>
                                                         <option value="Umiya Engineers and Project Management Consultancy">Umiya Engineers and Project Management Consultancy</option>
                                                         <option value="Trisha Engineers Consultancy">Trisha Engineers Consultancy</option>
@@ -1604,7 +1708,7 @@ export default function PackageDetailClient({
                                                             workType: e.target.value,
                                                             buildingType: e.target.value === 'Building' ? prev.buildingType : ''
                                                         }))}
-                                                        className="excel-cell-select bg-white"
+                                                        className="excel-cell-select"
                                                     >
                                                         <option value="">-- Select Work Type --</option>
                                                         <option value="Road">Road</option>
@@ -1621,7 +1725,7 @@ export default function PackageDetailClient({
                                                                 <div className="flex gap-1 items-center px-1 py-0.5">
                                                                     <input
                                                                         type="text"
-                                                                        className="excel-cell-input bg-white w-full border border-slate-300 rounded px-1.5 py-0.5 text-xs"
+                                                                        className="excel-cell-input bg-emerald-100/60 w-full border border-emerald-200 rounded px-1.5 py-0.5 text-xs"
                                                                         value={newBuildingTypeValue}
                                                                         onChange={(e) => setNewBuildingTypeValue(e.target.value)}
                                                                         placeholder="New type..."
@@ -1638,7 +1742,7 @@ export default function PackageDetailClient({
                                                                     <button
                                                                         type="button"
                                                                         onClick={handleAddNewBuildingType}
-                                                                        className="bg-blue-600 hover:bg-blue-700 text-white rounded px-2 py-0.5 text-[10px] font-semibold cursor-pointer"
+                                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded px-2 py-0.5 text-[10px] font-semibold cursor-pointer"
                                                                     >
                                                                         Add
                                                                     </button>
@@ -1654,13 +1758,13 @@ export default function PackageDetailClient({
                                                                 <select
                                                                     value={pkgForm.buildingType || ''}
                                                                     onChange={handleBuildingTypeChange}
-                                                                    className="excel-cell-select bg-white"
+                                                                    className="excel-cell-select"
                                                                 >
                                                                     <option value="">-- Select Building Type --</option>
                                                                     {buildingTypeOptions.map(option => (
                                                                         <option key={option} value={option}>{option}</option>
                                                                     ))}
-                                                                    <option value="ADD_NEW" className="text-blue-600 font-bold">+ Add New Building Type</option>
+                                                                    <option value="ADD_NEW" className="text-emerald-700 font-bold">+ Add New Building Type</option>
                                                                 </select>
                                                             )}
                                                         </td>
@@ -1674,7 +1778,7 @@ export default function PackageDetailClient({
                                                         <div className="flex gap-1 items-center px-1 py-0.5">
                                                             <input
                                                                 type="text"
-                                                                className="excel-cell-input bg-white w-full border border-slate-300 rounded px-1.5 py-0.5 text-xs"
+                                                                className="excel-cell-input bg-emerald-100/60 w-full border border-emerald-200 rounded px-1.5 py-0.5 text-xs"
                                                                 value={newBudgetHeadValue}
                                                                 onChange={(e) => setNewBudgetHeadValue(e.target.value)}
                                                                 placeholder="New budget head..."
@@ -1691,7 +1795,7 @@ export default function PackageDetailClient({
                                                             <button
                                                                 type="button"
                                                                 onClick={handleAddNewBudgetHead}
-                                                                className="bg-blue-600 hover:bg-blue-700 text-white rounded px-2 py-0.5 text-[10px] font-semibold cursor-pointer"
+                                                                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded px-2 py-0.5 text-[10px] font-semibold cursor-pointer"
                                                             >
                                                                 Add
                                                             </button>
@@ -1707,13 +1811,13 @@ export default function PackageDetailClient({
                                                         <select
                                                             value={pkgForm.budgetHead || ''}
                                                             onChange={handleBudgetHeadChange}
-                                                            className="excel-cell-select bg-white font-medium"
+                                                            className="excel-cell-select font-medium"
                                                         >
                                                             <option value="">-- Select Budget Head --</option>
                                                             {budgetHeadOptions.map(option => (
                                                                 <option key={option} value={option}>{option}</option>
                                                             ))}
-                                                            <option value="ADD_NEW" className="text-blue-600 font-bold">+ Add New Budget Head</option>
+                                                            <option value="ADD_NEW" className="text-emerald-700 font-bold">+ Add New Budget Head</option>
                                                         </select>
                                                     )}
                                                 </td>
@@ -1734,6 +1838,7 @@ export default function PackageDetailClient({
                                                 onChange={(id) => setCurrentSelectionId(id)}
                                                 placeholder="Search works..."
                                                 helperField="TS Amount"
+                                                inputClassName="bg-transparent border-emerald-200"
                                             />
                                         </div>
                                         <div className="flex items-center gap-2 mb-2">
@@ -1758,35 +1863,25 @@ export default function PackageDetailClient({
                                         <div className="overflow-x-auto">
                                             <table className="excel-table">
                                                 <thead>
-                                                    <tr className="bg-[#107c41] text-white">
-                                                        <th className="border border-slate-300 px-3 py-1.5 w-12 text-center bg-[#107c41]">Sr.</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41]">Name of Work</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-center w-24">Year of Approval</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-center w-36">Length (K.M.) / Chainage</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-center w-28">Budget Head</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-right w-28">Job Number Amount (Lakh)</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-center w-28">Approval Date</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-center w-28">Category of Road</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-center w-28">Work Type</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-center w-36">Nature of Work</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-center w-28">T.S. Date</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-center w-36">T.S. Authority</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 w-16 text-center bg-[#107c41]">Action</th>
+                                                    <tr className="bg-emerald-100 text-emerald-950">
+                                                        <th className="border border-emerald-300 px-3 py-1.5 w-12 text-center bg-emerald-100 text-emerald-950 font-bold">Sr.</th>
+                                                        <th className="border border-emerald-300 px-3 py-1.5 bg-emerald-100 text-emerald-950 font-bold">Name of Work</th>
+                                                        <th className="border border-emerald-300 px-3 py-1.5 bg-emerald-100 text-center w-24 text-emerald-950 font-bold">Year of Approval</th>
+                                                        <th className="border border-emerald-300 px-3 py-1.5 bg-emerald-100 text-center w-28 text-emerald-950 font-bold">Budget Head</th>
+                                                        <th className="border border-emerald-300 px-3 py-1.5 bg-emerald-100 text-right w-28 text-emerald-950 font-bold">Job Number Amount (Lakh)</th>
+                                                        <th className="border border-emerald-300 px-3 py-1.5 bg-emerald-100 text-center w-28 text-emerald-950 font-bold">Approval Date</th>
+                                                        <th className="border border-emerald-300 px-3 py-1.5 bg-emerald-100 text-center w-28 text-emerald-950 font-bold">Work Type</th>
+                                                        <th className="border border-emerald-300 px-3 py-1.5 w-16 text-center bg-emerald-100 text-emerald-950 font-bold">Action</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {pkgForm.works?.map((w: any, i: number) => {
                                                         const aw = findApprovedWork(w.workName);
                                                         const appYear = aw?.approvalYear || '-';
-                                                        const lenChain = getLengthOrChainage(aw);
                                                         const bHead = aw?.budgetHead || '-';
                                                         const jobAmt = aw?.jobNumberAmount !== undefined ? `₹${Number(aw.jobNumberAmount).toFixed(2)}` : '-';
                                                         const appDate = aw?.jobNumberApprovalDate ? formatShortDate(aw.jobNumberApprovalDate) : '-';
-                                                        const roadCat = aw?.roadCategory || '-';
                                                         const wType = aw?.workType || '-';
-                                                        const nature = aw?.natureOfWork || '-';
-                                                        const tsDate = w.tsNotRequired ? 'Not Required' : (w.workId?.tsDate ? formatShortDate(w.workId.tsDate) : '-');
-                                                        const tsAuth = w.tsNotRequired ? 'Not Required' : (w.workId?.tsAuthority || '-');
                                                         const keyId = w.workId && typeof w.workId === 'object' ? w.workId._id : w.workId;
 
                                                         return (
@@ -1794,15 +1889,10 @@ export default function PackageDetailClient({
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-center font-mono text-slate-600">{i + 1}</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 font-medium text-slate-800">{w.workName}</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-center font-medium text-slate-600">{appYear}</td>
-                                                                <td className="border border-slate-200 px-3 py-1.5 text-center text-slate-600">{lenChain}</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-center text-slate-600">{bHead}</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-right font-mono text-slate-700 font-semibold">{jobAmt} Lacs</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-center font-mono text-slate-600">{appDate}</td>
-                                                                <td className="border border-slate-200 px-3 py-1.5 text-center text-slate-600">{roadCat}</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-center text-slate-600">{wType}</td>
-                                                                <td className="border border-slate-200 px-3 py-1.5 text-center text-slate-600">{nature}</td>
-                                                                <td className="border border-slate-200 px-3 py-1.5 text-center font-mono text-slate-600">{tsDate}</td>
-                                                                <td className="border border-slate-200 px-3 py-1.5 text-center text-slate-600">{tsAuth}</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-center">
                                                                     <div className="flex items-center justify-center gap-2">
                                                                         <button 
@@ -1836,7 +1926,7 @@ export default function PackageDetailClient({
                                                     })}
                                                     {(!pkgForm.works || pkgForm.works.length === 0) && (
                                                         <tr>
-                                                            <td colSpan={13} className="border border-slate-200 px-4 py-6 text-center text-slate-400 italic">No works linked yet.</td>
+                                                            <td colSpan={8} className="border border-slate-200 px-4 py-6 text-center text-slate-400 italic">No works linked yet.</td>
                                                         </tr>
                                                     )}
                                                 </tbody>
@@ -1847,7 +1937,7 @@ export default function PackageDetailClient({
 
                                 <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
                                     <button type="button" onClick={handleCancelEdit} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold cursor-pointer">Cancel</button>
-                                    <button type="submit" className="px-5 py-2 bg-[#107c41] text-white rounded-xl text-sm font-semibold hover:bg-[#0f5b30] cursor-pointer">Save Package</button>
+                                    <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 cursor-pointer">Save Package</button>
                                 </div>
                             </form>
                         ) : (
@@ -1887,34 +1977,24 @@ export default function PackageDetailClient({
                                         <div className="overflow-x-auto">
                                             <table className="excel-table">
                                                 <thead>
-                                                    <tr className="bg-[#107c41] text-white">
-                                                        <th className="border border-slate-300 px-3 py-1.5 w-12 text-center bg-[#107c41]">Sr. No.</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41]">Name of Work</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-center w-24">Year of Approval</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-center w-36">Length (K.M.) / Chainage</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-center w-28">Budget Head</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-right w-28">Job Number Amount (Lakh)</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-center w-28">Approval Date</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-center w-28">Category of Road</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-center w-28">Work Type</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-center w-36">Nature of Work</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-center w-28">T.S. Date</th>
-                                                        <th className="border border-slate-300 px-3 py-1.5 bg-[#107c41] text-center w-36">T.S. Authority</th>
+                                                    <tr className="bg-emerald-100 text-emerald-950">
+                                                        <th className="border border-emerald-300 px-3 py-1.5 w-12 text-center bg-emerald-100 text-emerald-950 font-bold">Sr. No.</th>
+                                                        <th className="border border-emerald-300 px-3 py-1.5 bg-emerald-100 text-emerald-950 font-bold">Name of Work</th>
+                                                        <th className="border border-emerald-300 px-3 py-1.5 bg-emerald-100 text-center w-24 text-emerald-950 font-bold">Year of Approval</th>
+                                                        <th className="border border-emerald-300 px-3 py-1.5 bg-emerald-100 text-center w-28 text-emerald-950 font-bold">Budget Head</th>
+                                                        <th className="border border-emerald-300 px-3 py-1.5 bg-emerald-100 text-right w-28 text-emerald-950 font-bold">Job Number Amount (Lakh)</th>
+                                                        <th className="border border-emerald-300 px-3 py-1.5 bg-emerald-100 text-center w-28 text-emerald-950 font-bold">Approval Date</th>
+                                                        <th className="border border-emerald-300 px-3 py-1.5 bg-emerald-100 text-center w-28 text-emerald-950 font-bold">Work Type</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {pkg.works?.map((work: any, i: number) => {
                                                         const aw = findApprovedWork(work.workName);
                                                         const appYear = aw?.approvalYear || '-';
-                                                        const lenChain = getLengthOrChainage(aw);
                                                         const bHead = aw?.budgetHead || '-';
                                                         const jobAmt = aw?.jobNumberAmount !== undefined ? `₹${Number(aw.jobNumberAmount).toFixed(2)}` : '-';
                                                         const appDate = aw?.jobNumberApprovalDate ? formatShortDate(work.jobNumberApprovalDate || aw?.jobNumberApprovalDate) : '-';
-                                                        const roadCat = aw?.roadCategory || '-';
                                                         const wType = aw?.workType || '-';
-                                                        const nature = aw?.natureOfWork || '-';
-                                                        const tsDate = work.tsNotRequired ? 'Not Required' : (work.workId?.tsDate ? formatShortDate(work.workId.tsDate) : '-');
-                                                        const tsAuth = work.tsNotRequired ? 'Not Required' : (work.workId?.tsAuthority || '-');
                                                         const keyId = work.workId && typeof work.workId === 'object' ? work.workId._id : work.workId;
 
                                                         return (
@@ -1922,21 +2002,16 @@ export default function PackageDetailClient({
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-center font-mono text-slate-600">{i + 1}</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 font-medium text-slate-800">{work.workName}</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-center font-medium text-slate-600">{appYear}</td>
-                                                                <td className="border border-slate-200 px-3 py-1.5 text-center text-slate-600">{lenChain}</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-center text-slate-600">{bHead}</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-right font-mono text-slate-700 font-semibold">{jobAmt} Lacs</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-center font-mono text-slate-600">{appDate}</td>
-                                                                <td className="border border-slate-200 px-3 py-1.5 text-center text-slate-600">{roadCat}</td>
                                                                 <td className="border border-slate-200 px-3 py-1.5 text-center text-slate-600">{wType}</td>
-                                                                <td className="border border-slate-200 px-3 py-1.5 text-center text-slate-600">{nature}</td>
-                                                                <td className="border border-slate-200 px-3 py-1.5 text-center font-mono text-slate-600">{tsDate}</td>
-                                                                <td className="border border-slate-200 px-3 py-1.5 text-center text-slate-600">{tsAuth}</td>
                                                             </tr>
                                                         );
                                                     })}
                                                     {(!pkg.works || pkg.works.length === 0) && (
                                                         <tr>
-                                                            <td colSpan={12} className="border border-slate-200 px-4 py-6 text-center text-slate-400 italic">No works linked yet.</td>
+                                                            <td colSpan={7} className="border border-slate-200 px-4 py-6 text-center text-slate-400 italic">No works linked yet.</td>
                                                         </tr>
                                                     )}
                                                 </tbody>
@@ -1947,33 +2022,28 @@ export default function PackageDetailClient({
                             </div>
                         )}
                     </div>
-               
-                {/* 2. DTP Approval Section */}
-                <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md mt-6">
-                        <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg ${dtp ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
-                                    <ClipboardCheck className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="font-bold text-slate-800">2. DTP Approval Details</h3>
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                            dtp ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                                        }`}>
-                                            {dtp ? '✅ Done' : '⏳ Pending'}
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-slate-400 font-medium">Detailed Tender Papers approval details</p>
-                                </div>
+                </div>
+                
+                {/* ROW 1: DTP Approval Details and Tender Details Side by Side (Equal Height) */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
+                    {/* 2. DTP Approval Section */}
+                    <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md flex flex-col h-full">
+                        <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-bold text-slate-800">DTP Approval Details</h3>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    dtp ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                }`}>
+                                    {dtp ? '✅ Done' : '⏳ Pending'}
+                                </span>
                             </div>
                             {editingSection !== 'dtp' && (
-                                <button onClick={() => handleStartEdit('dtp')} className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all">
+                                <button onClick={() => handleStartEdit('dtp')} className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all cursor-pointer">
                                     {dtp ? <><Edit2 className="w-3.5 h-3.5" /> Modify DTP</> : <><Plus className="w-3.5 h-3.5" /> Add DTP</>}
                                 </button>
                             )}
                         </div>
-                        <div className="p-6">
+                        <div className="p-6 flex-1 flex flex-col justify-between">
                             {editingSection === 'dtp' ? (
                                 <form onSubmit={handleSaveDtp} className="space-y-4">
                                     <div className="overflow-x-auto">
@@ -1996,7 +2066,7 @@ export default function PackageDetailClient({
                                                     </td>
                                                     <td className="excel-label">DTP Approving Authority</td>
                                                     <td className="excel-value">
-                                                        <select name="dtpApprovingAuthority" value={dtpForm.dtpApprovingAuthority} onChange={handleDtpFieldChange} className="excel-cell-select bg-white">
+                                                        <select name="dtpApprovingAuthority" value={dtpForm.dtpApprovingAuthority} onChange={handleDtpFieldChange} className="excel-cell-select">
                                                             <option value="">-- Select --</option>
                                                             <option value="Executive Engineer (EE)">Executive Engineer (EE)</option>
                                                             <option value="The Superintending Engineer, Panchayat Road and Building Circle - 2, Rajkot.">The Superintending Engineer, Rajkot.</option>
@@ -2025,7 +2095,7 @@ export default function PackageDetailClient({
                                     </div>
                                     <div className="flex justify-end gap-2 pt-2">
                                         <button type="button" onClick={handleCancelEdit} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold cursor-pointer">Cancel</button>
-                                        <button type="submit" className="px-5 py-2 bg-[#107c41] text-white rounded-xl text-sm font-semibold hover:bg-[#0f5b30] cursor-pointer">Save DTP</button>
+                                        <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 cursor-pointer">Save DTP</button>
                                     </div>
                                 </form>
                             ) : dtp ? (
@@ -2041,7 +2111,7 @@ export default function PackageDetailClient({
                                                 </tr>
                                                 <tr>
                                                     <td className="excel-label">Tender Amount</td>
-                                                    <td className="excel-value w-[30%] text-emerald-700 font-bold font-mono">₹{dtp.tenderAmount ? dtp.tenderAmount.toLocaleString('en-IN') : '-'}</td>
+                                                    <td className="excel-value w-[30%] text-emerald-800 font-bold font-mono">₹{dtp.tenderAmount ? dtp.tenderAmount.toLocaleString('en-IN') : '-'}</td>
                                                     <td className="excel-label">DTP Approving Authority</td>
                                                     <td className="excel-value">{dtp.dtpApprovingAuthority || '-'}</td>
                                                 </tr>
@@ -2058,12 +2128,12 @@ export default function PackageDetailClient({
                                             </tbody>
                                         </table>
                                     </div>
-                                    <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end gap-3">
+                                    <div className="mt-4 pt-4 border-t border-emerald-200/60 flex justify-end gap-3">
                                         <Link 
                                             href={`/packages/${packageId}/print-forwarding-letter`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-4 py-2 rounded-xl transition-all cursor-pointer"
+                                            className="inline-flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200 border border-emerald-300 px-4 py-2 rounded-xl transition-all cursor-pointer"
                                         >
                                             <FileText className="w-4 h-4" /> Generate Forwarding Letter
                                         </Link>
@@ -2071,52 +2141,44 @@ export default function PackageDetailClient({
                                             href={`/packages/${packageId}/print-dtp-order`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-2 text-xs font-bold text-[#107c41] bg-[#107c41]/5 hover:bg-[#107c41]/10 border border-[#107c41]/20 px-4 py-2 rounded-xl transition-all cursor-pointer"
+                                            className="inline-flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200 border border-emerald-300 px-4 py-2 rounded-xl transition-all cursor-pointer"
                                         >
                                             <Printer className="w-4 h-4" /> Generate DTP Order
                                         </Link>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="text-center py-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
-                                    <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                                <div className="text-center py-6 border border-dashed border-emerald-200 rounded-2xl bg-emerald-100/40">
+                                    <AlertCircle className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
                                     <p className="text-slate-500 font-semibold text-sm">DTP approval details are pending.</p>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                {/* 3. Tender Section */}
-                <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md mt-6">
-                        <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg ${tender ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
-                                    <Percent className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="font-bold text-slate-800">3. Tender Details</h3>
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                            tender ? (tender.cancelled ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800') : 'bg-amber-100 text-amber-800'
-                                        }`}>
-                                            {tender ? (tender.cancelled ? '🚫 Cancelled' : '✅ Done') : '⏳ Pending'}
-                                        </span>
-                                        {tenders && tenders.length > 0 && (
-                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
-                                                {tenders.length} {tenders.length === 1 ? 'attempt' : 'attempts'}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <p className="text-xs text-slate-400 font-medium">Bidding trial details, rates, and agency selection</p>
-                                </div>
+                    {/* 3. Tender Section */}
+                    <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md flex flex-col h-full">
+                        <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-bold text-slate-800">Tender Details</h3>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    tender ? (tender.cancelled ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800') : 'bg-amber-100 text-amber-800'
+                                }`}>
+                                    {tender ? (tender.cancelled ? '🚫 Cancelled' : '✅ Done') : '⏳ Pending'}
+                                </span>
+                                {tenders && tenders.length > 0 && (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+                                        {tenders.length} {tenders.length === 1 ? 'attempt' : 'attempts'}
+                                    </span>
+                                )}
                             </div>
                             {editingSection !== 'tender' && (
-                                <button onClick={() => handleStartEdit('tender')} className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all">
+                                <button onClick={() => handleStartEdit('tender')} className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all cursor-pointer">
                                     {tender ? <><Edit2 className="w-3.5 h-3.5" /> Modify Tender</> : <><Plus className="w-3.5 h-3.5" /> Add Tender</>}
                                 </button>
                             )}
                         </div>
-                        <div className="p-6">
+                        <div className="p-6 flex-1 flex flex-col justify-between">
                             {editingSection === 'tender' ? (
                                 <form onSubmit={handleSaveTender} className="space-y-4">
                                     <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-slate-50 border border-slate-200 p-4 rounded-2xl mb-4">
@@ -2125,7 +2187,7 @@ export default function PackageDetailClient({
                                             <p className="text-[10px] text-slate-500 mt-0.5">Upload nProcure comparative statement PDF to auto-fill bidder details.</p>
                                         </div>
                                         <div>
-                                            <label className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-4 py-2 rounded-xl cursor-pointer transition-all">
+                                            <label className="inline-flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-4 py-2 rounded-xl cursor-pointer transition-all">
                                                 {parsingTenderPdf ? (
                                                     <>
                                                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -2157,7 +2219,7 @@ export default function PackageDetailClient({
                                                     </td>
                                                     <td className="excel-label">Tender Notice Year</td>
                                                     <td className="excel-value w-[30%]">
-                                                        <select name="tenderNoticeYear" value={tenderForm.tenderNoticeYear} onChange={handleTenderFieldChange} className="excel-cell-select bg-white">
+                                                        <select name="tenderNoticeYear" value={tenderForm.tenderNoticeYear} onChange={handleTenderFieldChange} className="excel-cell-select">
                                                             <option value="2024-25">2024-25</option>
                                                             <option value="2025-26">2025-26</option>
                                                             <option value="2026-27">2026-27</option>
@@ -2190,13 +2252,13 @@ export default function PackageDetailClient({
                                                 </tr>
                                                 <tr>
                                                     <td className="excel-label">Tender Validity Date</td>
-                                                    <td className="excel-value bg-slate-50 font-mono text-slate-500 px-3 py-2 font-bold select-none">{tenderForm.tenderValidityDate || '-'}</td>
+                                                    <td className="excel-value bg-amber-100/40 font-mono text-slate-700 px-3 py-2 font-bold select-none">{tenderForm.tenderValidityDate || '-'}</td>
                                                     <td className="excel-label">Tender Cancelled</td>
                                                     <td className="excel-value">
                                                         <div className="flex items-center gap-4 px-2">
-                                                            <input type="checkbox" name="cancelled" checked={tenderForm.cancelled} onChange={handleTenderFieldChange} className="w-4 h-4 text-[#107c41] border-slate-300 rounded cursor-pointer animate-none" />
+                                                            <input type="checkbox" name="cancelled" checked={tenderForm.cancelled} onChange={handleTenderFieldChange} className="w-4 h-4 text-emerald-600 border-slate-300 rounded cursor-pointer animate-none" />
                                                             {tenderForm.cancelled && (
-                                                                <select name="cancellationReason" value={tenderForm.cancellationReason} onChange={handleTenderFieldChange} className="excel-cell-select bg-white py-0.5 border-slate-200">
+                                                                <select name="cancellationReason" value={tenderForm.cancellationReason} onChange={handleTenderFieldChange} className="excel-cell-select py-0.5 border-amber-200">
                                                                     <option value="">-- Reason --</option>
                                                                     <option value="High Rate">High Rate</option>
                                                                     <option value="Single Bidder">Single Bidder</option>
@@ -2222,10 +2284,11 @@ export default function PackageDetailClient({
                                                                     }}
                                                                     displayField="name"
                                                                     helperField="address"
+                                                                    inputClassName="bg-transparent border-emerald-200"
                                                                 />
                                                             </div>
                                                             <div className="flex flex-col gap-1 items-end">
-                                                                <button type="button" onClick={() => { setEditingContractorId(null); setIsContractorModalOpen(true); }} className="text-[10px] font-bold text-blue-600 hover:underline flex-shrink-0 cursor-pointer">+ New Contractor</button>
+                                                                <button type="button" onClick={() => { setEditingContractorId(null); setIsContractorModalOpen(true); }} className="text-[10px] font-bold text-emerald-700 hover:underline flex-shrink-0 cursor-pointer">+ New Contractor</button>
                                                                 {tenderForm.contractorName && (
                                                                     <button type="button" onClick={handleOpenEditContractor} className="text-[10px] font-bold text-amber-600 hover:underline flex-shrink-0 cursor-pointer">Edit Contractor</button>
                                                                 )}
@@ -2235,7 +2298,7 @@ export default function PackageDetailClient({
                                                             const sel = agencies.find(a => a.name === tenderForm.contractorName);
                                                             if (!sel) return null;
                                                             return (
-                                                                <div className="mt-1 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-600 flex flex-wrap gap-x-4 gap-y-0.5 font-normal">
+                                                                <div className="mt-1 px-2 py-1 bg-amber-100/50 border border-amber-200 rounded text-[11px] text-slate-700 flex flex-wrap gap-x-4 gap-y-0.5 font-normal">
                                                                     {sel.proprietorName && <span><strong>Proprietor:</strong> {sel.proprietorName}</span>}
                                                                     {sel.mobileNo && <span><strong>Mobile:</strong> {sel.mobileNo}</span>}
                                                                     {sel.gstNo && <span><strong>GST No:</strong> <code className="font-mono font-bold text-slate-700">{sel.gstNo}</code></span>}
@@ -2247,7 +2310,7 @@ export default function PackageDetailClient({
                                                 <tr>
                                                     <td className="excel-label">Above / Below (Word)</td>
                                                     <td className="excel-value">
-                                                        <select name="aboveBelowInWord" value={tenderForm.aboveBelowInWord} onChange={handleTenderFieldChange} className="excel-cell-select bg-white">
+                                                        <select name="aboveBelowInWord" value={tenderForm.aboveBelowInWord} onChange={handleTenderFieldChange} className="excel-cell-select">
                                                             <option value="Above">Above</option>
                                                             <option value="Below">Below</option>
                                                             <option value="At Par">At Par</option>
@@ -2278,14 +2341,14 @@ export default function PackageDetailClient({
                                             <button type="button" onClick={() => { setIsReTenderModalOpen(true); setReTenderReason(''); }} className="mr-auto px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-semibold cursor-pointer">Re-Tender</button>
                                         )}
                                         <button type="button" onClick={handleCancelEdit} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold cursor-pointer">Cancel</button>
-                                        <button type="submit" className="px-5 py-2 bg-[#107c41] text-white rounded-xl text-sm font-semibold hover:bg-[#0f5b30] cursor-pointer">Save Tender</button>
+                                        <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 cursor-pointer">Save Tender</button>
                                     </div>
                                 </form>
                             ) : displayTender ? (
                                 <div className="overflow-x-auto space-y-4">
                                     {/* Trial/Attempt selection tabs */}
                                     {tenders && tenders.length > 1 && (
-                                        <div className="flex flex-wrap gap-2 mb-4 border-b border-slate-100 pb-3">
+                                        <div className="flex flex-wrap gap-2 mb-4 border-b border-emerald-200/60 pb-3">
                                             {tenders.map((t: any) => {
                                                 const isSel = t._id === selectedTrialId;
                                                 return (
@@ -2295,10 +2358,10 @@ export default function PackageDetailClient({
                                                         onClick={() => setSelectedTrialId(t._id)}
                                                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
                                                             isSel
-                                                                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
                                                                 : t.cancelled
                                                                 ? 'bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100'
-                                                                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                                                : 'bg-emerald-100/60 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
                                                         }`}
                                                     >
                                                         Trial #{t.trialNo} {t.cancelled ? '🚫' : '✅'}
@@ -2354,7 +2417,7 @@ export default function PackageDetailClient({
                                                     {displayTender.aboveBelowPercentage !== undefined ? `${displayTender.aboveBelowPercentage}% ${displayTender.aboveBelowInWord || ''}` : '-'}
                                                 </td>
                                                 <td className="excel-label">Final Contract Price</td>
-                                                <td className="excel-value text-emerald-700 font-bold font-mono">₹{displayTender.contractPrice ? displayTender.contractPrice.toLocaleString('en-IN') : '-'}</td>
+                                                <td className="excel-value text-emerald-800 font-bold font-mono">₹{displayTender.contractPrice ? displayTender.contractPrice.toLocaleString('en-IN') : '-'}</td>
                                             </tr>
                                             <tr>
                                                 <td className="excel-label">Remarks</td>
@@ -2368,48 +2431,48 @@ export default function PackageDetailClient({
                                         <div className="mt-6">
                                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                                                 <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                                                    <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block"></span>
                                                     Comparative Statement — All Bidders
                                                 </h4>
                                                 <button 
                                                     type="button" 
                                                     onClick={handleOpenTenderFeeModal}
-                                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-2xs"
+                                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200 border border-emerald-300 px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-2xs"
                                                 >
                                                     <CreditCard className="w-3.5 h-3.5" />
                                                     Manage Tender Fees
                                                 </button>
                                             </div>
-                                            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                                            <div className="border border-emerald-200 rounded-xl overflow-hidden shadow-2xs">
                                                 <table className="w-full text-left border-collapse text-xs">
                                                     <thead>
-                                                        <tr className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
-                                                            <th className="px-3 py-2 text-center w-[8%]">Rank</th>
-                                                            <th className="px-3 py-2">Name of Party</th>
-                                                            <th className="px-3 py-2 text-right w-[15%]">Above / Below</th>
-                                                            <th className="px-3 py-2 text-right w-[15%]">Percentage (%)</th>
-                                                            <th className="px-3 py-2 text-right w-[20%]">Total Amount (₹)</th>
+                                                        <tr className="bg-emerald-100/90 text-emerald-950 font-bold border-b border-emerald-200">
+                                                            <th className="px-3 py-2 text-center w-[8%] text-emerald-950">Rank</th>
+                                                            <th className="px-3 py-2 text-emerald-950">Name of Party</th>
+                                                            <th className="px-3 py-2 text-right w-[15%] text-emerald-950">Above / Below</th>
+                                                            <th className="px-3 py-2 text-right w-[15%] text-emerald-950">Percentage (%)</th>
+                                                            <th className="px-3 py-2 text-right w-[20%] text-emerald-950">Total Amount (₹)</th>
                                                         </tr>
                                                     </thead>
-                                                    <tbody className="divide-y divide-slate-100">
+                                                    <tbody className="divide-y divide-emerald-100">
                                                         {displayTender.bidders.map((b: any, idx: number) => {
                                                             const isWinner = b.contractorName === displayTender.contractorName;
                                                             return (
-                                                                <tr key={idx} className={`transition-colors ${isWinner ? 'bg-emerald-50/50' : 'hover:bg-slate-50/60'}`}>
+                                                                <tr key={idx} className={`transition-colors ${isWinner ? 'bg-emerald-100/60' : 'hover:bg-emerald-50/60'}`}>
                                                                     <td className="px-3 py-2 text-center">
                                                                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                                                            isWinner ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+                                                                            isWinner ? 'bg-emerald-200 text-emerald-900' : 'bg-slate-100 text-slate-600'
                                                                         }`}>
                                                                             {b.rank}
                                                                         </span>
                                                                     </td>
                                                                     <td className="px-3 py-2 text-slate-800 font-medium">
                                                                         {b.contractorName}
-                                                                        {isWinner && <span className="ml-2 text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">✓ Contract Awarded</span>}
+                                                                        {isWinner && <span className="ml-2 text-[9px] font-bold text-emerald-800 bg-emerald-200 px-1.5 py-0.5 rounded-full">✓ Contract Awarded</span>}
                                                                     </td>
-                                                                    <td className="px-3 py-2 text-right text-slate-500">{b.aboveBelow}</td>
+                                                                    <td className="px-3 py-2 text-right text-slate-600">{b.aboveBelow}</td>
                                                                     <td className="px-3 py-2 text-right font-mono text-slate-700 font-semibold">{b.percentage}%</td>
-                                                                    <td className="px-3 py-2 text-right font-mono text-emerald-700 font-semibold">{b.totalAmount ? `₹${b.totalAmount.toLocaleString('en-IN')}` : '-'}</td>
+                                                                    <td className="px-3 py-2 text-right font-mono text-emerald-800 font-semibold">{b.totalAmount ? `₹${b.totalAmount.toLocaleString('en-IN')}` : '-'}</td>
                                                                 </tr>
                                                             );
                                                         })}
@@ -2420,8 +2483,8 @@ export default function PackageDetailClient({
                                     )}
                                 </div>
                             ) : (
-                                <div className="text-center py-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
-                                    <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                                <div className="text-center py-6 border border-dashed border-emerald-200 rounded-2xl bg-emerald-100/40">
+                                    <AlertCircle className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
                                     <p className="text-slate-500 font-semibold text-sm">Tender details are pending.</p>
                                 </div>
                             )}
@@ -2429,253 +2492,34 @@ export default function PackageDetailClient({
                     </div>
                 </div>
 
-            {/* BOQ Section */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md mt-6">
-                <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${boq ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
-                            <FileSpreadsheet className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h3 className="font-bold text-slate-800">Bill of Quantities (BOQ)</h3>
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                    boq ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                                }`}>
-                                    {boq ? '✅ Done' : '⏳ Pending'}
-                                </span>
-                            </div>
-                            <p className="text-xs text-slate-400 font-medium">BOQ items list and rates details</p>
-                        </div>
-                    </div>
-                    {editingSection !== 'boq' && (
-                        <button 
-                            onClick={() => handleStartEdit('boq')}
-                            disabled={!tender || tender.cancelled} 
-                            className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {boq ? <><Edit2 className="w-3.5 h-3.5" /> Modify BOQ</> : <><Plus className="w-3.5 h-3.5" /> Add BOQ</>}
-                        </button>
-                    )}
-                </div>
-                <div className="p-6">
-                    {!tender ? (
-                        <div className="text-center py-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
-                            <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-                            <p className="text-slate-500 font-semibold text-sm">Please complete Tender Details before adding BOQ.</p>
-                        </div>
-                    ) : editingSection === 'boq' ? (
-                        <form onSubmit={handleSaveBoq} className="space-y-4">
-                            <div className="flex justify-between items-center mb-4">
-                                <div className="text-sm font-bold text-slate-700">BOQ Items</div>
-                                <div className="flex gap-2">
-                                    <label className="cursor-pointer inline-flex items-center px-3 py-1.5 border border-blue-300 shadow-sm text-xs font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 transition-all">
-                                        {parsingBoq ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Upload className="w-3.5 h-3.5 mr-1.5" />}
-                                        {parsingBoq ? 'Parsing PDF...' : 'Fetch from PDF'}
-                                        <input type="file" className="hidden" accept=".pdf" onChange={handleBoqPdfUpload} disabled={parsingBoq} />
-                                    </label>
-                                    <button
-                                        type="button"
-                                        onClick={handleBoqAddItem}
-                                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 shadow-sm transition-colors"
-                                    >
-                                        <Plus className="w-3.5 h-3.5 mr-1" /> Add Item
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                                <table className="min-w-full divide-y divide-slate-200">
-                                    <thead className="bg-slate-50">
-                                        <tr>
-                                            <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider w-20 text-center">No.</th>
-                                            <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Description</th>
-                                            <th className="px-3 py-2 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider w-24">Qty</th>
-                                            <th className="px-3 py-2 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider w-24">Unit</th>
-                                            <th className="px-3 py-2 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider w-28">Rate</th>
-                                            <th className="px-3 py-2 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider w-28">Amount</th>
-                                            <th className="px-3 py-2 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider w-24">Type</th>
-                                            <th className="px-3 py-2 w-12"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-slate-200">
-                                        {boqForm.items?.map((item: any, idx: number) => (
-                                            <tr key={idx} className="hover:bg-slate-50/50">
-                                                <td className="px-2 py-1.5">
-                                                    <input
-                                                        type="text"
-                                                        value={item.itemNo}
-                                                        onChange={(e) => handleBoqItemChange(idx, 'itemNo', e.target.value)}
-                                                        className="w-full text-center px-1.5 py-1 border border-slate-200 rounded-md text-xs font-mono"
-                                                        required
-                                                    />
-                                                </td>
-                                                <td className="px-2 py-1.5">
-                                                    <textarea
-                                                        value={item.description}
-                                                        onChange={(e) => handleBoqItemChange(idx, 'description', e.target.value)}
-                                                        className="w-full px-1.5 py-1 border border-slate-200 rounded-md text-xs"
-                                                        rows={1}
-                                                        required
-                                                    />
-                                                </td>
-                                                <td className="px-2 py-1.5">
-                                                    <input
-                                                        type="number"
-                                                        value={item.quantity}
-                                                        onChange={(e) => handleBoqItemChange(idx, 'quantity', parseFloat(e.target.value) || 0)}
-                                                        className="w-full text-right px-1.5 py-1 border border-slate-200 rounded-md text-xs font-mono"
-                                                        required
-                                                    />
-                                                </td>
-                                                <td className="px-2 py-1.5">
-                                                    <input
-                                                        type="text"
-                                                        value={item.unit}
-                                                        onChange={(e) => handleBoqItemChange(idx, 'unit', e.target.value)}
-                                                        className="w-full px-1.5 py-1 border border-slate-200 rounded-md text-xs"
-                                                        required
-                                                    />
-                                                </td>
-                                                <td className="px-2 py-1.5">
-                                                    <input
-                                                        type="number"
-                                                        value={item.rate}
-                                                        onChange={(e) => handleBoqItemChange(idx, 'rate', parseFloat(e.target.value) || 0)}
-                                                        className="w-full text-right px-1.5 py-1 border border-slate-200 rounded-md text-xs font-mono"
-                                                        required
-                                                    />
-                                                </td>
-                                                <td className="px-3 py-1.5 text-right text-xs font-bold text-slate-700 font-mono">
-                                                    ₹{item.amount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                                </td>
-                                                <td className="px-2 py-1.5">
-                                                    <select
-                                                        value={item.itemType}
-                                                        onChange={(e) => handleBoqItemChange(idx, 'itemType', e.target.value)}
-                                                        className="w-full px-1 py-1 border border-slate-200 rounded-md text-xs bg-white"
-                                                    >
-                                                        <option value="Standard">Standard</option>
-                                                        <option value="Extra">Extra</option>
-                                                    </select>
-                                                </td>
-                                                <td className="px-2 py-1.5 text-center">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleBoqRemoveItem(idx)}
-                                                        className="text-rose-600 hover:text-rose-900 p-1 cursor-pointer"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div className="flex justify-between items-center bg-slate-100 p-3 rounded-xl border border-slate-200">
-                                <span className="text-sm font-bold text-slate-700">Total Amount:</span>
-                                <span className="text-base font-black text-blue-700 font-mono">
-                                    ₹{boqForm.totalAmount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                </span>
-                            </div>
-                            <div className="flex justify-end gap-2 pt-2">
-                                <button type="button" onClick={handleCancelEdit} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold cursor-pointer">Cancel</button>
-                                <button type="submit" className="px-5 py-2 bg-[#107c41] text-white rounded-xl text-sm font-semibold hover:bg-[#0f5b30] cursor-pointer">Save BOQ</button>
-                            </div>
-                        </form>
-                    ) : boq ? (
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                <div>
-                                    <h4 className="text-sm font-bold text-slate-800">{pkg.packageName}</h4>
-                                    <p className="text-xs text-slate-400 font-medium">BOQ for Tender {tender?.tenderId}</p>
-                                </div>
-                                <div className="text-right">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Total Amount (Excl. GST)</span>
-                                    <span className="text-xl font-black text-blue-600 font-mono">₹{boq.totalAmount?.toLocaleString('en-IN')}</span>
-                                </div>
-                            </div>
-                            <div className="overflow-x-auto border border-slate-200 rounded-2xl max-h-96 overflow-y-auto">
-                                <table className="min-w-full divide-y divide-slate-200">
-                                    <thead className="bg-slate-50 sticky top-0">
-                                        <tr>
-                                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider w-16">No.</th>
-                                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Description of Item</th>
-                                            <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider w-24">Qty</th>
-                                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-24">Unit</th>
-                                            <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider w-32">Rate</th>
-                                            <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider w-40">Amount</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-slate-200">
-                                        {boq.items?.map((item: any, index: number) => (
-                                            <tr key={index} className="hover:bg-slate-50/50 transition-colors">
-                                                <td className="px-4 py-3 text-sm text-slate-900 text-center font-medium">
-                                                    <div className="flex flex-col items-center gap-1">
-                                                        <span>{item.itemNo}</span>
-                                                        {item.itemType === 'Extra' && (
-                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-100 uppercase tracking-wider leading-none scale-90">
-                                                                Extra
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3 text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{item.description}</td>
-                                                <td className="px-4 py-3 text-sm text-slate-900 text-right font-medium font-mono">{item.quantity != null ? Number(item.quantity).toLocaleString('en-IN') : '-'}</td>
-                                                <td className="px-4 py-3 text-sm text-slate-500 font-medium">{item.unit}</td>
-                                                <td className="px-4 py-3 text-sm text-slate-900 text-right font-medium font-mono">₹{item.rate != null ? Number(item.rate).toLocaleString('en-IN') : '-'}</td>
-                                                <td className="px-4 py-3 text-sm text-slate-900 text-right font-bold text-blue-600 font-mono">₹{item.amount != null ? Number(item.amount).toLocaleString('en-IN') : '-'}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="text-center py-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
-                            <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-                            <p className="text-slate-500 font-semibold text-sm">BOQ details are pending.</p>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                {/* ROW 2: Tender Approval and Letter of Acceptance (LOA) Side by Side (Equal Height) */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
                     {/* 4. Tender Approval Section */}
-                    <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
-                        <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg ${approval ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
-                                    <Award className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="font-bold text-slate-800">4. Tender Approval</h3>
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                                (approval?.notRequired || isTenderApprovalNotRequired) 
-                                                    ? 'bg-slate-100 text-slate-800' 
-                                                    : approval ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                                            }`}>
-                                                {(approval?.notRequired || isTenderApprovalNotRequired) 
-                                                    ? '🚫 Not Required' 
-                                                    : approval ? '✅ Done' : '⏳ Pending'}
-                                            </span>
-                                    </div>
-                                    <p className="text-xs text-slate-400 font-medium">Tender sanction and approval office details</p>
-                                </div>
+                    <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md flex flex-col h-full">
+                        <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-bold text-slate-800">Tender Approval</h3>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                        (approval?.notRequired || isTenderApprovalNotRequired) 
+                                            ? 'bg-slate-100 text-slate-800' 
+                                            : approval ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                    }`}>
+                                        {(approval?.notRequired || isTenderApprovalNotRequired) 
+                                            ? '🚫 Not Required' 
+                                            : approval ? '✅ Done' : '⏳ Pending'}
+                                    </span>
                             </div>
                             {editingSection !== 'approval' && (
                                 <button 
                                     onClick={() => handleStartEdit('approval')}
                                     disabled={!tender || tender.cancelled} 
-                                    className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                 >
                                     {approval ? <><Edit2 className="w-3.5 h-3.5" /> Modify Approval</> : <><Plus className="w-3.5 h-3.5" /> Add Approval</>}
                                 </button>
                             )}
                         </div>
-                        <div className="p-6">
+                        <div className="p-6 flex-1 flex flex-col justify-between">
                             {editingSection === 'approval' ? (
                                 <form onSubmit={handleSaveApproval} className="space-y-4">
                                     <div className="overflow-x-auto">
@@ -2691,7 +2535,7 @@ export default function PackageDetailClient({
                                                                 checked={approvalForm.notRequired || isTenderApprovalNotRequired} 
                                                                 disabled={isTenderApprovalNotRequired}
                                                                 onChange={handleApprovalFieldChange} 
-                                                                className="w-4 h-4 text-[#107c41] border-slate-200 rounded cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed" 
+                                                                className="w-4 h-4 text-emerald-600 border-slate-200 rounded cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed" 
                                                             />
                                                             <span className="text-xs font-bold text-slate-700">Tender Approval Not Required {isTenderApprovalNotRequired && "(Auto - Price < 50L)"}</span>
                                                         </label>
@@ -2706,7 +2550,7 @@ export default function PackageDetailClient({
                                                             </td>
                                                             <td className="excel-label">Tender Approval Office</td>
                                                             <td className="excel-value w-[30%]">
-                                                                <select name="tenderApprovalOffice" value={approvalForm.tenderApprovalOffice} onChange={handleApprovalFieldChange} className="excel-cell-select bg-white">
+                                                                <select name="tenderApprovalOffice" value={approvalForm.tenderApprovalOffice} onChange={handleApprovalFieldChange} className="excel-cell-select">
                                                                     <option value="">-- Select Office --</option>
                                                                     <option value="Executive Engineer (EE)">Executive Engineer (EE)</option>
                                                                     <option value="The Superintending Engineer, Panchayat Road and Building Circle - 2, Rajkot.">The Superintending Engineer, Rajkot.</option>
@@ -2731,73 +2575,67 @@ export default function PackageDetailClient({
                                     </div>
                                     <div className="flex justify-end gap-2 pt-2">
                                         <button type="button" onClick={handleCancelEdit} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold cursor-pointer">Cancel</button>
-                                        <button type="submit" className="px-5 py-2 bg-[#107c41] text-white rounded-xl text-sm font-semibold hover:bg-[#0f5b30] cursor-pointer">Save Approval</button>
+                                        <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 cursor-pointer">Save Approval</button>
                                     </div>
                                 </form>
                             ) : approval ? (
-                                <div className="overflow-x-auto">
+                                <div>
                                     {(approval.notRequired || isTenderApprovalNotRequired) ? (
-                                        <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-semibold text-slate-600 italic">
+                                        <div className="bg-emerald-100/60 border border-emerald-200 p-3 rounded-xl text-xs font-semibold text-emerald-900 italic">
                                             🚫 Tender Approval is marked as <strong>Not Required</strong> for this package.
                                         </div>
                                     ) : (
-                                        <table className="excel-table">
-                                            <tbody>
-                                                <tr>
-                                                    <td className="excel-label">Proposal Date</td>
-                                                    <td className="excel-value w-[30%]">{approval.proposalDate ? new Date(approval.proposalDate).toLocaleDateString('en-GB') : '-'}</td>
-                                                    <td className="excel-label">Approval Office</td>
-                                                    <td className="excel-value w-[30%]">{approval.tenderApprovalOffice || '-'}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="excel-label">Approval Number</td>
-                                                    <td className="excel-value">{approval.tenderApprovalNo || '-'}</td>
-                                                    <td className="excel-label">Approval Date</td>
-                                                    <td className="excel-value">{approval.tenderApprovalDate ? new Date(approval.tenderApprovalDate).toLocaleDateString('en-GB') : '-'}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
+                                        <div className="overflow-x-auto">
+                                            <table className="excel-table">
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="excel-label">Proposal Date</td>
+                                                        <td className="excel-value w-[30%]">{approval.proposalDate ? new Date(approval.proposalDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                        <td className="excel-label">Approval Office</td>
+                                                        <td className="excel-value w-[30%]">{approval.tenderApprovalOffice || '-'}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">Approval Number</td>
+                                                        <td className="excel-value">{approval.tenderApprovalNo || '-'}</td>
+                                                        <td className="excel-label">Approval Date</td>
+                                                        <td className="excel-value">{approval.tenderApprovalDate ? new Date(approval.tenderApprovalDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     )}
                                 </div>
                             ) : (
-                                <div className="text-center py-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
-                                    <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-                                    <p className="text-slate-500 font-semibold text-sm">Tender Approval details are pending.</p>
+                                <div className="text-center py-6 border border-dashed border-emerald-200 rounded-2xl bg-emerald-100/40">
+                                    <AlertCircle className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
+                                    <p className="text-slate-500 font-semibold text-sm">Approval details are pending.</p>
                                 </div>
                             )}
                         </div>
                     </div>
 
                     {/* 5. LOA Issued Section */}
-                    <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
-                        <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg ${loa ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
-                                    <FileText className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="font-bold text-slate-800">5. Letter of Acceptance (LOA)</h3>
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                            loa ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                                        }`}>
-                                            {loa ? '✅ Done' : '⏳ Pending'}
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-slate-400 font-medium">Stamp duty, work durations, and acceptance letter dates</p>
-                                </div>
+                    <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md flex flex-col h-full">
+                        <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-bold text-slate-800">Letter of Acceptance (LOA)</h3>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    loa ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                }`}>
+                                    {loa ? '✅ Done' : '⏳ Pending'}
+                                </span>
                             </div>
                             {editingSection !== 'loa' && (
                                 <button 
                                     onClick={() => handleStartEdit('loa')}
                                     disabled={!tender || tender.cancelled} 
-                                    className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                    className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                 >
                                     {loa ? <><Edit2 className="w-3.5 h-3.5" /> Modify LOA</> : <><Plus className="w-3.5 h-3.5" /> Add LOA</>}
                                 </button>
                             )}
                         </div>
-                        <div className="p-6">
+                        <div className="p-6 flex-1 flex flex-col justify-between">
                             {editingSection === 'loa' ? (
                                 <form onSubmit={handleSaveLoa} className="space-y-4">
                                     <div className="overflow-x-auto">
@@ -2825,7 +2663,7 @@ export default function PackageDetailClient({
                                     </div>
                                     <div className="flex justify-end gap-2 pt-2">
                                         <button type="button" onClick={handleCancelEdit} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold cursor-pointer">Cancel</button>
-                                        <button type="submit" className="px-5 py-2 bg-[#107c41] text-white rounded-xl text-sm font-semibold hover:bg-[#0f5b30] cursor-pointer">Save LOA</button>
+                                        <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 cursor-pointer">Save LOA</button>
                                     </div>
                                 </form>
                             ) : loa ? (
@@ -2847,20 +2685,20 @@ export default function PackageDetailClient({
                                             </tbody>
                                         </table>
                                     </div>
-                                    <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end">
+                                    <div className="mt-4 pt-4 border-t border-emerald-200/60 flex justify-end">
                                         <Link 
                                             href={`/packages/${packageId}/print-loa`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-2 text-xs font-bold text-[#107c41] bg-[#107c41]/5 hover:bg-[#107c41]/10 border border-[#107c41]/20 px-4 py-2 rounded-xl transition-all cursor-pointer"
+                                            className="inline-flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200 border border-emerald-300 px-4 py-2 rounded-xl transition-all cursor-pointer"
                                         >
                                             <Printer className="w-4 h-4" /> Print LOA
                                         </Link>
                                     </div>
                                 </>
                             ) : (
-                                <div className="text-center py-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
-                                    <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                                <div className="text-center py-6 border border-dashed border-emerald-200 rounded-2xl bg-emerald-100/40">
+                                    <AlertCircle className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
                                     <p className="text-slate-500 font-semibold text-sm">LOA details are pending.</p>
                                 </div>
                             )}
@@ -2869,31 +2707,23 @@ export default function PackageDetailClient({
                 </div>
 
                 {/* 6. Work Order Section */}
-                <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
-                    <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${(workOrder || workOrder?.notRequired) ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
-                                <Settings className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <h3 className="font-bold text-slate-800">6. Work Order & Deposits</h3>
-                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                        workOrder?.notRequired 
-                                            ? 'bg-slate-100 text-slate-800' 
-                                            : workOrder ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                                    }`}>
-                                        {workOrder?.notRequired ? '🚫 Not Required' : workOrder ? '✅ Done' : '⏳ Pending'}
-                                    </span>
-                                </div>
-                                <p className="text-xs text-slate-400 font-medium">Agreement Details, Security Deposits, Work Order timelines</p>
-                            </div>
+                <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
+                    <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-slate-800">Work Order & Deposits</h3>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                workOrder?.notRequired 
+                                    ? 'bg-slate-100 text-slate-800' 
+                                    : workOrder ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                            }`}>
+                                {workOrder?.notRequired ? '🚫 Not Required' : workOrder ? '✅ Done' : '⏳ Pending'}
+                            </span>
                         </div>
                         {editingSection !== 'workOrder' && (
                             <button 
                                 onClick={() => handleStartEdit('workOrder')}
                                 disabled={!loa} 
-                                className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                             >
                                 {workOrder ? <><Edit2 className="w-3.5 h-3.5" /> Modify Work Order</> : <><Plus className="w-3.5 h-3.5" /> Add Work Order</>}
                             </button>
@@ -2914,7 +2744,7 @@ export default function PackageDetailClient({
                                                             name="notRequired" 
                                                             checked={woForm.notRequired || false} 
                                                             onChange={handleWoFieldChange} 
-                                                            className="w-4 h-4 text-[#107c41] border-slate-200 rounded cursor-pointer" 
+                                                            className="w-4 h-4 text-emerald-600 border-slate-200 rounded cursor-pointer" 
                                                         />
                                                         <span className="text-xs font-bold text-slate-700">Work Order Not Required</span>
                                                     </label>
@@ -2922,13 +2752,13 @@ export default function PackageDetailClient({
                                             </tr>
                                             {!woForm.notRequired && (
                                                 <>
-                                                    <tr className="bg-[#107c41]/10">
-                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Agreement Details</th>
+                                                    <tr className="bg-emerald-100/90">
+                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-emerald-950 bg-emerald-100/90 border-b border-emerald-200 text-left uppercase tracking-wider">Agreement Details</th>
                                                     </tr>
                                                     <tr>
                                                         <td className="excel-label">Agreement Year</td>
                                                         <td className="excel-value w-[30%]">
-                                                            <select name="agreementYear" value={woForm.agreementYear} onChange={handleWoFieldChange} className="excel-cell-select bg-white">
+                                                            <select name="agreementYear" value={woForm.agreementYear} onChange={handleWoFieldChange} className="excel-cell-select">
                                                                 <option value="2024-25">2024-25</option>
                                                                 <option value="2025-26">2025-26</option>
                                                                 <option value="2026-27">2026-27</option>
@@ -2946,13 +2776,13 @@ export default function PackageDetailClient({
                                                         </td>
                                                     </tr>
 
-                                                    <tr className="bg-[#107c41]/10">
-                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Security Deposit Details</th>
+                                                    <tr className="bg-emerald-100/90">
+                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-emerald-950 bg-emerald-100/90 border-b border-emerald-200 text-left uppercase tracking-wider">Security Deposit Details</th>
                                                     </tr>
                                                     <tr>
                                                         <td className="excel-label">SD Type</td>
                                                         <td className="excel-value">
-                                                            <select name="securityDepositType" value={woForm.securityDepositType} onChange={handleWoFieldChange} className="excel-cell-select bg-white">
+                                                            <select name="securityDepositType" value={woForm.securityDepositType} onChange={handleWoFieldChange} className="excel-cell-select">
                                                                 <option value="FDR">FDR</option>
                                                                 <option value="Bank Guarantee">Bank Guarantee</option>
                                                             </select>
@@ -2970,9 +2800,10 @@ export default function PackageDetailClient({
                                                                             setWoForm((prev: any) => ({ ...prev, securityDepositBankName: selected ? selected.name : '' }));
                                                                         }}
                                                                         displayField="name"
+                                                                        inputClassName="bg-transparent border-emerald-200"
                                                                     />
                                                                 </div>
-                                                                <button type="button" onClick={() => { setActiveBankField('security'); setIsBankModalOpen(true); }} className="px-2 py-1 text-[10px] font-bold text-white bg-[#107c41] rounded-md whitespace-nowrap cursor-pointer hover:bg-[#0f5b30]">+ Add</button>
+                                                                <button type="button" onClick={() => { setActiveBankField('security'); setIsBankModalOpen(true); }} className="px-2 py-1 text-[10px] font-bold text-white bg-emerald-600 rounded-md whitespace-nowrap cursor-pointer hover:bg-emerald-700">+ Add</button>
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -2993,13 +2824,13 @@ export default function PackageDetailClient({
                                                         </td>
                                                     </tr>
 
-                                                    <tr className="bg-[#107c41]/10">
-                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Additional Security Deposit (ASD)</th>
+                                                    <tr className="bg-emerald-100/90">
+                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-emerald-950 bg-emerald-100/90 border-b border-emerald-200 text-left uppercase tracking-wider">Additional Security Deposit (ASD)</th>
                                                     </tr>
                                                     <tr>
                                                         <td className="excel-label">ASD Type</td>
                                                         <td className="excel-value">
-                                                            <select name="additionalSecurityDepositType" value={woForm.additionalSecurityDepositType} onChange={handleWoFieldChange} className="excel-cell-select bg-white">
+                                                            <select name="additionalSecurityDepositType" value={woForm.additionalSecurityDepositType} onChange={handleWoFieldChange} className="excel-cell-select">
                                                                 <option value="FDR">FDR</option>
                                                                 <option value="Bank Guarantee">Bank Guarantee</option>
                                                             </select>
@@ -3017,9 +2848,10 @@ export default function PackageDetailClient({
                                                                             setWoForm((prev: any) => ({ ...prev, additionalSecurityDepositBankName: selected ? selected.name : '' }));
                                                                         }}
                                                                         displayField="name"
+                                                                        inputClassName="bg-transparent border-emerald-200"
                                                                     />
                                                                 </div>
-                                                                <button type="button" onClick={() => { setActiveBankField('additional'); setIsBankModalOpen(true); }} className="px-2 py-1 text-[10px] font-bold text-white bg-[#107c41] rounded-md whitespace-nowrap cursor-pointer hover:bg-[#0f5b30]">+ Add</button>
+                                                                <button type="button" onClick={() => { setActiveBankField('additional'); setIsBankModalOpen(true); }} className="px-2 py-1 text-[10px] font-bold text-white bg-emerald-600 rounded-md whitespace-nowrap cursor-pointer hover:bg-emerald-700">+ Add</button>
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -3040,8 +2872,8 @@ export default function PackageDetailClient({
                                                         </td>
                                                     </tr>
 
-                                                    <tr className="bg-[#107c41]/10">
-                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Work Order Issuance Timelines</th>
+                                                    <tr className="bg-emerald-100/90">
+                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-emerald-950 bg-emerald-100/90 border-b border-emerald-200 text-left uppercase tracking-wider">Work Order Issuance Timelines</th>
                                                     </tr>
                                                     <tr>
                                                         <td className="excel-label">Work Order WS No.</td>
@@ -3059,7 +2891,7 @@ export default function PackageDetailClient({
                                                             <input type="text" placeholder="DD/MM/YYYY" name="timeLimitStartsFrom" value={woForm.timeLimitStartsFrom} onChange={handleWoFieldChange} className="excel-cell-input" />
                                                         </td>
                                                         <td className="excel-label">Stipulated Completion Date</td>
-                                                        <td className="excel-value font-semibold text-slate-500 bg-slate-50 px-3 py-2">
+                                                        <td className="excel-value font-semibold text-slate-700 bg-transparent px-3 py-2">
                                                             {woForm.stipulatedCompletionDate || '-'}
                                                         </td>
                                                     </tr>
@@ -3070,13 +2902,13 @@ export default function PackageDetailClient({
                                 </div>
                                 <div className="flex justify-end gap-2 pt-2">
                                     <button type="button" onClick={handleCancelEdit} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold cursor-pointer">Cancel</button>
-                                    <button type="submit" className="px-5 py-2 bg-[#107c41] text-white rounded-xl text-sm font-semibold hover:bg-[#0f5b30] cursor-pointer">Save Work Order</button>
+                                    <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 cursor-pointer">Save Work Order</button>
                                 </div>
                             </form>
                         ) : workOrder ? (
                             <div>
                                 {workOrder.notRequired ? (
-                                    <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl text-xs font-semibold text-slate-600 italic">
+                                    <div className="bg-emerald-100/60 border border-emerald-200 p-3 rounded-xl text-xs font-semibold text-emerald-900 italic">
                                         🚫 Work Order is marked as <strong>Not Required</strong> for this package.
                                     </div>
                                 ) : (
@@ -3084,8 +2916,8 @@ export default function PackageDetailClient({
                                         <div className="overflow-x-auto">
                                             <table className="excel-table">
                                                 <tbody>
-                                                    <tr className="bg-[#107c41]/10">
-                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Agreement & Work Order</th>
+                                                    <tr className="bg-emerald-100/90">
+                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-emerald-950 bg-emerald-100/90 border-b border-emerald-200 text-left uppercase tracking-wider">Agreement & Work Order</th>
                                                     </tr>
                                                     <tr>
                                                         <td className="excel-label">Agreement Year</td>
@@ -3099,32 +2931,32 @@ export default function PackageDetailClient({
                                                         <td className="excel-label">Completion Target</td>
                                                         <td className="excel-value">{workOrder.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate).toLocaleDateString('en-GB') : '-'}</td>
                                                     </tr>
-                                                    <tr className="bg-[#107c41]/10">
-                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Security Deposits</th>
+                                                    <tr className="bg-emerald-100/90">
+                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-emerald-950 bg-emerald-100/90 border-b border-emerald-200 text-left uppercase tracking-wider">Security Deposits</th>
                                                     </tr>
                                                     <tr>
                                                         <td className="excel-label">Security Deposit</td>
                                                         <td className="excel-value font-mono" colSpan={3}>
-                                                            Type: {workOrder.securityDepositType || '-'} &nbsp;|&nbsp; Bank: {workOrder.securityDepositBankName || '-'} &nbsp;|&nbsp; No: {workOrder.securityDepositNumber || '-'} &nbsp;|&nbsp; Amount: <strong className="text-emerald-700">₹{workOrder.securityDepositAmount?.toLocaleString('en-IN') || 0}</strong>
+                                                            Type: {workOrder.securityDepositType || '-'} &nbsp;|&nbsp; Bank: {workOrder.securityDepositBankName || '-'} &nbsp;|&nbsp; No: {workOrder.securityDepositNumber || '-'} &nbsp;|&nbsp; Amount: <strong className="text-emerald-900">₹{workOrder.securityDepositAmount?.toLocaleString('en-IN') || 0}</strong>
                                                         </td>
                                                     </tr>
                                                     {workOrder.additionalSecurityDepositAmount > 0 && (
                                                         <tr>
                                                             <td className="excel-label">Additional SD</td>
                                                             <td className="excel-value font-mono" colSpan={3}>
-                                                                Type: {workOrder.additionalSecurityDepositType || '-'} &nbsp;|&nbsp; Bank: {workOrder.additionalSecurityDepositBankName || '-'} &nbsp;|&nbsp; No: {workOrder.additionalSecurityDepositNumber || '-'} &nbsp;|&nbsp; Amount: <strong className="text-emerald-700">₹{workOrder.additionalSecurityDepositAmount?.toLocaleString('en-IN') || 0}</strong>
+                                                                Type: {workOrder.additionalSecurityDepositType || '-'} &nbsp;|&nbsp; Bank: {workOrder.additionalSecurityDepositBankName || '-'} &nbsp;|&nbsp; No: {workOrder.additionalSecurityDepositNumber || '-'} &nbsp;|&nbsp; Amount: <strong className="text-emerald-900">₹{workOrder.additionalSecurityDepositAmount?.toLocaleString('en-IN') || 0}</strong>
                                                             </td>
                                                         </tr>
                                                     )}
                                                 </tbody>
                                             </table>
                                         </div>
-                                        <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end gap-3">
+                                        <div className="mt-4 pt-4 border-t border-emerald-200/50 flex justify-end gap-3">
                                             <Link 
                                                 href={`/packages/${packageId}/print-agreement`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-2 text-xs font-bold text-[#107c41] bg-[#107c41]/5 hover:bg-[#107c41]/10 border border-[#107c41]/20 px-4 py-2 rounded-xl transition-all cursor-pointer"
+                                                className="inline-flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200 border border-emerald-300 px-4 py-2 rounded-xl transition-all cursor-pointer"
                                             >
                                                 <Printer className="w-4 h-4" /> Print Agreement
                                             </Link>
@@ -3132,7 +2964,7 @@ export default function PackageDetailClient({
                                                 href={`/packages/${packageId}/print-work-order`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-2 text-xs font-bold text-[#107c41] bg-[#107c41]/5 hover:bg-[#107c41]/10 border border-[#107c41]/20 px-4 py-2 rounded-xl transition-all cursor-pointer"
+                                                className="inline-flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200 border border-emerald-300 px-4 py-2 rounded-xl transition-all cursor-pointer"
                                             >
                                                 <Printer className="w-4 h-4" /> Print Work Order
                                             </Link>
@@ -3141,63 +2973,316 @@ export default function PackageDetailClient({
                                 )}
                             </div>
                         ) : (
-                            <div className="text-center py-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
-                                <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                            <div className="text-center py-6 border border-dashed border-emerald-200 rounded-2xl bg-emerald-100/40">
+                                <AlertCircle className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
                                 <p className="text-slate-500 font-semibold text-sm">Work Order details are pending.</p>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* 7. Billing & Financials Section */}
-                <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
-                    <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${(bills && bills.length > 0) ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
-                                <Receipt className="w-5 h-5" />
+                {/* Bill of Quantities (BOQ) Section */}
+                <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
+                    <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-slate-800">Bill of Quantities (BOQ)</h3>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                boq ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                            }`}>
+                                {boq ? '✅ Done' : '⏳ Pending'}
+                            </span>
+                            {boq?.items && boq.items.length > 0 && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    {boq.items.length} {boq.items.length === 1 ? 'item' : 'items'}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            {boq && boq.items && boq.items.length > 0 && editingSection !== 'boq' && (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsBoqExpanded(!isBoqExpanded)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-slate-200 shadow-2xs"
+                                >
+                                    {isBoqExpanded ? (
+                                        <>
+                                            <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
+                                            Collapse Items
+                                        </>
+                                    ) : (
+                                        <>
+                                            <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                                            Expand Items ({boq.items.length})
+                                        </>
+                                    )}
+                                </button>
+                            )}
+
+                            {editingSection !== 'boq' && (
+                                <button 
+                                    onClick={() => handleStartEdit('boq')}
+                                    disabled={!tender || tender.cancelled} 
+                                    className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                >
+                                    {boq ? <><Edit2 className="w-3.5 h-3.5" /> Modify BOQ</> : <><Plus className="w-3.5 h-3.5" /> Add BOQ</>}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="p-6">
+                        {!tender ? (
+                            <div className="text-center py-6 border border-dashed border-emerald-200 rounded-2xl bg-emerald-100/40">
+                                <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                                <p className="text-slate-500 font-semibold text-sm">Please complete Tender Details before adding BOQ.</p>
                             </div>
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <h3 className="font-bold text-slate-800">7. Billing & Audit Memo</h3>
-                                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700">
-                                        {bills ? bills.length : 0} Bills Logged
+                        ) : editingSection === 'boq' ? (
+                            <form onSubmit={handleSaveBoq} className="space-y-4">
+                                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-emerald-100/50 border border-emerald-200 p-3.5 rounded-xl">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold text-emerald-950 uppercase tracking-wider">BOQ Line Items Editor</span>
+                                        <span className="text-xs bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full font-semibold">
+                                            {boqForm.items?.length || 0} items
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 border border-emerald-300 shadow-2xs text-xs font-bold rounded-lg text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200/80 transition-all">
+                                            {parsingBoq ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                                            {parsingBoq ? 'Parsing PDF...' : 'Fetch from PDF'}
+                                            <input type="file" className="hidden" accept=".pdf" onChange={handleBoqPdfUpload} disabled={parsingBoq} />
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={handleBoqAddItem}
+                                            className="inline-flex items-center gap-1 px-3 py-1.5 border border-transparent text-xs font-bold rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 shadow-2xs transition-colors cursor-pointer"
+                                        >
+                                            <Plus className="w-3.5 h-3.5" /> Add Item
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="overflow-x-auto border border-emerald-200 rounded-xl shadow-2xs">
+                                    <table className="min-w-full divide-y divide-emerald-200">
+                                        <thead className="bg-emerald-100/90 text-emerald-950">
+                                            <tr>
+                                                <th className="px-3 py-2 text-center text-[11px] font-bold text-emerald-950 uppercase tracking-wider w-20">No.</th>
+                                                <th className="px-3 py-2 text-left text-[11px] font-bold text-emerald-950 uppercase tracking-wider">Description of Item</th>
+                                                <th className="px-3 py-2 text-right text-[11px] font-bold text-emerald-950 uppercase tracking-wider w-28">Qty</th>
+                                                <th className="px-3 py-2 text-left text-[11px] font-bold text-emerald-950 uppercase tracking-wider w-24">Unit</th>
+                                                <th className="px-3 py-2 text-right text-[11px] font-bold text-emerald-950 uppercase tracking-wider w-28">Rate (₹)</th>
+                                                <th className="px-3 py-2 text-right text-[11px] font-bold text-emerald-950 uppercase tracking-wider w-32">Amount (₹)</th>
+                                                <th className="px-3 py-2 text-center text-[11px] font-bold text-emerald-950 uppercase tracking-wider w-28">Type</th>
+                                                <th className="px-3 py-2 w-12"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-transparent divide-y divide-emerald-200/60">
+                                            {boqForm.items?.map((item: any, idx: number) => (
+                                                <tr key={idx} className="hover:bg-emerald-100/40 transition-colors">
+                                                    <td className="px-2 py-1.5">
+                                                        <input
+                                                            type="text"
+                                                            value={item.itemNo}
+                                                            onChange={(e) => handleBoqItemChange(idx, 'itemNo', e.target.value)}
+                                                            className="w-full text-center px-1.5 py-1 border border-emerald-200 rounded-md text-xs font-mono bg-emerald-100/60"
+                                                            required
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-1.5">
+                                                        <textarea
+                                                            value={item.description}
+                                                            onChange={(e) => handleBoqItemChange(idx, 'description', e.target.value)}
+                                                            className="w-full px-2 py-1 border border-emerald-200 rounded-md text-xs resize-y bg-emerald-100/60"
+                                                            rows={1}
+                                                            required
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-1.5">
+                                                        <input
+                                                            type="number"
+                                                            value={item.quantity}
+                                                            onChange={(e) => handleBoqItemChange(idx, 'quantity', parseFloat(e.target.value) || 0)}
+                                                            className="w-full text-right px-2 py-1 border border-emerald-200 rounded-md text-xs font-mono bg-emerald-100/60"
+                                                            required
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-1.5">
+                                                        <input
+                                                            type="text"
+                                                            value={item.unit}
+                                                            onChange={(e) => handleBoqItemChange(idx, 'unit', e.target.value)}
+                                                            className="w-full px-2 py-1 border border-emerald-200 rounded-md text-xs text-center bg-emerald-100/60"
+                                                            required
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-1.5">
+                                                        <input
+                                                            type="number"
+                                                            value={item.rate}
+                                                            onChange={(e) => handleBoqItemChange(idx, 'rate', parseFloat(e.target.value) || 0)}
+                                                            className="w-full text-right px-2 py-1 border border-emerald-200 rounded-md text-xs font-mono bg-emerald-100/60"
+                                                            required
+                                                        />
+                                                    </td>
+                                                    <td className="px-3 py-1.5 text-right text-xs font-bold text-slate-800 font-mono">
+                                                        ₹{item.amount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                    </td>
+                                                    <td className="px-2 py-1.5">
+                                                        <select
+                                                            value={item.itemType}
+                                                            onChange={(e) => handleBoqItemChange(idx, 'itemType', e.target.value)}
+                                                            className="w-full px-2 py-1 border border-emerald-200 rounded-md text-xs bg-emerald-100/60"
+                                                        >
+                                                            <option value="Standard">Standard</option>
+                                                            <option value="Extra">Extra</option>
+                                                        </select>
+                                                    </td>
+                                                    <td className="px-2 py-1.5 text-center">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleBoqRemoveItem(idx)}
+                                                            className="text-rose-500 hover:text-rose-700 p-1 rounded hover:bg-rose-50 cursor-pointer"
+                                                            title="Delete Item"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="flex justify-between items-center bg-emerald-100/60 p-4 rounded-xl border border-emerald-200">
+                                    <span className="text-sm font-bold text-emerald-950">Total BOQ Amount (Excl. GST):</span>
+                                    <span className="text-lg font-black text-emerald-900 font-mono">
+                                        ₹{boqForm.totalAmount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                     </span>
                                 </div>
-                                <p className="text-xs text-slate-400 font-medium">Gross work measurements, statutory deductions, net payments</p>
+                                <div className="flex justify-end gap-2 pt-2">
+                                    <button type="button" onClick={handleCancelEdit} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold cursor-pointer">Cancel</button>
+                                    <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 cursor-pointer">Save BOQ</button>
+                                </div>
+                            </form>
+                        ) : boq ? (
+                            <div className="space-y-4">
+                                {/* Items Breakdown Table */}
+                                {!isBoqExpanded ? (
+                                    <div className="p-4 text-center text-xs text-slate-600 bg-emerald-100/50 border border-emerald-200 rounded-xl">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsBoqExpanded(true)}
+                                            className="inline-flex items-center gap-1.5 text-emerald-900 hover:text-emerald-950 font-bold hover:underline cursor-pointer"
+                                        >
+                                            <ChevronDown className="w-4 h-4" />
+                                            {boq.items?.length || 0} BOQ line items collapsed. Click to expand full items breakdown.
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto border border-emerald-200 rounded-xl max-h-[500px] overflow-y-auto shadow-2xs">
+                                        <table className="min-w-full divide-y divide-emerald-200 text-xs">
+                                            <thead className="bg-emerald-100/90 text-emerald-950 sticky top-0 z-10">
+                                                <tr className="text-emerald-950 font-bold">
+                                                    <th className="px-3 py-2.5 text-center w-16 uppercase">Item No.</th>
+                                                    <th className="px-4 py-2.5 text-left uppercase">Description of Item</th>
+                                                    <th className="px-3 py-2.5 text-right w-24 uppercase">Qty</th>
+                                                    <th className="px-3 py-2.5 text-center w-20 uppercase">Unit</th>
+                                                    <th className="px-3 py-2.5 text-right w-28 uppercase">Rate (₹)</th>
+                                                    <th className="px-4 py-2.5 text-right w-36 uppercase">Amount (₹)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-transparent divide-y divide-emerald-200/60">
+                                                {(!boq.items || boq.items.length === 0) ? (
+                                                    <tr>
+                                                        <td colSpan={6} className="px-6 py-8 text-center text-slate-400">No BOQ items recorded.</td>
+                                                    </tr>
+                                                ) : (
+                                                    boq.items.map((item: any, index: number) => (
+                                                        <tr key={index} className="hover:bg-emerald-100/50 transition-colors">
+                                                            <td className="px-3 py-2.5 text-center font-medium">
+                                                                <div className="flex flex-col items-center gap-0.5">
+                                                                    <span className="font-mono font-semibold text-slate-800">{item.itemNo}</span>
+                                                                    {item.itemType === 'Extra' && (
+                                                                        <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[8px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200 uppercase">
+                                                                            Extra
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-2.5 text-slate-700 leading-relaxed whitespace-pre-wrap">{item.description}</td>
+                                                            <td className="px-3 py-2.5 text-right font-mono text-slate-900 font-medium">{item.quantity != null ? Number(item.quantity).toLocaleString('en-IN') : '-'}</td>
+                                                            <td className="px-3 py-2.5 text-center text-slate-500 font-medium">
+                                                                <span className="px-2 py-0.5 rounded bg-emerald-100/80 text-emerald-900 text-[11px]">{item.unit || '-'}</span>
+                                                            </td>
+                                                            <td className="px-3 py-2.5 text-right font-mono text-slate-800">{item.rate != null ? `₹${Number(item.rate).toLocaleString('en-IN')}` : '-'}</td>
+                                                            <td className="px-4 py-2.5 text-right font-bold text-emerald-900 font-mono text-xs">
+                                                                {item.amount != null ? `₹${Number(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '-'}
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                            {boq.items && boq.items.length > 0 && (
+                                                <tfoot className="bg-emerald-200/80 text-emerald-950 font-bold border-t border-emerald-300">
+                                                    <tr>
+                                                        <td colSpan={5} className="px-4 py-2.5 text-right text-emerald-950 uppercase tracking-wider text-[11px]">Total BOQ Amount:</td>
+                                                        <td className="px-4 py-2.5 text-right font-mono text-emerald-950 text-sm font-black">₹{boq.totalAmount?.toLocaleString('en-IN')}</td>
+                                                    </tr>
+                                                </tfoot>
+                                            )}
+                                        </table>
+                                    </div>
+                                )}
                             </div>
+                        ) : (
+                            <div className="text-center py-6 border border-dashed border-emerald-200 rounded-2xl bg-emerald-100/40">
+                                <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                                <p className="text-slate-500 font-semibold text-sm">BOQ details are pending.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* 7. Billing & Financials Section */}
+                <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
+                    <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-slate-800">Billing & Audit Memo</h3>
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-200">
+                                {bills ? bills.length : 0} Bills Logged
+                            </span>
                         </div>
                         <button 
                             onClick={() => handleOpenBillModal(null)}
                             disabled={!workOrder}
-                            className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                            className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200 px-3 py-1.5 rounded-lg border border-emerald-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                         >
                             <Plus className="w-3.5 h-3.5" /> Log New Bill
                         </button>
                     </div>
 
                     <div className="p-6">
-                        {bills && bills.length > 0 ? (
+                        {sortedBills && sortedBills.length > 0 ? (
                             <div className="overflow-x-auto">
                                 <table className="excel-table">
                                     <thead>
-                                        <tr className="bg-[#107c41] text-white">
-                                            <th className="border border-slate-300 px-4 py-1.5 bg-[#107c41] text-center w-20">Bill No.</th>
-                                            <th className="border border-slate-300 px-4 py-1.5 bg-[#107c41] text-center w-24">Type</th>
-                                            <th className="border border-slate-300 px-4 py-1.5 bg-[#107c41] text-center w-32">Bill Date</th>
-                                            <th className="border border-slate-300 px-4 py-1.5 bg-[#107c41] text-center w-28">Delay</th>
-                                            <th className="border border-slate-300 px-4 py-1.5 bg-[#107c41] text-right">Gross Amount</th>
-                                            <th className="border border-slate-300 px-4 py-1.5 bg-[#107c41] text-right">Deductions</th>
-                                            <th className="border border-slate-300 px-4 py-1.5 bg-[#107c41] text-right text-emerald-100 font-bold">Net Paid</th>
-                                            <th className="border border-slate-300 px-4 py-1.5 bg-[#107c41] text-center w-24">Actions</th>
+                                        <tr className="bg-emerald-100/90 text-emerald-950">
+                                            <th className="border border-emerald-300 px-4 py-2 bg-emerald-100/90 text-center w-20 text-emerald-950 font-bold">Bill No.</th>
+                                            <th className="border border-emerald-300 px-4 py-2 bg-emerald-100/90 text-center w-24 text-emerald-950 font-bold">Type</th>
+                                            <th className="border border-emerald-300 px-4 py-2 bg-emerald-100/90 text-center w-32 text-emerald-950 font-bold">Bill Date</th>
+                                            <th className="border border-emerald-300 px-4 py-2 bg-emerald-100/90 text-center w-28 text-emerald-950 font-bold">Delay</th>
+                                            <th className="border border-emerald-300 px-4 py-2 bg-emerald-100/90 text-right text-emerald-950 font-bold">Gross (₹)</th>
+                                            <th className="border border-emerald-300 px-4 py-2 bg-emerald-100/90 text-right text-emerald-950 font-bold">Deductions (₹)</th>
+                                            <th className="border border-emerald-300 px-4 py-2 bg-emerald-100/90 text-right text-emerald-950 font-bold">Net Paid (₹)</th>
+                                            <th className="border border-emerald-300 px-4 py-2 bg-emerald-100/90 text-center w-24 text-emerald-950 font-bold">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-200">
-                                        {bills.map((bill: any, idx: number) => (
-                                            <tr key={bill._id} className="hover:bg-slate-50">
+                                    <tbody className="divide-y divide-emerald-200/60">
+                                        {sortedBills.map((bill: any, idx: number) => (
+                                            <tr key={bill._id} className="hover:bg-emerald-100/50">
                                                 <td className="border border-slate-200 px-4 py-1.5 text-center font-mono font-semibold text-slate-800">{bill.runningBillNumber || idx + 1}</td>
                                                 <td className="border border-slate-200 px-4 py-1.5 text-center font-semibold">
                                                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                                        bill.billType === 'Final' ? 'bg-indigo-100 text-indigo-800' : 'bg-blue-100 text-blue-800'
+                                                        bill.billType === 'Final' ? 'bg-indigo-100 text-indigo-800' : 'bg-emerald-100 text-emerald-900'
                                                     }`}>
                                                         {bill.billType}
                                                     </span>
@@ -3211,7 +3296,7 @@ export default function PackageDetailClient({
                                                         if (!compTargetDate) return '-';
                                                         
                                                         const getDaysDiff = (date1: Date, date2: Date) => {
-                                                            const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+                                                             const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
                                                             const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
                                                             const diffTime = d1.getTime() - d2.getTime();
                                                             return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -3240,13 +3325,16 @@ export default function PackageDetailClient({
                                                 <td className="border border-slate-200 px-4 py-1.5 text-right font-mono font-extrabold text-emerald-700">₹{bill.netPaidAmount?.toLocaleString('en-IN') || 0}</td>
                                                 <td className="border border-slate-200 px-4 py-1.5">
                                                     <div className="flex items-center justify-center gap-2">
-                                                        <Link href={`/bills/${bill._id}/checklist`} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md cursor-pointer" title="View Checklist">
+                                                        <Link href={`/packages/${packageId}/bills?billId=${bill._id}`} className="p-1 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md cursor-pointer transition-colors" title="View Full Bill Page">
+                                                            <Eye className="w-4 h-4" />
+                                                        </Link>
+                                                        <Link href={`/bills/${bill._id}/checklist`} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md cursor-pointer transition-colors" title="View Checklist">
                                                             <CheckSquare className="w-4 h-4" />
                                                         </Link>
-                                                        <button onClick={() => handleOpenBillModal(bill)} className="p-1 text-blue-600 hover:bg-blue-50 rounded-md cursor-pointer" title="Edit Bill">
+                                                        <button onClick={() => handleOpenBillModal(bill)} className="p-1 text-blue-600 hover:bg-blue-50 rounded-md cursor-pointer transition-colors" title="Edit Bill">
                                                             <Edit2 className="w-4 h-4" />
                                                         </button>
-                                                        <button onClick={() => handleDeleteBill(bill._id)} className="p-1 text-rose-600 hover:bg-rose-50 rounded-md cursor-pointer" title="Delete Bill">
+                                                        <button onClick={() => handleDeleteBill(bill._id)} className="p-1 text-rose-600 hover:bg-rose-50 rounded-md cursor-pointer transition-colors" title="Delete Bill">
                                                             <Trash2 className="w-4 h-4" />
                                                         </button>
                                                     </div>
@@ -3257,17 +3345,17 @@ export default function PackageDetailClient({
                                 </table>
                             </div>
                         ) : (
-                            <div className="text-center py-6 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
-                                <AlertCircle className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                            <div className="text-center py-6 border border-dashed border-emerald-200 rounded-2xl bg-emerald-100/40">
+                                <AlertCircle className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
                                 <p className="text-slate-500 font-semibold text-sm">No billing entries logged yet.</p>
                             </div>
                         )}
                         {/* INLINE FULL-WIDTH BILL FORM */}
                         {isBillModalOpen && (
-                            <div className="mt-6 border border-blue-200 bg-white rounded-2xl p-6 shadow-xs transition-all duration-300 animate-in fade-in slide-in-from-top-4">
+                            <div className="mt-6 border border-emerald-200 bg-white rounded-2xl p-6 shadow-xs transition-all duration-300 animate-in fade-in slide-in-from-top-4">
                                 <div className="pb-4 mb-6 border-b border-slate-200 flex justify-between items-center">
                                     <div className="flex items-center gap-2">
-                                        <span className="p-1.5 bg-blue-100 text-blue-700 rounded-lg">
+                                        <span className="p-1.5 bg-emerald-100 text-emerald-700 rounded-lg">
                                             <Receipt className="w-4 h-4" />
                                         </span>
                                         <h3 className="text-base font-bold text-slate-800">
@@ -3298,6 +3386,123 @@ export default function PackageDetailClient({
                                         router.refresh();
                                     }}
                                 />
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* 8. Excess Proposal Section */}
+                <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
+                    <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-slate-800">Excess Proposal</h3>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                excessProposals.length > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                            }`}>
+                                {excessProposals.length > 0 ? '✅ Submitted' : '⏳ Pending'}
+                            </span>
+                            {excessProposals.length > 0 && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+                                    {excessProposals.length} {excessProposals.length === 1 ? 'proposal' : 'proposals'}
+                                </span>
+                            )}
+                        </div>
+                        <button
+                            onClick={handleOpenAddExcessModal}
+                            className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all cursor-pointer"
+                        >
+                            <Plus className="w-3.5 h-3.5" /> Add Excess Proposal
+                        </button>
+                    </div>
+                    <div className="p-6">
+                        {excessProposals.length > 0 ? (
+                            <div className="overflow-x-auto border border-emerald-200 rounded-xl shadow-2xs">
+                                <table className="min-w-full divide-y divide-emerald-200 text-xs">
+                                    <thead className="bg-emerald-100/90 text-emerald-950">
+                                        <tr>
+                                            <th className="px-4 py-2.5 text-left font-bold uppercase tracking-wider w-16">Sr.</th>
+                                            <th className="px-4 py-2.5 text-left font-bold uppercase tracking-wider">Proposal No.</th>
+                                            <th className="px-4 py-2.5 text-left font-bold uppercase tracking-wider">Proposal Date</th>
+                                            <th className="px-4 py-2.5 text-center font-bold uppercase tracking-wider">Status</th>
+                                            <th className="px-4 py-2.5 text-center font-bold uppercase tracking-wider">Attached PDF</th>
+                                            <th className="px-4 py-2.5 text-left font-bold uppercase tracking-wider">Remarks</th>
+                                            <th className="px-4 py-2.5 text-center font-bold uppercase tracking-wider w-24">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 bg-white">
+                                        {excessProposals.map((p, idx) => (
+                                            <tr key={p._id} className="hover:bg-emerald-50/40 transition-colors">
+                                                <td className="px-4 py-2.5 text-slate-500 font-mono font-bold">{idx + 1}</td>
+                                                <td className="px-4 py-2.5 font-mono font-bold text-slate-900">{p.proposalNo || '-'}</td>
+                                                <td className="px-4 py-2.5 text-slate-600">
+                                                    {p.proposalDate ? new Date(p.proposalDate).toLocaleDateString('en-GB') : '-'}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-center">
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                                        p.status === 'Approved'
+                                                            ? 'bg-emerald-100 text-emerald-800'
+                                                            : p.status === 'Rejected'
+                                                            ? 'bg-rose-100 text-rose-800'
+                                                            : 'bg-amber-100 text-amber-800'
+                                                    }`}>
+                                                        {p.status || 'Submitted'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-2.5 text-center">
+                                                    {p.pdfUrl ? (
+                                                        <a
+                                                            href={p.pdfUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                                                            title="View attached PDF"
+                                                        >
+                                                            <FileText className="w-3.5 h-3.5 text-rose-600" />
+                                                            <span>View PDF</span>
+                                                        </a>
+                                                    ) : (
+                                                        <span className="text-slate-400 italic text-[11px]">No PDF</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-slate-600">{p.remarks || '-'}</td>
+                                                <td className="px-4 py-2.5 text-center">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button
+                                                            onClick={() => handleOpenEditExcessModal(p)}
+                                                            className="p-1 text-blue-600 hover:bg-blue-50 rounded-md cursor-pointer transition-colors"
+                                                            title="Edit Proposal"
+                                                        >
+                                                            <Edit2 className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteExcessProposal(p._id, p.proposalNo)}
+                                                            disabled={deletingExcessId === p._id}
+                                                            className="p-1 text-rose-600 hover:bg-rose-50 rounded-md cursor-pointer transition-colors disabled:opacity-50"
+                                                            title="Delete Proposal"
+                                                        >
+                                                            {deletingExcessId === p._id ? (
+                                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                            ) : (
+                                                                <Trash2 className="w-4 h-4" />
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="text-center py-6 border border-dashed border-emerald-200 rounded-2xl bg-emerald-100/40">
+                                <AlertCircle className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
+                                <p className="text-slate-500 font-semibold text-sm">No excess proposal submitted for this package yet.</p>
+                                <button
+                                    onClick={handleOpenAddExcessModal}
+                                    className="mt-3 inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                                >
+                                    <Plus className="w-3.5 h-3.5" /> Submit Excess Proposal
+                                </button>
                             </div>
                         )}
                     </div>
@@ -3348,8 +3553,8 @@ export default function PackageDetailClient({
                                 <input type="text" value={newContractor.gstNo} onChange={(e) => setNewContractor(prev => ({ ...prev, gstNo: e.target.value.toUpperCase() }))} placeholder="e.g. 24AAAAA0000A1Z5" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-mono uppercase" />
                             </div>
                             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-                                <button type="button" onClick={handleCloseContractorModal} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold">Cancel</button>
-                                <button type="submit" disabled={contractorSaving} className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
+                                <button type="button" onClick={handleCloseContractorModal} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold cursor-pointer">Cancel</button>
+                                <button type="submit" disabled={contractorSaving} className="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 cursor-pointer">
                                     {contractorSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                     {contractorSaving ? 'Saving...' : editingContractorId ? 'Save Changes' : 'Save Contractor'}
                                 </button>
@@ -3373,8 +3578,8 @@ export default function PackageDetailClient({
                                 <input type="text" required value={newBankName} onChange={(e) => setNewBankName(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
                             </div>
                             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-                                <button type="button" onClick={() => setIsBankModalOpen(false)} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold">Cancel</button>
-                                <button type="submit" disabled={bankSaving} className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
+                                <button type="button" onClick={() => setIsBankModalOpen(false)} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold cursor-pointer">Cancel</button>
+                                <button type="submit" disabled={bankSaving} className="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 cursor-pointer">
                                     {bankSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                     {bankSaving ? 'Saving Bank...' : 'Save Bank'}
                                 </button>
@@ -3412,12 +3617,12 @@ export default function PackageDetailClient({
                                 </select>
                             </div>
                             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-                                <button type="button" onClick={() => setIsReTenderModalOpen(false)} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold">Cancel</button>
+                                <button type="button" onClick={() => setIsReTenderModalOpen(false)} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold cursor-pointer">Cancel</button>
                                 <button 
                                     type="button" 
                                     disabled={!reTenderReason || loading} 
                                     onClick={() => handleExecuteReTender(reTenderReason)} 
-                                    className="px-4 py-2 bg-rose-600 text-white rounded-xl text-sm font-semibold hover:bg-rose-700 disabled:opacity-50"
+                                    className="px-4 py-2 bg-rose-600 text-white rounded-xl text-sm font-semibold hover:bg-rose-700 disabled:opacity-50 cursor-pointer"
                                 >
                                     Confirm & Create Re-Tender
                                 </button>
@@ -3477,7 +3682,7 @@ export default function PackageDetailClient({
                             <button
                                 type="button"
                                 onClick={() => setIsBiddersModalOpen(false)}
-                                className="px-5 py-2 bg-[#107c41] hover:bg-[#0f5b30] text-white rounded-xl text-sm font-semibold cursor-pointer"
+                                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold cursor-pointer"
                             >
                                 Save & Close
                             </button>
@@ -3526,7 +3731,7 @@ export default function PackageDetailClient({
                                                         <button 
                                                             type="button" 
                                                             onClick={() => setIsBankModalOpen(true)}
-                                                            className="text-[9px] text-blue-600 hover:underline font-bold"
+                                                            className="text-[9px] text-emerald-700 hover:underline font-bold"
                                                         >
                                                             + Add
                                                         </button>
@@ -3534,7 +3739,7 @@ export default function PackageDetailClient({
                                                     <select 
                                                         value={b.tenderFeeBankName || ''} 
                                                         onChange={(e) => handleTenderFeeChange(idx, 'tenderFeeBankName', e.target.value)} 
-                                                        className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 font-medium"
+                                                        className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:ring-1 focus:ring-emerald-500 font-medium"
                                                     >
                                                         <option value="">-- Select Bank --</option>
                                                         {banks.map((bank: any) => (
@@ -3551,7 +3756,7 @@ export default function PackageDetailClient({
                                                         placeholder="e.g. 514820" 
                                                         value={b.tenderFeeDdNo || ''} 
                                                         onChange={(e) => handleTenderFeeChange(idx, 'tenderFeeDdNo', e.target.value)} 
-                                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white font-mono focus:ring-1 focus:ring-blue-500" 
+                                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white font-mono focus:ring-1 focus:ring-emerald-500" 
                                                     />
                                                 </div>
                                                 <div>
@@ -3561,7 +3766,7 @@ export default function PackageDetailClient({
                                                         placeholder="DD/MM/YYYY" 
                                                         value={b.tenderFeeDdDate || ''} 
                                                         onChange={(e) => handleTenderFeeChange(idx, 'tenderFeeDdDate', e.target.value)} 
-                                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white font-mono focus:ring-1 focus:ring-blue-500" 
+                                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white font-mono focus:ring-1 focus:ring-emerald-500" 
                                                     />
                                                 </div>
                                                 <div>
@@ -3571,7 +3776,7 @@ export default function PackageDetailClient({
                                                         placeholder="e.g. 1500" 
                                                         value={b.tenderFeeDdAmount !== undefined ? b.tenderFeeDdAmount : ''} 
                                                         onChange={(e) => handleTenderFeeChange(idx, 'tenderFeeDdAmount', e.target.value)} 
-                                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white font-mono text-right focus:ring-1 focus:ring-blue-500" 
+                                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white font-mono text-right focus:ring-1 focus:ring-emerald-500" 
                                                     />
                                                 </div>
                                                 <div>
@@ -3581,7 +3786,7 @@ export default function PackageDetailClient({
                                                         placeholder="DD/MM/YYYY" 
                                                         value={b.tenderFeeChallanDate || ''} 
                                                         onChange={(e) => handleTenderFeeChange(idx, 'tenderFeeChallanDate', e.target.value)} 
-                                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white font-mono focus:ring-1 focus:ring-blue-500" 
+                                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white font-mono focus:ring-1 focus:ring-emerald-500" 
                                                     />
                                                 </div>
                                             </div>
@@ -3602,12 +3807,165 @@ export default function PackageDetailClient({
                                 type="button" 
                                 disabled={savingTenderFee} 
                                 onClick={handleSaveTenderFees} 
-                                className="px-5 py-2 bg-[#107c41] hover:bg-[#0f5b30] text-white rounded-xl text-sm font-semibold disabled:opacity-50 cursor-pointer flex items-center gap-2"
+                                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold disabled:opacity-50 cursor-pointer flex items-center gap-2"
                             >
                                 {savingTenderFee ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                                 Save Tender Fees
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* EXCESS PROPOSAL MODAL */}
+            {isExcessModalOpen && (
+                <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl border border-emerald-200 shadow-xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="px-6 py-4 bg-emerald-50 border-b border-emerald-200 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
+                                    <TrendingUp className="w-4 h-4" />
+                                </span>
+                                <h3 className="text-sm font-bold text-slate-800">
+                                    {editingExcessProposal ? 'Edit Excess Proposal' : 'Add Excess Proposal'}
+                                </h3>
+                            </div>
+                            <button
+                                onClick={() => setIsExcessModalOpen(false)}
+                                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 cursor-pointer"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveExcessProposal} className="p-6 space-y-4 text-xs">
+                            {/* Proposal No. & Date */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block font-bold text-slate-700 mb-1">
+                                        Proposal No.
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. EP/2026/01 (optional)"
+                                        value={excessForm.proposalNo}
+                                        onChange={(e) => setExcessForm((prev) => ({ ...prev, proposalNo: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block font-bold text-slate-700 mb-1">
+                                        Proposal Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={excessForm.proposalDate}
+                                        onChange={(e) => setExcessForm((prev) => ({ ...prev, proposalDate: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Status */}
+                            <div>
+                                <label className="block font-bold text-slate-700 mb-1">Status</label>
+                                <select
+                                    value={excessForm.status}
+                                    onChange={(e) => setExcessForm((prev) => ({ ...prev, status: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                >
+                                    <option value="Submitted">Submitted</option>
+                                    <option value="Approved">Approved</option>
+                                    <option value="Draft">Draft</option>
+                                    <option value="Rejected">Rejected</option>
+                                </select>
+                            </div>
+
+                            {/* PDF Upload */}
+                            <div>
+                                <label className="block font-bold text-slate-700 mb-1">Proposal PDF</label>
+                                <div className="border border-dashed border-emerald-300 rounded-xl p-4 bg-emerald-50/40 text-center">
+                                    {excessForm.pdfUrl ? (
+                                        <div className="flex items-center justify-between bg-white border border-emerald-200 p-2.5 rounded-lg">
+                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                <FileText className="w-5 h-5 text-rose-600 flex-shrink-0" />
+                                                <span className="font-semibold text-slate-800 truncate">{excessForm.fileName || 'Attached Proposal PDF'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <a
+                                                    href={excessForm.pdfUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-1 text-emerald-700 hover:bg-emerald-50 rounded"
+                                                    title="Preview PDF"
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                </a>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setExcessForm((prev) => ({ ...prev, pdfUrl: '', fileName: '', fileSize: 0 }))}
+                                                    className="p-1 text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
+                                                    title="Remove PDF"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <label className="cursor-pointer flex flex-col items-center justify-center py-2">
+                                            {uploadingExcessPdf ? (
+                                                <Loader2 className="w-6 h-6 text-emerald-600 animate-spin mb-1" />
+                                            ) : (
+                                                <Upload className="w-6 h-6 text-emerald-600 mb-1" />
+                                            )}
+                                            <span className="font-bold text-emerald-800">
+                                                {uploadingExcessPdf ? 'Uploading PDF...' : 'Click to Upload Proposal PDF'}
+                                            </span>
+                                            <span className="text-[10px] text-slate-400 mt-0.5">Accepts .pdf files</span>
+                                            <input
+                                                type="file"
+                                                accept=".pdf"
+                                                onChange={handleExcessPdfUpload}
+                                                disabled={uploadingExcessPdf}
+                                                className="hidden"
+                                            />
+                                        </label>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Remarks */}
+                            <div>
+                                <label className="block font-bold text-slate-700 mb-1">Remarks / Notes</label>
+                                <textarea
+                                    rows={2}
+                                    placeholder="Optional notes or details about the excess items..."
+                                    value={excessForm.remarks}
+                                    onChange={(e) => setExcessForm((prev) => ({ ...prev, remarks: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsExcessModalOpen(false)}
+                                    className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-50 cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={savingExcessProposal || uploadingExcessPdf}
+                                    className="inline-flex items-center gap-1.5 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                                >
+                                    {savingExcessProposal ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                    {editingExcessProposal ? 'Update Proposal' : 'Save Proposal'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

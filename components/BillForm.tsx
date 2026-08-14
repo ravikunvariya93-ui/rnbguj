@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save, RefreshCw, Plus, Trash2, X, Loader2 } from 'lucide-react';
+import { Save, RefreshCw, Plus, Trash2, X, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 import SearchableSelect from './SearchableSelect';
 
@@ -56,6 +56,9 @@ interface BillFormData {
     timeLimitDeposit: any;
     testingCharges: any;
     otherDeposit: any;
+    otherDepositLabel?: string;
+    otherDeposit2: any;
+    otherDeposit2Label?: string;
     totalDeduction: any;
     labourCessApplicable: boolean;
     items: IBillItem[];
@@ -74,6 +77,7 @@ interface BillFormProps {
     workType?: string;
     budgetHead?: string;
     stipulatedCompletionDate?: string | Date;
+    redirectTo?: string;
     onSuccess?: () => void;
     onCancel?: () => void;
 }
@@ -140,6 +144,7 @@ export default function BillForm({
     workType = '',
     budgetHead = '',
     stipulatedCompletionDate,
+    redirectTo,
     onSuccess, 
     onCancel 
 }: BillFormProps) {
@@ -159,7 +164,12 @@ export default function BillForm({
     const [budgetHeadState, setBudgetHeadState] = useState<string>(budgetHead || '');
     const [abstractFetched, setAbstractFetched] = useState(false);
     const [previousSDTotal, setPreviousSDTotal] = useState<number>(0);
+    const [previousTLDTotal, setPreviousTLDTotal] = useState<number>(0);
     const [tableRawInputs, setTableRawInputs] = useState<Record<string, string>>({});
+    const [isAbstractExpanded, setIsAbstractExpanded] = useState<boolean>(false);
+    const [isExcessSavingExpanded, setIsExcessSavingExpanded] = useState<boolean>(false);
+    const [isWorkWiseExpanded, setIsWorkWiseExpanded] = useState<boolean>(false);
+    const [isMeasurementCheckingExpanded, setIsMeasurementCheckingExpanded] = useState<boolean>(false);
 
     const sanitized = Object.fromEntries(
         Object.entries(initialData).map(([k, v]) => [k, v == null ? '' : v])
@@ -175,8 +185,10 @@ export default function BillForm({
             }))
             : [];
 
+    const normalizedWorkOrderId = initialWorkOrderId || (typeof initialData?.workOrderId === 'object' ? initialData?.workOrderId?._id : initialData?.workOrderId) || sanitized.workOrderId || '';
+
     const [formData, setFormData] = useState<BillFormData>({
-        workOrderId: initialWorkOrderId || '',
+        workOrderId: normalizedWorkOrderId,
         billType: 'Running',
         runningBillNumber: '1',
         billDate: sanitized.billDate ? formatDateForInput(sanitized.billDate) : getTodayDateFormatted(),
@@ -207,8 +219,14 @@ export default function BillForm({
         timeLimitDeposit: sanitized.timeLimitDeposit ?? 0,
         testingCharges: sanitized.testingCharges ?? 0,
         otherDeposit: sanitized.otherDeposit ?? 0,
+        otherDepositLabel: sanitized.otherDepositLabel || 'Other Deposit',
+        otherDeposit2: sanitized.otherDeposit2 ?? 0,
+        otherDeposit2Label: sanitized.otherDeposit2Label || 'Other Deposit 2',
         totalDeduction: sanitized.totalDeduction ?? 0,
         ...sanitized,
+        otherDepositLabel: sanitized.otherDepositLabel || 'Other Deposit',
+        otherDeposit2Label: sanitized.otherDeposit2Label || 'Other Deposit 2',
+        workOrderId: normalizedWorkOrderId,
         praisaBillNo: sanitized.praisaBillNo || '',
         praisaBillDate: sanitized.praisaBillDate ? formatDateForInput(sanitized.praisaBillDate) : '',
         voucherNo: sanitized.voucherNo || '',
@@ -333,9 +351,11 @@ export default function BillForm({
                         return (b.runningBillNumber || 0) < currentBillNo;
                     });
                     const sum = prevBills.reduce((s: number, b: any) => s + (b.securityDeposit || 0), 0);
+                    const sumTLD = prevBills.reduce((s: number, b: any) => s + (b.timeLimitDeposit || 0), 0);
                     setPreviousSDTotal(sum);
+                    setPreviousTLDTotal(sumTLD);
                     setFormData((prev: any) => {
-                        return recalculateAuditMemoInternal(prev, undefined, sum);
+                        return recalculateAuditMemoInternal(prev, undefined, sum, sumTLD);
                     });
                 }
             } catch (err) {
@@ -356,7 +376,7 @@ export default function BillForm({
     ) => {
         const netPay = Math.max(netPayVal, 0);
         const incomeTax = netPay > 0 ? Math.ceil((netPay * 0.02) / 10) * 10 : 0;
-        const gst = netPay > 0 ? Math.ceil((netPay * 0.02) / 10) * 10 : 0;
+        const gst = incomeTax; // GST equal to Income Tax (IT)
         const labourCess = netPay > 0 ? Math.ceil((netPay * 0.01) / 10) * 10 : 0;
 
         const cp = cPrice !== undefined ? cPrice : contractPriceState;
@@ -364,7 +384,7 @@ export default function BillForm({
 
         const currentWType = wType || workTypeState || '';
         const isBuilding = String(currentWType).toLowerCase().includes('building');
-        const freeMaintenanceDeposit = isBuilding ? 0 : parseFloat((netPay * 0.05).toFixed(2));
+        const freeMaintenanceDeposit = isBuilding ? 0 : (netPay > 0 ? Math.ceil((netPay * 0.05) / 100) * 100 : 0);
 
         const currentBHead = String(bHead || budgetHeadState || '').trim().toLowerCase();
         const isMMGSY = currentBHead.includes('5054 mmgsy normal') || currentBHead.includes('5054 mmgsy scsp') || currentBHead.includes('mmgsy');
@@ -384,7 +404,7 @@ export default function BillForm({
         };
     };
 
-    const recalculateAuditMemoInternal = (nextData: any, updatedFields?: Partial<typeof formData>, prevSD?: number) => {
+    const recalculateAuditMemoInternal = (nextData: any, updatedFields?: Partial<typeof formData>, prevSD?: number, prevTLD?: number) => {
         const gross = parseFloat(nextData.grossAmount) || 0;
         const prevPaid = parseFloat(nextData.auditMemoPreviouslyPaid) || 0;
         const dismantle = parseFloat(nextData.dismantleCredit) || 0;
@@ -401,12 +421,15 @@ export default function BillForm({
         const autoDeductions = getDeductionsForNetPayable(netPay, Number(nextData.runningBillNumber), undefined, undefined, undefined, undefined, prevSD);
 
         const manualDeductionFields = new Set(updatedFields ? Object.keys(updatedFields) : []);
+        const currentPrevTLD = prevTLD !== undefined ? prevTLD : previousTLDTotal;
 
         // ── When editing a saved bill, never auto-recalculate deductions ────────
         // Always use whatever is stored (or what the user just typed). Only recompute totals.
         if (isEditing) {
             const storedIT    = parseFloat(nextData.incomeTax)              || 0;
-            const storedGST   = parseFloat(nextData.gst)                    || 0;
+            const storedGST   = (manualDeductionFields.has('incomeTax') && !manualDeductionFields.has('gst'))
+                ? storedIT
+                : (parseFloat(nextData.gst) || 0);
             const storedCess  = parseFloat(nextData.labourCess)             || 0;
             const storedSD    = parseFloat(nextData.securityDeposit)        || 0;
             const storedFMD   = parseFloat(nextData.freeMaintenanceDeposit) || 0;
@@ -417,12 +440,14 @@ export default function BillForm({
             const storedCore  = parseFloat(nextData.coreSampleDeposit)      || 0;
             const storedTest  = parseFloat(nextData.testingCharges)         || 0;
             const storedOther = parseFloat(nextData.otherDeposit)           || 0;
+            const storedOther2 = parseFloat(nextData.otherDeposit2)         || 0;
 
-            const editTotalDed = parseFloat((storedIT + storedGST + storedCess + storedSD + storedFMD + storedAsph + storedCore + storedTPI + storedESMP + storedTLD + storedTest + storedOther).toFixed(2));
+            const editTotalDed = parseFloat((storedIT + storedGST + storedCess + storedSD + storedFMD + storedAsph + storedCore + storedTPI + storedESMP + storedTLD + storedTest + storedOther + storedOther2).toFixed(2));
             const editNetPaid  = parseFloat((netPay - editTotalDed).toFixed(2));
 
             return {
                 ...nextData,
+                gst: (manualDeductionFields.has('incomeTax') && !manualDeductionFields.has('gst')) ? nextData.incomeTax : nextData.gst,
                 netPayableAmount: netPay,
                 totalDeduction:   editTotalDed,
                 netPaidAmount:    editNetPaid,
@@ -435,7 +460,7 @@ export default function BillForm({
         it = manualDeductionFields.has('incomeTax') ? (parseFloat(nextData.incomeTax) || 0)
             : (deductionChanged ? autoDeductions.incomeTax : (nextData.incomeTax !== undefined ? (parseFloat(nextData.incomeTax) || 0) : autoDeductions.incomeTax));
         gstDeduction = manualDeductionFields.has('gst') ? (parseFloat(nextData.gst) || 0)
-            : (deductionChanged ? autoDeductions.gst : (nextData.gst !== undefined ? (parseFloat(nextData.gst) || 0) : autoDeductions.gst));
+            : (manualDeductionFields.has('incomeTax') ? it : (deductionChanged ? autoDeductions.gst : (nextData.gst !== undefined ? (parseFloat(nextData.gst) || 0) : autoDeductions.gst)));
         cessVal = manualDeductionFields.has('labourCess') ? (parseFloat(nextData.labourCess) || 0)
             : (deductionChanged ? autoDeductions.labourCess : (nextData.labourCess !== undefined ? (parseFloat(nextData.labourCess) || 0) : autoDeductions.labourCess));
         sd = manualDeductionFields.has('securityDeposit') ? (parseFloat(nextData.securityDeposit) || 0)
@@ -467,7 +492,8 @@ export default function BillForm({
                 if (lastRecordDate) {
                     const daysDelay = Math.max(0, Math.min(100, getDaysDiff(lastRecordDate, compTargetDate)));
                     const sayAmt = parseFloat(nextData.grossAmount) || 0;
-                    calculatedTLD = Math.ceil((0.001 * sayAmt * daysDelay) / 100) * 100;
+                    const totalTLD = Math.ceil((0.001 * sayAmt * daysDelay) / 100) * 100;
+                    calculatedTLD = Math.max(0, totalTLD - currentPrevTLD);
                 }
             } else if (nextData.billType === 'Final') {
                 const completionDate = nextData.actualCompletionDate ? parseDateStr(nextData.actualCompletionDate) : null;
@@ -476,7 +502,8 @@ export default function BillForm({
                     const contractPriceVal = contractPrice 
                         ? contractPrice 
                         : (selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0);
-                    calculatedTLD = Math.ceil((0.001 * contractPriceVal * daysDelay) / 100) * 100;
+                    const totalTLD = Math.ceil((0.001 * contractPriceVal * daysDelay) / 100) * 100;
+                    calculatedTLD = Math.max(0, totalTLD - currentPrevTLD);
                 }
             }
         }
@@ -499,15 +526,16 @@ export default function BillForm({
         const core = parseFloat(nextData.coreSampleDeposit) || 0;
         const testing = parseFloat(nextData.testingCharges) || 0;
         const otherDep = parseFloat(nextData.otherDeposit) || 0;
+        const otherDep2 = parseFloat(nextData.otherDeposit2) || 0;
 
-        const totalDed = parseFloat((it + gstDeduction + cessVal + sd + fmd + asphalt + core + tpiVal + esmpVal + tldNum + testing + otherDep).toFixed(2));
+        const totalDed = parseFloat((it + gstDeduction + cessVal + sd + fmd + asphalt + core + tpiVal + esmpVal + tldNum + testing + otherDep + otherDep2).toFixed(2));
         const netPaid = parseFloat((netPay - totalDed).toFixed(2));
 
         return {
             ...nextData,
             // Preserve raw string for manually-typed fields so decimal input (e.g. "12.") isn't coerced to a number mid-typing.
             incomeTax:             manualDeductionFields.has('incomeTax')             ? nextData.incomeTax             : it,
-            gst:                   manualDeductionFields.has('gst')                   ? nextData.gst                   : gstDeduction,
+            gst:                   manualDeductionFields.has('gst')                   ? nextData.gst                   : (manualDeductionFields.has('incomeTax') ? nextData.incomeTax : gstDeduction),
             labourCess:            manualDeductionFields.has('labourCess')            ? nextData.labourCess            : cessVal,
             securityDeposit:       manualDeductionFields.has('securityDeposit')       ? nextData.securityDeposit       : sd,
             freeMaintenanceDeposit:manualDeductionFields.has('freeMaintenanceDeposit')? nextData.freeMaintenanceDeposit: fmd,
@@ -517,6 +545,7 @@ export default function BillForm({
             coreSampleDeposit:     manualDeductionFields.has('coreSampleDeposit')     ? nextData.coreSampleDeposit     : nextData.coreSampleDeposit,
             testingCharges:        manualDeductionFields.has('testingCharges')        ? nextData.testingCharges        : nextData.testingCharges,
             otherDeposit:          manualDeductionFields.has('otherDeposit')          ? nextData.otherDeposit          : nextData.otherDeposit,
+            otherDeposit2:         manualDeductionFields.has('otherDeposit2')         ? nextData.otherDeposit2         : nextData.otherDeposit2,
             timeLimitDeposit: tldRaw,
             netPayableAmount: netPay,
             totalDeduction: totalDed,
@@ -754,6 +783,7 @@ export default function BillForm({
     };
 
     const addMeasurementCheckingRow = () => {
+        setIsMeasurementCheckingExpanded(true);
         const today = getTodayDateFormatted();
         setFormData((prev: any) => ({
             ...prev,
@@ -898,6 +928,9 @@ export default function BillForm({
             submissionData.timeLimitDeposit = Number(formData.timeLimitDeposit || 0);
             submissionData.testingCharges = Number(formData.testingCharges || 0);
             submissionData.otherDeposit = Number(formData.otherDeposit || 0);
+            submissionData.otherDepositLabel = formData.otherDepositLabel || 'Other Deposit';
+            submissionData.otherDeposit2 = Number(formData.otherDeposit2 || 0);
+            submissionData.otherDeposit2Label = formData.otherDeposit2Label || 'Other Deposit 2';
             submissionData.totalDeduction = Number(formData.totalDeduction || 0);
 
             const url = isEditing ? `/api/bills/${initialData._id}` : '/api/bills';
@@ -916,6 +949,9 @@ export default function BillForm({
 
             if (onSuccess) {
                 onSuccess();
+            } else if (redirectTo) {
+                router.push(redirectTo);
+                router.refresh();
             } else {
                 router.push('/bills');
                 router.refresh();
@@ -1118,8 +1154,13 @@ export default function BillForm({
             {/* Abstract Section */}
             <div className="p-8 pt-4">
                 <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-3">
                         <h3 className="text-lg leading-6 font-medium text-gray-900">Bill Abstract (Line Items)</h3>
+                        {formData.items && formData.items.length > 0 && (
+                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
+                                {formData.items.length} items
+                            </span>
+                        )}
                         {formData.workOrderId && (
                             <button
                                 type="button"
@@ -1130,11 +1171,32 @@ export default function BillForm({
                             </button>
                         )}
                     </div>
-                    {fetchingAbstract && (
-                        <span className="inline-flex items-center text-sm text-blue-600">
-                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Fetching BOQ...
-                        </span>
-                    )}
+                    <div className="flex items-center gap-3">
+                        {fetchingAbstract && (
+                            <span className="inline-flex items-center text-sm text-blue-600">
+                                <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Fetching BOQ...
+                            </span>
+                        )}
+                        {formData.items && formData.items.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => setIsAbstractExpanded(!isAbstractExpanded)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-slate-200"
+                            >
+                                {isAbstractExpanded ? (
+                                    <>
+                                        <ChevronUp className="w-3.5 h-3.5" />
+                                        Collapse Line Items
+                                    </>
+                                ) : (
+                                    <>
+                                        <ChevronDown className="w-3.5 h-3.5" />
+                                        Expand Line Items ({formData.items.length})
+                                    </>
+                                )}
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto border border-gray-200 rounded-lg">
@@ -1166,6 +1228,19 @@ export default function BillForm({
                                         ) : (
                                             <span>{initialWorkOrderId ? 'No BOQ items found for this work order.' : 'Select a Work Order above to load the BOQ items abstract.'}</span>
                                         )}
+                                    </td>
+                                </tr>
+                            ) : !isAbstractExpanded ? (
+                                <tr>
+                                    <td colSpan={11} className="px-4 py-3.5 text-center text-xs text-slate-500 bg-slate-50/60 font-medium">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsAbstractExpanded(true)}
+                                            className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 font-semibold hover:underline cursor-pointer"
+                                        >
+                                            <ChevronDown className="w-4 h-4" />
+                                            {formData.items.length} line items collapsed. Click to expand line item breakdown.
+                                        </button>
                                     </td>
                                 </tr>
                             ) : (
@@ -1453,263 +1528,164 @@ export default function BillForm({
             {/* Work-wise Expenditure Table */}
             <div className="p-8 pt-4">
                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">Work-wise Expenditure</h3>
-                </div>
-                <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-slate-50">
-                            <tr>
-                                <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-24">SR. No.</th>
-                                <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700">Name of Work</th>
-                                <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-48">Amount (₹)</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {formData.works.length === 0 ? (
-                                <tr>
-                                    <td colSpan={3} className="px-6 py-8 text-center text-sm text-gray-500">
-                                        No works found for this package.
-                                    </td>
-                                </tr>
+                    <div className="flex items-center space-x-3">
+                        <h3 className="text-lg leading-6 font-medium text-gray-900">Work-wise Expenditure</h3>
+                        {formData.works && formData.works.length > 0 && (
+                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
+                                {formData.works.length} works
+                            </span>
+                        )}
+                    </div>
+                    {formData.works && formData.works.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => setIsWorkWiseExpanded(!isWorkWiseExpanded)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-slate-200"
+                        >
+                            {isWorkWiseExpanded ? (
+                                <>
+                                    <ChevronUp className="w-3.5 h-3.5" />
+                                    Collapse Work Breakdown
+                                </>
                             ) : (
-                                formData.works.map((work: any, index: number) => (
-                                    <tr key={index}>
-                                        <td className="px-3 py-2">
-                                            <input type="text" value={work.srNo} readOnly className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border bg-gray-50" />
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            <input type="text" value={work.nameOfWork} readOnly className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border bg-gray-50" />
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            <input type="number" min="0" step="0.01" value={work.amount || ''} onChange={(e) => handleWorkChange(index, 'amount', e.target.value)} className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-indigo-500 focus:border-indigo-500" />
-                                        </td>
-                                    </tr>
-                                ))
+                                <>
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                    Expand Work Breakdown ({formData.works.length})
+                                </>
                             )}
-                        </tbody>
-                        {formData.works.length > 0 && (() => {
-                            const totalAmount = formData.works.reduce((s: number, w: any) => s + (w.amount || 0), 0);
-                            const pctMultiplier = tenderPercentage / 100;
-                            const adjAmount = totalAmount * pctMultiplier;
-                            const netAmount = tenderDirection === 'Below' ? totalAmount - adjAmount : totalAmount + adjAmount;
-                            
-                            const gstBase = formData.labourCessApplicable ? netAmount * 0.99 : netAmount;
-                            const gstAmount = gstBase * 0.18;
-                            const payableAmount = netAmount + gstAmount;
-
-                            return (
-                                <tfoot className="bg-slate-100 font-semibold border-t-2 border-slate-200">
-                                    <tr className="border-b border-slate-200">
-                                        <td colSpan={2} className="px-3 py-2.5 text-right text-sm text-slate-700">Total Amount:</td>
-                                        <td className="px-3 py-2.5 text-sm text-slate-800 font-mono font-bold">₹{totalAmount.toFixed(2)}</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr className="border-b border-slate-200 bg-slate-50/50">
-                                        <td colSpan={2} className="px-3 py-2 text-right text-sm text-slate-600">{tenderPercentage}% {tenderDirection}:</td>
-                                        <td className="px-3 py-2 text-sm text-slate-600 font-mono font-bold">
-                                            {tenderDirection === 'Below' ? '-₹' : '₹'}{adjAmount.toFixed(2)}
-                                        </td>
-                                        <td></td>
-                                    </tr>
-                                    <tr className="border-b border-slate-200">
-                                        <td colSpan={2} className="px-3 py-2.5 text-right text-sm text-slate-700 font-semibold">Net Amount:</td>
-                                        <td className="px-3 py-2.5 text-sm text-emerald-700 font-mono font-bold">₹{netAmount.toFixed(2)}</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr className="border-b border-slate-200 bg-slate-50/50">
-                                        <td colSpan={2} className="px-3 py-2 text-right text-sm text-slate-600">
-                                            <div className="flex items-center justify-end space-x-2">
-                                                <input
-                                                    type="checkbox"
-                                                    name="labourCessApplicable"
-                                                    checked={formData.labourCessApplicable}
-                                                    onChange={handleChange}
-                                                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded cursor-pointer"
-                                                />
-                                                <label className="cursor-pointer text-slate-600 hover:text-slate-800">
-                                                    Labour Cess Applicable
-                                                </label>
-                                                <span className="mx-2 text-slate-300">|</span>
-                                                <span>Add 18% GST:</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-3 py-2 text-sm text-slate-600 font-mono font-bold">₹{gstAmount.toFixed(2)}</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr className="bg-emerald-50 font-bold border-b border-slate-200">
-                                        <td colSpan={2} className="px-3 py-3 text-right text-sm text-emerald-800 text-base">Net Payble Amount:</td>
-                                        <td className="px-3 py-3 text-sm text-emerald-900 font-mono text-lg font-extrabold">₹{payableAmount.toFixed(2)}</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr className="bg-emerald-100 font-bold border-b-4 border-emerald-300">
-                                        <td colSpan={2} className="px-3 py-3 text-right text-sm text-emerald-900 tracking-wider">Say Amount:</td>
-                                        <td className="px-3 py-3 text-sm text-emerald-950 font-mono text-lg font-extrabold">₹{Math.floor(payableAmount).toFixed(2)}</td>
-                                        <td></td>
-                                    </tr>
-                                </tfoot>
-                            );
-                        })()}
-                    </table>
+                        </button>
+                    )}
                 </div>
-            </div>
-
-            {/* Measurement Checking Section */}
-            <div className="p-8 pt-4 border-t border-gray-250">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">Measurement Checking</h3>
-                    <button
-                        type="button"
-                        onClick={addMeasurementCheckingRow}
-                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-semibold rounded-md text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-all"
-                    >
-                        <Plus className="w-3.5 h-3.5 mr-1" /> Add Measurement Row
-                    </button>
-                </div>
-                
-                <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-slate-50">
-                            <tr>
-                                <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-44">Date</th>
-                                <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700">Item No.</th>
-                                <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-36">MB Page No.</th>
-                                <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-36">QTY.</th>
-                                <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-36">Rate (₹)</th>
-                                <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-36">Amount (₹)</th>
-                                <th className="px-3 py-3 text-center text-xs font-semibold text-slate-700 w-16">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {!formData.measurementChecking || formData.measurementChecking.length === 0 ? (
+                {isWorkWiseExpanded && (
+                    <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-slate-50">
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
-                                        No measurement checking records added yet. Click "Add Measurement Row" above.
-                                    </td>
+                                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-24">SR. No.</th>
+                                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700">Name of Work</th>
+                                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-48">Amount (₹)</th>
                                 </tr>
-                            ) : (
-                                formData.measurementChecking.map((mc: any, index: number) => (
-                                    <tr key={index}>
-                                        <td className="px-3 py-2">
-                                            <input 
-                                                type="text" 
-                                                placeholder="DD/MM/YYYY"
-                                                value={mc.date || ''} 
-                                                onChange={(e) => handleMeasurementCheckingChange(index, 'date', e.target.value)} 
-                                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border"
-                                                required
-                                            />
-                                        </td>
-                                        
-                                        <td className="px-3 py-2">
-                                            <select
-                                                value={mc.itemNo || ''}
-                                                onChange={(e) => handleMeasurementCheckingChange(index, 'itemNo', e.target.value)}
-                                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border"
-                                                required
-                                            >
-                                                <option value="">Select Item No.</option>
-                                                {formData.items.map((item: any) => (
-                                                    <option key={item.itemNo} value={item.itemNo}>
-                                                        {item.itemNo} - {item.description.substring(0, 50)}...
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </td>
-                                        
-                                        <td className="px-3 py-2">
-                                            <input 
-                                                type="text" 
-                                                placeholder="MB Page No."
-                                                value={mc.mbPageNo || ''} 
-                                                onChange={(e) => handleMeasurementCheckingChange(index, 'mbPageNo', e.target.value)} 
-                                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border"
-                                                required
-                                            />
-                                        </td>
-                                        
-                                        <td className="px-3 py-2">
-                                            <input 
-                                                type="number" 
-                                                min="0"
-                                                step="0.001"
-                                                placeholder="QTY"
-                                                value={mc.quantity === 0 ? '' : mc.quantity} 
-                                                onChange={(e) => handleMeasurementCheckingChange(index, 'quantity', e.target.value)} 
-                                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border text-right font-mono"
-                                                required
-                                            />
-                                        </td>
-                                        
-                                        <td className="px-3 py-2">
-                                            <input 
-                                                type="number" 
-                                                value={mc.rate || ''} 
-                                                readOnly 
-                                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border bg-gray-50 text-right font-mono font-medium text-slate-600"
-                                                placeholder="0.00"
-                                            />
-                                        </td>
-                                        
-                                        <td className="px-3 py-2">
-                                            <input 
-                                                type="number" 
-                                                value={mc.amount || ''} 
-                                                readOnly 
-                                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border bg-gray-50 text-right font-mono font-bold text-slate-800"
-                                                placeholder="0.00"
-                                            />
-                                        </td>
-                                        
-                                        <td className="px-3 py-2 text-center">
-                                            <button
-                                                type="button"
-                                                onClick={() => removeMeasurementCheckingRow(index)}
-                                                className="text-red-500 hover:text-red-700 transition-colors p-1"
-                                                title="Delete Row"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {formData.works.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={3} className="px-6 py-8 text-center text-sm text-gray-500">
+                                            No works found for this package.
                                         </td>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                        {formData.items.length > 0 && (() => {
-                            const totalMCAmount = (formData.measurementChecking || []).reduce((s: number, mc: any) => s + (mc.amount || 0), 0);
-                            const totalBillAmount = formData.items.reduce((s: number, i: any) => s + (i.uptoDateAmount || 0), 0);
-                            const requiredMCAmount = totalBillAmount * 0.10;
-                            const isMet = totalMCAmount >= requiredMCAmount;
-                            const diff = totalMCAmount - requiredMCAmount;
-                            return (
-                                <tfoot className="bg-slate-100 font-semibold border-t-2 border-slate-200">
-                                    <tr className="border-b border-slate-200">
-                                        <td colSpan={5} className="px-3 py-2 text-right text-xs text-slate-500 uppercase tracking-wider">Required Measurement Amount (10% of Total Amount):</td>
-                                        <td className="px-3 py-2 text-xs font-mono font-bold text-right text-slate-700">₹{requiredMCAmount.toFixed(2)}</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr className={`border-b border-slate-200 ${isMet ? "bg-emerald-50" : "bg-rose-50"}`}>
-                                        <td colSpan={5} className={`px-3 py-2.5 text-right text-sm uppercase font-bold ${isMet ? "text-emerald-800" : "text-rose-800"}`}>Total Measurement Amount:</td>
-                                        <td className={`px-3 py-2.5 text-sm font-mono font-extrabold text-right ${isMet ? "text-emerald-900" : "text-rose-900"}`}>₹{totalMCAmount.toFixed(2)}</td>
-                                        <td></td>
-                                    </tr>
-                                    <tr className="bg-slate-50">
-                                        <td colSpan={5} className="px-3 py-2 text-right text-xs text-slate-500 uppercase tracking-wider">Difference (+ / -):</td>
-                                        <td className={`px-3 py-2 text-xs font-mono font-bold text-right ${diff >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
-                                            {diff >= 0 ? '+' : ''}₹{diff.toFixed(2)}
-                                        </td>
-                                        <td></td>
-                                    </tr>
-                                </tfoot>
-                            );
-                        })()}
-                    </table>
-                </div>
+                                ) : (
+                                    formData.works.map((work: any, index: number) => (
+                                        <tr key={index}>
+                                            <td className="px-3 py-2">
+                                                <input type="text" value={work.srNo} readOnly className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border bg-gray-50" />
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <input type="text" value={work.nameOfWork} readOnly className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border bg-gray-50" />
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <input type="number" min="0" step="0.01" value={work.amount || ''} onChange={(e) => handleWorkChange(index, 'amount', e.target.value)} className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-indigo-500 focus:border-indigo-500" />
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                            {formData.works.length > 0 && (() => {
+                                const totalAmount = formData.works.reduce((s: number, w: any) => s + (w.amount || 0), 0);
+                                const pctMultiplier = tenderPercentage / 100;
+                                const adjAmount = totalAmount * pctMultiplier;
+                                const netAmount = tenderDirection === 'Below' ? totalAmount - adjAmount : totalAmount + adjAmount;
+                                
+                                const gstBase = formData.labourCessApplicable ? netAmount * 0.99 : netAmount;
+                                const gstAmount = gstBase * 0.18;
+                                const payableAmount = netAmount + gstAmount;
+
+                                return (
+                                    <tfoot className="bg-slate-100 font-semibold border-t-2 border-slate-200">
+                                        <tr className="border-b border-slate-200">
+                                            <td colSpan={2} className="px-3 py-2.5 text-right text-sm text-slate-700">Total Amount:</td>
+                                            <td className="px-3 py-2.5 text-sm text-slate-800 font-mono font-bold">₹{totalAmount.toFixed(2)}</td>
+                                            <td></td>
+                                        </tr>
+                                        <tr className="border-b border-slate-200 bg-slate-50/50">
+                                            <td colSpan={2} className="px-4 py-2 text-right text-sm text-slate-600">{tenderPercentage}% {tenderDirection}:</td>
+                                            <td className="px-3 py-2 text-sm text-slate-600 font-mono font-bold">
+                                                {tenderDirection === 'Below' ? '-₹' : '₹'}{adjAmount.toFixed(2)}
+                                            </td>
+                                            <td></td>
+                                        </tr>
+                                        <tr className="border-b border-slate-200">
+                                            <td colSpan={2} className="px-3 py-2.5 text-right text-sm text-slate-700 font-semibold">Net Amount:</td>
+                                            <td className="px-3 py-2.5 text-sm text-emerald-700 font-mono font-bold">₹{netAmount.toFixed(2)}</td>
+                                            <td></td>
+                                        </tr>
+                                        <tr className="border-b border-slate-200 bg-slate-50/50">
+                                            <td colSpan={2} className="px-3 py-2 text-right text-sm text-slate-600">
+                                                <div className="flex items-center justify-end space-x-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        name="labourCessApplicable"
+                                                        checked={formData.labourCessApplicable}
+                                                        onChange={handleChange}
+                                                        className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded cursor-pointer"
+                                                    />
+                                                    <label className="cursor-pointer text-slate-600 hover:text-slate-800">
+                                                        Labour Cess Applicable
+                                                    </label>
+                                                    <span className="mx-2 text-slate-300">|</span>
+                                                    <span>Add 18% GST:</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-3 py-2 text-sm text-slate-600 font-mono font-bold">₹{gstAmount.toFixed(2)}</td>
+                                            <td></td>
+                                        </tr>
+                                        <tr className="bg-emerald-50 font-bold border-b border-slate-200">
+                                            <td colSpan={2} className="px-3 py-3 text-right text-sm text-emerald-800 text-base">Net Payble Amount:</td>
+                                            <td className="px-3 py-3 text-sm text-emerald-900 font-mono text-lg font-extrabold">₹{payableAmount.toFixed(2)}</td>
+                                            <td></td>
+                                        </tr>
+                                        <tr className="bg-emerald-100 font-bold border-b-4 border-emerald-300">
+                                            <td colSpan={2} className="px-3 py-3 text-right text-sm text-emerald-900 tracking-wider">Say Amount:</td>
+                                            <td className="px-3 py-3 text-sm text-emerald-950 font-mono text-lg font-extrabold">₹{Math.floor(payableAmount).toFixed(2)}</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                );
+                            })()}
+                        </table>
+                    </div>
+                )}
             </div>
 
             {/* Excess / Saving Statement Section */}
             <div className="p-8 pt-4 border-t border-gray-200">
                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">Excess / Saving Statement</h3>
+                    <div className="flex items-center gap-2">
+                        <h3 className="text-lg leading-6 font-medium text-gray-900">Excess / Saving Statement</h3>
+                        {formData.items && formData.items.length > 0 && (
+                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
+                                {formData.items.length} items
+                            </span>
+                        )}
+                    </div>
+                    {formData.items && formData.items.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => setIsExcessSavingExpanded(!isExcessSavingExpanded)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-slate-200"
+                        >
+                            {isExcessSavingExpanded ? (
+                                <>
+                                    <ChevronUp className="w-3.5 h-3.5" />
+                                    Collapse Item Details
+                                </>
+                            ) : (
+                                <>
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                    Expand Item Details ({formData.items.length})
+                                </>
+                            )}
+                        </button>
+                    )}
                 </div>
                 
                 <div className="overflow-x-auto border border-gray-200 rounded-lg">
@@ -1746,6 +1722,19 @@ export default function BillForm({
                                 <tr>
                                     <td colSpan={13} className="px-6 py-8 text-center text-sm text-gray-500">
                                         No line items available to calculate Excess / Saving Statement.
+                                    </td>
+                                </tr>
+                            ) : !isExcessSavingExpanded ? (
+                                <tr>
+                                    <td colSpan={13} className="px-4 py-3.5 text-center text-xs text-slate-500 bg-slate-50/60 font-medium">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsExcessSavingExpanded(true)}
+                                            className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 font-semibold hover:underline cursor-pointer"
+                                        >
+                                            <ChevronDown className="w-4 h-4" />
+                                            {formData.items.length} line items collapsed. Click to expand item breakdown.
+                                        </button>
                                     </td>
                                 </tr>
                             ) : (
@@ -1986,7 +1975,9 @@ export default function BillForm({
                                 id="incomeTax"
                                 value={formData.incomeTax === 0 ? '' : formData.incomeTax}
                                 onChange={(e) => recalculateAuditMemo({ incomeTax: e.target.value })}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 placeholder="0.00"
                             />
                         </div>
@@ -2000,7 +1991,9 @@ export default function BillForm({
                                 id="gstDeduction"
                                 value={formData.gst === 0 ? '' : formData.gst}
                                 onChange={(e) => recalculateAuditMemo({ gst: e.target.value })}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 placeholder="0.00"
                             />
                         </div>
@@ -2014,7 +2007,9 @@ export default function BillForm({
                                 id="labourCessDeduction"
                                 value={formData.labourCess === 0 ? '' : formData.labourCess}
                                 onChange={(e) => recalculateAuditMemo({ labourCess: e.target.value })}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 placeholder="0.00"
                             />
                         </div>
@@ -2022,32 +2017,52 @@ export default function BillForm({
                         <div>
                             <div className="grid grid-cols-2 gap-4 items-center">
                                 <label htmlFor="securityDepositDeduction" className="text-sm text-slate-600">Security Deposit deducted from Bill:</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    name="securityDeposit"
-                                    id="securityDepositDeduction"
-                                    value={formData.securityDeposit === 0 ? '' : formData.securityDeposit}
-                                    onChange={(e) => recalculateAuditMemo({ securityDeposit: e.target.value })}
-                                    className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
-                                    placeholder="0.00"
-                                />
-                            </div>
-                            {(contractPriceState > 0 || previousSDTotal > 0) && (
-                                <div className="grid grid-cols-2 gap-4 mt-1">
-                                    <div></div>
-                                    <div className="text-[11px] text-slate-400 font-medium pl-1 space-y-0.5">
-                                        <div>
-                                            total deducted from previous bills: ₹{previousSDTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                        </div>
-                                        {contractPriceState > 0 && (
-                                            <div>
-                                                max can be deducted: ₹{(Math.ceil((contractPriceState * 0.05) / 100) * 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })} (5% of final contract price)
-                                            </div>
-                                        )}
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            name="securityDeposit"
+                                            id="securityDepositDeduction"
+                                            value={formData.securityDeposit === 0 ? '' : formData.securityDeposit}
+                                            onChange={(e) => recalculateAuditMemo({ securityDeposit: e.target.value })}
+                                            onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                            onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                            className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            placeholder="0.00"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
+                                                const cp = contractPriceState || parseFloat(selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0);
+                                                const maxSD = cp > 0 ? Math.ceil((cp * 0.05) / 100) * 100 : 0;
+                                                const remainingSD = Math.max(0, maxSD - previousSDTotal);
+                                                recalculateAuditMemo({ securityDeposit: remainingSD });
+                                            }}
+                                            className="shrink-0 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-md border border-blue-200 transition-colors whitespace-nowrap cursor-pointer"
+                                            title="Deduct remaining eligible security deposit"
+                                        >
+                                            Deduct Remaining
+                                        </button>
                                     </div>
+                                    {(() => {
+                                        const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
+                                        const cp = contractPriceState || parseFloat(selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0);
+                                        const maxSD = cp > 0 ? Math.ceil((cp * 0.05) / 100) * 100 : 0;
+                                        return (
+                                            <div className="text-[11px] text-slate-500 font-medium pl-0.5 space-y-0.5 mt-1">
+                                                <div>
+                                                    total deducted from previous bills: ₹{previousSDTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                </div>
+                                                <div>
+                                                    max can be deducted: ₹{maxSD.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (5% of final contract price)
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
-                            )}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 items-center">
@@ -2059,7 +2074,9 @@ export default function BillForm({
                                 id="freeMaintenanceDeposit"
                                 value={formData.freeMaintenanceDeposit === 0 ? '' : formData.freeMaintenanceDeposit}
                                 onChange={(e) => recalculateAuditMemo({ freeMaintenanceDeposit: e.target.value })}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 placeholder="0.00"
                             />
                         </div>
@@ -2073,7 +2090,9 @@ export default function BillForm({
                                 id="asphaltDeposit"
                                 value={formData.asphaltDeposit === 0 ? '' : formData.asphaltDeposit}
                                 onChange={(e) => recalculateAuditMemo({ asphaltDeposit: e.target.value })}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 placeholder="0.00"
                             />
                         </div>
@@ -2087,7 +2106,9 @@ export default function BillForm({
                                 id="coreSampleDeposit"
                                 value={formData.coreSampleDeposit === 0 ? '' : formData.coreSampleDeposit}
                                 onChange={(e) => recalculateAuditMemo({ coreSampleDeposit: e.target.value })}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 placeholder="0.00"
                             />
                         </div>
@@ -2101,7 +2122,9 @@ export default function BillForm({
                                 id="tpi"
                                 value={formData.tpi === 0 ? '' : formData.tpi}
                                 onChange={(e) => recalculateAuditMemo({ tpi: e.target.value })}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 placeholder="0.00"
                             />
                         </div>
@@ -2115,53 +2138,128 @@ export default function BillForm({
                                 id="esmp"
                                 value={formData.esmp === 0 ? '' : formData.esmp}
                                 onChange={(e) => recalculateAuditMemo({ esmp: e.target.value })}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 placeholder="0.00"
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="timeLimitDeposit" className="text-sm text-slate-600">Time Limit Deposit:</label>
-                            <div>
-                                <input
-                                    type="number"
-                                    step="1"
-                                    name="timeLimitDeposit"
-                                    id="timeLimitDeposit"
-                                    value={formData.timeLimitDeposit === 0 ? '' : formData.timeLimitDeposit}
-                                    onChange={(e) => recalculateAuditMemo({ timeLimitDeposit: e.target.value })}
-                                    className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
-                                    placeholder="0.00"
-                                />
-                                {(() => {
-                                    const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
-                                    const compTargetDate = stipulatedCompletionDate 
-                                        ? new Date(stipulatedCompletionDate) 
-                                        : (selectedWorkOrder?.stipulatedCompletionDate ? new Date(selectedWorkOrder.stipulatedCompletionDate) : null);
-                                    if (!compTargetDate) return null;
+                        <div>
+                            <div className="grid grid-cols-2 gap-4 items-center">
+                                <label htmlFor="timeLimitDeposit" className="text-sm text-slate-600">Time Limit Deposit:</label>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            step="1"
+                                            name="timeLimitDeposit"
+                                            id="timeLimitDeposit"
+                                            value={formData.timeLimitDeposit === 0 ? '' : formData.timeLimitDeposit}
+                                            onChange={(e) => recalculateAuditMemo({ timeLimitDeposit: e.target.value })}
+                                            onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                            onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                            className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            placeholder="0.00"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
+                                                const compTargetDate = stipulatedCompletionDate 
+                                                    ? new Date(stipulatedCompletionDate) 
+                                                    : (selectedWorkOrder?.stipulatedCompletionDate ? new Date(selectedWorkOrder.stipulatedCompletionDate) : null);
 
-                                    const getDaysDiff = (date1: Date, date2: Date) => {
-                                        const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
-                                        const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
-                                        const diffTime = d1.getTime() - d2.getTime();
-                                        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                    };
+                                                let totalCalculatedTLD = 0;
+                                                if (compTargetDate) {
+                                                    const getDaysDiff = (date1: Date, date2: Date) => {
+                                                        const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+                                                        const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+                                                        const diffTime = d1.getTime() - d2.getTime();
+                                                        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                                    };
 
-                                    let daysDelay = 0;
-                                    if (formData.billType === 'Running') {
-                                        const lastRecordDate = formData.lastRecordEntryDate ? parseDateStr(formData.lastRecordEntryDate) : null;
-                                        if (lastRecordDate) daysDelay = Math.max(0, getDaysDiff(lastRecordDate, compTargetDate));
-                                    } else {
-                                        const completionDate = formData.actualCompletionDate ? parseDateStr(formData.actualCompletionDate) : null;
-                                        if (completionDate) daysDelay = Math.max(0, getDaysDiff(completionDate, compTargetDate));
-                                    }
+                                                    if (formData.billType === 'Running') {
+                                                        const lastRecordDate = formData.lastRecordEntryDate ? parseDateStr(formData.lastRecordEntryDate) : null;
+                                                        if (lastRecordDate) {
+                                                            const daysDelay = Math.max(0, Math.min(100, getDaysDiff(lastRecordDate, compTargetDate)));
+                                                            const sayAmt = parseFloat(formData.grossAmount) || 0;
+                                                            totalCalculatedTLD = Math.ceil((0.001 * sayAmt * daysDelay) / 100) * 100;
+                                                        }
+                                                    } else {
+                                                        const completionDate = formData.actualCompletionDate ? parseDateStr(formData.actualCompletionDate) : null;
+                                                        if (completionDate) {
+                                                            daysDelay = Math.max(0, Math.min(100, getDaysDiff(completionDate, compTargetDate)));
+                                                            const contractPriceVal = contractPriceState 
+                                                                ? contractPriceState 
+                                                                : (selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0);
+                                                            totalCalculatedTLD = Math.ceil((0.001 * contractPriceVal * daysDelay) / 100) * 100;
+                                                        }
+                                                    }
+                                                }
+                                                const remainingTLD = Math.max(0, totalCalculatedTLD - previousTLDTotal);
+                                                recalculateAuditMemo({ timeLimitDeposit: remainingTLD });
+                                            }}
+                                            className="shrink-0 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-md border border-blue-200 transition-colors whitespace-nowrap cursor-pointer"
+                                            title="Deduct remaining time limit deposit"
+                                        >
+                                            Deduct Remaining
+                                        </button>
+                                    </div>
+                                    {(() => {
+                                        const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
+                                        const compTargetDate = stipulatedCompletionDate 
+                                            ? new Date(stipulatedCompletionDate) 
+                                            : (selectedWorkOrder?.stipulatedCompletionDate ? new Date(selectedWorkOrder.stipulatedCompletionDate) : null);
 
-                                    return (
-                                        <p className="text-[10px] text-slate-500 mt-1 font-medium leading-none">
-                                            Delay: <span className={daysDelay > 0 ? "text-amber-600 font-bold" : "text-slate-500 font-bold"}>{daysDelay} days</span> (Target: {compTargetDate.toLocaleDateString('en-GB')})
-                                        </p>
-                                    );
-                                })()}
+                                        const getDaysDiff = (date1: Date, date2: Date) => {
+                                            const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+                                            const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+                                            const diffTime = d1.getTime() - d2.getTime();
+                                            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                        };
+
+                                        let daysDelay = 0;
+                                        let totalCalculatedTLD = 0;
+                                        if (compTargetDate) {
+                                            if (formData.billType === 'Running') {
+                                                const lastRecordDate = formData.lastRecordEntryDate ? parseDateStr(formData.lastRecordEntryDate) : null;
+                                                if (lastRecordDate) {
+                                                    daysDelay = Math.max(0, Math.min(100, getDaysDiff(lastRecordDate, compTargetDate)));
+                                                    const sayAmt = parseFloat(formData.grossAmount) || 0;
+                                                    totalCalculatedTLD = Math.ceil((0.001 * sayAmt * daysDelay) / 100) * 100;
+                                                }
+                                            } else {
+                                                const completionDate = formData.actualCompletionDate ? parseDateStr(formData.actualCompletionDate) : null;
+                                                if (completionDate) {
+                                                    daysDelay = Math.max(0, Math.min(100, getDaysDiff(completionDate, compTargetDate)));
+                                                    const contractPriceVal = contractPriceState 
+                                                        ? contractPriceState 
+                                                        : (selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0);
+                                                    totalCalculatedTLD = Math.ceil((0.001 * contractPriceVal * daysDelay) / 100) * 100;
+                                                }
+                                            }
+                                        }
+
+                                        return (
+                                            <div className="mt-1 space-y-0.5">
+                                                {compTargetDate && (
+                                                    <p className="text-[10px] text-slate-500 font-medium leading-none">
+                                                        Delay: <span className={daysDelay > 0 ? "text-amber-600 font-bold" : "text-slate-500 font-bold"}>{daysDelay} days</span> (Target: {compTargetDate.toLocaleDateString('en-GB')})
+                                                    </p>
+                                                )}
+                                                <div className="text-[11px] text-slate-500 font-medium pl-0.5 space-y-0.5 pt-0.5">
+                                                    <div>
+                                                        total deducted from previous bills: ₹{previousTLDTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                    </div>
+                                                    <div>
+                                                        max can be deducted: ₹{totalCalculatedTLD.toLocaleString('en-IN', { minimumFractionDigits: 2 })} {daysDelay > 0 ? `(${daysDelay} days @ 0.1%/day)` : ''}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
                             </div>
                         </div>
 
@@ -2174,13 +2272,26 @@ export default function BillForm({
                                 id="testingCharges"
                                 value={formData.testingCharges === 0 ? '' : formData.testingCharges}
                                 onChange={(e) => recalculateAuditMemo({ testingCharges: e.target.value })}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 placeholder="0.00"
                             />
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="otherDeposit" className="text-sm text-slate-600">Other Deposit:</label>
+                            <div className="flex items-center gap-1.5">
+                                <input
+                                    type="text"
+                                    name="otherDepositLabel"
+                                    value={formData.otherDepositLabel !== undefined ? formData.otherDepositLabel : 'Other Deposit'}
+                                    onChange={(e) => setFormData((prev: any) => ({ ...prev, otherDepositLabel: e.target.value }))}
+                                    className="text-sm text-slate-700 bg-slate-50/70 hover:bg-slate-100 focus:bg-white border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded px-2 py-1 font-medium focus:ring-1 focus:ring-blue-500 outline-none w-full transition-all"
+                                    placeholder="Other Deposit"
+                                    title="Click to edit label name"
+                                />
+                                <span className="text-sm text-slate-500 font-semibold">:</span>
+                            </div>
                             <input
                                 type="number"
                                 step="0.01"
@@ -2188,7 +2299,36 @@ export default function BillForm({
                                 id="otherDeposit"
                                 value={formData.otherDeposit === 0 ? '' : formData.otherDeposit}
                                 onChange={(e) => recalculateAuditMemo({ otherDeposit: e.target.value })}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                placeholder="0.00"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 items-center">
+                            <div className="flex items-center gap-1.5">
+                                <input
+                                    type="text"
+                                    name="otherDeposit2Label"
+                                    value={formData.otherDeposit2Label !== undefined ? formData.otherDeposit2Label : 'Other Deposit 2'}
+                                    onChange={(e) => setFormData((prev: any) => ({ ...prev, otherDeposit2Label: e.target.value }))}
+                                    className="text-sm text-slate-700 bg-slate-50/70 hover:bg-slate-100 focus:bg-white border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded px-2 py-1 font-medium focus:ring-1 focus:ring-blue-500 outline-none w-full transition-all"
+                                    placeholder="Other Deposit 2"
+                                    title="Click to edit label name"
+                                />
+                                <span className="text-sm text-slate-500 font-semibold">:</span>
+                            </div>
+                            <input
+                                type="number"
+                                step="0.01"
+                                name="otherDeposit2"
+                                id="otherDeposit2"
+                                value={formData.otherDeposit2 === 0 ? '' : formData.otherDeposit2}
+                                onChange={(e) => recalculateAuditMemo({ otherDeposit2: e.target.value })}
+                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 placeholder="0.00"
                             />
                         </div>
@@ -2204,6 +2344,189 @@ export default function BillForm({
                     <span className="text-lg font-bold text-emerald-900">Final Net Payable to Contractor (Net Paid Amount):</span>
                     <span className="text-2xl font-extrabold text-emerald-950 font-mono">₹{Number(formData.netPaidAmount || 0).toFixed(2)}</span>
                 </div>
+            </div>
+
+            {/* Measurement Checking Section */}
+            <div className="p-8 pt-4 border-t border-gray-200">
+                <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center space-x-3">
+                        <h3 className="text-lg leading-6 font-medium text-gray-900">Measurement Checking</h3>
+                        {formData.measurementChecking && formData.measurementChecking.length > 0 && (
+                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
+                                {formData.measurementChecking.length} records
+                            </span>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={addMeasurementCheckingRow}
+                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-semibold rounded-md text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-all cursor-pointer"
+                        >
+                            <Plus className="w-3.5 h-3.5 mr-1" /> Add Measurement Row
+                        </button>
+                        {formData.measurementChecking && formData.measurementChecking.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => setIsMeasurementCheckingExpanded(!isMeasurementCheckingExpanded)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-slate-200"
+                            >
+                                {isMeasurementCheckingExpanded ? (
+                                    <>
+                                        <ChevronUp className="w-3.5 h-3.5" />
+                                        Collapse Measurement Breakdown
+                                    </>
+                                ) : (
+                                    <>
+                                        <ChevronDown className="w-3.5 h-3.5" />
+                                        Expand Measurement Breakdown ({formData.measurementChecking.length})
+                                    </>
+                                )}
+                            </button>
+                        )}
+                    </div>
+                </div>
+                
+                {isMeasurementCheckingExpanded && (
+                    <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-slate-50">
+                                <tr>
+                                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-44">Date</th>
+                                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700">Item No.</th>
+                                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-36">MB Page No.</th>
+                                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-36">QTY.</th>
+                                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-36">Rate (₹)</th>
+                                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-36">Amount (₹)</th>
+                                    <th className="px-3 py-3 text-center text-xs font-semibold text-slate-700 w-16">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {!formData.measurementChecking || formData.measurementChecking.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
+                                            No measurement checking records added yet. Click "Add Measurement Row" above.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    formData.measurementChecking.map((mc: any, index: number) => (
+                                        <tr key={index}>
+                                            <td className="px-3 py-2">
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="DD/MM/YYYY"
+                                                    value={mc.date || ''} 
+                                                    onChange={(e) => handleMeasurementCheckingChange(index, 'date', e.target.value)} 
+                                                    className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border"
+                                                    required
+                                                />
+                                            </td>
+                                            
+                                            <td className="px-3 py-2">
+                                                <select
+                                                    value={mc.itemNo || ''}
+                                                    onChange={(e) => handleMeasurementCheckingChange(index, 'itemNo', e.target.value)}
+                                                    className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border"
+                                                    required
+                                                >
+                                                    <option value="">Select Item No.</option>
+                                                    {formData.items.map((item: any) => (
+                                                        <option key={item.itemNo} value={item.itemNo}>
+                                                            {item.itemNo} - {item.description.substring(0, 50)}...
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </td>
+                                            
+                                            <td className="px-3 py-2">
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="MB Page No."
+                                                    value={mc.mbPageNo || ''} 
+                                                    onChange={(e) => handleMeasurementCheckingChange(index, 'mbPageNo', e.target.value)} 
+                                                    className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border"
+                                                    required
+                                                />
+                                            </td>
+                                            
+                                            <td className="px-3 py-2">
+                                                <input 
+                                                    type="number" 
+                                                    min="0"
+                                                    step="0.001"
+                                                    placeholder="QTY"
+                                                    value={mc.quantity === 0 ? '' : mc.quantity} 
+                                                    onChange={(e) => handleMeasurementCheckingChange(index, 'quantity', e.target.value)} 
+                                                    className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border text-right font-mono"
+                                                    required
+                                                />
+                                            </td>
+                                            
+                                            <td className="px-3 py-2">
+                                                <input 
+                                                    type="number" 
+                                                    value={mc.rate || ''} 
+                                                    readOnly 
+                                                    className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border bg-gray-50 text-right font-mono font-medium text-slate-600"
+                                                    placeholder="0.00"
+                                                />
+                                            </td>
+                                            
+                                            <td className="px-3 py-2">
+                                                <input 
+                                                    type="number" 
+                                                    value={mc.amount || ''} 
+                                                    readOnly 
+                                                    className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border bg-gray-50 text-right font-mono font-bold text-slate-800"
+                                                    placeholder="0.00"
+                                                />
+                                            </td>
+                                            
+                                            <td className="px-3 py-2 text-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeMeasurementCheckingRow(index)}
+                                                    className="text-red-500 hover:text-red-700 transition-colors p-1"
+                                                    title="Delete Row"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                            {formData.items.length > 0 && (() => {
+                                const totalMCAmount = (formData.measurementChecking || []).reduce((s: number, mc: any) => s + (mc.amount || 0), 0);
+                                const totalBillAmount = formData.items.reduce((s: number, i: any) => s + (i.uptoDateAmount || 0), 0);
+                                const requiredMCAmount = totalBillAmount * 0.10;
+                                const isMet = totalMCAmount >= requiredMCAmount;
+                                const diff = totalMCAmount - requiredMCAmount;
+                                return (
+                                    <tfoot className="bg-slate-100 font-semibold border-t-2 border-slate-200">
+                                        <tr className="border-b border-slate-200">
+                                            <td colSpan={5} className="px-3 py-2 text-right text-xs text-slate-500 uppercase tracking-wider">Required Measurement Amount (10% of Total Amount):</td>
+                                            <td className="px-3 py-2 text-xs font-mono font-bold text-right text-slate-700">₹{requiredMCAmount.toFixed(2)}</td>
+                                            <td></td>
+                                        </tr>
+                                        <tr className={`border-b border-slate-200 ${isMet ? "bg-emerald-50" : "bg-rose-50"}`}>
+                                            <td colSpan={5} className={`px-3 py-2.5 text-right text-sm uppercase font-bold ${isMet ? "text-emerald-800" : "text-rose-800"}`}>Total Measurement Amount:</td>
+                                            <td className={`px-3 py-2.5 text-sm font-mono font-extrabold text-right ${isMet ? "text-emerald-900" : "text-rose-900"}`}>₹{totalMCAmount.toFixed(2)}</td>
+                                            <td></td>
+                                        </tr>
+                                        <tr className="bg-slate-50">
+                                            <td colSpan={5} className="px-3 py-2 text-right text-xs text-slate-500 uppercase tracking-wider">Difference (+ / -):</td>
+                                            <td className={`px-3 py-2 text-xs font-mono font-bold text-right ${diff >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                                                {diff >= 0 ? '+' : ''}₹{diff.toFixed(2)}
+                                            </td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                );
+                            })()}
+                        </table>
+                    </div>
+                )}
             </div>
 
             {/* Footer / Summary Section */}

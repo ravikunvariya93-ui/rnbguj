@@ -62,7 +62,7 @@ export default async function ApprovedWorkDetailPage({ params }: { params: Promi
     // Bills
     const bills = workOrder
         ? await Bill.find({ workOrderId: workOrder._id })
-            .sort({ billType: 1, runningBillNumber: 1 }).lean() as any[]
+            .sort({ billDate: 1, runningBillNumber: 1 }).lean() as any[]
         : [];
 
     // Fetch all work orders to determine the maximum agreement number per year

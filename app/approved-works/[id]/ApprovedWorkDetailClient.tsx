@@ -873,14 +873,14 @@ export default function ApprovedWorkDetailClient({
 
         // Deductions formula based on net payable
         const it = netPaySafe > 0 ? Math.ceil((netPaySafe * 0.02) / 10) * 10 : 0;
-        const gst = netPaySafe > 0 ? Math.ceil((netPaySafe * 0.02) / 10) * 10 : 0;
+        const gst = it; // GST equal to Income Tax (IT)
         const cess = netPaySafe > 0 ? Math.ceil((netPaySafe * 0.01) / 10) * 10 : 0;
         const contractPrice = parseFloat(work?.contractPrice || pkg?.contractPrice || work?.estimatedCost || pkg?.amount) || 0;
         const sdBase = netPaySafe > 0 ? Math.ceil((netPaySafe * 0.06) / 100) * 100 : 0;
         const sdMax = contractPrice > 0 ? Math.ceil((contractPrice * 0.05) / 100) * 100 : 0;
         const sd = sdMax > 0 ? Math.min(sdBase, sdMax) : sdBase;
         const isBuilding = String(work?.workType || pkg?.workType || '').toLowerCase().includes('building');
-        const fmd = isBuilding ? 0 : parseFloat((netPaySafe * 0.05).toFixed(2));
+        const fmd = isBuilding ? 0 : (netPaySafe > 0 ? Math.ceil((netPaySafe * 0.05) / 100) * 100 : 0);
         const currentBHead = String(work?.budgetHead || pkg?.budgetHead || '').trim().toLowerCase();
         const isMMGSY = currentBHead.includes('5054 mmgsy normal') || currentBHead.includes('5054 mmgsy scsp') || currentBHead.includes('mmgsy');
 
@@ -919,6 +919,9 @@ export default function ApprovedWorkDetailClient({
         
         setBillForm((prev: any) => {
             const next = { ...prev, [name]: val };
+            if (name === 'incomeTax') {
+                next.gst = val;
+            }
             return recalculateBillDeductions(next);
         });
     };
@@ -999,6 +1002,20 @@ export default function ApprovedWorkDetailClient({
         const percent = Math.round((score / stages.length) * 100);
         return { percent, stages };
     }, [ts, pkg, dtp, tender, approval, loa, workOrder, bills]);
+
+    const sortedBills = useMemo(() => {
+        if (!bills || !Array.isArray(bills)) return [];
+        return [...bills].sort((a, b) => {
+            const timeA = a.billDate ? new Date(a.billDate).getTime() : 0;
+            const timeB = b.billDate ? new Date(b.billDate).getTime() : 0;
+            if (timeA !== timeB) {
+                return timeA - timeB;
+            }
+            const numA = parseInt(a.runningBillNumber || '0', 10) || 0;
+            const numB = parseInt(b.runningBillNumber || '0', 10) || 0;
+            return numA - numB;
+        });
+    }, [bills]);
 
     return (
         <div className="space-y-8 pb-16">
@@ -2305,7 +2322,7 @@ export default function ApprovedWorkDetailClient({
                     </div>
 
                     <div className="p-6">
-                        {bills && bills.length > 0 ? (
+                        {sortedBills && sortedBills.length > 0 ? (
                             <div className="overflow-x-auto">
                                 <table className="excel-table">
                                     <thead>
@@ -2320,7 +2337,7 @@ export default function ApprovedWorkDetailClient({
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-200">
-                                        {bills.map((bill: any, idx: number) => (
+                                        {sortedBills.map((bill: any, idx: number) => (
                                             <tr key={bill._id} className="hover:bg-slate-50">
                                                 <td className="border border-slate-200 px-4 py-1.5 text-center font-mono font-semibold text-slate-800">{bill.runningBillNumber || idx + 1}</td>
                                                 <td className="border border-slate-200 px-4 py-1.5 text-center font-semibold">

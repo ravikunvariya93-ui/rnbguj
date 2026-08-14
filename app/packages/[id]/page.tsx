@@ -9,6 +9,7 @@ import LOA from '@/models/LOA';
 import WorkOrder from '@/models/WorkOrder';
 import Bill from '@/models/Bill';
 import BOQ from '@/models/BOQ';
+import ExcessProposal from '@/models/ExcessProposal';
 import { notFound } from 'next/navigation';
 import PackageDetailClient from './PackageDetailClient';
 
@@ -52,8 +53,13 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
     // Bills
     const bills = workOrder
         ? await Bill.find({ workOrderId: workOrder._id })
-            .sort({ billType: 1, runningBillNumber: 1 }).lean() as any[]
+            .sort({ billDate: 1, runningBillNumber: 1 }).lean() as any[]
         : [];
+
+    // Excess Proposals
+    const excessProposals = await ExcessProposal.find({ packageId: pkg._id })
+        .sort({ proposalDate: -1, createdAt: -1 })
+        .lean() as any[];
 
     // Fetch all work orders to determine the maximum agreement number per year
     const allWorkOrders = await WorkOrder.find({ notRequired: { $ne: true } }, 'agreementYear agreementNo').lean() as any[];
@@ -80,6 +86,7 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
             loa={loa ? serialize(loa) : null}
             workOrder={workOrder ? serialize(workOrder) : null}
             bills={serialize(bills)}
+            excessProposals={serialize(excessProposals)}
             maxAgreementNos={maxAgreementNos}
         />
     );

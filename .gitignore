@@ -48,3 +48,12 @@ next-env.d.ts
 
 # Local SMS logs
 sms_sent.log
+
+# Local scratch and backups
+backups/
+scratch/
+inspect_bills*.js
+*.docx
+70.pdf
+public/uploads/
+

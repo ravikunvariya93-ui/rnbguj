@@ -72,6 +72,9 @@ export interface IBill extends Document {
     timeLimitDeposit?: number;
     testingCharges?: number;
     otherDeposit?: number;
+    otherDepositLabel?: string;
+    otherDeposit2?: number;
+    otherDeposit2Label?: string;
     totalDeduction?: number;
 
     createdAt: Date;
@@ -155,6 +158,9 @@ const BillSchema: Schema = new Schema({
     timeLimitDeposit: { type: Number, default: 0 },
     testingCharges: { type: Number, default: 0 },
     otherDeposit: { type: Number, default: 0 },
+    otherDepositLabel: { type: String, default: 'Other Deposit' },
+    otherDeposit2: { type: Number, default: 0 },
+    otherDeposit2Label: { type: String, default: 'Other Deposit 2' },
     totalDeduction: { type: Number, default: 0 },
 }, {
     timestamps: true,
