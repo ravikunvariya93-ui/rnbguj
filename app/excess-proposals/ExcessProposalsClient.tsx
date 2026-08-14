@@ -32,6 +32,9 @@ interface Props {
     packages: any[];
 }
 
+const blobViewUrl = (url?: string) =>
+    url && url.startsWith('http') ? `/api/blob?url=${encodeURIComponent(url)}` : url || '#';
+
 export default function ExcessProposalsClient({ initialProposals, packages }: Props) {
     const [proposals, setProposals] = useState<Proposal[]>(initialProposals);
     const [search, setSearch] = useState('');
@@ -313,7 +316,7 @@ export default function ExcessProposalsClient({ initialProposals, packages }: Pr
                                             <td className="px-4 py-3 text-center">
                                                 {p.pdfUrl ? (
                                                     <a
-                                                        href={p.pdfUrl}
+                                                        href={blobViewUrl(p.pdfUrl)}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
@@ -464,7 +467,7 @@ export default function ExcessProposalsClient({ initialProposals, packages }: Pr
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <a
-                                                    href={form.pdfUrl}
+                                                    href={blobViewUrl(form.pdfUrl)}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="p-1 text-emerald-700 hover:bg-emerald-50 rounded"

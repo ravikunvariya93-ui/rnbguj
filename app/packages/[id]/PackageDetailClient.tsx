@@ -13,6 +13,9 @@ import { parseDateStr, formatDate, formatDateForInput, formatShortDate } from '@
 import SearchableSelect from '@/components/SearchableSelect';
 import BillForm from '@/components/BillForm';
 
+const blobViewUrl = (url?: string) =>
+    url && url.startsWith('http') ? `/api/blob?url=${encodeURIComponent(url)}` : url || '#';
+
 interface PackageDetailClientProps {
     packageId: string;
     pkg: any;
@@ -3451,7 +3454,7 @@ export default function PackageDetailClient({
                                                 <td className="px-4 py-2.5 text-center">
                                                     {p.pdfUrl ? (
                                                         <a
-                                                            href={p.pdfUrl}
+                                                            href={blobViewUrl(p.pdfUrl)}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
@@ -3894,7 +3897,7 @@ export default function PackageDetailClient({
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <a
-                                                    href={excessForm.pdfUrl}
+                                                    href={blobViewUrl(excessForm.pdfUrl)}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="p-1 text-emerald-700 hover:bg-emerald-50 rounded"

@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
         // Upload to Vercel Blob
         const blob = await put(`${subfolder}/${finalFilename}`, file, {
-            access: 'public',
+            access: 'private',
             addRandomSuffix: false,
             contentType: file.type,
         });
