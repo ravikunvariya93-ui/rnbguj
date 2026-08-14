@@ -3,10 +3,12 @@ import dbConnect from '@/lib/db';
 import ExcessProposal from '@/models/ExcessProposal';
 import Package from '@/models/Package';
 import WorkOrder from '@/models/WorkOrder';
+import Tender from '@/models/Tender';
 
 // Ensure models are registered
 void Package;
 void WorkOrder;
+void Tender;
 
 export async function GET(req: NextRequest) {
     try {
@@ -25,7 +27,41 @@ export async function GET(req: NextRequest) {
             .sort({ proposalDate: -1, createdAt: -1 })
             .lean();
 
-        return NextResponse.json({ success: true, data: proposals });
+        // Resolve contractor name from each package's winning (non-cancelled) tender
+        const packageIds = [...new Set(
+            proposals
+                .map((p: any) => p.packageId?._id || p.packageId)
+                .filter(Boolean)
+        )];
+
+        const contractorMap = new Map<string, string>();
+        if (packageIds.length > 0) {
+            const tenders = await Tender.find({
+                packageId: { $in: packageIds },
+                cancelled: { $ne: true },
+                contractorName: { $exists: true, $ne: '' },
+            })
+                .sort({ trialNo: -1 })
+                .select('packageId contractorName')
+                .lean();
+
+            for (const t of tenders as any[]) {
+                const key = String(t.packageId);
+                if (!contractorMap.has(key)) {
+                    contractorMap.set(key, t.contractorName || '');
+                }
+            }
+        }
+
+        const enriched = proposals.map((p: any) => {
+            const pkgId = p.packageId?._id || p.packageId;
+            return {
+                ...p,
+                contractorName: pkgId ? (contractorMap.get(String(pkgId)) || '') : '',
+            };
+        });
+
+        return NextResponse.json({ success: true, data: enriched });
     } catch (error: any) {
         console.error('Failed to fetch excess proposals:', error);
         return NextResponse.json({ error: error.message || 'Failed to fetch excess proposals' }, { status: 500 });

@@ -13,6 +13,7 @@ interface Proposal {
     packageId: any;
     workOrderId?: any;
     proposalNo: string;
+    contractorName?: string;
     proposalDate?: string;
     pdfUrl?: string;
     fileName?: string;
@@ -259,9 +260,9 @@ export default function ExcessProposalsClient({ initialProposals, packages }: Pr
                         <thead className="bg-emerald-100/90 text-emerald-950">
                             <tr>
                                 <th className="px-4 py-3 text-left font-bold uppercase tracking-wider">Sr.</th>
-                                <th className="px-4 py-3 text-left font-bold uppercase tracking-wider">Proposal No.</th>
                                 <th className="px-4 py-3 text-left font-bold uppercase tracking-wider">Proposal Date</th>
                                 <th className="px-4 py-3 text-left font-bold uppercase tracking-wider">Package Name</th>
+                                <th className="px-4 py-3 text-left font-bold uppercase tracking-wider">Contractor Name</th>
                                 <th className="px-4 py-3 text-left font-bold uppercase tracking-wider">Sub Division</th>
                                 <th className="px-4 py-3 text-center font-bold uppercase tracking-wider">Status</th>
                                 <th className="px-4 py-3 text-center font-bold uppercase tracking-wider">Proposal PDF</th>
@@ -280,9 +281,6 @@ export default function ExcessProposalsClient({ initialProposals, packages }: Pr
                                             <td className="px-4 py-3 text-slate-500 font-mono font-bold text-center w-12">
                                                 {idx + 1}
                                             </td>
-                                            <td className="px-4 py-3 font-mono font-bold text-slate-900">
-                                                {p.proposalNo || '-'}
-                                            </td>
                                             <td className="px-4 py-3 text-slate-600">
                                                 {p.proposalDate ? new Date(p.proposalDate).toLocaleDateString('en-GB') : '-'}
                                             </td>
@@ -298,6 +296,9 @@ export default function ExcessProposalsClient({ initialProposals, packages }: Pr
                                                 ) : (
                                                     <span>{pkgName}</span>
                                                 )}
+                                            </td>
+                                            <td className="px-4 py-3 text-slate-800">
+                                                {p.contractorName || '-'}
                                             </td>
                                             <td className="px-4 py-3 text-slate-600">
                                                 {subDiv}

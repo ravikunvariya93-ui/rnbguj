@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { get } from '@vercel/blob';
 
-const BLOB_URL_PATTERN = /\.public\.blob\.vercel-storage\.com\//;
+const BLOB_URL_PATTERN = /\.(public|private)\.blob\.vercel-storage\.com\//;
 
 export async function GET(req: NextRequest) {
     try {

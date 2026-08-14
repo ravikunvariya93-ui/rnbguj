@@ -86,7 +86,7 @@ export async function DELETE(
         }
 
         // Clean up attached PDF file from Vercel Blob if it exists
-        if (proposal.pdfUrl && proposal.pdfUrl.includes('.public.blob.vercel-storage.com')) {
+        if (proposal.pdfUrl && proposal.pdfUrl.includes('.blob.vercel-storage.com')) {
             try {
                 await del(proposal.pdfUrl);
             } catch (err) {

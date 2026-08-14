@@ -30,7 +30,41 @@ export default async function ExcessProposalsPage() {
         Package.find({}, 'packageName subDivision').sort({ packageName: 1 }).lean(),
     ]);
 
-    const proposals = serialize(rawProposals);
+    // Resolve contractor name from each package's winning (non-cancelled) tender
+    const packageIds = [...new Set(
+        rawProposals
+            .map((p: any) => p.packageId?._id || p.packageId)
+            .filter(Boolean)
+    )];
+
+    const contractorMap = new Map<string, string>();
+    if (packageIds.length > 0) {
+        const tenders = await Tender.find({
+            packageId: { $in: packageIds },
+            cancelled: { $ne: true },
+            contractorName: { $exists: true, $ne: '' },
+        })
+            .sort({ trialNo: -1 })
+            .select('packageId contractorName')
+            .lean();
+
+        for (const t of tenders as any[]) {
+            const key = String(t.packageId);
+            if (!contractorMap.has(key)) {
+                contractorMap.set(key, t.contractorName || '');
+            }
+        }
+    }
+
+    const enrichedProposals = rawProposals.map((p: any) => {
+        const pkgId = p.packageId?._id || p.packageId;
+        return {
+            ...p,
+            contractorName: pkgId ? (contractorMap.get(String(pkgId)) || '') : '',
+        };
+    });
+
+    const proposals = serialize(enrichedProposals);
     const packages = serialize(rawPackages);
 
     return (
