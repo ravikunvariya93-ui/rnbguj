@@ -62,6 +62,7 @@ export default function ExcessProposalsClient({ initialProposals, packages }: Pr
             const matchesSearch = 
                 !search ||
                 p.proposalNo?.toLowerCase().includes(search.toLowerCase()) ||
+                p.contractorName?.toLowerCase().includes(search.toLowerCase()) ||
                 p.packageId?.packageName?.toLowerCase().includes(search.toLowerCase()) ||
                 p.packageId?.subDivision?.toLowerCase().includes(search.toLowerCase()) ||
                 p.remarks?.toLowerCase().includes(search.toLowerCase());
@@ -230,7 +231,7 @@ export default function ExcessProposalsClient({ initialProposals, packages }: Pr
                     <Search className="w-4 h-4 text-emerald-700 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                         type="text"
-                        placeholder="Search by Proposal No., Package..."
+                        placeholder="Search by Proposal No., Contractor, Package..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="w-full pl-9.5 pr-4 py-2 text-xs bg-white border border-emerald-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent font-medium"
