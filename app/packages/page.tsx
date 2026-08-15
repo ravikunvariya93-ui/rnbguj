@@ -201,7 +201,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
             sortable: true,
             minWidth: '200px',
             render: (row) => (
-                <Link href={`/packages/${row._id}`} className="max-w-md whitespace-normal break-words font-medium text-blue-600 hover:underline">
+                <Link href={`/packages/${row._id}`} className="max-w-md whitespace-normal break-words font-medium text-emerald-600 hover:underline">
                     {row.packageName}
                 </Link>
             )
@@ -255,7 +255,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
             <Link href={`/packages/${row._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
                 <Eye className="w-5 h-5" />
             </Link>
-            <Link href={`/packages/${row._id}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Item">
+            <Link href={`/packages/${row._id}/edit`} className="text-emerald-600 hover:text-emerald-900 p-1" title="Edit Item">
                 <Edit2 className="w-5 h-5" />
             </Link>
             <GenericDeleteButton 
@@ -287,7 +287,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
                     href="/packages"
                     className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
                         !params.filter
-                            ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                 >
@@ -297,7 +297,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
                     href="/packages?filter=pending_dtp"
                     className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
                         params.filter === 'pending_dtp'
-                            ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                 >
@@ -307,7 +307,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
                     href="/packages?filter=pending_tender"
                     className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
                         params.filter === 'pending_tender'
-                            ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                 >

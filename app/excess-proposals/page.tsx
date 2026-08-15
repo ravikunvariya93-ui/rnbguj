@@ -15,7 +15,20 @@ void Tender;
 export const dynamic = 'force-dynamic';
 
 function serialize<T>(obj: T): T {
-    return JSON.parse(JSON.stringify(obj));
+    if (obj === null || obj === undefined) return obj;
+    return JSON.parse(
+        JSON.stringify(obj, (_key, value) => {
+            if (value && typeof value === 'object') {
+                if (value._bsontype || (value.constructor && (value.constructor.name === 'ObjectId' || value.constructor.name === 'ObjectID'))) {
+                    return value.toString();
+                }
+                if (value.type === 'Buffer' || (value.buffer && (value.buffer instanceof ArrayBuffer || ArrayBuffer.isView(value.buffer)))) {
+                    return typeof value.toString === 'function' ? value.toString() : String(value);
+                }
+            }
+            return value;
+        })
+    );
 }
 
 export default async function ExcessProposalsPage() {

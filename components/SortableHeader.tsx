@@ -50,7 +50,7 @@ function SortableHeaderInner({ field, label, className }: SortableHeaderProps) {
                 {label}
                 <span className="text-gray-400 group-hover:text-gray-600 flex-shrink-0">
                     {isActive ? (
-                        currentOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-blue-600" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-600" />
+                        currentOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-emerald-600" /> : <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
                     ) : (
                         <ArrowUpDown className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
                     )}

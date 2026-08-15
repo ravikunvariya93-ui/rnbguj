@@ -306,7 +306,7 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                                 <button
                                     type="button"
                                     onClick={handleAddNewBuildingType}
-                                    className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                    className="p-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
                                     title="Add"
                                 >
                                     <Check className="w-4 h-4" />
@@ -326,13 +326,13 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                                 id="buildingType"
                                 value={formData.buildingType || ''}
                                 onChange={handleBuildingTypeChange}
-                                className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500 bg-white"
+                                className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-emerald-500 focus:border-emerald-500 bg-white"
                             >
                                 <option value="">-- Select Building Type --</option>
                                 {buildingTypeOptions.map(option => (
                                     <option key={option} value={option}>{option}</option>
                                 ))}
-                                <option value="ADD_NEW" className="text-blue-600 font-bold italic">+ Add New...</option>
+                                <option value="ADD_NEW" className="text-emerald-600 font-bold italic">+ Add New...</option>
                             </select>
                         )}
                     </div>
@@ -349,7 +349,7 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                                 autoFocus
                                 value={newOptionValue}
                                 onChange={(e) => setNewOptionValue(e.target.value)}
-                                className="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500"
+                                className="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-emerald-500 focus:border-emerald-500"
                                 placeholder="Enter new nature..."
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
@@ -363,7 +363,7 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                             <button
                                 type="button"
                                 onClick={handleAddNewOption}
-                                className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                className="p-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
                                 title="Add"
                             >
                                 <Check className="w-4 h-4" />
@@ -385,17 +385,17 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                                 value={formData.natureOfWork}
                                 onChange={handleNatureOfWorkChange}
                                 disabled={isLoading}
-                                className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500 bg-white disabled:bg-gray-50"
+                                className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-emerald-500 focus:border-emerald-500 bg-white disabled:bg-gray-50"
                             >
                                 <option value="">{isLoading ? 'Loading categories...' : '-- Select Nature of Work --'}</option>
                                 {natureOfWorkOptions.map(option => (
                                     <option key={option} value={option}>{option}</option>
                                 ))}
-                                <option value="ADD_NEW" className="text-blue-600 font-bold italic">+ Add New...</option>
+                                <option value="ADD_NEW" className="text-emerald-600 font-bold italic">+ Add New...</option>
                             </select>
                             {isLoading && (
                                 <div className="absolute right-8 top-1/2 -translate-y-1/2">
-                                    <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                                    <Loader2 className="w-4 h-4 text-emerald-500 animate-spin" />
                                 </div>
                             )}
                         </div>
@@ -413,7 +413,7 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                                 autoFocus
                                 value={newSchemeValue}
                                 onChange={(e) => setNewSchemeValue(e.target.value)}
-                                className="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500"
+                                className="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-emerald-500 focus:border-emerald-500"
                                 placeholder="Enter new scheme..."
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
@@ -427,7 +427,7 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                             <button
                                 type="button"
                                 onClick={handleAddNewScheme}
-                                className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                className="p-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
                                 title="Add"
                             >
                                 <Check className="w-4 h-4" />
@@ -447,13 +447,13 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                             id="schemeName"
                             value={formData.schemeName}
                             onChange={handleSchemeChange}
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500 bg-white"
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-emerald-500 focus:border-emerald-500 bg-white"
                         >
                             <option value="">-- Select Name of Scheme --</option>
                             {schemeOptions.map(option => (
                                 <option key={option} value={option}>{option}</option>
                             ))}
-                            <option value="ADD_NEW" className="text-blue-600 font-bold italic">+ Add New...</option>
+                            <option value="ADD_NEW" className="text-emerald-600 font-bold italic">+ Add New...</option>
                         </select>
                     )}
                 </div>

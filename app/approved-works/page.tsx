@@ -314,7 +314,7 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
             sortable: true,
             minWidth: '200px',
             render: (row) => row.packageId ? (
-                <Link href={`/packages/${row.packageId}`} className="text-blue-600 hover:underline font-semibold break-words">
+                <Link href={`/packages/${row.packageId}`} className="text-emerald-600 hover:underline font-semibold break-words">
                     {row.packageName}
                 </Link>
             ) : (
@@ -366,7 +366,7 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
             <Link href={`/approved-works/${row._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
                 <Eye className="w-5 h-5" />
             </Link>
-            <Link href={`/approved-works/${row._id}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Item">
+            <Link href={`/approved-works/${row._id}/edit`} className="text-emerald-600 hover:text-emerald-900 p-1" title="Edit Item">
                 <Edit2 className="w-5 h-5" />
             </Link>
             <GenericDeleteButton 

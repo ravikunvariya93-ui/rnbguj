@@ -37,8 +37,8 @@ export default async function PrintWorkOrderPage({ params }: Props) {
                     <p className="text-sm text-slate-500">
                         There is no active tender associated with this package. Please complete the Tender details before printing the Work Order.
                     </p>
-                    <Link href={`/packages/${id}`} className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors">
-                        Back to Package details
+                    <Link href={`/packages/${id}`} className="inline-block px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors">
+                        ← Back to Package
                     </Link>
                 </div>
             </div>
@@ -53,16 +53,19 @@ export default async function PrintWorkOrderPage({ params }: Props) {
 
     const workOrderRaw = loaRaw ? await WorkOrder.findOne({ loaId: loaRaw._id }).lean() as any : null;
 
-    if (!workOrderRaw) {
+    if (!workOrderRaw || !workOrderRaw.workOrderNo || !workOrderRaw.workOrderDate) {
         return (
             <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-8 space-y-4">
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-center space-y-3 max-w-md">
-                    <h1 className="text-lg font-bold text-slate-800">Work Order Details Pending</h1>
+                <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center max-w-md space-y-4">
+                    <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-xl font-bold">
+                        !
+                    </div>
+                    <h1 className="text-lg font-bold text-slate-800">Work Order Details Missing</h1>
                     <p className="text-sm text-slate-500">
-                        Work Order details have not been created for this package yet. Please complete the Work Order section before printing.
+                        Work Order details have not been created or are incomplete for this package yet. Please complete the Work Order section before printing.
                     </p>
-                    <Link href={`/packages/${id}`} className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors">
-                        Back to Package details
+                    <Link href={`/packages/${id}`} className="inline-block px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors">
+                        ← Back to Package
                     </Link>
                 </div>
             </div>

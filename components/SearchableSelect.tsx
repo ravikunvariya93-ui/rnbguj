@@ -172,20 +172,20 @@ export default function SearchableSelect({
                                 key={opt._id}
                                 type="button"
                                 onClick={() => handleSelect(opt._id)}
-                                className={`group relative cursor-default select-none py-2 pl-3 pr-9 w-full text-left hover:bg-blue-600 hover:text-white transition-colors ${
-                                    value === opt._id ? 'bg-blue-50 text-blue-900 font-semibold' : 'text-gray-900'
+                                className={`group relative cursor-default select-none py-2 pl-3 pr-9 w-full text-left hover:bg-emerald-600 hover:text-white transition-colors ${
+                                    value === opt._id ? 'bg-emerald-50 text-emerald-900 font-semibold' : 'text-gray-900'
                                 }`}
                             >
                                 <div className="flex flex-col">
                                     <span className="block truncate">{getDisplayValue(opt)}</span>
                                     {getHelperValue(opt) && (
-                                        <span className={`block truncate text-xs ${value === opt._id ? 'text-blue-700 font-normal' : 'text-gray-500 group-hover:text-blue-100'}`}>
+                                        <span className={`block truncate text-xs ${value === opt._id ? 'text-emerald-700 font-normal' : 'text-gray-500 group-hover:text-emerald-100'}`}>
                                             {helperField || 'Contractor'}: {getHelperValue(opt)}
                                         </span>
                                     )}
                                 </div>
                                 {value === opt._id && (
-                                    <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-blue-600 group-hover:text-white">
+                                    <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-emerald-600 group-hover:text-white">
                                         <Check className="h-4 w-4" aria-hidden="true" />
                                     </span>
                                 )}

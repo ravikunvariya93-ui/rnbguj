@@ -386,7 +386,7 @@ export default async function TendersListPage({ searchParams }: Props) {
             render: (row) => (
                 <div className="flex flex-col gap-1">
                     {row.packageId?._id ? (
-                        <Link href={`/packages/${row.packageId._id}`} className="text-blue-600 hover:underline font-semibold break-words">
+                        <Link href={`/packages/${row.packageId._id}`} className="text-emerald-600 hover:underline font-semibold break-words">
                             {row.packageName || '-'}
                         </Link>
                     ) : (
@@ -463,7 +463,7 @@ export default async function TendersListPage({ searchParams }: Props) {
                     href="/tenders"
                     className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
                         !params.filter
-                            ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                 >
@@ -473,7 +473,7 @@ export default async function TendersListPage({ searchParams }: Props) {
                     href="/tenders?filter=pending_proposal"
                     className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
                         params.filter === 'pending_proposal'
-                            ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                 >
@@ -483,7 +483,7 @@ export default async function TendersListPage({ searchParams }: Props) {
                     href="/tenders?filter=pending_approval"
                     className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
                         params.filter === 'pending_approval'
-                            ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                 >
@@ -493,7 +493,7 @@ export default async function TendersListPage({ searchParams }: Props) {
                     href="/tenders?filter=pending_loa"
                     className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
                         params.filter === 'pending_loa'
-                            ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                 >
@@ -503,7 +503,7 @@ export default async function TendersListPage({ searchParams }: Props) {
                     href="/tenders?filter=pending_work_order"
                     className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
                         params.filter === 'pending_work_order'
-                            ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                 >

@@ -412,7 +412,7 @@ export default async function Home({ searchParams }: Props) {
             label: 'Package Name', 
             minWidth: '180px',
             render: (row) => row.packageId ? (
-                <Link href={`/packages/${row.packageId}`} className="text-blue-600 hover:underline font-semibold break-words">
+                <Link href={`/packages/${row.packageId}`} className="text-emerald-600 hover:underline font-semibold break-words">
                     {row.packageName}
                 </Link>
             ) : (
@@ -567,7 +567,7 @@ export default async function Home({ searchParams }: Props) {
             render: (row) => (
                 <div className="flex flex-col gap-1">
                     {row.packageId ? (
-                        <Link href={`/packages/${row.packageId}`} className="text-blue-600 hover:underline font-semibold break-words">
+                        <Link href={`/packages/${row.packageId}`} className="text-emerald-600 hover:underline font-semibold break-words">
                             {row.packageName}
                         </Link>
                     ) : (
@@ -625,7 +625,7 @@ export default async function Home({ searchParams }: Props) {
                 } else if (row.status === 'Work Order Issued') {
                     badgeClass = 'bg-emerald-50 text-emerald-700 border border-emerald-200';
                 } else if (row.status === 'LOA Issued') {
-                    badgeClass = 'bg-blue-50 text-blue-700 border border-blue-200';
+                    badgeClass = 'bg-emerald-50 text-emerald-700 border border-emerald-200';
                 } else if (row.status === 'Tender Approved' || row.status === 'Approved (No Sanction Req.)') {
                     badgeClass = 'bg-indigo-50 text-indigo-700 border border-indigo-200';
                 } else if (row.status === 'Proposal Submitted') {
@@ -751,15 +751,15 @@ export default async function Home({ searchParams }: Props) {
                                     {summaryData.length > 0 ? summaryData.map((row: any, index: number) => {
                                         const rowBg = index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
                                         return (
-                                            <tr key={row.year} className={`${rowBg} hover:bg-blue-50/80 transition-colors`}>
+                                            <tr key={row.year} className={`${rowBg} hover:bg-emerald-50/80 transition-colors`}>
                                                 <td className="px-3 py-2 text-slate-800 border-r border-slate-200"><span className="font-bold">{row.year}</span></td>
                                                 <td className="px-3 py-2 text-slate-800 border-r border-slate-200 text-center">
-                                                    <Link href={getApprovedWorksLink(row.year !== 'Total' ? { approvalYear: row.year } : {})} className={row.year !== 'Total' ? "text-blue-600 hover:underline font-medium" : "text-blue-600 hover:underline font-bold"}>
+                                                    <Link href={getApprovedWorksLink(row.year !== 'Total' ? { approvalYear: row.year } : {})} className={row.year !== 'Total' ? "text-emerald-600 hover:underline font-medium" : "text-emerald-600 hover:underline font-bold"}>
                                                         {row.total}
                                                     </Link>
                                                 </td>
                                                 <td className="px-3 py-2 text-slate-800 border-r border-slate-200 text-center">
-                                                    <Link href={getApprovedWorksLink(row.year !== 'Total' ? { approvalYear: row.year, filter: 'preparedTS' } : { filter: 'preparedTS' })} className={row.year !== 'Total' ? "text-blue-600 hover:underline font-medium" : "text-blue-600 hover:underline font-bold"}>
+                                                    <Link href={getApprovedWorksLink(row.year !== 'Total' ? { approvalYear: row.year, filter: 'preparedTS' } : { filter: 'preparedTS' })} className={row.year !== 'Total' ? "text-emerald-600 hover:underline font-medium" : "text-emerald-600 hover:underline font-bold"}>
                                                         {row.tsPrepared}
                                                     </Link>
                                                 </td>
@@ -769,7 +769,7 @@ export default async function Home({ searchParams }: Props) {
                                                     </Link>
                                                 </td>
                                                 <td className="px-3 py-2 text-slate-800 border-r border-slate-200 text-center">
-                                                    <Link href={getApprovedWorksLink(row.year !== 'Total' ? { approvalYear: row.year, filter: 'preparedDTP' } : { filter: 'preparedDTP' })} className={row.year !== 'Total' ? "text-blue-600 hover:underline font-medium" : "text-blue-600 hover:underline font-bold"}>
+                                                    <Link href={getApprovedWorksLink(row.year !== 'Total' ? { approvalYear: row.year, filter: 'preparedDTP' } : { filter: 'preparedDTP' })} className={row.year !== 'Total' ? "text-emerald-600 hover:underline font-medium" : "text-emerald-600 hover:underline font-bold"}>
                                                         {row.dtpPrepared}
                                                     </Link>
                                                 </td>
@@ -793,7 +793,7 @@ export default async function Home({ searchParams }: Props) {
                             <p className="text-xs font-semibold text-slate-500">Summary Report data is not loaded.</p>
                             <Link 
                                 href={getQueryString({ loadSummary: 'true' })} 
-                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm hover:shadow transition-all cursor-pointer"
+                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm hover:shadow transition-all cursor-pointer"
                             >
                                 Load Summary Report
                             </Link>
@@ -836,7 +836,7 @@ export default async function Home({ searchParams }: Props) {
                             <p className="text-xs font-semibold text-slate-500">Master Report data is not loaded.</p>
                             <Link 
                                 href={getQueryString({ loadMaster: 'true' })} 
-                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm hover:shadow transition-all cursor-pointer"
+                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm hover:shadow transition-all cursor-pointer"
                             >
                                 Load Master Report
                             </Link>

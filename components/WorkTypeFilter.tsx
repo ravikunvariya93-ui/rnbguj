@@ -105,7 +105,7 @@ export default function WorkTypeFilter({
         >
             <div className="flex items-center gap-2">
                 <span className="flex items-center gap-1 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">
-                    <Construction className={`w-3.5 h-3.5 ${selectedTypes.length > 0 ? 'text-blue-500' : 'text-slate-400'}`} />
+                    <Construction className={`w-3.5 h-3.5 ${selectedTypes.length > 0 ? 'text-emerald-500' : 'text-slate-400'}`} />
                     <span>Work Type</span>
                 </span>
                 <button
@@ -113,7 +113,7 @@ export default function WorkTypeFilter({
                     onClick={() => setIsOpen(!isOpen)}
                     className={`flex items-center justify-between gap-2 text-xs font-bold rounded-lg px-3 py-1.5 border transition-all cursor-pointer min-w-[120px] ${
                         isOpen || (hasParam && paramValue !== 'all')
-                            ? 'bg-blue-50/50 border-blue-200 text-blue-700 ring-2 ring-blue-500/10'
+                            ? 'bg-emerald-50/50 border-emerald-200 text-emerald-700 ring-2 ring-emerald-500/10'
                             : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-white hover:border-slate-300'
                     }`}
                 >
@@ -128,7 +128,7 @@ export default function WorkTypeFilter({
                         <button
                             type="button"
                             onClick={handleSelectAll}
-                            className="text-[10px] font-bold text-blue-600 hover:text-blue-700 px-1.5 py-0.5 rounded hover:bg-blue-50 transition-colors"
+                            className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 px-1.5 py-0.5 rounded hover:bg-emerald-50 transition-colors"
                         >
                             Select All
                         </button>
@@ -157,12 +157,12 @@ export default function WorkTypeFilter({
                                     onClick={() => handleToggle(type)}
                                     className={`w-full flex items-center justify-between px-2.5 py-2 text-xs rounded-lg transition-colors text-left ${
                                         isChecked 
-                                            ? 'bg-blue-50/40 text-blue-900 font-semibold' 
+                                            ? 'bg-emerald-50/40 text-emerald-900 font-semibold' 
                                             : 'text-slate-700 hover:bg-slate-50 font-medium'
                                     }`}
                                 >
                                     <span className="truncate">{type}</span>
-                                    {isChecked && <Check className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />}
+                                    {isChecked && <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />}
                                 </button>
                             );
                         })}

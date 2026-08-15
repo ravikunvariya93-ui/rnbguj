@@ -42,7 +42,7 @@ export default async function TechnicalSanctionDetailPage({ params }: { params: 
                 </div>
                 <Link
                     href={`/technical-sanctions/${id}/edit`}
-                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
                 >
                     <Edit2 className="w-4 h-4 mr-2" /> Edit T.S.
                 </Link>
@@ -57,7 +57,7 @@ export default async function TechnicalSanctionDetailPage({ params }: { params: 
                     <dl className="sm:divide-y sm:divide-gray-200">
                         {sections.map((section) => (
                             <div key={section.title} className="py-4 sm:py-5">
-                                <dt className="text-sm font-semibold text-blue-600 px-4 sm:px-6 mb-4 uppercase tracking-wider">
+                                <dt className="text-sm font-semibold text-emerald-600 px-4 sm:px-6 mb-4 uppercase tracking-wider">
                                     {section.title}
                                 </dt>
                                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">

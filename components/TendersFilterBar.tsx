@@ -113,7 +113,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
     return (
         <div className="bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-200 shadow-2xs">
             <div className="flex items-center gap-2 mb-3 text-slate-800 font-bold text-sm">
-                <Filter className="w-4 h-4 text-blue-600" />
+                <Filter className="w-4 h-4 text-emerald-600" />
                 <span>Filter Tenders</span>
             </div>
             
@@ -125,7 +125,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                         id="filterSubDivision"
                         value={subDivision}
                         onChange={(e) => setSubDivision(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border focus:border-blue-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     >
                         <option value="">All Sub Divisions</option>
                         {subDivisions.map(sd => (
@@ -140,7 +140,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                     <button
                         type="button"
                         onClick={() => setIsWorkTypeOpen(!isWorkTypeOpen)}
-                        className="flex items-center justify-between w-full rounded-xl border border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs text-left cursor-pointer"
+                        className="flex items-center justify-between w-full rounded-xl border border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs text-left cursor-pointer"
                     >
                         <span className="truncate">
                             {selectedWorkTypes.length === 0
@@ -171,7 +171,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                                                 }
                                                 setWorkType(newSelected.join(','));
                                             }}
-                                            className="rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                            className="rounded-sm border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                                         />
                                         <span>{wt}</span>
                                     </label>
@@ -187,7 +187,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                     <button
                         type="button"
                         onClick={() => setIsBuildingTypeOpen(!isBuildingTypeOpen)}
-                        className="flex items-center justify-between w-full rounded-xl border border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs text-left cursor-pointer"
+                        className="flex items-center justify-between w-full rounded-xl border border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs text-left cursor-pointer"
                     >
                         <span className="truncate">
                             {selectedBuildingTypes.length === 0
@@ -219,7 +219,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                                                     }
                                                     setBuildingType(newSelected.join(','));
                                                 }}
-                                                className="rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                                className="rounded-sm border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                                             />
                                             <span>{bt}</span>
                                         </label>
@@ -239,7 +239,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                         id="filterNoticeYear"
                         value={noticeYear}
                         onChange={(e) => setNoticeYear(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border focus:border-blue-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     >
                         <option value="">All Years</option>
                         {years.filter(Boolean).sort().map(y => (
@@ -257,7 +257,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                         value={noticeNo}
                         onChange={(e) => setNoticeNo(e.target.value)}
                         placeholder="e.g. 1"
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border focus:border-blue-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     />
                 </div>
 
@@ -268,7 +268,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                         id="filterContractor"
                         value={contractorName}
                         onChange={(e) => setContractorName(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border focus:border-blue-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     >
                         <option value="">All Contractors</option>
                         {agencies.map(a => (
@@ -284,7 +284,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                         id="filterTrialNo"
                         value={trialNo}
                         onChange={(e) => setTrialNo(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border focus:border-blue-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     >
                         <option value="">All Trials</option>
                         <option value="1">Trial 1</option>
@@ -309,7 +309,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                 <button
                     type="button"
                     onClick={handleApplyFilters}
-                    className="inline-flex items-center px-5 py-2 border border-transparent rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-all cursor-pointer"
+                    className="inline-flex items-center px-5 py-2 border border-transparent rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all cursor-pointer"
                 >
                     Apply Filters
                 </button>

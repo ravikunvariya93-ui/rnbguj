@@ -424,7 +424,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
         {loading && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs transition-opacity duration-300">
                 <div className="bg-white rounded-2xl shadow-2xl px-8 py-6 flex flex-col items-center gap-3 border border-slate-100">
-                    <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+                    <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
                     <p className="text-sm font-semibold text-slate-700">Processing & Saving Tender...</p>
                 </div>
             </div>
@@ -454,6 +454,51 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                 <div className="sm:col-span-3">
                     <label htmlFor="tenderId" className="block text-sm font-medium text-gray-700">Tender ID</label>
                     <input type="text" name="tenderId" id="tenderId" value={formData.tenderId} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
+                    <div className="mt-2 flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            id="customTenderId"
+                            checked={isCustomTenderId}
+                            onChange={(e) => {
+                                setIsCustomTenderId(e.target.checked);
+                                if (!e.target.checked) generateTenderId();
+                            }}
+                            className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <label htmlFor="customTenderId" className="text-xs text-gray-500 font-medium">Custom Tender ID</label>
+                    </div>
+                </div>
+
+                <div className="sm:col-span-2">
+                    <label htmlFor="tenderDate" className="block text-sm font-medium text-gray-700">Tender Date (DD/MM/YYYY)</label>
+                    <input
+                        type="text"
+                        name="tenderDate"
+                        id="tenderDate"
+                        placeholder="DD/MM/YYYY"
+                        value={formData.tenderDate || ''}
+                        onChange={handleChange}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border bg-white focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                </div>
+
+                {/* Section 2: Notice & Trial */}
+                <div className="sm:col-span-6 border-t border-gray-200 pt-6">
+                    <h3 className="text-md font-semibold text-gray-900 mb-4">Notice & Publishing Details</h3>
+                </div>
+
+                <div className="sm:col-span-2">
+                    <div className="flex items-center justify-between">
+                        <label htmlFor="noticeNo" className="block text-sm font-medium text-gray-700">Notice Number</label>
+                        <button
+                            type="button"
+                            onClick={() => setIsNoticeModalOpen(true)}
+                            className="inline-flex items-center text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
+                        >
+                            <Plus className="w-3.5 h-3.5 mr-1" /> Add New
+                        </button>
+                    </div>
+                    <input type="text" name="noticeNo" id="noticeNo" value={formData.noticeNo || ''} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                 </div>
 
                 <div className="sm:col-span-2">
@@ -463,7 +508,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                         id="tenderNoticeYear"
                         value={formData.tenderNoticeYear || ''}
                         onChange={handleChange}
-                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border bg-white focus:ring-blue-500 focus:border-blue-500"
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border bg-white focus:ring-emerald-500 focus:border-emerald-500"
                     >
                         <option value="">-- Select Year --</option>
                         <option value="2023-24">2023-24</option>
@@ -475,10 +520,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                         <option value="2029-30">2029-30</option>
                     </select>
                 </div>
-                <div className="sm:col-span-2">
-                    <label htmlFor="noticeNo" className="block text-sm font-medium text-gray-700">Notice No.</label>
-                    <input type="text" name="noticeNo" id="noticeNo" value={formData.noticeNo || ''} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                </div>
+                
                 <div className="sm:col-span-2">
                     <label htmlFor="srNo" className="block text-sm font-medium text-gray-700">Sr No.</label>
                     <input type="text" name="srNo" id="srNo" value={formData.srNo || ''} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
@@ -515,7 +557,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                             id="cancelled"
                             checked={formData.cancelled}
                             onChange={handleChange}
-                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                         />
                         <span className="ml-2 text-sm font-medium text-gray-700">Tender Cancelled</span>
                     </label>
@@ -529,7 +571,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                             name="cancellationReason"
                             value={formData.cancellationReason}
                             onChange={handleChange}
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border bg-white focus:ring-blue-500 focus:border-blue-500"
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border bg-white focus:ring-emerald-500 focus:border-emerald-500"
                         >
                             <option value="">-- Select Reason --</option>
                             <option value="High Rate">High Rate</option>
@@ -564,7 +606,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                         <button
                             type="button"
                             onClick={() => setIsContractorModalOpen(true)}
-                            className="inline-flex items-center text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                            className="inline-flex items-center text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
                         >
                             <Plus className="w-3.5 h-3.5 mr-1" /> Add New Contractor
                         </button>
@@ -613,16 +655,16 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
             </div>
 
             <div className="pt-5">
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-3">
                     {isEditing && (
                         <button type="button" onClick={() => { setIsReTenderModalOpen(true); setReTenderReason(''); }} className="mr-auto bg-rose-600 hover:bg-rose-700 text-white py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 cursor-pointer animate-none">
                             Re-Tender (Next Trial)
                         </button>
                     )}
-                    <Link href="/tenders" className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Cancel</Link>
-                    <button type="submit" disabled={loading} className="inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                    <Link href="/tenders" className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">Cancel</Link>
+                    <button type="submit" disabled={loading} className="inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                         {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                        {loading ? 'Saving...' : 'Save Tender'}
+                        {loading ? 'Saving...' : initialData ? 'Update Tender' : 'Create Tender'}
                     </button>
                 </div>
             </div>
@@ -665,7 +707,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                                 value={newContractor.name}
                                 onChange={(e) => setNewContractor(prev => ({ ...prev, name: e.target.value }))}
                                 placeholder="e.g. ABC Construction"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                             />
                         </div>
 
@@ -676,7 +718,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                                 value={newContractor.proprietorName}
                                 onChange={(e) => setNewContractor(prev => ({ ...prev, proprietorName: e.target.value }))}
                                 placeholder="e.g. John Doe"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                             />
                         </div>
 
@@ -687,7 +729,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                                 value={newContractor.address}
                                 onChange={(e) => setNewContractor(prev => ({ ...prev, address: e.target.value }))}
                                 placeholder="Enter full address..."
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm resize-none"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm resize-none"
                             />
                         </div>
 
@@ -699,7 +741,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                                     value={newContractor.mobileNo}
                                     onChange={(e) => setNewContractor(prev => ({ ...prev, mobileNo: e.target.value }))}
                                     placeholder="e.g. 9876543210"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                                 />
                             </div>
                             <div>
@@ -707,7 +749,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                                 <select
                                     value={newContractor.agencyType}
                                     onChange={(e) => setNewContractor(prev => ({ ...prev, agencyType: e.target.value }))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm bg-white"
                                 >
                                     <option value="">-- Select --</option>
                                     <option value="Proprietorship">Proprietorship</option>
@@ -726,26 +768,23 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                                 value={newContractor.gstNo}
                                 onChange={(e) => setNewContractor(prev => ({ ...prev, gstNo: e.target.value.toUpperCase() }))}
                                 placeholder="e.g. 24AAAAA0000A1Z5"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm font-mono uppercase"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm font-mono uppercase"
                             />
                         </div>
 
                         {/* Footer / Buttons inside form */}
                         <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
-                            <button 
-                                type="button" 
-                                onClick={() => {
-                                    setIsContractorModalOpen(false);
-                                    setContractorError('');
-                                }} 
-                                className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            <button
+                                type="button"
+                                onClick={() => setIsContractorModalOpen(false)}
+                                className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
                             >
                                 Cancel
                             </button>
-                            <button 
-                                type="submit" 
-                                disabled={contractorSaving} 
-                                className="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 inline-flex items-center"
+                            <button
+                                type="submit"
+                                disabled={contractorSaving}
+                                className="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 inline-flex items-center"
                             >
                                 {contractorSaving ? 'Saving...' : 'Save Contractor'}
                             </button>

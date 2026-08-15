@@ -75,7 +75,7 @@ export default function PackagesFilterBar({ subDivisions, workTypes, budgetHeads
     return (
         <div className="bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-200 shadow-2xs">
             <div className="flex items-center gap-2 mb-3 text-slate-800 font-bold text-sm">
-                <Filter className="w-4 h-4 text-blue-600" />
+                <Filter className="w-4 h-4 text-emerald-600" />
                 <span>Filter Packages</span>
             </div>
             
@@ -87,7 +87,7 @@ export default function PackagesFilterBar({ subDivisions, workTypes, budgetHeads
                         id="filterSubDivision"
                         value={subDivision}
                         onChange={(e) => setSubDivision(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border focus:border-blue-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     >
                         <option value="">All Sub Divisions</option>
                         {subDivisions.map(sd => (
@@ -103,7 +103,7 @@ export default function PackagesFilterBar({ subDivisions, workTypes, budgetHeads
                         id="filterWorkType"
                         value={workType}
                         onChange={(e) => setWorkType(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border focus:border-blue-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     >
                         <option value="">All Work Types</option>
                         {workTypes.map(wt => (
@@ -119,7 +119,7 @@ export default function PackagesFilterBar({ subDivisions, workTypes, budgetHeads
                         id="filterBudgetHead"
                         value={budgetHead}
                         onChange={(e) => setBudgetHead(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border focus:border-blue-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     >
                         <option value="">All Budget Heads</option>
                         {budgetHeads.map(bh => (
@@ -135,7 +135,7 @@ export default function PackagesFilterBar({ subDivisions, workTypes, budgetHeads
                         id="filterDtpConsultant"
                         value={dtpConsultant}
                         onChange={(e) => setDtpConsultant(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border focus:border-blue-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     >
                         <option value="">All Consultants</option>
                         {consultants.map(c => (
@@ -151,7 +151,7 @@ export default function PackagesFilterBar({ subDivisions, workTypes, budgetHeads
                         id="filterHasWorks"
                         value={hasWorks}
                         onChange={(e) => setHasWorks(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border focus:border-blue-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     >
                         <option value="">All Packages</option>
                         <option value="yes">With Approved Works</option>
@@ -173,7 +173,7 @@ export default function PackagesFilterBar({ subDivisions, workTypes, budgetHeads
                 <button
                     type="button"
                     onClick={handleApplyFilters}
-                    className="inline-flex items-center px-5 py-2 border border-transparent rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-all cursor-pointer"
+                    className="inline-flex items-center px-5 py-2 border border-transparent rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all cursor-pointer"
                 >
                     Apply Filters
                 </button>

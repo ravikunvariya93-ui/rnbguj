@@ -66,7 +66,7 @@ export default function UserManagementPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <Users className="h-7 w-7 text-blue-600" />
+                        <Users className="h-7 w-7 text-emerald-600" />
                         User Management
                     </h1>
                     <p className="text-sm text-gray-500 mt-1">Manage personnel access and roles.</p>
@@ -76,7 +76,7 @@ export default function UserManagementPage() {
                         setSelectedUser(null);
                         setIsFormOpen(true);
                     }}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200"
                 >
                     <Plus className="h-5 w-5" />
                     Add New User
@@ -92,10 +92,10 @@ export default function UserManagementPage() {
                             placeholder="Search users..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
                         />
                     </div>
-                    {loading && <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />}
+                    {loading && <Loader2 className="h-5 w-5 text-emerald-600 animate-spin" />}
                 </div>
 
                 <div className="overflow-x-auto">
@@ -112,7 +112,7 @@ export default function UserManagementPage() {
                             {loading && users.length === 0 ? (
                                 <tr>
                                     <td colSpan={4} className="px-6 py-12 text-center">
-                                        <Loader2 className="h-8 w-8 text-blue-600 animate-spin mx-auto mb-2" />
+                                        <Loader2 className="h-8 w-8 text-emerald-600 animate-spin mx-auto mb-2" />
                                         <p className="text-gray-500 text-sm">Loading users...</p>
                                     </td>
                                 </tr>
@@ -128,7 +128,7 @@ export default function UserManagementPage() {
                                     <tr key={user._id} className="hover:bg-gray-50/50 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 font-bold">
+                                                <div className="h-10 w-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600 font-bold">
                                                     <UserIcon className="h-5 w-5" />
                                                 </div>
                                                 <div>
@@ -156,7 +156,7 @@ export default function UserManagementPage() {
                                                         setSelectedUser(user);
                                                         setIsFormOpen(true);
                                                     }}
-                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                                                     title="Edit User"
                                                 >
                                                     <Edit2 className="h-5 w-5" />

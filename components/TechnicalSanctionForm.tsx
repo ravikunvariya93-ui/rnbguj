@@ -170,7 +170,7 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
         {loading && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs transition-opacity duration-300">
                 <div className="bg-white rounded-2xl shadow-2xl px-8 py-6 flex flex-col items-center gap-3 border border-slate-100">
-                    <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+                    <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
                     <p className="text-sm font-semibold text-slate-700">Processing & Saving Technical Sanction...</p>
                 </div>
             </div>
@@ -238,8 +238,8 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
 
             <div className="pt-5">
                 <div className="flex justify-end">
-                    <Link href="/technical-sanctions" className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Cancel</Link>
-                    <button type="submit" disabled={loading} className="ml-3 inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                    <Link href="/technical-sanctions" className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">Cancel</Link>
+                    <button type="submit" disabled={loading} className="ml-3 inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                         {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                         {loading ? 'Saving...' : 'Save Sanction'}
                     </button>

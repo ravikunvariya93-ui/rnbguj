@@ -69,7 +69,7 @@ export default function DashboardFilters({ options }: Props) {
                     className="flex items-center gap-3 hover:opacity-80 transition-opacity"
                     title={isCollapsed ? "Expand Filters" : "Collapse Filters"}
                 >
-                    <div className="bg-blue-600 p-1.5 rounded-lg flex items-center justify-center relative">
+                    <div className="bg-emerald-600 p-1.5 rounded-lg flex items-center justify-center relative">
                         <Filter className="w-4 h-4 text-white" />
                     </div>
                     <div className="flex items-center gap-2">
@@ -103,7 +103,7 @@ export default function DashboardFilters({ options }: Props) {
                     return (
                         <div key={field.name} className="space-y-2">
                             <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
-                                <Icon className={`w-3 h-3 ${isActive ? 'text-blue-500' : 'text-slate-300'}`} />
+                                <Icon className={`w-3 h-3 ${isActive ? 'text-emerald-500' : 'text-slate-300'}`} />
                                 {field.label}
                             </label>
                             <div className="relative group">
@@ -112,7 +112,7 @@ export default function DashboardFilters({ options }: Props) {
                                     onChange={(e) => handleChange(field.name, e.target.value)}
                                     className={`block w-full text-xs font-bold rounded-xl px-4 py-3 appearance-none outline-none transition-all cursor-pointer border ${
                                         isActive 
-                                            ? 'bg-blue-50/50 border-blue-200 text-blue-700 ring-2 ring-blue-500/5' 
+                                            ? 'bg-emerald-50/50 border-emerald-200 text-emerald-700 ring-2 ring-emerald-500/5' 
                                             : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-white hover:border-slate-300'
                                     }`}
                                 >

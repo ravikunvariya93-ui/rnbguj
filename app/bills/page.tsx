@@ -73,8 +73,17 @@ export default async function BillsPage({ searchParams }: Props) {
             label: 'Bill Type / No.', 
             sortable: true,
             render: (row) => {
+                const tender = (row.workOrderId as any)?.loaId?.tenderId;
+                const packageId = tender?.packageId;
                 const nth = row.runningBillNumber === 1 ? 'st' : row.runningBillNumber === 2 ? 'nd' : row.runningBillNumber === 3 ? 'rd' : 'th';
-                return <span>{row.runningBillNumber}{nth} and {row.billType} Bill</span>;
+                const label = `${row.runningBillNumber}${nth} and ${row.billType} Bill`;
+                return packageId ? (
+                    <Link href={`/packages/${packageId}/bills?billId=${row._id}`} className="text-emerald-700 hover:underline font-semibold">
+                        {label}
+                    </Link>
+                ) : (
+                    <span>{label}</span>
+                );
             }
         },
         { 
@@ -85,7 +94,7 @@ export default async function BillsPage({ searchParams }: Props) {
             render: (row) => {
                 const tender = (row.workOrderId as any)?.loaId?.tenderId;
                 return tender?.packageId ? (
-                    <Link href={`/packages/${tender.packageId}`} className="text-blue-600 hover:underline font-semibold max-w-xs whitespace-normal break-words">
+                    <Link href={`/packages/${tender.packageId}`} className="text-emerald-600 hover:underline font-semibold max-w-xs whitespace-normal break-words">
                         {tender.packageName || 'Unknown Package'}
                     </Link>
                 ) : (
@@ -107,21 +116,28 @@ export default async function BillsPage({ searchParams }: Props) {
         }
     ];
 
-    const renderActions = (row: any) => (
-        <div className="flex items-center justify-end space-x-3">
-            <Link href={`/bills/${row._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
-                <Eye className="w-5 h-5" />
-            </Link>
-            <Link href={`/bills/${row._id}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Item">
-                <Edit2 className="w-5 h-5" />
-            </Link>
-            <GenericDeleteButton 
-                itemId={row._id} 
-                itemName={`Bill ${row.runningBillNumber}`} 
-                apiPath="/api/bills" 
-            />
-        </div>
-    );
+    const renderActions = (row: any) => {
+        const tender = (row.workOrderId as any)?.loaId?.tenderId;
+        const packageId = tender?.packageId;
+        const viewHref = packageId ? `/packages/${packageId}/bills?billId=${row._id}` : `/bills`;
+        const editHref = packageId ? `/packages/${packageId}/bills/${row._id}/edit` : `/bills`;
+
+        return (
+            <div className="flex items-center justify-end space-x-3">
+                <Link href={viewHref} className="text-gray-600 hover:text-emerald-700 p-1 transition-colors" title="View Details in Package">
+                    <Eye className="w-5 h-5" />
+                </Link>
+                <Link href={editHref} className="text-emerald-600 hover:text-emerald-900 p-1 transition-colors" title="Edit Item">
+                    <Edit2 className="w-5 h-5" />
+                </Link>
+                <GenericDeleteButton 
+                    itemId={row._id} 
+                    itemName={`Bill ${row.runningBillNumber}`} 
+                    apiPath="/api/bills" 
+                />
+            </div>
+        );
+    };
 
     return (
         <ListPageLayout

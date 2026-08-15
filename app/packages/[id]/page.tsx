@@ -16,7 +16,37 @@ import PackageDetailClient from './PackageDetailClient';
 export const dynamic = 'force-dynamic';
 
 function serialize<T>(obj: T): T {
-    return JSON.parse(JSON.stringify(obj));
+    if (obj === null || obj === undefined) return obj;
+    const sanitized = JSON.parse(
+        JSON.stringify(obj, (_key, value) => {
+            if (value && typeof value === 'object') {
+                if (value._bsontype || (value.constructor && (value.constructor.name === 'ObjectId' || value.constructor.name === 'ObjectID'))) {
+                    return value.toString();
+                }
+                if (value.type === 'Buffer' || value.buffer) {
+                    return typeof value.toString === 'function' ? value.toString() : String(value);
+                }
+            }
+            return value;
+        })
+    );
+
+    const clean = (val: any): any => {
+        if (!val || typeof val !== 'object') return val;
+        if (Array.isArray(val)) return val.map(clean);
+        const res: any = {};
+        for (const k of Object.keys(val)) {
+            const v = val[k];
+            if (v && typeof v === 'object' && v.buffer && typeof v.buffer === 'object') {
+                res[k] = String(v);
+            } else {
+                res[k] = clean(v);
+            }
+        }
+        return res;
+    };
+
+    return clean(sanitized);
 }
 
 export default async function PackageDetailPage({ params }: { params: Promise<{ id: string }> }) {

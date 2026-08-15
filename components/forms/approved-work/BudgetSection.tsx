@@ -113,7 +113,7 @@ export default function BudgetSection({ formData, handleChange }: BudgetSectionP
                             <button
                                 type="button"
                                 onClick={handleAddNewBudgetHead}
-                                className="p-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                className="p-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
                                 title="Add"
                             >
                                 <Check className="w-4 h-4" />
@@ -133,13 +133,13 @@ export default function BudgetSection({ formData, handleChange }: BudgetSectionP
                             id="budgetHead"
                             value={formData.budgetHead}
                             onChange={handleBudgetHeadChange}
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-blue-500 focus:border-blue-500 bg-white"
+                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border focus:ring-emerald-500 focus:border-emerald-500 bg-white"
                         >
                             <option value="">-- Select Budget Head --</option>
                             {budgetHeadOptions.map(option => (
                                 <option key={option} value={option}>{option}</option>
                             ))}
-                            <option value="ADD_NEW" className="text-blue-600 font-bold italic">+ Add New...</option>
+                            <option value="ADD_NEW" className="text-emerald-600 font-bold italic">+ Add New...</option>
                         </select>
                     )}
                 </div>

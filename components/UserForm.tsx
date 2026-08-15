@@ -63,7 +63,7 @@ export default function UserForm({ user, onClose, onSave }: UserFormProps) {
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200">
                 <div className="flex items-center justify-between p-6 border-b border-gray-100">
                     <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                        <User className="h-5 w-5 text-blue-600" />
+                        <User className="h-5 w-5 text-emerald-600" />
                         {user ? 'Edit User' : 'Add New User'}
                     </h3>
                     <button
@@ -93,7 +93,7 @@ export default function UserForm({ user, onClose, onSave }: UserFormProps) {
                                     required
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all sm:text-sm"
+                                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all sm:text-sm"
                                     placeholder="e.g. John Doe"
                                 />
                             </div>
@@ -110,7 +110,7 @@ export default function UserForm({ user, onClose, onSave }: UserFormProps) {
                                     required
                                     value={formData.username}
                                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all sm:text-sm"
+                                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all sm:text-sm"
                                     placeholder="Enter username"
                                 />
                             </div>
@@ -129,7 +129,7 @@ export default function UserForm({ user, onClose, onSave }: UserFormProps) {
                                     required={!user}
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all sm:text-sm"
+                                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all sm:text-sm"
                                     placeholder="••••••••"
                                 />
                             </div>
@@ -144,7 +144,7 @@ export default function UserForm({ user, onClose, onSave }: UserFormProps) {
                                 <select
                                     value={formData.role}
                                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all sm:text-sm bg-white"
+                                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all sm:text-sm bg-white"
                                 >
                                     <option value="VIEWER">Viewer</option>
                                     <option value="SUPERVISOR">Supervisor</option>
@@ -165,7 +165,7 @@ export default function UserForm({ user, onClose, onSave }: UserFormProps) {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 py-2.5 px-4 border border-transparent text-white font-bold rounded-lg bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all disabled:opacity-70 disabled:cursor-not-allowed text-sm flex items-center justify-center gap-2"
+                            className="flex-1 py-2.5 px-4 border border-transparent text-white font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all disabled:opacity-70 disabled:cursor-not-allowed text-sm flex items-center justify-center gap-2"
                         >
                             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                             {user ? 'Update User' : 'Create User'}

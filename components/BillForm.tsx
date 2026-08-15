@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save, RefreshCw, Plus, Trash2, X, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { 
+    Save, RefreshCw, Plus, Trash2, X, Loader2, ChevronDown, ChevronUp, 
+    Receipt, Layers, TrendingUp, ClipboardCheck, FileText, Calendar 
+} from 'lucide-react';
 import Link from 'next/link';
 import SearchableSelect from './SearchableSelect';
 
@@ -977,22 +980,29 @@ export default function BillForm({
         <>
             {(loading || fetchingAbstract) && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs transition-opacity duration-300">
-                    <div className="bg-white rounded-2xl shadow-2xl px-8 py-6 flex flex-col items-center gap-3 border border-slate-100">
-                        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+                    <div className="bg-white rounded-2xl shadow-2xl px-8 py-6 flex flex-col items-center gap-3 border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+                        <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
                         <p className="text-sm font-semibold text-slate-700">
                             {fetchingAbstract ? 'Fetching BOQ Abstract...' : 'Processing & Saving Bill...'}
                         </p>
                     </div>
                 </div>
             )}
-            <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-gray-200 bg-white shadow rounded-lg">
+            <form onSubmit={handleSubmit} className="space-y-6 bg-emerald-50/30 rounded-2xl transition-all duration-300">
             
             {/* General Information Section */}
-            <div className="p-8 pb-4">
-                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-6">Bill Details</h3>
-                <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+            <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
+                <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
+                            <Receipt className="w-4 h-4" />
+                        </span>
+                        <h3 className="font-bold text-slate-800">Bill Details</h3>
+                    </div>
+                </div>
+                <div className="p-6">
                     {!initialWorkOrderId && (
-                        <div className="sm:col-span-6">
+                        <div className="mb-4">
                             <SearchableSelect 
                                 label="Select Work Order / Package"
                                 required
@@ -1003,161 +1013,175 @@ export default function BillForm({
                             />
                         </div>
                     )}
+                    <div className="overflow-x-auto">
+                        <table className="excel-table table-fixed w-full">
+                            <colgroup>
+                                <col className="w-[20%]" />
+                                <col className="w-[30%]" />
+                                <col className="w-[20%]" />
+                                <col className="w-[30%]" />
+                            </colgroup>
+                            <tbody>
+                                <tr>
+                                    <td className="excel-label">Bill Type</td>
+                                    <td className="excel-value">
+                                        <select
+                                            name="billType"
+                                            id="billType"
+                                            value={formData.billType}
+                                            onChange={handleChange}
+                                            className="excel-cell-select font-medium"
+                                            required
+                                        >
+                                            <option value="Running">Running Bill</option>
+                                            <option value="Final">Final Bill</option>
+                                        </select>
+                                    </td>
+                                    <td className="excel-label">Bill Number</td>
+                                    <td className="excel-value">
+                                        <select
+                                            name="runningBillNumber"
+                                            id="runningBillNumber"
+                                            value={formData.runningBillNumber}
+                                            onChange={handleChange}
+                                            className="excel-cell-select font-medium"
+                                            required
+                                        >
+                                            {[...Array(50)].map((_, i) => {
+                                                const num = i + 1;
+                                                const suffix = num === 1 ? 'st' : num === 2 ? 'nd' : num === 3 ? 'rd' : 'th';
+                                                return (
+                                                    <option key={num} value={num}>
+                                                        {num}{suffix}
+                                                    </option>
+                                                );
+                                            })}
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td className="excel-label">Bill Date</td>
+                                    <td className="excel-value">
+                                        <input 
+                                            type="text" placeholder="DD/MM/YYYY" name="billDate" id="billDate" 
+                                            value={formData.billDate} onChange={handleChange} 
+                                            className="excel-cell-input" required
+                                        />
+                                    </td>
+                                    <td className="excel-label">
+                                        {formData.billType === 'Final' ? 'Date of Completion (Actual)' : 'Last Record Entry / Measurement Date'}
+                                    </td>
+                                    <td className="excel-value">
+                                        {formData.billType === 'Final' ? (
+                                            <input 
+                                                type="text" placeholder="DD/MM/YYYY" name="actualCompletionDate" id="actualCompletionDate" 
+                                                value={formData.actualCompletionDate || ''} onChange={handleChange} 
+                                                className="excel-cell-input"
+                                            />
+                                        ) : (
+                                            <input 
+                                                type="text" placeholder="DD/MM/YYYY" name="lastRecordEntryDate" id="lastRecordEntryDate" 
+                                                value={formData.lastRecordEntryDate || ''} onChange={handleChange} 
+                                                className="excel-cell-input"
+                                            />
+                                        )}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td className="excel-label">Measurement Book (M.B.) Number</td>
+                                    <td className="excel-value">
+                                        <input 
+                                            type="text" placeholder="e.g. 2295" name="mbNumber" id="mbNumber" 
+                                            value={(formData as any).mbNumber || ''} onChange={handleChange} 
+                                            className="excel-cell-input font-mono"
+                                        />
+                                    </td>
+                                    <td className="excel-label">Delay</td>
+                                    <td className="excel-value">
+                                        <span className="font-mono font-bold text-slate-800 text-xs">
+                                            {(() => {
+                                                const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
+                                                const compTargetDate = stipulatedCompletionDate 
+                                                    ? new Date(stipulatedCompletionDate) 
+                                                    : (selectedWorkOrder?.stipulatedCompletionDate ? new Date(selectedWorkOrder.stipulatedCompletionDate) : null);
+                                                if (!compTargetDate) return '-';
 
-                    <div className="sm:col-span-2">
-                        <label htmlFor="billType" className="block text-sm font-medium text-gray-700">Bill Type</label>
-                        <select
-                            name="billType"
-                            id="billType"
-                            value={formData.billType}
-                            onChange={handleChange}
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                            required
-                        >
-                            <option value="Running">Running Bill</option>
-                            <option value="Final">Final Bill</option>
-                        </select>
-                    </div>
+                                                const getDaysDiff = (date1: Date, date2: Date) => {
+                                                    const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+                                                    const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+                                                    const diffTime = d1.getTime() - d2.getTime();
+                                                    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                                };
 
-                    <div className="sm:col-span-2">
-                        <label htmlFor="runningBillNumber" className="block text-sm font-medium text-gray-700">Bill Number</label>
-                        <select
-                            name="runningBillNumber"
-                            id="runningBillNumber"
-                            value={formData.runningBillNumber}
-                            onChange={handleChange}
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                            required
-                        >
-                            {[...Array(50)].map((_, i) => {
-                                const num = i + 1;
-                                const suffix = num === 1 ? 'st' : num === 2 ? 'nd' : num === 3 ? 'rd' : 'th';
-                                return (
-                                    <option key={num} value={num}>
-                                        {num}{suffix}
-                                    </option>
-                                );
-                            })}
-                        </select>
-                    </div>
-
-                    <div className="sm:col-span-2">
-                        <label htmlFor="billDate" className="block text-sm font-medium text-gray-700">Bill Date</label>
-                        <input 
-                            type="text" placeholder="DD/MM/YYYY" name="billDate" id="billDate" 
-                            value={formData.billDate} onChange={handleChange} 
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" required
-                        />
-                    </div>
-
-                    {formData.billType === 'Final' ? (
-                        <div className="sm:col-span-2">
-                            <label htmlFor="actualCompletionDate" className="block text-sm font-medium text-gray-700">Date of Completion (Actual)</label>
-                            <input 
-                                type="text" placeholder="DD/MM/YYYY" name="actualCompletionDate" id="actualCompletionDate" 
-                                value={formData.actualCompletionDate || ''} onChange={handleChange} 
-                                className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                            />
-                        </div>
-                    ) : (
-                        <div className="sm:col-span-2">
-                            <label htmlFor="lastRecordEntryDate" className="block text-sm font-medium text-gray-700">Last Record Entry / Measurement Date</label>
-                            <input 
-                                type="text" placeholder="DD/MM/YYYY" name="lastRecordEntryDate" id="lastRecordEntryDate" 
-                                value={formData.lastRecordEntryDate || ''} onChange={handleChange} 
-                                className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                            />
-                        </div>
-                    )}
-
-                    <div className="sm:col-span-2">
-                        <label htmlFor="mbNumber" className="block text-sm font-medium text-gray-700">Measurement Book (M.B.) Number</label>
-                        <input 
-                            type="text" placeholder="e.g. 2295" name="mbNumber" id="mbNumber" 
-                            value={(formData as any).mbNumber || ''} onChange={handleChange} 
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                        />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                        <label htmlFor="praisaBillNo" className="block text-sm font-medium text-gray-700">PRAISA Bill No.</label>
-                        <input 
-                            type="text" placeholder="e.g. PR-123" name="praisaBillNo" id="praisaBillNo" 
-                            value={formData.praisaBillNo} onChange={handleChange} 
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                        />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                        <label htmlFor="praisaBillDate" className="block text-sm font-medium text-gray-700">PRAISA Bill Date</label>
-                        <input 
-                            type="text" placeholder="DD/MM/YYYY" name="praisaBillDate" id="praisaBillDate" 
-                            value={formData.praisaBillDate} onChange={handleChange} 
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                        />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                        <label htmlFor="voucherNo" className="block text-sm font-medium text-gray-700">Voucher No.</label>
-                        <input 
-                            type="text" placeholder="e.g. V-123" name="voucherNo" id="voucherNo" 
-                            value={formData.voucherNo || ''} onChange={handleChange} 
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                        />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                        <label htmlFor="voucherDate" className="block text-sm font-medium text-gray-700">Voucher Date</label>
-                        <input 
-                            type="text" placeholder="DD/MM/YYYY" name="voucherDate" id="voucherDate" 
-                            value={formData.voucherDate || ''} onChange={handleChange} 
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
-                        />
-                    </div>
-
-                    <div className="sm:col-span-2">
-                        <label className="block text-sm font-medium text-slate-500 font-semibold">Delay</label>
-                        <div className="mt-1 p-2 bg-slate-50 border border-slate-200 rounded-md sm:text-sm font-mono font-bold text-slate-700">
-                            {(() => {
-                                const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
-                                const compTargetDate = stipulatedCompletionDate 
-                                    ? new Date(stipulatedCompletionDate) 
-                                    : (selectedWorkOrder?.stipulatedCompletionDate ? new Date(selectedWorkOrder.stipulatedCompletionDate) : null);
-                                if (!compTargetDate) return '-';
-
-                                const getDaysDiff = (date1: Date, date2: Date) => {
-                                    const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
-                                    const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
-                                    const diffTime = d1.getTime() - d2.getTime();
-                                    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                };
-
-                                let daysDelay = 0;
-                                if (formData.billType === 'Running') {
-                                    const lastRecordDate = formData.lastRecordEntryDate ? parseDateStr(formData.lastRecordEntryDate) : null;
-                                    if (lastRecordDate) {
-                                        daysDelay = Math.max(0, getDaysDiff(lastRecordDate, compTargetDate));
-                                    }
-                                } else {
-                                    const completionDate = formData.actualCompletionDate ? parseDateStr(formData.actualCompletionDate) : null;
-                                    if (completionDate) {
-                                        daysDelay = Math.max(0, getDaysDiff(completionDate, compTargetDate));
-                                    }
-                                }
-                                return `${daysDelay} days`;
-                            })()}
-                        </div>
+                                                let daysDelay = 0;
+                                                if (formData.billType === 'Running') {
+                                                    const lastRecordDate = formData.lastRecordEntryDate ? parseDateStr(formData.lastRecordEntryDate) : null;
+                                                    if (lastRecordDate) {
+                                                        daysDelay = Math.max(0, getDaysDiff(lastRecordDate, compTargetDate));
+                                                    }
+                                                } else {
+                                                    const completionDate = formData.actualCompletionDate ? parseDateStr(formData.actualCompletionDate) : null;
+                                                    if (completionDate) {
+                                                        daysDelay = Math.max(0, getDaysDiff(completionDate, compTargetDate));
+                                                    }
+                                                }
+                                                return `${daysDelay} days`;
+                                            })()}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td className="excel-label">PRAISA Bill No.</td>
+                                    <td className="excel-value">
+                                        <input 
+                                            type="text" placeholder="e.g. PR-123" name="praisaBillNo" id="praisaBillNo" 
+                                            value={formData.praisaBillNo} onChange={handleChange} 
+                                            className="excel-cell-input"
+                                        />
+                                    </td>
+                                    <td className="excel-label">PRAISA Bill Date</td>
+                                    <td className="excel-value">
+                                        <input 
+                                            type="text" placeholder="DD/MM/YYYY" name="praisaBillDate" id="praisaBillDate" 
+                                            value={formData.praisaBillDate} onChange={handleChange} 
+                                            className="excel-cell-input"
+                                        />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td className="excel-label">Voucher No.</td>
+                                    <td className="excel-value">
+                                        <input 
+                                            type="text" placeholder="e.g. V-123" name="voucherNo" id="voucherNo" 
+                                            value={formData.voucherNo || ''} onChange={handleChange} 
+                                            className="excel-cell-input"
+                                        />
+                                    </td>
+                                    <td className="excel-label">Voucher Date</td>
+                                    <td className="excel-value">
+                                        <input 
+                                            type="text" placeholder="DD/MM/YYYY" name="voucherDate" id="voucherDate" 
+                                            value={formData.voucherDate || ''} onChange={handleChange} 
+                                            className="excel-cell-input"
+                                        />
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
 
             {/* Abstract Section */}
-            <div className="p-8 pt-4">
-                <div className="flex justify-between items-center mb-4">
+            <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
+                <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                        <h3 className="text-lg leading-6 font-medium text-gray-900">Bill Abstract (Line Items)</h3>
+                        <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
+                            <Layers className="w-4 h-4" />
+                        </span>
+                        <h3 className="font-bold text-slate-800">Bill Abstract (Line Items)</h3>
                         {formData.items && formData.items.length > 0 && (
-                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
+                            <span className="text-xs bg-emerald-100 text-emerald-900 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold">
                                 {formData.items.length} items
                             </span>
                         )}
@@ -1165,7 +1189,7 @@ export default function BillForm({
                             <button
                                 type="button"
                                 onClick={handleAddExtraItem}
-                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-semibold rounded-md text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-all"
+                                className="inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs transition-all cursor-pointer"
                             >
                                 <Plus className="w-3.5 h-3.5 mr-1" /> Add Extra Item
                             </button>
@@ -1173,7 +1197,7 @@ export default function BillForm({
                     </div>
                     <div className="flex items-center gap-3">
                         {fetchingAbstract && (
-                            <span className="inline-flex items-center text-sm text-blue-600">
+                            <span className="inline-flex items-center text-sm font-semibold text-emerald-600">
                                 <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Fetching BOQ...
                             </span>
                         )}
@@ -1181,7 +1205,7 @@ export default function BillForm({
                             <button
                                 type="button"
                                 onClick={() => setIsAbstractExpanded(!isAbstractExpanded)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-slate-200"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs font-bold rounded-xl transition-colors cursor-pointer border border-emerald-300"
                             >
                                 {isAbstractExpanded ? (
                                     <>
@@ -1198,22 +1222,22 @@ export default function BillForm({
                         )}
                     </div>
                 </div>
-
-                <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-slate-50">
-                            <tr>
-                                <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider">Item No.</th>
-                                <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider w-1/4">Description</th>
-                                <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider">Unit</th>
-                                <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider bg-slate-100">Qty (BOQ)</th>
-                                <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider">Full Rate (₹)</th>
-                                <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-blue-700 bg-blue-50 tracking-wider border-l border-blue-100 min-w-[140px]">Upto Date Qty</th>
-                                <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-blue-700 bg-blue-50 tracking-wider border-r border-blue-100 min-w-[140px]">Part Rate (₹)</th>
-                                <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-slate-700 tracking-wider bg-slate-100">Upto Date Amt</th>
-                                <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-amber-700 bg-amber-50 tracking-wider">Prev Paid Amt</th>
-                                <th scope="col" className="px-3 py-3 text-left text-xs font-semibold text-emerald-700 bg-emerald-50 tracking-wider">To Be Paid</th>
-                                <th scope="col" className="px-3 py-3 text-center text-xs font-semibold text-slate-700 tracking-wider w-12">Actions</th>
+                <div className="p-6">
+                    <div className="overflow-x-auto border border-emerald-300 rounded-xl shadow-2xs">
+                    <table className="excel-table">
+                        <thead>
+                            <tr className="bg-emerald-100/90 text-emerald-950">
+                                <th scope="col" className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-left text-xs font-bold text-emerald-950">Item No.</th>
+                                <th scope="col" className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-left text-xs font-bold text-emerald-950 w-1/4">Description</th>
+                                <th scope="col" className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-center text-xs font-bold text-emerald-950">Unit</th>
+                                <th scope="col" className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-right text-xs font-bold text-emerald-950">Qty (BOQ)</th>
+                                <th scope="col" className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-right text-xs font-bold text-emerald-950">Full Rate (₹)</th>
+                                <th scope="col" className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-right text-xs font-bold text-emerald-950 min-w-[140px]">Upto Date Qty</th>
+                                <th scope="col" className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-right text-xs font-bold text-emerald-950 min-w-[140px]">Part Rate (₹)</th>
+                                <th scope="col" className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-right text-xs font-bold text-emerald-950">Upto Date Amt</th>
+                                <th scope="col" className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-right text-xs font-bold text-emerald-950">Prev Paid Amt</th>
+                                <th scope="col" className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-right text-xs font-bold text-emerald-950">To Be Paid</th>
+                                <th scope="col" className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-center text-xs font-bold text-emerald-950 w-12">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -1232,11 +1256,11 @@ export default function BillForm({
                                 </tr>
                             ) : !isAbstractExpanded ? (
                                 <tr>
-                                    <td colSpan={11} className="px-4 py-3.5 text-center text-xs text-slate-500 bg-slate-50/60 font-medium">
+                                    <td colSpan={11} className="px-4 py-3.5 text-center text-xs text-slate-500 bg-emerald-50/40 font-medium">
                                         <button
                                             type="button"
                                             onClick={() => setIsAbstractExpanded(true)}
-                                            className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 font-semibold hover:underline cursor-pointer"
+                                            className="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-900 font-bold hover:underline cursor-pointer"
                                         >
                                             <ChevronDown className="w-4 h-4" />
                                             {formData.items.length} line items collapsed. Click to expand line item breakdown.
@@ -1245,51 +1269,51 @@ export default function BillForm({
                                 </tr>
                             ) : (
                                 formData.items.map((item: IBillItem, index: number) => (
-                                    <tr key={index} className="hover:bg-slate-50 transition-colors">
-                                        <td className="px-3 py-3 text-sm text-slate-700 font-medium whitespace-nowrap">
+                                    <tr key={index} className="hover:bg-emerald-50/50 transition-colors">
+                                        <td className="border border-slate-200 px-3 py-2 text-sm text-slate-700 font-medium whitespace-nowrap">
                                             <div className="flex flex-col gap-1">
-                                                <span>{item.itemNo}</span>
+                                                <span className="font-mono font-bold">{item.itemNo}</span>
                                                 {item.itemType === 'Extra' && (
-                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-100 w-fit leading-none">
+                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 w-fit leading-none">
                                                         Extra
                                                     </span>
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-3 py-2 text-xs text-slate-600 min-w-[200px]">
+                                        <td className="border border-slate-200 px-3 py-2 text-xs text-slate-600 min-w-[200px]">
                                             {item.itemType === 'Extra' ? (
                                                 <textarea
                                                     rows={1}
                                                     value={item.description || ''}
                                                     onChange={(e) => handleExtraItemFieldChange(index, 'description', e.target.value)}
-                                                    className="block w-full text-xs border-gray-300 rounded-md p-1 border focus:ring-blue-500 focus:border-blue-500 min-h-[34px]"
+                                                    className="block w-full text-xs border-emerald-200 rounded-lg p-1.5 border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-h-[34px]"
                                                     placeholder="Extra item description..."
                                                     required
                                                 />
                                             ) : (
-                                                <div className="line-clamp-2" title={item.description}>
+                                                <div className="line-clamp-2 font-medium" title={item.description}>
                                                     {item.description}
                                                 </div>
                                             )}
                                         </td>
-                                        <td className="px-3 py-2 text-xs text-slate-500">
+                                        <td className="border border-slate-200 px-3 py-2 text-xs text-slate-500 text-center">
                                             {item.itemType === 'Extra' ? (
                                                 <input
                                                     type="text"
                                                     value={item.unit || ''}
                                                     onChange={(e) => handleExtraItemFieldChange(index, 'unit', e.target.value)}
-                                                    className="block w-20 text-xs border-gray-300 rounded-md p-1 border focus:ring-blue-500 focus:border-blue-500"
+                                                    className="block w-20 text-xs border-emerald-200 rounded-lg p-1 border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                                     placeholder="Unit"
                                                     required
                                                 />
                                             ) : (
-                                                <span className="whitespace-nowrap">{item.unit}</span>
+                                                <span className="whitespace-nowrap font-medium">{item.unit}</span>
                                             )}
                                         </td>
-                                        <td className="px-3 py-2 text-sm text-slate-700 font-mono font-medium bg-slate-50/50">
+                                        <td className="border border-slate-200 px-3 py-2 text-sm text-slate-700 font-mono font-medium text-right bg-slate-50/50">
                                             {item.boqQuantity != null ? Number(item.boqQuantity).toFixed(3) : '-'}
                                         </td>
-                                        <td className="px-3 py-2 text-sm text-slate-700 font-mono">
+                                        <td className="border border-slate-200 px-3 py-2 text-sm text-slate-700 font-mono text-right">
                                             {item.itemType === 'Extra' ? (
                                                 <input
                                                     type="number"
@@ -1301,7 +1325,7 @@ export default function BillForm({
                                                         setTableRawInputs(prev => ({ ...prev, [`${index}-fullRate`]: val }));
                                                         handleExtraItemFieldChange(index, 'fullRate', val);
                                                     }}
-                                                    className="block w-24 text-xs border-gray-300 rounded-md p-1 border focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                                    className="block w-24 text-xs border-emerald-200 rounded-lg p-1 border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono"
                                                     placeholder="Rate (₹)"
                                                     required
                                                 />
@@ -1311,7 +1335,7 @@ export default function BillForm({
                                         </td>
                                         
                                         {/* Editable Fields */}
-                                        <td className="px-3 py-2 border-l border-blue-100 bg-blue-50/30">
+                                        <td className="border border-slate-200 px-3 py-2 bg-emerald-50/30">
                                             <input
                                                 type="number"
                                                 min="0"
@@ -1333,10 +1357,10 @@ export default function BillForm({
                                                     }
                                                 }}
                                                 data-qty-index={index}
-                                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                                className="block w-full sm:text-sm border-emerald-200 rounded-lg p-1.5 border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono"
                                             />
                                         </td>
-                                        <td className="px-3 py-2 border-r border-blue-100 bg-blue-50/30">
+                                        <td className="border border-slate-200 px-3 py-2 bg-emerald-50/30">
                                             <input
                                                 type="number"
                                                 min="0"
@@ -1347,14 +1371,14 @@ export default function BillForm({
                                                     setTableRawInputs(prev => ({ ...prev, [`${index}-partRate`]: val }));
                                                     handleItemChange(index, 'partRate', val);
                                                 }}
-                                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
+                                                className="block w-full sm:text-sm border-emerald-200 rounded-lg p-1.5 border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono"
                                             />
                                         </td>
                                         
                                         {/* Calculated Fields */}
-                                        <td className="px-3 py-3 text-sm text-slate-800 font-mono bg-slate-50">{item.uptoDateAmount.toFixed(2)}</td>
+                                        <td className="border border-slate-200 px-3 py-2 text-sm text-slate-800 font-mono text-right bg-slate-50/50">{item.uptoDateAmount.toFixed(2)}</td>
                                         
-                                        <td className="px-3 py-2 bg-amber-50/30">
+                                        <td className="border border-slate-200 px-3 py-2 bg-amber-50/30">
                                             <input
                                                 type="number"
                                                 min="0"
@@ -1365,21 +1389,21 @@ export default function BillForm({
                                                     setTableRawInputs(prev => ({ ...prev, [`${index}-previousPaidAmount`]: val }));
                                                     handleItemChange(index, 'previousPaidAmount', val);
                                                 }}
-                                                className="block w-full sm:text-sm border-amber-200 rounded-md p-1.5 border focus:ring-amber-500 focus:border-amber-500 font-mono"
+                                                className="block w-full sm:text-sm border-amber-200 rounded-lg p-1.5 border focus:ring-amber-500 focus:border-amber-500 font-mono"
                                             />
                                         </td>
                                         
-                                        <td className="px-3 py-3 text-sm font-bold text-emerald-700 font-mono bg-emerald-50/50">
+                                        <td className="border border-slate-200 px-3 py-2 text-sm font-bold text-emerald-800 font-mono text-right bg-emerald-100/50">
                                             {item.toBePaidAmount.toFixed(2)}
                                         </td>
                                         
                                         {/* Actions Column */}
-                                        <td className="px-3 py-2 text-center">
+                                        <td className="border border-slate-200 px-3 py-2 text-center">
                                             {item.itemType === 'Extra' && (
                                                 <button
                                                     type="button"
                                                     onClick={() => handleRemoveExtraItem(index)}
-                                                    className="text-red-500 hover:text-red-700 transition-colors p-1"
+                                                    className="text-rose-500 hover:text-rose-700 transition-colors p-1"
                                                     title="Remove Extra Item"
                                                 >
                                                     <X className="w-4 h-4" />
@@ -1417,52 +1441,52 @@ export default function BillForm({
                             const toBePaidPayable = toBePaidNet + toBePaidGst;
 
                             return (
-                                <tfoot className="bg-slate-100 font-semibold border-t-2 border-slate-200">
+                                <tfoot className="bg-emerald-50/90 font-semibold border-t-2 border-emerald-300">
                                     {/* Row 1: Total Amount */}
-                                    <tr className="border-b border-slate-200">
-                                        <td colSpan={7} className="px-3 py-2.5 text-right text-sm text-slate-700">Total Amount:</td>
-                                        <td className="px-3 py-2.5 text-sm text-slate-800 font-mono">
+                                    <tr className="border-b border-emerald-200">
+                                        <td colSpan={7} className="px-3 py-2.5 text-right text-xs font-bold text-slate-700">Total Amount:</td>
+                                        <td className="px-3 py-2.5 text-xs text-slate-800 font-mono text-right font-bold">
                                             {totalUptoDate.toFixed(2)}
                                         </td>
-                                        <td className="px-3 py-2.5 text-sm text-amber-700 font-mono">
+                                        <td className="px-3 py-2.5 text-xs text-amber-700 font-mono text-right font-bold">
                                             {totalPrevPaid.toFixed(2)}
                                         </td>
-                                        <td className="px-3 py-2.5 text-sm text-emerald-700 font-mono text-lg border-x border-emerald-200 bg-emerald-100/50 font-bold">
+                                        <td className="px-3 py-2.5 text-xs text-emerald-800 font-mono text-right border-x border-emerald-200 bg-emerald-100 font-extrabold">
                                             ₹{totalToBePaid.toFixed(2)}
                                         </td>
                                         <td></td>
                                     </tr>
                                     {/* Row 2: % Above/Below */}
-                                    <tr className="border-b border-slate-200 bg-slate-50/50">
-                                        <td colSpan={7} className="px-3 py-2 text-right text-sm text-slate-600">{tenderPercentage}% {tenderDirection}:</td>
-                                        <td className="px-3 py-2 text-sm text-slate-600 font-mono">
+                                    <tr className="border-b border-emerald-200 bg-emerald-50/40">
+                                        <td colSpan={7} className="px-3 py-2 text-right text-xs font-semibold text-slate-600">{tenderPercentage}% {tenderDirection}:</td>
+                                        <td className="px-3 py-2 text-xs text-slate-600 font-mono text-right">
                                             {tenderDirection === 'Below' ? '-' : ''}{uptoDateAdj.toFixed(2)}
                                         </td>
-                                        <td className="px-3 py-2 text-sm text-amber-600 font-mono">
+                                        <td className="px-3 py-2 text-xs text-amber-600 font-mono text-right">
                                             {tenderDirection === 'Below' ? '-' : ''}{prevPaidAdj.toFixed(2)}
                                         </td>
-                                        <td className="px-3 py-2 text-sm text-emerald-600 font-mono border-x border-slate-200 font-bold">
+                                        <td className="px-3 py-2 text-xs text-emerald-700 font-mono text-right border-x border-emerald-200 font-bold">
                                             {tenderDirection === 'Below' ? '-₹' : '₹'}{toBePaidAdj.toFixed(2)}
                                         </td>
                                         <td></td>
                                     </tr>
                                     {/* Row 3: Net Amount */}
-                                    <tr className="border-b border-slate-200">
-                                        <td colSpan={7} className="px-3 py-2.5 text-right text-sm text-slate-700 font-semibold">Net Amount:</td>
-                                        <td className="px-3 py-2.5 text-sm text-slate-800 font-mono">
+                                    <tr className="border-b border-emerald-200">
+                                        <td colSpan={7} className="px-3 py-2.5 text-right text-xs text-slate-700 font-bold">Net Amount:</td>
+                                        <td className="px-3 py-2.5 text-xs text-slate-800 font-mono text-right font-bold">
                                             {uptoDateNet.toFixed(2)}
                                         </td>
-                                        <td className="px-3 py-2.5 text-sm text-amber-700 font-mono">
+                                        <td className="px-3 py-2.5 text-xs text-amber-700 font-mono text-right font-bold">
                                             {prevPaidNet.toFixed(2)}
                                         </td>
-                                        <td className="px-3 py-2.5 text-sm text-emerald-700 font-mono border-x border-slate-200 font-bold">
+                                        <td className="px-3 py-2.5 text-xs text-emerald-800 font-mono text-right border-x border-emerald-200 font-extrabold">
                                             ₹{toBePaidNet.toFixed(2)}
                                         </td>
                                         <td></td>
                                     </tr>
                                     {/* Row 4: Add 18% GST */}
-                                    <tr className="border-b border-slate-200 bg-slate-50/50">
-                                        <td colSpan={7} className="px-3 py-2 text-right text-sm text-slate-600">
+                                    <tr className="border-b border-emerald-200 bg-emerald-50/40">
+                                        <td colSpan={7} className="px-3 py-2 text-right text-xs text-slate-600">
                                             <div className="flex items-center justify-end space-x-2">
                                                 <input
                                                     type="checkbox"
@@ -1470,50 +1494,50 @@ export default function BillForm({
                                                     name="labourCessApplicable"
                                                     checked={formData.labourCessApplicable}
                                                     onChange={handleChange}
-                                                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded cursor-pointer"
+                                                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-emerald-300 rounded cursor-pointer"
                                                 />
-                                                <label htmlFor="labourCessApplicable" className="cursor-pointer text-slate-600 hover:text-slate-800">
+                                                <label htmlFor="labourCessApplicable" className="cursor-pointer text-slate-700 font-medium hover:text-slate-900">
                                                     Labour Cess Applicable
                                                 </label>
-                                                <span className="mx-2 text-slate-300">|</span>
-                                                <span>Add 18% GST:</span>
+                                                <span className="mx-2 text-emerald-300">|</span>
+                                                <span className="font-semibold">Add 18% GST:</span>
                                             </div>
                                         </td>
-                                        <td className="px-3 py-2 text-sm text-slate-600 font-mono">
+                                        <td className="px-3 py-2 text-xs text-slate-600 font-mono text-right">
                                             {uptoDateGst.toFixed(2)}
                                         </td>
-                                        <td className="px-3 py-2 text-sm text-amber-600 font-mono">
+                                        <td className="px-3 py-2 text-xs text-amber-600 font-mono text-right">
                                             {prevPaidGst.toFixed(2)}
                                         </td>
-                                        <td className="px-3 py-2 text-sm text-emerald-600 font-mono border-x border-slate-200 font-bold">
+                                        <td className="px-3 py-2 text-xs text-emerald-700 font-mono text-right border-x border-emerald-200 font-bold">
                                             ₹{toBePaidGst.toFixed(2)}
                                         </td>
                                         <td></td>
                                     </tr>
                                     {/* Row 5: Net Payable Amount */}
-                                    <tr className="bg-emerald-50 font-bold border-b border-slate-200">
-                                        <td colSpan={7} className="px-3 py-3 text-right text-sm text-emerald-800 text-base">Net Payable Amount:</td>
-                                        <td className="px-3 py-3 text-sm text-emerald-800 font-mono text-base">
+                                    <tr className="bg-emerald-100/70 font-bold border-b border-emerald-200">
+                                        <td colSpan={7} className="px-3 py-3 text-right text-xs text-emerald-900 font-extrabold uppercase">Net Payable Amount:</td>
+                                        <td className="px-3 py-3 text-xs text-emerald-900 font-mono text-right font-bold">
                                             {uptoDatePayable.toFixed(2)}
                                         </td>
-                                        <td className="px-3 py-3 text-sm text-amber-800 font-mono text-base">
+                                        <td className="px-3 py-3 text-xs text-amber-900 font-mono text-right font-bold">
                                             {prevPaidPayable.toFixed(2)}
                                         </td>
-                                        <td className="px-3 py-3 text-sm text-emerald-900 font-mono text-lg border-x border-emerald-200 bg-emerald-100/50 font-extrabold">
+                                        <td className="px-3 py-3 text-xs text-emerald-950 font-mono text-right border-x border-emerald-300 bg-emerald-200/60 font-black">
                                             ₹{toBePaidPayable.toFixed(2)}
                                         </td>
                                         <td></td>
                                     </tr>
                                     {/* Row 6: Say Amount */}
-                                    <tr className="bg-emerald-100 font-bold border-b-4 border-emerald-300">
-                                        <td colSpan={7} className="px-3 py-3 text-right text-sm text-emerald-900 tracking-wider">Say Amount:</td>
-                                        <td className="px-3 py-3 text-sm text-emerald-900 font-mono">
+                                    <tr className="bg-emerald-200/80 font-bold border-b-4 border-emerald-400">
+                                        <td colSpan={7} className="px-3 py-3 text-right text-xs text-emerald-950 font-black tracking-wider uppercase">Say Amount:</td>
+                                        <td className="px-3 py-3 text-xs text-emerald-950 font-mono text-right font-extrabold">
                                             {Math.floor(uptoDatePayable).toFixed(2)}
                                         </td>
-                                        <td className="px-3 py-3 text-sm text-amber-900 font-mono">
+                                        <td className="px-3 py-3 text-xs text-amber-950 font-mono text-right font-extrabold">
                                             {Math.floor(prevPaidPayable).toFixed(2)}
                                         </td>
-                                        <td className="px-3 py-3 text-sm text-emerald-955 font-mono text-lg border-x border-emerald-300 bg-emerald-200/50 font-extrabold">
+                                        <td className="px-3 py-3 text-xs text-emerald-950 font-mono text-right border-x border-emerald-400 bg-emerald-300/60 font-black text-sm">
                                             ₹{Math.floor(toBePaidPayable).toFixed(2)}
                                         </td>
                                         <td></td>
@@ -1523,15 +1547,19 @@ export default function BillForm({
                         })()}
                     </table>
                 </div>
+                </div>
             </div>
 
             {/* Work-wise Expenditure Table */}
-            <div className="p-8 pt-4">
-                <div className="flex justify-between items-center mb-4">
+            <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
+                <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                        <h3 className="text-lg leading-6 font-medium text-gray-900">Work-wise Expenditure</h3>
+                        <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
+                            <Layers className="w-4 h-4" />
+                        </span>
+                        <h3 className="font-bold text-slate-800">Work-wise Expenditure</h3>
                         {formData.works && formData.works.length > 0 && (
-                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
+                            <span className="text-xs bg-emerald-100 text-emerald-900 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold">
                                 {formData.works.length} works
                             </span>
                         )}
@@ -1540,7 +1568,7 @@ export default function BillForm({
                         <button
                             type="button"
                             onClick={() => setIsWorkWiseExpanded(!isWorkWiseExpanded)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-slate-200"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs font-bold rounded-xl transition-colors cursor-pointer border border-emerald-300"
                         >
                             {isWorkWiseExpanded ? (
                                 <>
@@ -1557,33 +1585,34 @@ export default function BillForm({
                     )}
                 </div>
                 {isWorkWiseExpanded && (
-                    <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-slate-50">
-                                <tr>
-                                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-24">SR. No.</th>
-                                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700">Name of Work</th>
-                                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-48">Amount (₹)</th>
+                    <div className="p-6">
+                    <div className="overflow-x-auto border border-emerald-300 rounded-xl shadow-2xs">
+                        <table className="excel-table">
+                            <thead>
+                                <tr className="bg-emerald-100/90 text-emerald-950">
+                                    <th className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-left text-xs font-bold text-emerald-950 w-24">SR. No.</th>
+                                    <th className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-left text-xs font-bold text-emerald-950">Name of Work</th>
+                                    <th className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-right text-xs font-bold text-emerald-950 w-48">Amount (₹)</th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="divide-y divide-emerald-200/60 bg-white">
                                 {formData.works.length === 0 ? (
                                     <tr>
-                                        <td colSpan={3} className="px-6 py-8 text-center text-sm text-gray-500">
+                                        <td colSpan={3} className="px-6 py-8 text-center text-sm text-slate-500">
                                             No works found for this package.
                                         </td>
                                     </tr>
                                 ) : (
                                     formData.works.map((work: any, index: number) => (
-                                        <tr key={index}>
-                                            <td className="px-3 py-2">
-                                                <input type="text" value={work.srNo} readOnly className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border bg-gray-50" />
+                                        <tr key={index} className="hover:bg-emerald-50/50">
+                                            <td className="border border-slate-200 px-3 py-2">
+                                                <input type="text" value={work.srNo} readOnly className="block w-full text-xs font-bold sm:text-sm border-slate-200 rounded-lg p-1.5 border bg-slate-50 font-mono" />
                                             </td>
-                                            <td className="px-3 py-2">
-                                                <input type="text" value={work.nameOfWork} readOnly className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border bg-gray-50" />
+                                            <td className="border border-slate-200 px-3 py-2">
+                                                <input type="text" value={work.nameOfWork} readOnly className="block w-full text-xs sm:text-sm border-slate-200 rounded-lg p-1.5 border bg-slate-50 font-medium" />
                                             </td>
-                                            <td className="px-3 py-2">
-                                                <input type="number" min="0" step="0.01" value={work.amount || ''} onChange={(e) => handleWorkChange(index, 'amount', e.target.value)} className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-indigo-500 focus:border-indigo-500" />
+                                            <td className="border border-slate-200 px-3 py-2">
+                                                <input type="number" min="0" step="0.01" value={work.amount || ''} onChange={(e) => handleWorkChange(index, 'amount', e.target.value)} className="block w-full text-xs sm:text-sm border-emerald-200 rounded-lg p-1.5 border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono text-right" />
                                             </td>
                                         </tr>
                                     ))
@@ -1600,69 +1629,67 @@ export default function BillForm({
                                 const payableAmount = netAmount + gstAmount;
 
                                 return (
-                                    <tfoot className="bg-slate-100 font-semibold border-t-2 border-slate-200">
-                                        <tr className="border-b border-slate-200">
-                                            <td colSpan={2} className="px-3 py-2.5 text-right text-sm text-slate-700">Total Amount:</td>
-                                            <td className="px-3 py-2.5 text-sm text-slate-800 font-mono font-bold">₹{totalAmount.toFixed(2)}</td>
-                                            <td></td>
+                                    <tfoot className="bg-emerald-50/90 font-semibold border-t-2 border-emerald-300">
+                                        <tr className="border-b border-emerald-200">
+                                            <td colSpan={2} className="px-3 py-2.5 text-right text-xs font-bold text-slate-700">Total Amount:</td>
+                                            <td className="px-3 py-2.5 text-xs text-slate-800 font-mono font-bold text-right">₹{totalAmount.toFixed(2)}</td>
                                         </tr>
-                                        <tr className="border-b border-slate-200 bg-slate-50/50">
-                                            <td colSpan={2} className="px-4 py-2 text-right text-sm text-slate-600">{tenderPercentage}% {tenderDirection}:</td>
-                                            <td className="px-3 py-2 text-sm text-slate-600 font-mono font-bold">
+                                        <tr className="border-b border-emerald-200 bg-emerald-50/40">
+                                            <td colSpan={2} className="px-4 py-2 text-right text-xs font-semibold text-slate-600">{tenderPercentage}% {tenderDirection}:</td>
+                                            <td className="px-3 py-2 text-xs text-slate-600 font-mono font-bold text-right">
                                                 {tenderDirection === 'Below' ? '-₹' : '₹'}{adjAmount.toFixed(2)}
                                             </td>
-                                            <td></td>
                                         </tr>
-                                        <tr className="border-b border-slate-200">
-                                            <td colSpan={2} className="px-3 py-2.5 text-right text-sm text-slate-700 font-semibold">Net Amount:</td>
-                                            <td className="px-3 py-2.5 text-sm text-emerald-700 font-mono font-bold">₹{netAmount.toFixed(2)}</td>
-                                            <td></td>
+                                        <tr className="border-b border-emerald-200">
+                                            <td colSpan={2} className="px-3 py-2.5 text-right text-xs font-bold text-slate-700">Net Amount:</td>
+                                            <td className="px-3 py-2.5 text-xs text-emerald-800 font-mono font-bold text-right">₹{netAmount.toFixed(2)}</td>
                                         </tr>
-                                        <tr className="border-b border-slate-200 bg-slate-50/50">
-                                            <td colSpan={2} className="px-3 py-2 text-right text-sm text-slate-600">
+                                        <tr className="border-b border-emerald-200 bg-emerald-50/40">
+                                            <td colSpan={2} className="px-3 py-2 text-right text-xs text-slate-600">
                                                 <div className="flex items-center justify-end space-x-2">
                                                     <input
                                                         type="checkbox"
                                                         name="labourCessApplicable"
                                                         checked={formData.labourCessApplicable}
                                                         onChange={handleChange}
-                                                        className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded cursor-pointer"
+                                                        className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-emerald-300 rounded cursor-pointer"
                                                     />
-                                                    <label className="cursor-pointer text-slate-600 hover:text-slate-800">
+                                                    <label className="cursor-pointer text-slate-700 font-medium hover:text-slate-900">
                                                         Labour Cess Applicable
                                                     </label>
-                                                    <span className="mx-2 text-slate-300">|</span>
-                                                    <span>Add 18% GST:</span>
+                                                    <span className="mx-2 text-emerald-300">|</span>
+                                                    <span className="font-semibold">Add 18% GST:</span>
                                                 </div>
                                             </td>
-                                            <td className="px-3 py-2 text-sm text-slate-600 font-mono font-bold">₹{gstAmount.toFixed(2)}</td>
-                                            <td></td>
+                                            <td className="px-3 py-2 text-xs text-slate-600 font-mono font-bold text-right">₹{gstAmount.toFixed(2)}</td>
                                         </tr>
-                                        <tr className="bg-emerald-50 font-bold border-b border-slate-200">
-                                            <td colSpan={2} className="px-3 py-3 text-right text-sm text-emerald-800 text-base">Net Payble Amount:</td>
-                                            <td className="px-3 py-3 text-sm text-emerald-900 font-mono text-lg font-extrabold">₹{payableAmount.toFixed(2)}</td>
-                                            <td></td>
+                                        <tr className="bg-emerald-100/70 font-bold border-b border-emerald-200">
+                                            <td colSpan={2} className="px-3 py-3 text-right text-xs text-emerald-900 font-extrabold uppercase">Net Payable Amount:</td>
+                                            <td className="px-3 py-3 text-xs text-emerald-950 font-mono text-right font-black">₹{payableAmount.toFixed(2)}</td>
                                         </tr>
-                                        <tr className="bg-emerald-100 font-bold border-b-4 border-emerald-300">
-                                            <td colSpan={2} className="px-3 py-3 text-right text-sm text-emerald-900 tracking-wider">Say Amount:</td>
-                                            <td className="px-3 py-3 text-sm text-emerald-950 font-mono text-lg font-extrabold">₹{Math.floor(payableAmount).toFixed(2)}</td>
-                                            <td></td>
+                                        <tr className="bg-emerald-200/80 font-bold border-b-4 border-emerald-400">
+                                            <td colSpan={2} className="px-3 py-3 text-right text-xs text-emerald-950 font-black tracking-wider uppercase">Say Amount:</td>
+                                            <td className="px-3 py-3 text-xs text-emerald-950 font-mono text-right font-black text-sm">₹{Math.floor(payableAmount).toFixed(2)}</td>
                                         </tr>
                                     </tfoot>
                                 );
                             })()}
                         </table>
                     </div>
+                    </div>
                 )}
             </div>
 
             {/* Excess / Saving Statement Section */}
-            <div className="p-8 pt-4 border-t border-gray-200">
-                <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center gap-2">
-                        <h3 className="text-lg leading-6 font-medium text-gray-900">Excess / Saving Statement</h3>
+            <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
+                <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
+                            <TrendingUp className="w-4 h-4" />
+                        </span>
+                        <h3 className="font-bold text-slate-800">Excess / Saving Statement</h3>
                         {formData.items && formData.items.length > 0 && (
-                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
+                            <span className="text-xs bg-emerald-100 text-emerald-900 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold">
                                 {formData.items.length} items
                             </span>
                         )}
@@ -1671,7 +1698,7 @@ export default function BillForm({
                         <button
                             type="button"
                             onClick={() => setIsExcessSavingExpanded(!isExcessSavingExpanded)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-slate-200"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs font-bold rounded-xl transition-colors cursor-pointer border border-emerald-300"
                         >
                             {isExcessSavingExpanded ? (
                                 <>
@@ -1688,49 +1715,50 @@ export default function BillForm({
                     )}
                 </div>
                 
-                <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                    <table className="min-w-full divide-y divide-gray-200 text-xs">
-                        <thead className="bg-slate-50 font-bold text-slate-700">
-                            <tr className="border-b border-slate-200">
-                                <th rowSpan={2} className="px-3 py-3 text-left border-r border-slate-200">Item No.</th>
-                                <th rowSpan={2} className="px-3 py-3 text-left border-r border-slate-200 min-w-[200px]">Description</th>
-                                <th rowSpan={2} className="px-3 py-3 text-center border-r border-slate-200">Unit</th>
+                {isExcessSavingExpanded && (
+                    <div className="p-6 overflow-x-auto">
+                        <table className="excel-table">
+                        <thead>
+                            <tr className="bg-emerald-100/90 text-emerald-950">
+                                <th rowSpan={2} className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-left text-xs font-bold text-emerald-950">Item No.</th>
+                                <th rowSpan={2} className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-left text-xs font-bold text-emerald-950 min-w-[200px]">Description</th>
+                                <th rowSpan={2} className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-center text-xs font-bold text-emerald-950">Unit</th>
                                 
-                                <th colSpan={3} className="px-3 py-2 text-center bg-blue-50/80 text-blue-900 border-r border-slate-200 border-b border-blue-200 font-bold">As per Tender</th>
-                                <th colSpan={3} className="px-3 py-2 text-center bg-indigo-50/80 text-indigo-900 border-r border-slate-200 border-b border-indigo-200 font-bold">As per Bill</th>
-                                <th colSpan={2} className="px-3 py-2 text-center bg-rose-50/80 text-rose-900 border-r border-slate-200 border-b border-rose-200 font-bold">Excess</th>
-                                <th colSpan={2} className="px-3 py-2 text-center bg-emerald-50/80 text-emerald-900 border-b border-emerald-200 font-bold">Saving</th>
+                                <th colSpan={3} className="border border-emerald-300 px-3 py-1.5 text-center bg-blue-100/90 text-blue-950 font-bold">As per Tender</th>
+                                <th colSpan={3} className="border border-emerald-300 px-3 py-1.5 text-center bg-indigo-100/90 text-indigo-950 font-bold">As per Bill</th>
+                                <th colSpan={2} className="border border-emerald-300 px-3 py-1.5 text-center bg-rose-100/90 text-rose-950 font-bold">Excess</th>
+                                <th colSpan={2} className="border border-emerald-300 px-3 py-1.5 text-center bg-emerald-200/90 text-emerald-950 font-bold">Saving</th>
                             </tr>
-                            <tr className="border-b border-slate-200">
-                                <th className="px-3 py-2 text-right bg-blue-50/40 text-blue-800">Qty</th>
-                                <th className="px-3 py-2 text-right bg-blue-50/40 text-blue-800">Rate (₹)</th>
-                                <th className="px-3 py-2 text-right bg-blue-50/40 text-blue-800 border-r border-slate-200">Amount (₹)</th>
+                            <tr className="bg-emerald-100/70 text-emerald-950">
+                                <th className="border border-emerald-300 px-3 py-1.5 text-right text-xs font-semibold bg-blue-50 text-blue-900">Qty</th>
+                                <th className="border border-emerald-300 px-3 py-1.5 text-right text-xs font-semibold bg-blue-50 text-blue-900">Rate (₹)</th>
+                                <th className="border border-emerald-300 px-3 py-1.5 text-right text-xs font-semibold bg-blue-50 text-blue-900">Amount (₹)</th>
                                 
-                                <th className="px-3 py-2 text-right bg-indigo-50/40 text-indigo-800">Qty</th>
-                                <th className="px-3 py-2 text-right bg-indigo-50/40 text-indigo-800">Rate (Payable) (₹)</th>
-                                <th className="px-3 py-2 text-right bg-indigo-50/40 text-indigo-800 border-r border-slate-200">Amount (₹)</th>
+                                <th className="border border-emerald-300 px-3 py-1.5 text-right text-xs font-semibold bg-indigo-50 text-indigo-900">Qty</th>
+                                <th className="border border-emerald-300 px-3 py-1.5 text-right text-xs font-semibold bg-indigo-50 text-indigo-900">Rate (₹)</th>
+                                <th className="border border-emerald-300 px-3 py-1.5 text-right text-xs font-semibold bg-indigo-50 text-indigo-900">Amount (₹)</th>
                                 
-                                <th className="px-3 py-2 text-right bg-rose-50/40 text-rose-800">Qty</th>
-                                <th className="px-3 py-2 text-right bg-rose-50/40 text-rose-800 border-r border-slate-200">Amount (₹)</th>
+                                <th className="border border-emerald-300 px-3 py-1.5 text-right text-xs font-semibold bg-rose-50 text-rose-900">Qty</th>
+                                <th className="border border-emerald-300 px-3 py-1.5 text-right text-xs font-semibold bg-rose-50 text-rose-900">Amount (₹)</th>
                                 
-                                <th className="px-3 py-2 text-right bg-emerald-50/40 text-emerald-800">Qty</th>
-                                <th className="px-3 py-2 text-right bg-emerald-50/40 text-emerald-800">Amount (₹)</th>
+                                <th className="border border-emerald-300 px-3 py-1.5 text-right text-xs font-semibold bg-emerald-100 text-emerald-950">Qty</th>
+                                <th className="border border-emerald-300 px-3 py-1.5 text-right text-xs font-semibold bg-emerald-100 text-emerald-950">Amount (₹)</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="divide-y divide-emerald-200/60 bg-white">
                             {formData.items.length === 0 ? (
                                 <tr>
-                                    <td colSpan={13} className="px-6 py-8 text-center text-sm text-gray-500">
+                                    <td colSpan={13} className="px-6 py-8 text-center text-sm text-slate-500">
                                         No line items available to calculate Excess / Saving Statement.
                                     </td>
                                 </tr>
                             ) : !isExcessSavingExpanded ? (
                                 <tr>
-                                    <td colSpan={13} className="px-4 py-3.5 text-center text-xs text-slate-500 bg-slate-50/60 font-medium">
+                                    <td colSpan={13} className="px-4 py-3.5 text-center text-xs text-slate-500 bg-emerald-50/40 font-medium">
                                         <button
                                             type="button"
                                             onClick={() => setIsExcessSavingExpanded(true)}
-                                            className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 font-semibold hover:underline cursor-pointer"
+                                            className="inline-flex items-center gap-1.5 text-emerald-700 hover:text-emerald-900 font-bold hover:underline cursor-pointer"
                                         >
                                             <ChevronDown className="w-4 h-4" />
                                             {formData.items.length} line items collapsed. Click to expand item breakdown.
@@ -1757,35 +1785,35 @@ export default function BillForm({
                                     const savingAmt = diffAmt < 0 ? Math.abs(diffAmt) : 0;
 
                                     return (
-                                        <tr key={index} className="hover:bg-slate-50 font-mono text-xs">
-                                            <td className="px-3 py-2 text-left font-sans text-slate-700 font-medium border-r border-slate-200">{item.itemNo}</td>
-                                            <td className="px-3 py-2 text-left font-sans text-slate-600 border-r border-slate-200 max-w-[240px] truncate" title={item.description}>{item.description}</td>
-                                            <td className="px-3 py-2 text-center font-sans text-slate-500 border-r border-slate-200">{item.unit}</td>
+                                        <tr key={index} className="hover:bg-emerald-50/50 font-mono text-xs">
+                                            <td className="border border-slate-200 px-3 py-2 text-left font-sans text-slate-700 font-bold">{item.itemNo}</td>
+                                            <td className="border border-slate-200 px-3 py-2 text-left font-sans text-slate-600 max-w-[240px] truncate font-medium" title={item.description}>{item.description}</td>
+                                            <td className="border border-slate-200 px-3 py-2 text-center font-sans text-slate-500">{item.unit}</td>
                                             
                                             {/* Tender */}
-                                            <td className="px-3 py-2 text-right text-slate-700">{tenderQty ? tenderQty.toFixed(2) : '0.00'}</td>
-                                            <td className="px-3 py-2 text-right text-slate-700">{tenderRate ? tenderRate.toFixed(2) : '0.00'}</td>
-                                            <td className="px-3 py-2 text-right text-blue-900 font-semibold border-r border-slate-200">{tenderAmt ? tenderAmt.toFixed(2) : '0.00'}</td>
+                                            <td className="border border-slate-200 px-3 py-2 text-right text-slate-700">{tenderQty ? tenderQty.toFixed(2) : '0.00'}</td>
+                                            <td className="border border-slate-200 px-3 py-2 text-right text-slate-700">{tenderRate ? tenderRate.toFixed(2) : '0.00'}</td>
+                                            <td className="border border-slate-200 px-3 py-2 text-right text-blue-900 font-semibold bg-blue-50/30">{tenderAmt ? tenderAmt.toFixed(2) : '0.00'}</td>
                                             
                                             {/* Bill */}
-                                            <td className="px-3 py-2 text-right text-slate-700">{billQty ? billQty.toFixed(2) : '0.00'}</td>
-                                            <td className="px-3 py-2 text-right text-slate-700">{billRate ? billRate.toFixed(2) : '0.00'}</td>
-                                            <td className="px-3 py-2 text-right text-indigo-900 font-semibold border-r border-slate-200">{billAmt ? billAmt.toFixed(2) : '0.00'}</td>
+                                            <td className="border border-slate-200 px-3 py-2 text-right text-slate-700">{billQty ? billQty.toFixed(2) : '0.00'}</td>
+                                            <td className="border border-slate-200 px-3 py-2 text-right text-slate-700">{billRate ? billRate.toFixed(2) : '0.00'}</td>
+                                            <td className="border border-slate-200 px-3 py-2 text-right text-indigo-900 font-semibold bg-indigo-50/30">{billAmt ? billAmt.toFixed(2) : '0.00'}</td>
                                             
                                             {/* Excess */}
-                                            <td className="px-3 py-2 text-right text-rose-700">{excessQty > 0 ? excessQty.toFixed(2) : '-'}</td>
-                                            <td className="px-3 py-2 text-right text-rose-900 font-bold border-r border-slate-200">{excessAmt > 0 ? `₹${excessAmt.toFixed(2)}` : '-'}</td>
+                                            <td className="border border-slate-200 px-3 py-2 text-right text-rose-700">{excessQty > 0 ? excessQty.toFixed(2) : '-'}</td>
+                                            <td className="border border-slate-200 px-3 py-2 text-right text-rose-900 font-bold bg-rose-50/30">{excessAmt > 0 ? `₹${excessAmt.toFixed(2)}` : '-'}</td>
                                             
                                             {/* Saving */}
-                                            <td className="px-3 py-2 text-right text-emerald-700">{savingQty > 0 ? savingQty.toFixed(2) : '-'}</td>
-                                            <td className="px-3 py-2 text-right text-emerald-900 font-bold">{savingAmt > 0 ? `₹${savingAmt.toFixed(2)}` : '-'}</td>
+                                            <td className="border border-slate-200 px-3 py-2 text-right text-emerald-700">{savingQty > 0 ? savingQty.toFixed(2) : '-'}</td>
+                                            <td className="border border-slate-200 px-3 py-2 text-right text-emerald-900 font-bold bg-emerald-50/50">{savingAmt > 0 ? `₹${savingAmt.toFixed(2)}` : '-'}</td>
                                         </tr>
                                     );
                                 })
                             )}
                         </tbody>
                         {formData.items.length > 0 && (
-                            <tfoot className="bg-slate-100 font-bold text-xs border-t-2 border-slate-300">
+                            <tfoot className="bg-emerald-50/90 font-bold text-xs border-t-2 border-emerald-300">
                                 {(() => {
                                     const totalTender = formData.items.reduce((s: number, i: any) => s + ((Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0))), 0);
                                     const totalBill = formData.items.reduce((s: number, i: any) => s + (Number(i.uptoDateAmount || (Number(i.quantity || 0) * Number(i.partRate || i.fullRate || 0)))), 0);
@@ -1809,21 +1837,21 @@ export default function BillForm({
                                     return (
                                         <>
                                             <tr>
-                                                <td colSpan={3} className="px-3 py-2.5 text-right font-sans text-slate-800 border-r border-slate-200 uppercase tracking-wider">Total:</td>
+                                                <td colSpan={3} className="px-3 py-2.5 text-right font-sans text-slate-800 uppercase tracking-wider">Total:</td>
                                                 <td colSpan={2} className="px-3 py-2.5"></td>
-                                                <td className="px-3 py-2.5 text-right font-mono text-blue-900 border-r border-slate-200">₹{totalTender.toFixed(2)}</td>
+                                                <td className="px-3 py-2.5 text-right font-mono text-blue-950">₹{totalTender.toFixed(2)}</td>
                                                 <td colSpan={2} className="px-3 py-2.5"></td>
-                                                <td className="px-3 py-2.5 text-right font-mono text-indigo-900 border-r border-slate-200">₹{totalBill.toFixed(2)}</td>
+                                                <td className="px-3 py-2.5 text-right font-mono text-indigo-950">₹{totalBill.toFixed(2)}</td>
                                                 <td></td>
-                                                <td className="px-3 py-2.5 text-right font-mono text-rose-900 border-r border-slate-200">₹{totalExcess.toFixed(2)}</td>
+                                                <td className="px-3 py-2.5 text-right font-mono text-rose-950">₹{totalExcess.toFixed(2)}</td>
                                                 <td></td>
-                                                <td className="px-3 py-2.5 text-right font-mono text-emerald-900">₹{totalSaving.toFixed(2)}</td>
+                                                <td className="px-3 py-2.5 text-right font-mono text-emerald-950">₹{totalSaving.toFixed(2)}</td>
                                             </tr>
-                                            <tr className="bg-slate-200 text-slate-900">
-                                                <td colSpan={9} className="px-3 py-2 text-right font-sans uppercase font-bold tracking-wider border-r border-slate-300">
+                                            <tr className="bg-emerald-100/90 text-emerald-950">
+                                                <td colSpan={9} className="px-3 py-2.5 text-right font-sans uppercase font-black tracking-wider">
                                                     Net Statement Summary ({netDiff >= 0 ? 'Excess' : 'Saving'}):
                                                 </td>
-                                                <td colSpan={4} className={`px-3 py-2 text-right font-mono font-extrabold text-sm ${netDiff >= 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
+                                                <td colSpan={4} className={`px-3 py-2.5 text-right font-mono font-black text-sm ${netDiff >= 0 ? 'text-rose-700' : 'text-emerald-800'}`}>
                                                     {netDiff >= 0 ? `+₹${netDiff.toFixed(2)} (Excess)` : `-₹${Math.abs(netDiff).toFixed(2)} (Saving)`}
                                                 </td>
                                             </tr>
@@ -1834,355 +1862,450 @@ export default function BillForm({
                         )}
                     </table>
                 </div>
+                )}
             </div>
 
             {/* Audit Memo Section */}
-            <div className="p-8 pt-4 border-t border-gray-200">
-                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-6">Audit Memo</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    
-                    {/* Group 1: Payables / Deductables */}
-                    <div className="bg-slate-50 p-6 rounded-lg border border-slate-100 space-y-4">
-                        <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-200 pb-2">Payables / Deductables</h4>
-                        
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="grossAmount" className="text-sm text-slate-600 font-semibold">Gross Amount:</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="grossAmount"
-                                id="grossAmount"
-                                value={formData.grossAmount === 0 ? '' : formData.grossAmount}
-                                onChange={(e) => recalculateAuditMemo({ grossAmount: e.target.value as any })}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono font-bold"
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="auditMemoPreviouslyPaid" className="text-sm text-slate-600">Previously Paid Amount:</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="auditMemoPreviouslyPaid"
-                                id="auditMemoPreviouslyPaid"
-                                value={formData.auditMemoPreviouslyPaid === 0 ? '' : formData.auditMemoPreviouslyPaid}
-                                onChange={(e) => recalculateAuditMemo({ auditMemoPreviouslyPaid: e.target.value })}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="dismantleCredit" className="text-sm text-slate-600">Amount of Dismantle Credit:</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="dismantleCredit"
-                                id="dismantleCredit"
-                                value={formData.dismantleCredit === 0 ? '' : formData.dismantleCredit}
-                                onChange={(e) => recalculateAuditMemo({ dismantleCredit: e.target.value })}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="excessExtraAmount" className="text-sm text-slate-600">Amount of Excess / Extra Items:</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="excessExtraAmount"
-                                id="excessExtraAmount"
-                                value={formData.excessExtraAmount === 0 ? '' : formData.excessExtraAmount}
-                                onChange={(e) => recalculateAuditMemo({ excessExtraAmount: e.target.value })}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="priceAdjustment" className="text-sm text-slate-600">Amount of Price Adjustment:</label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    name="priceAdjustment"
-                                    id="priceAdjustment"
-                                    value={formData.priceAdjustment === 0 ? '' : formData.priceAdjustment}
-                                    onChange={(e) => recalculateAuditMemo({ priceAdjustment: e.target.value })}
-                                    className="block w-2/3 sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
-                                    placeholder="0.00"
-                                />
-                                <select
-                                    name="priceAdjustmentType"
-                                    id="priceAdjustmentType"
-                                    value={formData.priceAdjustmentType}
-                                    onChange={(e) => recalculateAuditMemo({ priceAdjustmentType: e.target.value })}
-                                    className="block w-1/3 sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 bg-white font-semibold"
-                                >
-                                    <option value="Payable">Payable</option>
-                                    <option value="Deductible">Deductible</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="adminApprovalAmount" className="text-sm text-slate-600">Amount of Administrative Approval:</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="adminApprovalAmount"
-                                id="adminApprovalAmount"
-                                value={formData.adminApprovalAmount === 0 ? '' : formData.adminApprovalAmount}
-                                onChange={(e) => recalculateAuditMemo({ adminApprovalAmount: e.target.value })}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="withheldDeposit" className="text-sm text-slate-600">Withheld Deposit:</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="withheldDeposit"
-                                id="withheldDeposit"
-                                value={formData.withheldDeposit === 0 ? '' : formData.withheldDeposit}
-                                onChange={(e) => recalculateAuditMemo({ withheldDeposit: e.target.value })}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono"
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 items-center border-t border-slate-200 pt-4 bg-blue-50/50 p-2 rounded">
-                            <span className="text-sm font-bold text-blue-900">Net Payable Amount:</span>
-                            <span className="text-sm font-extrabold text-blue-950 font-mono">₹{Number(formData.netPayableAmount || 0).toFixed(2)}</span>
-                        </div>
+            <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
+                <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
+                            <Receipt className="w-4 h-4" />
+                        </span>
+                        <h3 className="font-bold text-slate-800">Audit Memo & Statutory Deductions</h3>
                     </div>
-
-                    {/* Group 2: Deductions */}
-                    <div className="bg-slate-50 p-6 rounded-lg border border-slate-100 space-y-4">
-                        <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-200 pb-2">Deductions</h4>
-
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="incomeTax" className="text-sm text-slate-600">Income Tax (IT):</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="incomeTax"
-                                id="incomeTax"
-                                value={formData.incomeTax === 0 ? '' : formData.incomeTax}
-                                onChange={(e) => recalculateAuditMemo({ incomeTax: e.target.value })}
-                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                placeholder="0.00"
-                            />
+                </div>
+                <div className="p-4 sm:p-5">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+                        {/* Group 1: Payables / Additions Table */}
+                        <div className="overflow-x-auto border border-emerald-300 rounded-xl shadow-2xs">
+                            <table className="excel-table table-fixed w-full">
+                                <colgroup>
+                                    <col className="w-1/2" />
+                                    <col className="w-1/2" />
+                                </colgroup>
+                                <thead>
+                                    <tr className="bg-emerald-100/90 text-emerald-950">
+                                        <th colSpan={2} className="border border-emerald-300 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-emerald-950">
+                                            1. Payables / Deductibles
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td className="excel-label">Gross Amount</td>
+                                        <td className="excel-value">
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                name="grossAmount"
+                                                id="grossAmount"
+                                                value={formData.grossAmount === 0 ? '' : formData.grossAmount}
+                                                onChange={(e) => recalculateAuditMemo({ grossAmount: e.target.value as any })}
+                                                className="excel-cell-input text-right font-mono font-bold"
+                                                placeholder="0.00"
+                                            />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="excel-label">Previously Paid Amount</td>
+                                        <td className="excel-value">
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                name="auditMemoPreviouslyPaid"
+                                                id="auditMemoPreviouslyPaid"
+                                                value={formData.auditMemoPreviouslyPaid === 0 ? '' : formData.auditMemoPreviouslyPaid}
+                                                onChange={(e) => recalculateAuditMemo({ auditMemoPreviouslyPaid: e.target.value })}
+                                                className="excel-cell-input text-right font-mono"
+                                                placeholder="0.00"
+                                            />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="excel-label">Amount of Dismantle Credit</td>
+                                        <td className="excel-value">
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                name="dismantleCredit"
+                                                id="dismantleCredit"
+                                                value={formData.dismantleCredit === 0 ? '' : formData.dismantleCredit}
+                                                onChange={(e) => recalculateAuditMemo({ dismantleCredit: e.target.value })}
+                                                className="excel-cell-input text-right font-mono"
+                                                placeholder="0.00"
+                                            />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="excel-label">Excess / Extra Items</td>
+                                        <td className="excel-value">
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                name="excessExtraAmount"
+                                                id="excessExtraAmount"
+                                                value={formData.excessExtraAmount === 0 ? '' : formData.excessExtraAmount}
+                                                onChange={(e) => recalculateAuditMemo({ excessExtraAmount: e.target.value })}
+                                                className="excel-cell-input text-right font-mono"
+                                                placeholder="0.00"
+                                            />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="excel-label">Price Adjustment</td>
+                                        <td className="excel-value">
+                                            <div className="flex items-center gap-1">
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    name="priceAdjustment"
+                                                    id="priceAdjustment"
+                                                    value={formData.priceAdjustment === 0 ? '' : formData.priceAdjustment}
+                                                    onChange={(e) => recalculateAuditMemo({ priceAdjustment: e.target.value })}
+                                                    className="excel-cell-input text-right font-mono w-2/3"
+                                                    placeholder="0.00"
+                                                />
+                                                <select
+                                                    name="priceAdjustmentType"
+                                                    id="priceAdjustmentType"
+                                                    value={formData.priceAdjustmentType}
+                                                    onChange={(e) => recalculateAuditMemo({ priceAdjustmentType: e.target.value })}
+                                                    className="excel-cell-select w-1/3 text-[11px] font-bold py-0.5"
+                                                >
+                                                    <option value="Payable">Payable</option>
+                                                    <option value="Deductible">Deductible</option>
+                                                </select>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="excel-label">Administrative Approval</td>
+                                        <td className="excel-value">
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                name="adminApprovalAmount"
+                                                id="adminApprovalAmount"
+                                                value={formData.adminApprovalAmount === 0 ? '' : formData.adminApprovalAmount}
+                                                onChange={(e) => recalculateAuditMemo({ adminApprovalAmount: e.target.value })}
+                                                className="excel-cell-input text-right font-mono"
+                                                placeholder="0.00"
+                                            />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="excel-label">Withheld Deposit</td>
+                                        <td className="excel-value">
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                name="withheldDeposit"
+                                                id="withheldDeposit"
+                                                value={formData.withheldDeposit === 0 ? '' : formData.withheldDeposit}
+                                                onChange={(e) => recalculateAuditMemo({ withheldDeposit: e.target.value })}
+                                                className="excel-cell-input text-right font-mono"
+                                                placeholder="0.00"
+                                            />
+                                        </td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr className="bg-emerald-100/90 font-bold border-t-2 border-emerald-300">
+                                        <td className="px-3 py-2 text-right text-xs uppercase font-extrabold text-emerald-950">
+                                            Net Payable Amount:
+                                        </td>
+                                        <td className="px-3 py-2 text-right font-mono font-black text-sm text-emerald-950">
+                                            {Math.round(Number(formData.netPayableAmount || 0)).toLocaleString('en-IN')}
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="gstDeduction" className="text-sm text-slate-600">GST:</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="gst"
-                                id="gstDeduction"
-                                value={formData.gst === 0 ? '' : formData.gst}
-                                onChange={(e) => recalculateAuditMemo({ gst: e.target.value })}
-                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="labourCessDeduction" className="text-sm text-slate-600">Labour Cess:</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="labourCess"
-                                id="labourCessDeduction"
-                                value={formData.labourCess === 0 ? '' : formData.labourCess}
-                                onChange={(e) => recalculateAuditMemo({ labourCess: e.target.value })}
-                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div>
-                            <div className="grid grid-cols-2 gap-4 items-center">
-                                <label htmlFor="securityDepositDeduction" className="text-sm text-slate-600">Security Deposit deducted from Bill:</label>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            name="securityDeposit"
-                                            id="securityDepositDeduction"
-                                            value={formData.securityDeposit === 0 ? '' : formData.securityDeposit}
-                                            onChange={(e) => recalculateAuditMemo({ securityDeposit: e.target.value })}
-                                            onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                                            onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                            className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                            placeholder="0.00"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => {
+                        {/* Group 2: Deductions Table */}
+                        <div className="overflow-x-auto border border-emerald-300 rounded-xl shadow-2xs">
+                            <table className="excel-table table-fixed w-full">
+                                <colgroup>
+                                    <col className="w-1/2" />
+                                    <col className="w-1/2" />
+                                </colgroup>
+                                <thead>
+                                    <tr className="bg-emerald-100/90 text-emerald-950">
+                                        <th colSpan={2} className="border border-emerald-300 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-emerald-950">
+                                            2. Statutory Deductions
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td className="excel-label">Income Tax (IT)</td>
+                                        <td className="excel-value">
+                                            <input
+                                                type="number"
+                                                step="1"
+                                                name="incomeTax"
+                                                id="incomeTax"
+                                                value={formData.incomeTax === 0 ? '' : formData.incomeTax}
+                                                onChange={(e) => recalculateAuditMemo({ incomeTax: e.target.value })}
+                                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                                className="excel-cell-input text-right font-mono"
+                                                placeholder="0"
+                                            />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="excel-label">GST</td>
+                                        <td className="excel-value">
+                                            <input
+                                                type="number"
+                                                step="1"
+                                                name="gst"
+                                                id="gstDeduction"
+                                                value={formData.gst === 0 ? '' : formData.gst}
+                                                onChange={(e) => recalculateAuditMemo({ gst: e.target.value })}
+                                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                                className="excel-cell-input text-right font-mono"
+                                                placeholder="0"
+                                            />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="excel-label">Labour Cess</td>
+                                        <td className="excel-value">
+                                            <input
+                                                type="number"
+                                                step="1"
+                                                name="labourCess"
+                                                id="labourCessDeduction"
+                                                value={formData.labourCess === 0 ? '' : formData.labourCess}
+                                                onChange={(e) => recalculateAuditMemo({ labourCess: e.target.value })}
+                                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                                className="excel-cell-input text-right font-mono"
+                                                placeholder="0"
+                                            />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="excel-label">Security Deposit</td>
+                                        <td className="excel-value">
+                                            <div className="flex items-center gap-2">
+                                                {(() => {
+                                                    const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
+                                                    const cp = contractPriceState || parseFloat(selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0);
+                                                    const maxSD = cp > 0 ? Math.ceil((cp * 0.05) / 100) * 100 : 0;
+                                                    const remainingSD = Math.max(0, maxSD - previousSDTotal);
+                                                    return (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => recalculateAuditMemo({ securityDeposit: remainingSD })}
+                                                            className="shrink-0 px-2 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-[10px] font-bold rounded border border-emerald-300 transition-colors whitespace-nowrap cursor-pointer"
+                                                            title="Deduct remaining eligible security deposit"
+                                                        >
+                                                            Remaining
+                                                        </button>
+                                                    );
+                                                })()}
+                                                <input
+                                                    type="number"
+                                                    step="1"
+                                                    name="securityDeposit"
+                                                    id="securityDepositDeduction"
+                                                    value={formData.securityDeposit === 0 ? '' : formData.securityDeposit}
+                                                    onChange={(e) => recalculateAuditMemo({ securityDeposit: e.target.value })}
+                                                    onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                                    onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                                    className="excel-cell-input text-right font-mono"
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                            {(() => {
                                                 const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
                                                 const cp = contractPriceState || parseFloat(selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0);
                                                 const maxSD = cp > 0 ? Math.ceil((cp * 0.05) / 100) * 100 : 0;
-                                                const remainingSD = Math.max(0, maxSD - previousSDTotal);
-                                                recalculateAuditMemo({ securityDeposit: remainingSD });
-                                            }}
-                                            className="shrink-0 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-md border border-blue-200 transition-colors whitespace-nowrap cursor-pointer"
-                                            title="Deduct remaining eligible security deposit"
-                                        >
-                                            Deduct Remaining
-                                        </button>
-                                    </div>
-                                    {(() => {
-                                        const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
-                                        const cp = contractPriceState || parseFloat(selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0);
-                                        const maxSD = cp > 0 ? Math.ceil((cp * 0.05) / 100) * 100 : 0;
-                                        return (
-                                            <div className="text-[11px] text-slate-500 font-medium pl-0.5 space-y-0.5 mt-1">
-                                                <div>
-                                                    total deducted from previous bills: ₹{previousSDTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                                </div>
-                                                <div>
-                                                    max can be deducted: ₹{maxSD.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (5% of final contract price)
-                                                </div>
+                                                return (
+                                                    <div className="text-[10px] text-slate-500 font-medium pr-0.5 space-y-0.5 mt-1 border-t border-dashed border-emerald-200 pt-1 text-right">
+                                                        <div>
+                                                            Prev bills: {Math.round(previousSDTotal).toLocaleString('en-IN')}
+                                                        </div>
+                                                        <div>
+                                                            Max (5%): {Math.round(maxSD).toLocaleString('en-IN')}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="excel-label">Free Maintenance Deposit</td>
+                                        <td className="excel-value">
+                                            <input
+                                                type="number"
+                                                step="1"
+                                                name="freeMaintenanceDeposit"
+                                                id="freeMaintenanceDeposit"
+                                                value={formData.freeMaintenanceDeposit === 0 ? '' : formData.freeMaintenanceDeposit}
+                                                onChange={(e) => recalculateAuditMemo({ freeMaintenanceDeposit: e.target.value })}
+                                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                                className="excel-cell-input text-right font-mono"
+                                                placeholder="0"
+                                            />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="excel-label">Asphalt Deposit</td>
+                                        <td className="excel-value">
+                                            <input
+                                                type="number"
+                                                step="1"
+                                                name="asphaltDeposit"
+                                                id="asphaltDeposit"
+                                                value={formData.asphaltDeposit === 0 ? '' : formData.asphaltDeposit}
+                                                onChange={(e) => recalculateAuditMemo({ asphaltDeposit: e.target.value })}
+                                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                                className="excel-cell-input text-right font-mono"
+                                                placeholder="0"
+                                            />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="excel-label">Core Sample Deposit</td>
+                                        <td className="excel-value">
+                                            <input
+                                                type="number"
+                                                step="1"
+                                                name="coreSampleDeposit"
+                                                id="coreSampleDeposit"
+                                                value={formData.coreSampleDeposit === 0 ? '' : formData.coreSampleDeposit}
+                                                onChange={(e) => recalculateAuditMemo({ coreSampleDeposit: e.target.value })}
+                                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                                className="excel-cell-input text-right font-mono"
+                                                placeholder="0"
+                                            />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="excel-label">TPI (Third Party Inspection)</td>
+                                        <td className="excel-value">
+                                            <input
+                                                type="number"
+                                                step="1"
+                                                name="tpi"
+                                                id="tpi"
+                                                value={formData.tpi === 0 ? '' : formData.tpi}
+                                                onChange={(e) => recalculateAuditMemo({ tpi: e.target.value })}
+                                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                                className="excel-cell-input text-right font-mono"
+                                                placeholder="0"
+                                            />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="excel-label">ESMP</td>
+                                        <td className="excel-value">
+                                            <input
+                                                type="number"
+                                                step="1"
+                                                name="esmp"
+                                                id="esmp"
+                                                value={formData.esmp === 0 ? '' : formData.esmp}
+                                                onChange={(e) => recalculateAuditMemo({ esmp: e.target.value })}
+                                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                                className="excel-cell-input text-right font-mono"
+                                                placeholder="0"
+                                            />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="excel-label">Time Limit Deposit</td>
+                                        <td className="excel-value">
+                                            <div className="flex items-center gap-2">
+                                                {(() => {
+                                                    const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
+                                                    const compTargetDate = stipulatedCompletionDate 
+                                                        ? new Date(stipulatedCompletionDate) 
+                                                        : (selectedWorkOrder?.stipulatedCompletionDate ? new Date(selectedWorkOrder.stipulatedCompletionDate) : null);
+
+                                                    let totalCalculatedTLD = 0;
+                                                    if (compTargetDate) {
+                                                        const getDaysDiff = (date1: Date, date2: Date) => {
+                                                            const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+                                                            const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+                                                            const diffTime = d1.getTime() - d2.getTime();
+                                                            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                                        };
+
+                                                        if (formData.billType === 'Running') {
+                                                            const lastRecordDate = formData.lastRecordEntryDate ? parseDateStr(formData.lastRecordEntryDate) : null;
+                                                            if (lastRecordDate) {
+                                                                const daysDelay = Math.max(0, Math.min(100, getDaysDiff(lastRecordDate, compTargetDate)));
+                                                                const sayAmt = parseFloat(formData.grossAmount) || 0;
+                                                                totalCalculatedTLD = Math.ceil((0.001 * sayAmt * daysDelay) / 100) * 100;
+                                                            }
+                                                        } else {
+                                                            const completionDate = formData.actualCompletionDate ? parseDateStr(formData.actualCompletionDate) : null;
+                                                            if (completionDate) {
+                                                                daysDelay = Math.max(0, Math.min(100, getDaysDiff(completionDate, compTargetDate)));
+                                                                const contractPriceVal = contractPriceState 
+                                                                    ? contractPriceState 
+                                                                    : (selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0);
+                                                                totalCalculatedTLD = Math.ceil((0.001 * contractPriceVal * daysDelay) / 100) * 100;
+                                                            }
+                                                        }
+                                                    }
+                                                    const remainingTLD = Math.max(0, totalCalculatedTLD - previousTLDTotal);
+                                                    return (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => recalculateAuditMemo({ timeLimitDeposit: remainingTLD })}
+                                                            className="shrink-0 px-2 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-[10px] font-bold rounded border border-emerald-300 transition-colors whitespace-nowrap cursor-pointer"
+                                                            title="Deduct remaining time limit deposit"
+                                                        >
+                                                            Remaining
+                                                        </button>
+                                                    );
+                                                })()}
+                                                <input
+                                                    type="number"
+                                                    step="1"
+                                                    name="timeLimitDeposit"
+                                                    id="timeLimitDeposit"
+                                                    value={formData.timeLimitDeposit === 0 ? '' : formData.timeLimitDeposit}
+                                                    onChange={(e) => recalculateAuditMemo({ timeLimitDeposit: e.target.value })}
+                                                    onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                                    onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                                    className="excel-cell-input text-right font-mono"
+                                                    placeholder="0"
+                                                />
                                             </div>
-                                        );
-                                    })()}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="freeMaintenanceDeposit" className="text-sm text-slate-600">Free Maintenance Deposit:</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="freeMaintenanceDeposit"
-                                id="freeMaintenanceDeposit"
-                                value={formData.freeMaintenanceDeposit === 0 ? '' : formData.freeMaintenanceDeposit}
-                                onChange={(e) => recalculateAuditMemo({ freeMaintenanceDeposit: e.target.value })}
-                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="asphaltDeposit" className="text-sm text-slate-600">Asphalt Deposit:</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="asphaltDeposit"
-                                id="asphaltDeposit"
-                                value={formData.asphaltDeposit === 0 ? '' : formData.asphaltDeposit}
-                                onChange={(e) => recalculateAuditMemo({ asphaltDeposit: e.target.value })}
-                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="coreSampleDeposit" className="text-sm text-slate-600">Core Sample Deposit:</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="coreSampleDeposit"
-                                id="coreSampleDeposit"
-                                value={formData.coreSampleDeposit === 0 ? '' : formData.coreSampleDeposit}
-                                onChange={(e) => recalculateAuditMemo({ coreSampleDeposit: e.target.value })}
-                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="tpi" className="text-sm text-slate-600">Third Party Inspection (TPI):</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="tpi"
-                                id="tpi"
-                                value={formData.tpi === 0 ? '' : formData.tpi}
-                                onChange={(e) => recalculateAuditMemo({ tpi: e.target.value })}
-                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="esmp" className="text-sm text-slate-600">ESMP:</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="esmp"
-                                id="esmp"
-                                value={formData.esmp === 0 ? '' : formData.esmp}
-                                onChange={(e) => recalculateAuditMemo({ esmp: e.target.value })}
-                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div>
-                            <div className="grid grid-cols-2 gap-4 items-center">
-                                <label htmlFor="timeLimitDeposit" className="text-sm text-slate-600">Time Limit Deposit:</label>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="number"
-                                            step="1"
-                                            name="timeLimitDeposit"
-                                            id="timeLimitDeposit"
-                                            value={formData.timeLimitDeposit === 0 ? '' : formData.timeLimitDeposit}
-                                            onChange={(e) => recalculateAuditMemo({ timeLimitDeposit: e.target.value })}
-                                            onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                                            onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                            className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                            placeholder="0.00"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => {
+                                            {(() => {
                                                 const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
                                                 const compTargetDate = stipulatedCompletionDate 
                                                     ? new Date(stipulatedCompletionDate) 
                                                     : (selectedWorkOrder?.stipulatedCompletionDate ? new Date(selectedWorkOrder.stipulatedCompletionDate) : null);
 
+                                                const getDaysDiff = (date1: Date, date2: Date) => {
+                                                    const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
+                                                    const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+                                                    const diffTime = d1.getTime() - d2.getTime();
+                                                    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                                };
+
+                                                let daysDelay = 0;
                                                 let totalCalculatedTLD = 0;
                                                 if (compTargetDate) {
-                                                    const getDaysDiff = (date1: Date, date2: Date) => {
-                                                        const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
-                                                        const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
-                                                        const diffTime = d1.getTime() - d2.getTime();
-                                                        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                                    };
-
                                                     if (formData.billType === 'Running') {
                                                         const lastRecordDate = formData.lastRecordEntryDate ? parseDateStr(formData.lastRecordEntryDate) : null;
                                                         if (lastRecordDate) {
-                                                            const daysDelay = Math.max(0, Math.min(100, getDaysDiff(lastRecordDate, compTargetDate)));
+                                                            daysDelay = Math.max(0, Math.min(100, getDaysDiff(lastRecordDate, compTargetDate)));
                                                             const sayAmt = parseFloat(formData.grossAmount) || 0;
                                                             totalCalculatedTLD = Math.ceil((0.001 * sayAmt * daysDelay) / 100) * 100;
                                                         }
@@ -2197,162 +2320,145 @@ export default function BillForm({
                                                         }
                                                     }
                                                 }
-                                                const remainingTLD = Math.max(0, totalCalculatedTLD - previousTLDTotal);
-                                                recalculateAuditMemo({ timeLimitDeposit: remainingTLD });
-                                            }}
-                                            className="shrink-0 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold rounded-md border border-blue-200 transition-colors whitespace-nowrap cursor-pointer"
-                                            title="Deduct remaining time limit deposit"
-                                        >
-                                            Deduct Remaining
-                                        </button>
-                                    </div>
-                                    {(() => {
-                                        const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
-                                        const compTargetDate = stipulatedCompletionDate 
-                                            ? new Date(stipulatedCompletionDate) 
-                                            : (selectedWorkOrder?.stipulatedCompletionDate ? new Date(selectedWorkOrder.stipulatedCompletionDate) : null);
 
-                                        const getDaysDiff = (date1: Date, date2: Date) => {
-                                            const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
-                                            const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
-                                            const diffTime = d1.getTime() - d2.getTime();
-                                            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                        };
-
-                                        let daysDelay = 0;
-                                        let totalCalculatedTLD = 0;
-                                        if (compTargetDate) {
-                                            if (formData.billType === 'Running') {
-                                                const lastRecordDate = formData.lastRecordEntryDate ? parseDateStr(formData.lastRecordEntryDate) : null;
-                                                if (lastRecordDate) {
-                                                    daysDelay = Math.max(0, Math.min(100, getDaysDiff(lastRecordDate, compTargetDate)));
-                                                    const sayAmt = parseFloat(formData.grossAmount) || 0;
-                                                    totalCalculatedTLD = Math.ceil((0.001 * sayAmt * daysDelay) / 100) * 100;
-                                                }
-                                            } else {
-                                                const completionDate = formData.actualCompletionDate ? parseDateStr(formData.actualCompletionDate) : null;
-                                                if (completionDate) {
-                                                    daysDelay = Math.max(0, Math.min(100, getDaysDiff(completionDate, compTargetDate)));
-                                                    const contractPriceVal = contractPriceState 
-                                                        ? contractPriceState 
-                                                        : (selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0);
-                                                    totalCalculatedTLD = Math.ceil((0.001 * contractPriceVal * daysDelay) / 100) * 100;
-                                                }
-                                            }
-                                        }
-
-                                        return (
-                                            <div className="mt-1 space-y-0.5">
-                                                {compTargetDate && (
-                                                    <p className="text-[10px] text-slate-500 font-medium leading-none">
-                                                        Delay: <span className={daysDelay > 0 ? "text-amber-600 font-bold" : "text-slate-500 font-bold"}>{daysDelay} days</span> (Target: {compTargetDate.toLocaleDateString('en-GB')})
-                                                    </p>
-                                                )}
-                                                <div className="text-[11px] text-slate-500 font-medium pl-0.5 space-y-0.5 pt-0.5">
-                                                    <div>
-                                                        total deducted from previous bills: ₹{previousTLDTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                                return (
+                                                    <div className="mt-1 space-y-0.5 border-t border-dashed border-emerald-200 pt-1 text-right pr-0.5">
+                                                        {compTargetDate && (
+                                                            <p className="text-[10px] text-slate-500 font-medium leading-none">
+                                                                Delay: <span className={daysDelay > 0 ? "text-amber-600 font-bold" : "text-slate-500 font-bold"}>{daysDelay} days</span>
+                                                            </p>
+                                                        )}
+                                                        <div className="text-[10px] text-slate-500 font-medium space-y-0.5 pt-0.5">
+                                                            <div>
+                                                                Prev bills: {Math.round(previousTLDTotal).toLocaleString('en-IN')}
+                                                            </div>
+                                                            <div>
+                                                                Max: {Math.round(totalCalculatedTLD).toLocaleString('en-IN')}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        max can be deducted: ₹{totalCalculatedTLD.toLocaleString('en-IN', { minimumFractionDigits: 2 })} {daysDelay > 0 ? `(${daysDelay} days @ 0.1%/day)` : ''}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <label htmlFor="testingCharges" className="text-sm text-slate-600">Testing Charges:</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="testingCharges"
-                                id="testingCharges"
-                                value={formData.testingCharges === 0 ? '' : formData.testingCharges}
-                                onChange={(e) => recalculateAuditMemo({ testingCharges: e.target.value })}
-                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <div className="flex items-center gap-1.5">
-                                <input
-                                    type="text"
-                                    name="otherDepositLabel"
-                                    value={formData.otherDepositLabel !== undefined ? formData.otherDepositLabel : 'Other Deposit'}
-                                    onChange={(e) => setFormData((prev: any) => ({ ...prev, otherDepositLabel: e.target.value }))}
-                                    className="text-sm text-slate-700 bg-slate-50/70 hover:bg-slate-100 focus:bg-white border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded px-2 py-1 font-medium focus:ring-1 focus:ring-blue-500 outline-none w-full transition-all"
-                                    placeholder="Other Deposit"
-                                    title="Click to edit label name"
-                                />
-                                <span className="text-sm text-slate-500 font-semibold">:</span>
-                            </div>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="otherDeposit"
-                                id="otherDeposit"
-                                value={formData.otherDeposit === 0 ? '' : formData.otherDeposit}
-                                onChange={(e) => recalculateAuditMemo({ otherDeposit: e.target.value })}
-                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 items-center">
-                            <div className="flex items-center gap-1.5">
-                                <input
-                                    type="text"
-                                    name="otherDeposit2Label"
-                                    value={formData.otherDeposit2Label !== undefined ? formData.otherDeposit2Label : 'Other Deposit 2'}
-                                    onChange={(e) => setFormData((prev: any) => ({ ...prev, otherDeposit2Label: e.target.value }))}
-                                    className="text-sm text-slate-700 bg-slate-50/70 hover:bg-slate-100 focus:bg-white border border-slate-200 hover:border-slate-300 focus:border-blue-500 rounded px-2 py-1 font-medium focus:ring-1 focus:ring-blue-500 outline-none w-full transition-all"
-                                    placeholder="Other Deposit 2"
-                                    title="Click to edit label name"
-                                />
-                                <span className="text-sm text-slate-500 font-semibold">:</span>
-                            </div>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="otherDeposit2"
-                                id="otherDeposit2"
-                                value={formData.otherDeposit2 === 0 ? '' : formData.otherDeposit2}
-                                onChange={(e) => recalculateAuditMemo({ otherDeposit2: e.target.value })}
-                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
-                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border focus:ring-blue-500 focus:border-blue-500 font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                placeholder="0.00"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 items-center border-t border-slate-200 pt-4 bg-amber-50/50 p-2 rounded">
-                            <span className="text-sm font-bold text-amber-900">Total Deduction:</span>
-                            <span className="text-sm font-extrabold text-amber-950 font-mono">₹{Number(formData.totalDeduction || 0).toFixed(2)}</span>
+                                                );
+                                            })()}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="excel-label">Testing Charges</td>
+                                        <td className="excel-value">
+                                            <input
+                                                type="number"
+                                                step="1"
+                                                name="testingCharges"
+                                                id="testingCharges"
+                                                value={formData.testingCharges === 0 ? '' : formData.testingCharges}
+                                                onChange={(e) => recalculateAuditMemo({ testingCharges: e.target.value })}
+                                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                                className="excel-cell-input text-right font-mono"
+                                                placeholder="0"
+                                            />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="excel-label p-1">
+                                            <input
+                                                type="text"
+                                                name="otherDepositLabel"
+                                                value={formData.otherDepositLabel !== undefined ? formData.otherDepositLabel : 'Other Deposit'}
+                                                onChange={(e) => setFormData((prev: any) => ({ ...prev, otherDepositLabel: e.target.value }))}
+                                                className="text-xs font-bold text-slate-600 bg-transparent px-1 py-0.5 outline-none w-full border-b border-dashed border-emerald-300 focus:border-emerald-600"
+                                                placeholder="Other Deposit"
+                                                title="Click to edit label"
+                                            />
+                                        </td>
+                                        <td className="excel-value">
+                                            <input
+                                                type="number"
+                                                step="1"
+                                                name="otherDeposit"
+                                                id="otherDeposit"
+                                                value={formData.otherDeposit === 0 ? '' : formData.otherDeposit}
+                                                onChange={(e) => recalculateAuditMemo({ otherDeposit: e.target.value })}
+                                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                                className="excel-cell-input text-right font-mono"
+                                                placeholder="0"
+                                            />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="excel-label p-1">
+                                            <input
+                                                type="text"
+                                                name="otherDeposit2Label"
+                                                value={formData.otherDeposit2Label !== undefined ? formData.otherDeposit2Label : 'Other Deposit 2'}
+                                                onChange={(e) => setFormData((prev: any) => ({ ...prev, otherDeposit2Label: e.target.value }))}
+                                                className="text-xs font-bold text-slate-600 bg-transparent px-1 py-0.5 outline-none w-full border-b border-dashed border-emerald-300 focus:border-emerald-600"
+                                                placeholder="Other Deposit 2"
+                                                title="Click to edit label"
+                                            />
+                                        </td>
+                                        <td className="excel-value">
+                                            <input
+                                                type="number"
+                                                step="1"
+                                                name="otherDeposit2"
+                                                id="otherDeposit2"
+                                                value={formData.otherDeposit2 === 0 ? '' : formData.otherDeposit2}
+                                                onChange={(e) => recalculateAuditMemo({ otherDeposit2: e.target.value })}
+                                                onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
+                                                onWheel={(e) => (e.target as HTMLInputElement).blur()}
+                                                className="excel-cell-input text-right font-mono"
+                                                placeholder="0"
+                                            />
+                                        </td>
+                                    </tr>
+                                </tbody>
+                                <tfoot>
+                                    <tr className="bg-amber-100/90 font-bold border-t-2 border-amber-300">
+                                        <td className="px-3 py-2 text-right text-xs uppercase font-extrabold text-amber-950">
+                                            Total Deductions:
+                                        </td>
+                                        <td className="px-3 py-2 text-right font-mono font-black text-sm text-amber-950">
+                                            {Math.round(Number(formData.totalDeduction || 0)).toLocaleString('en-IN')}
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
                         </div>
                     </div>
-                </div>
 
-                <div className="mt-8 bg-emerald-50 p-6 rounded-lg border border-emerald-200 flex justify-between items-center shadow-xs">
-                    <span className="text-lg font-bold text-emerald-900">Final Net Payable to Contractor (Net Paid Amount):</span>
-                    <span className="text-2xl font-extrabold text-emerald-950 font-mono">₹{Number(formData.netPaidAmount || 0).toFixed(2)}</span>
+                    {/* Bottom Compact Summary Bar */}
+                    <div className="mt-4 bg-emerald-800 text-white px-5 py-3 rounded-xl flex flex-wrap items-center justify-between gap-4 shadow-xs">
+                        <div className="flex items-center gap-4 sm:gap-6 text-xs">
+                            <div>
+                                <span className="text-emerald-200 font-semibold uppercase text-[10px] tracking-wider block">Net Payable</span>
+                                <span className="font-mono font-bold text-white text-sm">{Math.round(Number(formData.netPayableAmount || 0)).toLocaleString('en-IN')}</span>
+                            </div>
+                            <span className="text-emerald-300 font-bold text-base">-</span>
+                            <div>
+                                <span className="text-emerald-200 font-semibold uppercase text-[10px] tracking-wider block">Total Deductions</span>
+                                <span className="font-mono font-bold text-amber-300 text-sm">{Math.round(Number(formData.totalDeduction || 0)).toLocaleString('en-IN')}</span>
+                            </div>
+                            <span className="text-emerald-300 font-bold text-base">=</span>
+                        </div>
+                        <div className="text-right">
+                            <span className="text-emerald-200 font-bold uppercase text-[10px] tracking-wider block">Final Net Paid Amount:</span>
+                            <span className="text-lg sm:text-xl font-black font-mono text-white tracking-tight">{Math.round(Number(formData.netPaidAmount || 0)).toLocaleString('en-IN')}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             {/* Measurement Checking Section */}
-            <div className="p-8 pt-4 border-t border-gray-200">
-                <div className="flex justify-between items-center mb-4">
+            <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
+                <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                        <h3 className="text-lg leading-6 font-medium text-gray-900">Measurement Checking</h3>
+                        <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
+                            <ClipboardCheck className="w-4 h-4" />
+                        </span>
+                        <h3 className="font-bold text-slate-800">Measurement Checking (10% Checking)</h3>
                         {formData.measurementChecking && formData.measurementChecking.length > 0 && (
-                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
+                            <span className="text-xs bg-emerald-100 text-emerald-900 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold">
                                 {formData.measurementChecking.length} records
                             </span>
                         )}
@@ -2361,7 +2467,7 @@ export default function BillForm({
                         <button
                             type="button"
                             onClick={addMeasurementCheckingRow}
-                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-semibold rounded-md text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-all cursor-pointer"
+                            className="inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs transition-all cursor-pointer"
                         >
                             <Plus className="w-3.5 h-3.5 mr-1" /> Add Measurement Row
                         </button>
@@ -2369,7 +2475,7 @@ export default function BillForm({
                             <button
                                 type="button"
                                 onClick={() => setIsMeasurementCheckingExpanded(!isMeasurementCheckingExpanded)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer border border-slate-200"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs font-bold rounded-xl transition-colors cursor-pointer border border-emerald-300"
                             >
                                 {isMeasurementCheckingExpanded ? (
                                     <>
@@ -2388,45 +2494,45 @@ export default function BillForm({
                 </div>
                 
                 {isMeasurementCheckingExpanded && (
-                    <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-slate-50">
-                                <tr>
-                                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-44">Date</th>
-                                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700">Item No.</th>
-                                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-36">MB Page No.</th>
-                                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-36">QTY.</th>
-                                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-36">Rate (₹)</th>
-                                    <th className="px-3 py-3 text-left text-xs font-semibold text-slate-700 w-36">Amount (₹)</th>
-                                    <th className="px-3 py-3 text-center text-xs font-semibold text-slate-700 w-16">Actions</th>
+                    <div className="p-6 overflow-x-auto">
+                        <table className="excel-table">
+                            <thead>
+                                <tr className="bg-emerald-100/90 text-emerald-950">
+                                    <th className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-left text-xs font-bold text-emerald-950 w-44">Date</th>
+                                    <th className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-left text-xs font-bold text-emerald-950">Item No.</th>
+                                    <th className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-left text-xs font-bold text-emerald-950 w-36">MB Page No.</th>
+                                    <th className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-right text-xs font-bold text-emerald-950 w-36">QTY.</th>
+                                    <th className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-right text-xs font-bold text-emerald-950 w-36">Rate (₹)</th>
+                                    <th className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-right text-xs font-bold text-emerald-950 w-36">Amount (₹)</th>
+                                    <th className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-center text-xs font-bold text-emerald-950 w-16">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="divide-y divide-emerald-200/60 bg-white">
                                 {!formData.measurementChecking || formData.measurementChecking.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
+                                        <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-500">
                                             No measurement checking records added yet. Click "Add Measurement Row" above.
                                         </td>
                                     </tr>
                                 ) : (
                                     formData.measurementChecking.map((mc: any, index: number) => (
-                                        <tr key={index}>
-                                            <td className="px-3 py-2">
+                                        <tr key={index} className="hover:bg-emerald-50/50">
+                                            <td className="border border-slate-200 px-3 py-2">
                                                 <input 
                                                     type="text" 
                                                     placeholder="DD/MM/YYYY"
                                                     value={mc.date || ''} 
                                                     onChange={(e) => handleMeasurementCheckingChange(index, 'date', e.target.value)} 
-                                                    className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border"
+                                                    className="block w-full text-xs sm:text-sm border-emerald-200 rounded-lg p-1.5 border bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                                     required
                                                 />
                                             </td>
                                             
-                                            <td className="px-3 py-2">
+                                            <td className="border border-slate-200 px-3 py-2">
                                                 <select
                                                     value={mc.itemNo || ''}
                                                     onChange={(e) => handleMeasurementCheckingChange(index, 'itemNo', e.target.value)}
-                                                    className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border"
+                                                    className="block w-full text-xs sm:text-sm border-emerald-200 rounded-lg p-1.5 border bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium"
                                                     required
                                                 >
                                                     <option value="">Select Item No.</option>
@@ -2438,18 +2544,18 @@ export default function BillForm({
                                                 </select>
                                             </td>
                                             
-                                            <td className="px-3 py-2">
+                                            <td className="border border-slate-200 px-3 py-2">
                                                 <input 
                                                     type="text" 
                                                     placeholder="MB Page No."
                                                     value={mc.mbPageNo || ''} 
                                                     onChange={(e) => handleMeasurementCheckingChange(index, 'mbPageNo', e.target.value)} 
-                                                    className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border"
+                                                    className="block w-full text-xs sm:text-sm border-emerald-200 rounded-lg p-1.5 border bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                                     required
                                                 />
                                             </td>
                                             
-                                            <td className="px-3 py-2">
+                                            <td className="border border-slate-200 px-3 py-2">
                                                 <input 
                                                     type="number" 
                                                     min="0"
@@ -2457,36 +2563,36 @@ export default function BillForm({
                                                     placeholder="QTY"
                                                     value={mc.quantity === 0 ? '' : mc.quantity} 
                                                     onChange={(e) => handleMeasurementCheckingChange(index, 'quantity', e.target.value)} 
-                                                    className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border text-right font-mono"
+                                                    className="block w-full text-xs sm:text-sm border-emerald-200 rounded-lg p-1.5 border bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-right font-mono"
                                                     required
                                                 />
                                             </td>
                                             
-                                            <td className="px-3 py-2">
+                                            <td className="border border-slate-200 px-3 py-2">
                                                 <input 
                                                     type="number" 
                                                     value={mc.rate || ''} 
                                                     readOnly 
-                                                    className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border bg-gray-50 text-right font-mono font-medium text-slate-600"
+                                                    className="block w-full text-xs sm:text-sm border-slate-200 rounded-lg p-1.5 border bg-slate-50 text-right font-mono font-medium text-slate-700"
                                                     placeholder="0.00"
                                                 />
                                             </td>
                                             
-                                            <td className="px-3 py-2">
+                                            <td className="border border-slate-200 px-3 py-2">
                                                 <input 
                                                     type="number" 
                                                     value={mc.amount || ''} 
                                                     readOnly 
-                                                    className="block w-full sm:text-sm border-gray-300 rounded-md p-1.5 border bg-gray-50 text-right font-mono font-bold text-slate-800"
+                                                    className="block w-full text-xs sm:text-sm border-slate-200 rounded-lg p-1.5 border bg-slate-50 text-right font-mono font-bold text-slate-800"
                                                     placeholder="0.00"
                                                 />
                                             </td>
                                             
-                                            <td className="px-3 py-2 text-center">
+                                            <td className="border border-slate-200 px-3 py-2 text-center">
                                                 <button
                                                     type="button"
                                                     onClick={() => removeMeasurementCheckingRow(index)}
-                                                    className="text-red-500 hover:text-red-700 transition-colors p-1"
+                                                    className="text-rose-500 hover:text-rose-700 transition-colors p-1"
                                                     title="Delete Row"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
@@ -2503,20 +2609,20 @@ export default function BillForm({
                                 const isMet = totalMCAmount >= requiredMCAmount;
                                 const diff = totalMCAmount - requiredMCAmount;
                                 return (
-                                    <tfoot className="bg-slate-100 font-semibold border-t-2 border-slate-200">
-                                        <tr className="border-b border-slate-200">
-                                            <td colSpan={5} className="px-3 py-2 text-right text-xs text-slate-500 uppercase tracking-wider">Required Measurement Amount (10% of Total Amount):</td>
-                                            <td className="px-3 py-2 text-xs font-mono font-bold text-right text-slate-700">₹{requiredMCAmount.toFixed(2)}</td>
+                                    <tfoot className="bg-emerald-50/90 font-semibold border-t-2 border-emerald-300">
+                                        <tr className="border-b border-emerald-200">
+                                            <td colSpan={5} className="px-3 py-2 text-right text-xs text-slate-700 font-bold uppercase tracking-wider">Required Measurement Amount (10% of Total Amount):</td>
+                                            <td className="px-3 py-2 text-xs font-mono font-bold text-right text-slate-800">₹{requiredMCAmount.toFixed(2)}</td>
                                             <td></td>
                                         </tr>
-                                        <tr className={`border-b border-slate-200 ${isMet ? "bg-emerald-50" : "bg-rose-50"}`}>
-                                            <td colSpan={5} className={`px-3 py-2.5 text-right text-sm uppercase font-bold ${isMet ? "text-emerald-800" : "text-rose-800"}`}>Total Measurement Amount:</td>
-                                            <td className={`px-3 py-2.5 text-sm font-mono font-extrabold text-right ${isMet ? "text-emerald-900" : "text-rose-900"}`}>₹{totalMCAmount.toFixed(2)}</td>
+                                        <tr className={`border-b border-emerald-200 ${isMet ? "bg-emerald-100/80" : "bg-rose-100/80"}`}>
+                                            <td colSpan={5} className={`px-3 py-2.5 text-right text-xs uppercase font-extrabold ${isMet ? "text-emerald-950" : "text-rose-950"}`}>Total Measurement Amount:</td>
+                                            <td className={`px-3 py-2.5 text-xs font-mono font-black text-right ${isMet ? "text-emerald-950" : "text-rose-950"}`}>₹{totalMCAmount.toFixed(2)}</td>
                                             <td></td>
                                         </tr>
-                                        <tr className="bg-slate-50">
-                                            <td colSpan={5} className="px-3 py-2 text-right text-xs text-slate-500 uppercase tracking-wider">Difference (+ / -):</td>
-                                            <td className={`px-3 py-2 text-xs font-mono font-bold text-right ${diff >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                                        <tr className="bg-emerald-50/40">
+                                            <td colSpan={5} className="px-3 py-2 text-right text-xs text-slate-700 font-bold uppercase tracking-wider">Difference (+ / -):</td>
+                                            <td className={`px-3 py-2 text-xs font-mono font-bold text-right ${diff >= 0 ? "text-emerald-800" : "text-rose-700"}`}>
                                                 {diff >= 0 ? '+' : ''}₹{diff.toFixed(2)}
                                             </td>
                                             <td></td>
@@ -2530,25 +2636,26 @@ export default function BillForm({
             </div>
 
             {/* Footer / Summary Section */}
-            <div className="p-8 pt-4">
+            <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md p-6">
                 <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     <div className="sm:col-span-6">
-                        <label htmlFor="remarks" className="block text-sm font-medium text-gray-700">Remarks</label>
+                        <label htmlFor="remarks" className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Remarks</label>
                         <textarea 
                             name="remarks" id="remarks" rows={2} value={formData.remarks} onChange={handleChange} 
-                            className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                            className="mt-1 block w-full text-xs sm:text-sm border-emerald-200 rounded-xl p-2.5 border bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium"
+                            placeholder="Enter any additional audit/verification remarks..."
                         />
                     </div>
                 </div>
 
-                <div className="pt-8">
-                    <div className="flex justify-end">
+                <div className="pt-6 border-t border-emerald-100 mt-6">
+                    <div className="flex justify-end items-center gap-3">
                         {onCancel ? (
-                            <button type="button" onClick={onCancel} className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer">Cancel</button>
+                            <button type="button" onClick={onCancel} className="bg-white py-2.5 px-5 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors shadow-2xs">Cancel</button>
                         ) : (
-                            <Link href="/bills" className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</Link>
+                            <Link href="/bills" className="bg-white py-2.5 px-5 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs">Cancel</Link>
                         )}
-                        <button type="submit" disabled={loading || fetchingAbstract} className="ml-3 inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer">
+                        <button type="submit" disabled={loading || fetchingAbstract} className="inline-flex items-center justify-center py-2.5 px-6 border border-transparent shadow-xs text-xs font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer">
                             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                             {loading ? 'Saving...' : 'Save Bill & Abstract'}
                         </button>

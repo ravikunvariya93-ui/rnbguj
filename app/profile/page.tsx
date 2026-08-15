@@ -20,7 +20,7 @@ export default function ProfilePage() {
     <div className="max-w-4xl mx-auto py-8">
       <div className="bg-white shadow-sm rounded-2xl border border-gray-100 overflow-hidden">
         {/* Header Profile Section */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-8 py-12 text-white">
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 px-8 py-12 text-white">
           <div className="flex items-center gap-6">
             <div className="h-24 w-24 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 shadow-xl">
               <User className="h-12 w-12 text-white" />
@@ -42,8 +42,8 @@ export default function ProfilePage() {
               <h2 className="text-xl font-bold text-gray-900 border-b pb-2">Account Details</h2>
               
               <div className="flex items-start gap-4">
-                <div className="p-2 bg-blue-50 rounded-lg">
-                  <User className="h-5 w-5 text-blue-600" />
+                <div className="p-2 bg-emerald-50 rounded-lg">
+                  <User className="h-5 w-5 text-emerald-600" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Username</p>
@@ -52,14 +52,14 @@ export default function ProfilePage() {
               </div>
 
               <div className="flex items-start gap-4">
-                <div className="p-2 bg-blue-50 rounded-lg">
-                  <Shield className="h-5 w-5 text-blue-600" />
+                <div className="p-2 bg-emerald-50 rounded-lg">
+                  <Shield className="h-5 w-5 text-emerald-600" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Access Level</p>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1 ${
                     user.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' :
-                    user.role === 'SUPERVISOR' ? 'bg-blue-100 text-blue-800' :
+                    user.role === 'SUPERVISOR' ? 'bg-emerald-100 text-emerald-800' :
                     'bg-gray-100 text-gray-800'
                   }`}>
                     {user.role}
@@ -68,8 +68,8 @@ export default function ProfilePage() {
               </div>
 
               <div className="flex items-start gap-4">
-                <div className="p-2 bg-blue-50 rounded-lg">
-                  <Building2 className="h-5 w-5 text-blue-600" />
+                <div className="p-2 bg-emerald-50 rounded-lg">
+                  <Building2 className="h-5 w-5 text-emerald-600" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Department</p>

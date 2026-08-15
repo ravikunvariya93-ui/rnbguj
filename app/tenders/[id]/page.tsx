@@ -80,7 +80,7 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
                 </div>
                 <Link
                     href={`/tenders/${id}/edit`}
-                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
                 >
                     <Edit2 className="w-4 h-4 mr-2" /> Edit Tender
                 </Link>
@@ -88,14 +88,14 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
 
             <div className="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
                 <div className="px-4 py-5 sm:px-6 bg-gray-50 border-b border-gray-200">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">{tender.tenderId} - {tender.packageName}</h3>
-                    <p className="mt-1 max-w-2xl text-sm text-gray-500 italic">Full procurement record and contract award details.</p>
+                    <h3 className="text-lg leading-6 font-medium text-gray-900">{tender.packageName || 'Tender'}</h3>
+                    <p className="mt-1 max-w-2xl text-sm text-gray-500 italic">Complete details for Tender ID: {tender.tenderId}</p>
                 </div>
                 <div className="px-4 py-5 sm:p-0">
                     <dl className="sm:divide-y sm:divide-gray-200">
                         {sections.map((section) => (
                             <div key={section.title} className="py-4 sm:py-5">
-                                <dt className="text-sm font-semibold text-blue-600 px-4 sm:px-6 mb-4 uppercase tracking-wider">
+                                <dt className="text-sm font-semibold text-emerald-600 px-4 sm:px-6 mb-4 uppercase tracking-wider">
                                     {section.title}
                                 </dt>
                                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">

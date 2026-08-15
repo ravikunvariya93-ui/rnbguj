@@ -198,7 +198,7 @@ export default async function AgreementsListPage({ searchParams }: Props) {
                 const pkgName = pkg?.packageName || tender?.packageName || '-';
                 if (pkg?._id) {
                     return (
-                        <Link href={`/packages/${pkg._id}`} className="text-blue-600 hover:underline font-semibold break-words">
+                        <Link href={`/packages/${pkg._id}`} className="text-emerald-600 hover:underline font-semibold break-words">
                             {pkgName}
                         </Link>
                     );

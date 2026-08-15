@@ -335,7 +335,7 @@ export default function ExcessProposalsClient({ initialProposals, packages }: Pr
                                                 <div className="flex items-center justify-center gap-2">
                                                     <button
                                                         onClick={() => handleOpenEditModal(p)}
-                                                        className="p-1 text-blue-600 hover:bg-blue-50 rounded-md cursor-pointer transition-colors"
+                                                        className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md cursor-pointer transition-colors"
                                                         title="Edit Proposal"
                                                     >
                                                         <Edit2 className="w-4 h-4" />

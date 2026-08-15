@@ -77,7 +77,7 @@ export default function DataTable({ columns, data, emptyMessage = 'No data avail
               const rowBg = index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
 
               return (
-                <tr key={row._id ?? index} className={`${rowBg} hover:bg-blue-50/80 transition-colors`}>
+                <tr key={row._id ?? index} className={`${rowBg} hover:bg-emerald-50/80 transition-colors`}>
                   {columns.map((col, colIdx) => {
                     const isLast = !actions && colIdx === columns.length - 1;
                     const cellClass = `px-3 py-2 text-slate-800${isLast ? '' : ' border-r border-slate-200'}${getAlignClass(col.align)}${col.minWidth ? ` min-w-[${col.minWidth}]` : ''}`;

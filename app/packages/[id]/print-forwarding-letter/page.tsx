@@ -30,8 +30,8 @@ export default async function PrintForwardingLetterPage({ params }: Props) {
                     <p className="text-sm text-slate-500">
                         DTP Details have not been created for this package yet. Please create DTP Details before printing.
                     </p>
-                    <Link href={`/packages/${id}`} className="inline-block px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors">
-                        Back to Package details
+                    <Link href={`/packages/${id}`} className="inline-block px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors">
+                        ← Back to Package
                     </Link>
                 </div>
             </div>

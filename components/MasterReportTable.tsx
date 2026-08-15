@@ -403,7 +403,7 @@ export default function MasterReportTable({ data }: MasterReportTableProps) {
                                                             type="checkbox"
                                                             checked={isChecked}
                                                             onChange={() => toggleColumn(col.key)}
-                                                            className="mt-0.5 w-3.5 h-3.5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                                                            className="mt-0.5 w-3.5 h-3.5 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500 focus:ring-2 cursor-pointer"
                                                         />
                                                         <span className="break-words select-none leading-normal">{col.label}</span>
                                                     </label>

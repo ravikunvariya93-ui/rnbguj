@@ -49,12 +49,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 {/* Logo Section */}
                 <div className="flex flex-col items-center justify-center h-20 border-b border-gray-200 px-4 relative">
                     <div className="flex items-center gap-2">
-                        <div className="bg-blue-600 p-1.5 rounded-lg">
+                        <div className="bg-emerald-600 p-1.5 rounded-xl shadow-sm">
                             <Building2 className="h-6 w-6 text-white" />
                         </div>
                         <span className="font-bold text-lg text-gray-900 leading-tight">Panchayat R&B</span>
                     </div>
-                    <span className="text-xs text-gray-500 font-medium mt-1">Bhavnagar</span>
+                    <span className="text-xs text-emerald-600 font-semibold mt-1">Bhavnagar</span>
 
                     {/* Close button for mobile */}
                     <button
@@ -76,13 +76,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                     key={item.name}
                                     href={item.href}
                                     onClick={onClose}
-                                    className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-all ${isActive
-                                        ? 'bg-blue-600 text-white shadow-md'
-                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                    className={`group flex items-center px-3 py-2 text-sm font-medium rounded-xl transition-all ${isActive
+                                        ? 'bg-emerald-600 text-white shadow-sm font-semibold'
+                                        : 'text-slate-600 hover:bg-emerald-50 hover:text-emerald-700'
                                         }`}
                                 >
                                     <item.icon
-                                        className={`mr-3 flex-shrink-0 h-5 w-5 transition-colors ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-gray-500'
+                                        className={`mr-3 flex-shrink-0 h-5 w-5 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-emerald-600'
                                             }`}
                                     />
                                     {item.name}
@@ -96,16 +96,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <div className="flex-shrink-0 flex flex-col border-t border-gray-200 p-4 space-y-2">
                     <Link 
                         href="/profile"
-                        className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${
-                            pathname === '/profile' ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'
+                        className={`flex items-center gap-3 p-2 rounded-xl transition-colors ${
+                            pathname === '/profile' ? 'bg-emerald-50 text-emerald-800' : 'text-slate-700 hover:bg-emerald-50'
                         }`}
                     >
-                        <div className="h-8 w-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <User className="h-5 w-5 text-blue-600" />
+                        <div className="h-8 w-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                            <User className="h-5 w-5 text-emerald-600" />
                         </div>
                         <div className="flex-1 overflow-hidden">
-                            <p className="text-sm font-bold truncate">{user?.name || 'Guest User'}</p>
-                            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">{user?.role || 'No Role'}</p>
+                            <p className="text-sm font-bold truncate text-slate-800">{user?.name || 'Guest User'}</p>
+                            <p className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wider">{user?.role || 'No Role'}</p>
                         </div>
                     </Link>
                     <button

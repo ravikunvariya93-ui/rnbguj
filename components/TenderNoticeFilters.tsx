@@ -72,7 +72,7 @@ export default function TenderNoticeFilters({ availableYears }: Props) {
             {/* Top Bar: Title & Reset */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <div className="bg-blue-600 p-1.5 rounded-lg flex items-center justify-center">
+                    <div className="bg-emerald-600 p-1.5 rounded-lg flex items-center justify-center">
                         <FileText className="w-4 h-4 text-white" />
                     </div>
                     <h2 className="text-xs font-black text-slate-800 uppercase tracking-widest">
@@ -102,7 +102,7 @@ export default function TenderNoticeFilters({ availableYears }: Props) {
                     <div className="relative">
                         <input
                             type="text"
-                            className="block w-full text-xs font-bold bg-slate-50 border border-slate-200 text-slate-700 hover:bg-white focus:bg-white hover:border-slate-300 focus:border-blue-500 rounded-xl pl-4 pr-10 py-3 outline-none transition-all shadow-sm focus:ring-2 focus:ring-blue-500/5 placeholder-slate-400"
+                            className="block w-full text-xs font-bold bg-slate-50 border border-slate-200 text-slate-700 hover:bg-white focus:bg-white hover:border-slate-300 focus:border-emerald-500 rounded-xl pl-4 pr-10 py-3 outline-none transition-all shadow-sm focus:ring-2 focus:ring-emerald-500/5 placeholder-slate-400"
                             placeholder="Search by package, contractor, notice no..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -121,7 +121,7 @@ export default function TenderNoticeFilters({ availableYears }: Props) {
                 {/* Year Select Field */}
                 <div className="space-y-2">
                     <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">
-                        <Calendar className={`w-3 h-3 ${noticeYear ? 'text-blue-500' : 'text-slate-300'}`} />
+                        <Calendar className={`w-3 h-3 ${noticeYear ? 'text-emerald-500' : 'text-slate-300'}`} />
                         Tender Notice Year
                     </label>
                     <select
@@ -129,7 +129,7 @@ export default function TenderNoticeFilters({ availableYears }: Props) {
                         onChange={(e) => handleYearChange(e.target.value)}
                         className={`block w-full text-xs font-bold rounded-xl px-4 py-3 cursor-pointer outline-none transition-all border ${
                             noticeYear
-                                ? 'bg-blue-50/50 border-blue-200 text-blue-700 ring-2 ring-blue-500/5'
+                                ? 'bg-emerald-50/50 border-emerald-200 text-emerald-700 ring-2 ring-emerald-500/5'
                                 : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-white hover:border-slate-300'
                         }`}
                     >

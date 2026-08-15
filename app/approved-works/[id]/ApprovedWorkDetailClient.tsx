@@ -854,6 +854,12 @@ export default function ApprovedWorkDetailClient({
             });
         }
         setIsBillModalOpen(true);
+        setTimeout(() => {
+            const el = document.getElementById('approved-work-bill-form-section');
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 100);
     };
 
     // Calculate Audit Memo details
@@ -1020,28 +1026,28 @@ export default function ApprovedWorkDetailClient({
     return (
         <div className="space-y-8 pb-16">
             {/* Top Toolbar */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/70 backdrop-blur-md border border-slate-200 p-5 rounded-2xl shadow-xs">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-emerald-600 border border-emerald-700 p-5 rounded-2xl shadow-sm text-white">
                 <div className="flex items-center gap-3">
-                    <Link href="/approved-works" className="p-2 hover:bg-slate-100 rounded-xl transition-all">
-                        <ArrowLeft className="w-5 h-5 text-slate-600" />
+                    <Link href="/approved-works" className="p-2 hover:bg-emerald-700 bg-emerald-700/40 text-white rounded-xl transition-all border border-emerald-400/40 shadow-2xs flex-shrink-0 cursor-pointer" title="Back to Approved Works">
+                        <ArrowLeft className="w-5 h-5 text-white" />
                     </Link>
                     <div>
                         <div className="flex items-center gap-2">
-                            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-700/60 text-white border border-emerald-500/40">
                                 {work.budgetType || 'Approved Work'}
                             </span>
-                            <span className="text-xs text-slate-500 font-mono">
+                            <span className="text-xs text-emerald-100 font-mono">
                                 Job No: {work.wmsItemCode || 'N/A'}
                             </span>
                         </div>
-                        <h1 className="text-xl md:text-2xl font-bold text-slate-800 line-clamp-1 mt-1">
+                        <h1 className="text-xl md:text-2xl font-bold text-white line-clamp-1 mt-1">
                             {work.workName}
                         </h1>
                     </div>
                 </div>
                 <div className="text-right">
-                    <p className="text-xs text-slate-400 font-semibold uppercase">Job Cost</p>
-                    <p className="text-2xl font-extrabold text-blue-600">
+                    <p className="text-xs text-emerald-100 font-semibold uppercase">Job Cost</p>
+                    <p className="text-2xl font-extrabold text-white">
                         ₹{work.jobNumberAmount ? `${work.jobNumberAmount.toFixed(2)} Lacs` : 'N/A'}
                     </p>
                 </div>
@@ -1051,7 +1057,7 @@ export default function ApprovedWorkDetailClient({
             {loading && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 backdrop-blur-xs">
                     <div className="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center gap-3 border border-slate-100">
-                        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+                        <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
                         <span className="text-sm font-semibold text-slate-700">Updating project details...</span>
                     </div>
                 </div>
@@ -1108,7 +1114,7 @@ export default function ApprovedWorkDetailClient({
                 <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
                     <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
                                 <Briefcase className="w-5 h-5" />
                             </div>
                             <div>
@@ -1117,7 +1123,7 @@ export default function ApprovedWorkDetailClient({
                             </div>
                         </div>
                         {editingSection !== 'work' && (
-                            <button onClick={() => handleStartEdit('work')} className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all cursor-pointer">
+                            <button onClick={() => handleStartEdit('work')} className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all cursor-pointer">
                                 <Edit2 className="w-3.5 h-3.5" /> Edit Details
                             </button>
                         )}
@@ -1289,7 +1295,7 @@ export default function ApprovedWorkDetailClient({
                             </div>
                         </div>
                         {editingSection !== 'ts' && (
-                            <button onClick={() => handleStartEdit('ts')} className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all cursor-pointer">
+                            <button onClick={() => handleStartEdit('ts')} className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all cursor-pointer">
                                 {ts ? <><Edit2 className="w-3.5 h-3.5" /> Modify T.S.</> : <><Plus className="w-3.5 h-3.5" /> Add T.S.</>}
                             </button>
                         )}
@@ -1402,7 +1408,7 @@ export default function ApprovedWorkDetailClient({
                                 onClick={() => handleStartEdit('package')}
                                 disabled={!ts} 
                                 title={!ts ? "Please create Technical Sanction first" : ""}
-                                className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                             >
                                 {pkg ? <><Edit2 className="w-3.5 h-3.5" /> Modify Package</> : <><Plus className="w-3.5 h-3.5" /> Create Package</>}
                             </button>
@@ -1511,7 +1517,7 @@ export default function ApprovedWorkDetailClient({
                                 onClick={() => handleStartEdit('dtp')}
                                 disabled={!pkg} 
                                 title={!pkg ? "Please create Package first" : ""}
-                                className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                             >
                                 {dtp ? <><Edit2 className="w-3.5 h-3.5" /> Modify DTP</> : <><Plus className="w-3.5 h-3.5" /> Add DTP</>}
                             </button>
@@ -1629,7 +1635,7 @@ export default function ApprovedWorkDetailClient({
                                 onClick={() => handleStartEdit('tender')}
                                 disabled={!pkg} 
                                 title={!pkg ? "Please create Package first" : ""}
-                                className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                             >
                                 {tender ? <><Edit2 className="w-3.5 h-3.5" /> Modify Tender</> : <><Plus className="w-3.5 h-3.5" /> Add Tender</>}
                             </button>
@@ -1826,7 +1832,7 @@ export default function ApprovedWorkDetailClient({
                             <button 
                                 onClick={() => handleStartEdit('approval')}
                                 disabled={!tender || tender.cancelled} 
-                                className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                             >
                                 {approval ? <><Edit2 className="w-3.5 h-3.5" /> Modify Approval</> : <><Plus className="w-3.5 h-3.5" /> Add Approval</>}
                             </button>
@@ -1953,7 +1959,7 @@ export default function ApprovedWorkDetailClient({
                             <button 
                                 onClick={() => handleStartEdit('loa')}
                                 disabled={!tender || tender.cancelled} 
-                                className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                             >
                                 {loa ? <><Edit2 className="w-3.5 h-3.5" /> Modify LOA</> : <><Plus className="w-3.5 h-3.5" /> Add LOA</>}
                             </button>
@@ -2058,7 +2064,7 @@ export default function ApprovedWorkDetailClient({
                             <button 
                                 onClick={() => handleStartEdit('workOrder')}
                                 disabled={!loa} 
-                                className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                             >
                                 {workOrder ? <><Edit2 className="w-3.5 h-3.5" /> Modify Work Order</> : <><Plus className="w-3.5 h-3.5" /> Add Work Order</>}
                             </button>
@@ -2305,7 +2311,7 @@ export default function ApprovedWorkDetailClient({
                             <div>
                                 <div className="flex items-center gap-2">
                                     <h3 className="font-bold text-slate-800">9. Billing & Audit Memo</h3>
-                                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700">
+                                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700">
                                         {bills ? bills.length : 0} Bills Logged
                                     </span>
                                 </div>
@@ -2315,7 +2321,7 @@ export default function ApprovedWorkDetailClient({
                         <button 
                             onClick={() => handleOpenBillModal(null)}
                             disabled={!workOrder}
-                            className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 hover:scale-105 active:scale-95 px-3.5 py-1.5 rounded-lg border border-emerald-300 shadow-xs transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                         >
                             <Plus className="w-3.5 h-3.5" /> Log New Bill
                         </button>
@@ -2342,7 +2348,7 @@ export default function ApprovedWorkDetailClient({
                                                 <td className="border border-slate-200 px-4 py-1.5 text-center font-mono font-semibold text-slate-800">{bill.runningBillNumber || idx + 1}</td>
                                                 <td className="border border-slate-200 px-4 py-1.5 text-center font-semibold">
                                                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                                        bill.billType === 'Final' ? 'bg-indigo-100 text-indigo-800' : 'bg-blue-100 text-blue-800'
+                                                        bill.billType === 'Final' ? 'bg-indigo-100 text-indigo-800' : 'bg-emerald-100 text-emerald-800'
                                                     }`}>
                                                         {bill.billType}
                                                     </span>
@@ -2355,7 +2361,7 @@ export default function ApprovedWorkDetailClient({
                                                 <td className="border border-slate-200 px-4 py-1.5 text-right font-mono font-extrabold text-emerald-700">₹{bill.netPaidAmount?.toLocaleString('en-IN') || 0}</td>
                                                 <td className="border border-slate-200 px-4 py-1.5">
                                                     <div className="flex items-center justify-center gap-2">
-                                                        <button onClick={() => handleOpenBillModal(bill)} className="p-1 text-blue-600 hover:bg-blue-50 rounded-md cursor-pointer" title="Edit Bill">
+                                                        <button onClick={() => handleOpenBillModal(bill)} className="p-1 text-emerald-700 hover:bg-emerald-50 rounded-md cursor-pointer" title="Edit Bill">
                                                             <Edit2 className="w-4 h-4" />
                                                         </button>
                                                         <button onClick={() => handleDeleteBill(bill._id)} className="p-1 text-rose-600 hover:bg-rose-50 rounded-md cursor-pointer" title="Delete Bill">
@@ -2377,17 +2383,25 @@ export default function ApprovedWorkDetailClient({
                         )}
                         {/* INLINE FULL-WIDTH BILL FORM */}
                         {isBillModalOpen && (
-                            <div className="mt-6 border border-blue-200 bg-white rounded-2xl p-6 shadow-xs transition-all duration-300 animate-in fade-in slide-in-from-top-4">
-                                <div className="pb-4 mb-6 border-b border-slate-200 flex justify-between items-center">
-                                    <div className="flex items-center gap-2">
-                                        <span className="p-1.5 bg-blue-100 text-blue-700 rounded-lg">
-                                            <Receipt className="w-4 h-4" />
+                            <div id="approved-work-bill-form-section" className="scroll-mt-6 mt-6 border-2 border-emerald-300 bg-white rounded-2xl p-6 shadow-xl shadow-emerald-950/5 ring-4 ring-emerald-500/10 transition-all duration-500 animate-in fade-in zoom-in-95 slide-in-from-top-6">
+                                <div className="pb-4 mb-6 border-b border-emerald-100 flex justify-between items-center bg-gradient-to-r from-emerald-50/90 to-white p-4 -m-6 mb-6 rounded-t-2xl">
+                                    <div className="flex items-center gap-3">
+                                        <span className="p-2 bg-emerald-600 text-white rounded-xl shadow-sm animate-pulse">
+                                            <Receipt className="w-5 h-5" />
                                         </span>
-                                        <h3 className="text-base font-bold text-slate-800">
-                                            {editingBill ? 'Edit Bill Details' : 'Add New Bill & Abstract'}
-                                        </h3>
+                                        <div>
+                                            <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                                                {editingBill ? 'Edit Bill Details' : 'Log New Bill & Audit Memo'}
+                                                {!editingBill && (
+                                                    <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200 animate-pulse">
+                                                        ✨ New Bill
+                                                    </span>
+                                                )}
+                                            </h3>
+                                            <p className="text-xs text-slate-500 font-medium">Enter bill measurement parameters, deductions & audit memo</p>
+                                        </div>
                                     </div>
-                                    <button type="button" onClick={() => { setIsBillModalOpen(false); setEditingBill(null); }} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-all cursor-pointer">
+                                    <button type="button" onClick={() => { setIsBillModalOpen(false); setEditingBill(null); }} className="text-slate-400 hover:text-rose-600 p-2 rounded-xl hover:bg-rose-50 transition-all cursor-pointer">
                                         <X className="w-5 h-5" />
                                     </button>
                                 </div>
@@ -2460,7 +2474,7 @@ export default function ApprovedWorkDetailClient({
                             </div>
                             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
                                 <button type="button" onClick={handleCloseContractorModal} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold">Cancel</button>
-                                <button type="submit" disabled={contractorSaving} className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
+                                <button type="submit" disabled={contractorSaving} className="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50">
                                     {contractorSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                     {contractorSaving ? 'Saving...' : editingContractorId ? 'Save Changes' : 'Save Contractor'}
                                 </button>
@@ -2485,7 +2499,7 @@ export default function ApprovedWorkDetailClient({
                             </div>
                             <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
                                 <button type="button" onClick={() => setIsBankModalOpen(false)} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold">Cancel</button>
-                                <button type="submit" disabled={bankSaving} className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
+                                <button type="submit" disabled={bankSaving} className="inline-flex items-center justify-center px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50">
                                     {bankSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                     {bankSaving ? 'Saving Bank...' : 'Save Bank'}
                                 </button>

@@ -73,12 +73,12 @@ export default function ReportGrouping() {
                                     onClick={() => handleChange(opt.value)}
                                     className={`flex justify-between items-center w-full min-w-0 text-left px-3 py-2.5 text-xs font-bold rounded-lg transition-colors
                                         ${isSelected 
-                                            ? 'bg-blue-50/80 text-blue-700' 
+                                            ? 'bg-emerald-50/80 text-emerald-700' 
                                             : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                                         }`}
                                 >
                                     <span className="truncate mr-2">{opt.label}</span>
-                                    {isSelected && <Check className="w-3.5 h-3.5 flex-shrink-0 text-blue-600" />}
+                                    {isSelected && <Check className="w-3.5 h-3.5 flex-shrink-0 text-emerald-600" />}
                                 </button>
                             );
                         })}

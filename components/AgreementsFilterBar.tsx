@@ -73,7 +73,7 @@ export default function AgreementsFilterBar({ agencies, years }: AgreementsFilte
     return (
         <div className="bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-200 shadow-2xs">
             <div className="flex items-center gap-2 mb-3 text-slate-800 font-bold text-sm">
-                <Filter className="w-4 h-4 text-blue-600" />
+                <Filter className="w-4 h-4 text-emerald-600" />
                 <span>Filter Agreements</span>
             </div>
             
@@ -85,7 +85,7 @@ export default function AgreementsFilterBar({ agencies, years }: AgreementsFilte
                         id="filterAgreementYear"
                         value={agreementYear}
                         onChange={(e) => setAgreementYear(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border focus:border-blue-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     >
                         <option value="">All Years</option>
                         {years.filter(Boolean).sort().map(y => (
@@ -101,7 +101,7 @@ export default function AgreementsFilterBar({ agencies, years }: AgreementsFilte
                         id="filterContractor"
                         value={contractorName}
                         onChange={(e) => setContractorName(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border focus:border-blue-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     >
                         <option value="">All Contractors</option>
                         {agencies.map(a => (
@@ -117,7 +117,7 @@ export default function AgreementsFilterBar({ agencies, years }: AgreementsFilte
                         id="filterPriceRange"
                         value={priceRange}
                         onChange={(e) => setPriceRange(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border focus:border-blue-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     >
                         <option value="">All Prices</option>
                         <option value="gte_25l">≥ 25 Lakhs</option>
@@ -133,7 +133,7 @@ export default function AgreementsFilterBar({ agencies, years }: AgreementsFilte
                         id="filterFromDate"
                         value={fromDate}
                         onChange={(e) => setFromDate(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border focus:border-blue-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     />
                 </div>
 
@@ -145,7 +145,7 @@ export default function AgreementsFilterBar({ agencies, years }: AgreementsFilte
                         id="filterToDate"
                         value={toDate}
                         onChange={(e) => setToDate(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border focus:border-blue-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     />
                 </div>
             </div>
@@ -163,7 +163,7 @@ export default function AgreementsFilterBar({ agencies, years }: AgreementsFilte
                 <button
                     type="button"
                     onClick={handleApplyFilters}
-                    className="inline-flex items-center px-5 py-2 border border-transparent rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-all cursor-pointer"
+                    className="inline-flex items-center px-5 py-2 border border-transparent rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all cursor-pointer"
                 >
                     Apply Filters
                 </button>
