@@ -8,9 +8,11 @@ interface SortableHeaderProps {
     field: string;
     label: string;
     className?: string;
+    align?: 'left' | 'center' | 'right';
+    style?: React.CSSProperties;
 }
 
-function SortableHeaderInner({ field, label, className }: SortableHeaderProps) {
+function SortableHeaderInner({ field, label, className, align, style }: SortableHeaderProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -40,14 +42,17 @@ function SortableHeaderInner({ field, label, className }: SortableHeaderProps) {
         router.push(`${pathname}?${params.toString()}`);
     };
 
+    const justifyClass = align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start';
+
     return (
         <th 
             scope="col" 
-            className={`cursor-pointer group hover:bg-gray-100 transition-colors ${className}`}
+            className={`cursor-pointer group hover:bg-emerald-200/50 transition-colors ${className}`}
             onClick={handleSort}
+            style={style}
         >
-            <div className="flex items-center gap-1 select-none">
-                {label}
+            <div className={`flex items-center ${justifyClass} gap-1 select-none`}>
+                <span>{label}</span>
                 <span className="text-gray-400 group-hover:text-gray-600 flex-shrink-0">
                     {isActive ? (
                         currentOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-emerald-600" /> : <ArrowDown className="w-3.5 h-3.5 text-emerald-600" />
@@ -62,7 +67,7 @@ function SortableHeaderInner({ field, label, className }: SortableHeaderProps) {
 
 export default function SortableHeader(props: SortableHeaderProps) {
     return (
-        <Suspense fallback={<th scope="col" className={props.className}>{props.label}</th>}>
+        <Suspense fallback={<th scope="col" className={props.className} style={props.style}>{props.label}</th>}>
             <SortableHeaderInner {...props} />
         </Suspense>
     );

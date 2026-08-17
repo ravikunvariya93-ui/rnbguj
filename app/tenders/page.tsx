@@ -382,12 +382,14 @@ export default async function TendersListPage({ searchParams }: Props) {
             key: 'srNo', 
             label: 'Sr. No.', 
             align: 'center',
+            width: '60px',
             sortable: true,
+            cellClassName: 'whitespace-nowrap text-center',
             render: (row, index) => skip + index + 1
         },
         { key: 'tenderNoticeYear', label: 'Notice Year', sortable: true },
-        { key: 'noticeNo', label: 'Notice No.', sortable: true },
-        { key: 'tenderSrNo', label: 'Sub Sr.', sortable: true, align: 'center', render: (row) => row.srNo || '-' },
+        { key: 'noticeNo', label: 'Notice No.', sortable: true, align: 'center', width: '85px', cellClassName: 'whitespace-nowrap text-center' },
+        { key: 'tenderSrNo', label: 'Sub Sr.', sortable: true, align: 'center', width: '68px', cellClassName: 'whitespace-nowrap text-center', render: (row) => row.srNo || '-' },
         { 
             key: 'packageName', 
             label: 'Package Name', 
@@ -414,7 +416,9 @@ export default async function TendersListPage({ searchParams }: Props) {
             key: 'noOfRoads',
             label: 'No. of Roads',
             align: 'center',
+            width: '90px',
             sortable: true,
+            cellClassName: 'whitespace-nowrap text-center',
             footer: (rows: any[]) => {
                 const total = rows.reduce((sum: number, r: any) => sum + (typeof r.noOfRoads === 'number' ? r.noOfRoads : 1), 0);
                 return (

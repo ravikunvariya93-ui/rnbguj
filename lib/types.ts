@@ -33,7 +33,9 @@ export interface Column<T = any> {
   label: string;
   sortable?: boolean;
   align?: 'left' | 'center' | 'right';
+  width?: string;
   minWidth?: string;
+  maxWidth?: string;
   cellClassName?: string | ((row: T, index: number) => string);
   headerClassName?: string;
   footerClassName?: string;
