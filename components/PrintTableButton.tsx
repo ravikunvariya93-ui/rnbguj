@@ -13,10 +13,10 @@ export default function PrintTableButton() {
     return (
         <button 
             onClick={handlePrint} 
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md shadow-sm hover:bg-slate-50 hover:text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-900 bg-white border border-emerald-300 rounded-xl shadow-2xs hover:bg-emerald-50 hover:border-emerald-400 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
             title="Print Page"
         >
-            <Printer className="w-4 h-4 text-slate-500" />
+            <Printer className="w-3.5 h-3.5 text-emerald-600" />
             <span>Print</span>
         </button>
     );

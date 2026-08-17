@@ -33,10 +33,10 @@ export default function ExportTableButton({ tableId, filename = "Export.xlsx" }:
         <button 
             onClick={handleExport} 
             disabled={isExporting}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md shadow-sm hover:bg-slate-50 hover:text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-900 bg-white border border-emerald-300 rounded-xl shadow-2xs hover:bg-emerald-50 hover:border-emerald-400 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             title="Export to Excel"
         >
-            {isExporting ? <Loader2 className="w-4 h-4 text-slate-500 animate-spin" /> : <Download className="w-4 h-4 text-slate-500" />}
+            {isExporting ? <Loader2 className="w-3.5 h-3.5 text-emerald-600 animate-spin" /> : <Download className="w-3.5 h-3.5 text-emerald-600" />}
             <span>{isExporting ? 'Exporting...' : 'Export to Excel'}</span>
         </button>
     );

@@ -111,21 +111,23 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
     const selectedBuildingTypes = buildingType ? buildingType.split(',').filter(Boolean) : [];
 
     return (
-        <div className="bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-200 shadow-2xs">
-            <div className="flex items-center gap-2 mb-3 text-slate-800 font-bold text-sm">
-                <Filter className="w-4 h-4 text-emerald-600" />
+        <div className="bg-gradient-to-r from-emerald-50/80 via-teal-50/60 to-green-50/80 rounded-2xl p-5 mb-6 border border-emerald-200 shadow-xs">
+            <div className="flex items-center gap-2 mb-3.5 text-emerald-950 font-black text-sm">
+                <div className="p-1.5 bg-emerald-600 text-white rounded-lg shadow-xs">
+                    <Filter className="w-3.5 h-3.5" />
+                </div>
                 <span>Filter Tenders</span>
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 items-end">
                 {/* Sub Division */}
                 <div>
-                    <label htmlFor="filterSubDivision" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Sub Division</label>
+                    <label htmlFor="filterSubDivision" className="block text-xs font-bold text-emerald-900 uppercase tracking-wider mb-1">Sub Division</label>
                     <select
                         id="filterSubDivision"
                         value={subDivision}
                         onChange={(e) => setSubDivision(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
+                        className="block w-full rounded-xl border-emerald-200 bg-white/90 text-emerald-950 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs transition-all"
                     >
                         <option value="">All Sub Divisions</option>
                         {subDivisions.map(sd => (
@@ -136,28 +138,28 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
 
                 {/* Work Type */}
                 <div className="relative" id="work-type-dropdown-container">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Work Type</label>
+                    <label className="block text-xs font-bold text-emerald-900 uppercase tracking-wider mb-1">Work Type</label>
                     <button
                         type="button"
                         onClick={() => setIsWorkTypeOpen(!isWorkTypeOpen)}
-                        className="flex items-center justify-between w-full rounded-xl border border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs text-left cursor-pointer"
+                        className="flex items-center justify-between w-full rounded-xl border border-emerald-200 bg-white/90 text-emerald-950 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs text-left cursor-pointer transition-all"
                     >
                         <span className="truncate">
                             {selectedWorkTypes.length === 0
                                 ? 'All Work Types'
                                 : selectedWorkTypes.join(', ')}
                         </span>
-                        <ChevronDown className="w-4 h-4 ml-1 text-slate-400 shrink-0" />
+                        <ChevronDown className="w-4 h-4 ml-1 text-emerald-600 shrink-0" />
                     </button>
                     
                     {isWorkTypeOpen && (
-                        <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white p-2 shadow-md max-h-60 overflow-y-auto min-w-[180px]">
+                        <div className="absolute z-50 mt-1 w-full rounded-xl border border-emerald-200 bg-white p-2 shadow-lg max-h-60 overflow-y-auto min-w-[180px]">
                             {workTypes.map((wt) => {
                                 const isChecked = selectedWorkTypes.includes(wt);
                                 return (
                                     <label
                                         key={wt}
-                                        className="flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 rounded-lg text-sm text-slate-700 cursor-pointer select-none"
+                                        className="flex items-center gap-2 px-2.5 py-2 hover:bg-emerald-50 rounded-lg text-sm text-emerald-950 cursor-pointer select-none"
                                     >
                                         <input
                                             type="checkbox"
@@ -171,7 +173,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                                                 }
                                                 setWorkType(newSelected.join(','));
                                             }}
-                                            className="rounded-sm border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                                            className="rounded-sm border-emerald-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                                         />
                                         <span>{wt}</span>
                                     </label>
@@ -183,29 +185,29 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
 
                 {/* Building Type */}
                 <div className="relative" id="building-type-dropdown-container">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Building Type</label>
+                    <label className="block text-xs font-bold text-emerald-900 uppercase tracking-wider mb-1">Building Type</label>
                     <button
                         type="button"
                         onClick={() => setIsBuildingTypeOpen(!isBuildingTypeOpen)}
-                        className="flex items-center justify-between w-full rounded-xl border border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs text-left cursor-pointer"
+                        className="flex items-center justify-between w-full rounded-xl border border-emerald-200 bg-white/90 text-emerald-950 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs text-left cursor-pointer transition-all"
                     >
                         <span className="truncate">
                             {selectedBuildingTypes.length === 0
                                 ? 'All Building Types'
                                 : selectedBuildingTypes.join(', ')}
                         </span>
-                        <ChevronDown className="w-4 h-4 ml-1 text-slate-400 shrink-0" />
+                        <ChevronDown className="w-4 h-4 ml-1 text-emerald-600 shrink-0" />
                     </button>
                     
                     {isBuildingTypeOpen && (
-                        <div className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white p-2 shadow-md max-h-60 overflow-y-auto min-w-[180px]">
+                        <div className="absolute z-50 mt-1 w-full rounded-xl border border-emerald-200 bg-white p-2 shadow-lg max-h-60 overflow-y-auto min-w-[180px]">
                             {buildingTypes.length > 0 ? (
                                 buildingTypes.map((bt) => {
                                     const isChecked = selectedBuildingTypes.includes(bt);
                                     return (
                                         <label
                                             key={bt}
-                                            className="flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 rounded-lg text-sm text-slate-700 cursor-pointer select-none"
+                                            className="flex items-center gap-2 px-2.5 py-2 hover:bg-emerald-50 rounded-lg text-sm text-emerald-950 cursor-pointer select-none"
                                         >
                                             <input
                                                 type="checkbox"
@@ -219,14 +221,14 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                                                     }
                                                     setBuildingType(newSelected.join(','));
                                                 }}
-                                                className="rounded-sm border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                                                className="rounded-sm border-emerald-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
                                             />
                                             <span>{bt}</span>
                                         </label>
                                     );
                                 })
                             ) : (
-                                <div className="px-2.5 py-2 text-xs text-slate-400 italic">No building types found</div>
+                                <div className="px-2.5 py-2 text-xs text-emerald-600/70 italic">No building types found</div>
                             )}
                         </div>
                     )}
@@ -234,12 +236,12 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
 
                 {/* Notice Year */}
                 <div>
-                    <label htmlFor="filterNoticeYear" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Notice Year</label>
+                    <label htmlFor="filterNoticeYear" className="block text-xs font-bold text-emerald-900 uppercase tracking-wider mb-1">Notice Year</label>
                     <select
                         id="filterNoticeYear"
                         value={noticeYear}
                         onChange={(e) => setNoticeYear(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
+                        className="block w-full rounded-xl border-emerald-200 bg-white/90 text-emerald-950 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs transition-all"
                     >
                         <option value="">All Years</option>
                         {years.filter(Boolean).sort().map(y => (
@@ -250,25 +252,25 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
 
                 {/* Notice No. */}
                 <div>
-                    <label htmlFor="filterNoticeNo" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Notice No.</label>
+                    <label htmlFor="filterNoticeNo" className="block text-xs font-bold text-emerald-900 uppercase tracking-wider mb-1">Notice No.</label>
                     <input
                         type="text"
                         id="filterNoticeNo"
                         value={noticeNo}
                         onChange={(e) => setNoticeNo(e.target.value)}
                         placeholder="e.g. 1"
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
+                        className="block w-full rounded-xl border-emerald-200 bg-white/90 text-emerald-950 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs transition-all"
                     />
                 </div>
 
                 {/* Contractor */}
                 <div>
-                    <label htmlFor="filterContractor" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Contractor</label>
+                    <label htmlFor="filterContractor" className="block text-xs font-bold text-emerald-900 uppercase tracking-wider mb-1">Contractor</label>
                     <select
                         id="filterContractor"
                         value={contractorName}
                         onChange={(e) => setContractorName(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
+                        className="block w-full rounded-xl border-emerald-200 bg-white/90 text-emerald-950 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs transition-all"
                     >
                         <option value="">All Contractors</option>
                         {agencies.map(a => (
@@ -279,12 +281,12 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
 
                 {/* Trial No. */}
                 <div>
-                    <label htmlFor="filterTrialNo" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Trial</label>
+                    <label htmlFor="filterTrialNo" className="block text-xs font-bold text-emerald-900 uppercase tracking-wider mb-1">Trial</label>
                     <select
                         id="filterTrialNo"
                         value={trialNo}
                         onChange={(e) => setTrialNo(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
+                        className="block w-full rounded-xl border-emerald-200 bg-white/90 text-emerald-950 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs transition-all"
                     >
                         <option value="">All Trials</option>
                         <option value="1">Trial 1</option>

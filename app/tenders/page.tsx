@@ -281,7 +281,7 @@ export default async function TendersListPage({ searchParams }: Props) {
 
     const { page, limit, skip } = parsePagination(params);
     let sortObj: any = {};
-    if (params.sort && params.order && params.sort !== 'workType' && params.sort !== 'contractorMobile') {
+    if (params.sort && params.order && params.sort !== 'workType' && params.sort !== 'contractorMobile' && params.sort !== 'noOfRoads') {
         const orderVal = params.order === 'asc' ? 1 : -1;
         const dbSortField = params.sort === 'tenderSrNo' ? 'srNo' : params.sort;
         sortObj[dbSortField] = orderVal;
@@ -324,6 +324,7 @@ export default async function TendersListPage({ searchParams }: Props) {
         const workOrder = loa ? workOrderMap.get(loa._id.toString()) : null;
 
         const pkg = t.packageId;
+        const noOfRoads = pkg?.works && Array.isArray(pkg.works) && pkg.works.length > 0 ? pkg.works.length : 1;
         const firstWorkName = pkg?.works && pkg.works[0]?.workName;
         const normalizedKey = firstWorkName ? normalize(firstWorkName) : '';
         const inferredWorkType = normalizedKey ? workTypeMap.get(normalizedKey) : '';
@@ -343,6 +344,7 @@ export default async function TendersListPage({ searchParams }: Props) {
         return {
             ...t,
             _id: tIdStr,
+            noOfRoads,
             workType,
             contractorMobile,
             proposalDate,
@@ -366,6 +368,13 @@ export default async function TendersListPage({ searchParams }: Props) {
             const valB = (b.contractorMobile || '').toString();
             return valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' }) * orderVal;
         });
+    } else if (params.sort === 'noOfRoads' && params.order) {
+        const orderVal = params.order === 'asc' ? 1 : -1;
+        tenders.sort((a: any, b: any) => {
+            const valA = typeof a.noOfRoads === 'number' ? a.noOfRoads : 1;
+            const valB = typeof b.noOfRoads === 'number' ? b.noOfRoads : 1;
+            return (valA - valB) * orderVal;
+        });
     }
 
     const columns: Column[] = [
@@ -383,14 +392,15 @@ export default async function TendersListPage({ searchParams }: Props) {
             key: 'packageName', 
             label: 'Package Name', 
             sortable: true, 
+            footer: <span className="font-extrabold text-xs uppercase tracking-wider text-emerald-950">Total</span>,
             render: (row) => (
                 <div className="flex flex-col gap-1">
                     {row.packageId?._id ? (
-                        <Link href={`/packages/${row.packageId._id}`} className="text-emerald-600 hover:underline font-semibold break-words">
+                        <Link href={`/packages/${row.packageId._id}`} className="text-black font-normal hover:underline break-words">
                             {row.packageName || '-'}
                         </Link>
                     ) : (
-                        <span className="break-words">{row.packageName || '-'}</span>
+                        <span className="text-black font-normal break-words">{row.packageName || '-'}</span>
                     )}
                     {row.cancelled && (
                         <span className="inline-flex items-center self-start px-2 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-600 border border-red-200 leading-none">
@@ -399,6 +409,25 @@ export default async function TendersListPage({ searchParams }: Props) {
                     )}
                 </div>
             ) 
+        },
+        {
+            key: 'noOfRoads',
+            label: 'No. of Roads',
+            align: 'center',
+            sortable: true,
+            footer: (rows: any[]) => {
+                const total = rows.reduce((sum: number, r: any) => sum + (typeof r.noOfRoads === 'number' ? r.noOfRoads : 1), 0);
+                return (
+                    <span className="inline-flex items-center justify-center min-w-[28px] px-2.5 py-1 text-xs font-black rounded-lg bg-emerald-600 text-white shadow-xs">
+                        {total}
+                    </span>
+                );
+            },
+            render: (row) => (
+                <span className="inline-flex items-center justify-center min-w-[26px] px-2 py-0.5 text-xs font-bold rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                    {row.noOfRoads ?? 1}
+                </span>
+            )
         },
         { 
             key: 'workType', 
@@ -461,50 +490,50 @@ export default async function TendersListPage({ searchParams }: Props) {
             <div className="mb-6 flex flex-wrap items-center gap-2">
                 <Link
                     href="/tenders"
-                    className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
+                    className={`inline-flex items-center px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                         !params.filter
-                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-transparent shadow-sm'
+                            : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
                     }`}
                 >
                     All Tenders
                 </Link>
                 <Link
                     href="/tenders?filter=pending_proposal"
-                    className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
+                    className={`inline-flex items-center px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                         params.filter === 'pending_proposal'
-                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-transparent shadow-sm'
+                            : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
                     }`}
                 >
                     Pending Proposal
                 </Link>
                 <Link
                     href="/tenders?filter=pending_approval"
-                    className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
+                    className={`inline-flex items-center px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                         params.filter === 'pending_approval'
-                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-transparent shadow-sm'
+                            : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
                     }`}
                 >
                     Pending Approval
                 </Link>
                 <Link
                     href="/tenders?filter=pending_loa"
-                    className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
+                    className={`inline-flex items-center px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                         params.filter === 'pending_loa'
-                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-transparent shadow-sm'
+                            : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
                     }`}
                 >
                     Pending LOA
                 </Link>
                 <Link
                     href="/tenders?filter=pending_work_order"
-                    className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
+                    className={`inline-flex items-center px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                         params.filter === 'pending_work_order'
-                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-transparent shadow-sm'
+                            : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
                     }`}
                 >
                     Pending Work Order
@@ -514,6 +543,7 @@ export default async function TendersListPage({ searchParams }: Props) {
                 columns={columns} 
                 data={tenders} 
                 emptyMessage="No tenders found matching the criteria."
+                theme="emerald"
             />
             <Suspense fallback={<div className="h-10 w-full bg-gray-50 animate-pulse mt-4 rounded-md" />}>
                 <Pagination currentPage={page} totalPages={totalPages} />

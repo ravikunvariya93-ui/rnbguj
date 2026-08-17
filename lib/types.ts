@@ -34,5 +34,10 @@ export interface Column<T = any> {
   sortable?: boolean;
   align?: 'left' | 'center' | 'right';
   minWidth?: string;
+  cellClassName?: string | ((row: T, index: number) => string);
+  headerClassName?: string;
+  footerClassName?: string;
+  footer?: React.ReactNode | ((data: T[]) => React.ReactNode);
   render?: (row: T, index: number) => React.ReactNode;
 }
+
