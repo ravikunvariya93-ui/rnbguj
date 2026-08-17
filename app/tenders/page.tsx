@@ -382,30 +382,30 @@ export default async function TendersListPage({ searchParams }: Props) {
             key: 'srNo', 
             label: 'Sr. No.', 
             align: 'center',
-            width: '60px',
+            width: '45px',
             sortable: true,
-            cellClassName: 'whitespace-nowrap text-center',
+            cellClassName: 'whitespace-nowrap text-center text-xs',
             render: (row, index) => skip + index + 1
         },
-        { key: 'tenderNoticeYear', label: 'Notice Year', sortable: true },
-        { key: 'noticeNo', label: 'Notice No.', sortable: true, align: 'center', width: '85px', cellClassName: 'whitespace-nowrap text-center' },
-        { key: 'tenderSrNo', label: 'Sub Sr.', sortable: true, align: 'center', width: '68px', cellClassName: 'whitespace-nowrap text-center', render: (row) => row.srNo || '-' },
+        { key: 'tenderNoticeYear', label: 'Notice Year', sortable: true, align: 'center', width: '75px', cellClassName: 'whitespace-nowrap text-center text-xs' },
+        { key: 'noticeNo', label: 'Notice No.', sortable: true, align: 'center', width: '65px', cellClassName: 'whitespace-nowrap text-center text-xs' },
+        { key: 'tenderSrNo', label: 'Sub Sr.', sortable: true, align: 'center', width: '55px', cellClassName: 'whitespace-nowrap text-center text-xs', render: (row) => row.srNo || '-' },
         { 
             key: 'packageName', 
             label: 'Package Name', 
             sortable: true, 
             footer: <span className="font-extrabold text-xs uppercase tracking-wider text-emerald-950">Total</span>,
             render: (row) => (
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-0.5">
                     {row.packageId?._id ? (
-                        <Link href={`/packages/${row.packageId._id}`} className="text-black font-normal hover:underline break-words">
+                        <Link href={`/packages/${row.packageId._id}`} className="text-black font-normal hover:underline break-words text-xs">
                             {row.packageName || '-'}
                         </Link>
                     ) : (
-                        <span className="text-black font-normal break-words">{row.packageName || '-'}</span>
+                        <span className="text-black font-normal break-words text-xs">{row.packageName || '-'}</span>
                     )}
                     {row.cancelled && (
-                        <span className="inline-flex items-center self-start px-2 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-600 border border-red-200 leading-none">
+                        <span className="inline-flex items-center self-start px-1.5 py-0.5 rounded text-[9px] font-semibold bg-red-50 text-red-600 border border-red-200 leading-none">
                             Cancelled: {row.cancellationReason || 'N/A'}
                         </span>
                     )}
@@ -416,19 +416,19 @@ export default async function TendersListPage({ searchParams }: Props) {
             key: 'noOfRoads',
             label: 'No. of Roads',
             align: 'center',
-            width: '90px',
+            width: '65px',
             sortable: true,
             cellClassName: 'whitespace-nowrap text-center',
             footer: (rows: any[]) => {
                 const total = rows.reduce((sum: number, r: any) => sum + (typeof r.noOfRoads === 'number' ? r.noOfRoads : 1), 0);
                 return (
-                    <span className="inline-flex items-center justify-center min-w-[28px] px-2.5 py-1 text-xs font-black rounded-lg bg-emerald-600 text-white shadow-xs">
+                    <span className="inline-flex items-center justify-center min-w-[24px] px-2 py-0.5 text-xs font-black rounded-md bg-emerald-600 text-white shadow-xs">
                         {total}
                     </span>
                 );
             },
             render: (row) => (
-                <span className="inline-flex items-center justify-center min-w-[26px] px-2 py-0.5 text-xs font-bold rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                <span className="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 text-xs font-bold rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
                     {row.noOfRoads ?? 1}
                 </span>
             )
@@ -437,14 +437,33 @@ export default async function TendersListPage({ searchParams }: Props) {
             key: 'workType', 
             label: 'Work Type', 
             sortable: true, 
+            align: 'center',
+            width: '75px',
+            cellClassName: 'whitespace-nowrap text-center text-xs',
             render: (row) => row.workType || '-' 
         },
-        { key: 'contractorName', label: 'Contractor Name', sortable: true },
-        { key: 'contractorMobile', label: 'Mobile No.', sortable: true, render: (row) => row.contractorMobile || '-' },
+        { 
+            key: 'contractorName', 
+            label: 'Contractor Name', 
+            sortable: true,
+            width: '145px',
+            cellClassName: 'text-xs break-words'
+        },
+        { 
+            key: 'contractorMobile', 
+            label: 'Mobile No.', 
+            sortable: true, 
+            align: 'center',
+            width: '90px',
+            cellClassName: 'whitespace-nowrap text-center text-xs',
+            render: (row) => row.contractorMobile || '-' 
+        },
         {
             key: 'bidders',
             label: 'Bidders',
             align: 'center',
+            width: '80px',
+            cellClassName: 'whitespace-nowrap text-center',
             render: (row) => (
                 <ViewBiddersModalButton
                     bidders={row.bidders || []}
@@ -458,20 +477,27 @@ export default async function TendersListPage({ searchParams }: Props) {
             key: 'acceptanceLetterDate',
             label: 'LOA Date',
             sortable: true,
-            render: (row) => <span className="text-slate-600 font-mono text-[11px]">{formatShortDate(row.acceptanceLetterDate)}</span>
+            align: 'center',
+            width: '78px',
+            cellClassName: 'whitespace-nowrap text-center',
+            render: (row) => <span className="text-slate-600 font-mono text-[10.5px]">{formatShortDate(row.acceptanceLetterDate)}</span>
         },
         {
             key: 'workOrderDate',
             label: 'Work Order Date',
             sortable: true,
-            render: (row) => <span className="text-slate-600 font-mono text-[11px]">{formatShortDate(row.workOrderDate)}</span>
+            align: 'center',
+            width: '82px',
+            cellClassName: 'whitespace-nowrap text-center',
+            render: (row) => <span className="text-slate-600 font-mono text-[10.5px]">{formatShortDate(row.workOrderDate)}</span>
         },
         { 
             key: 'remarks', 
             label: 'Remarks', 
             sortable: true,
+            width: '110px',
             render: (row) => (
-                <div className="whitespace-normal break-words max-w-[140px] text-[11px]">
+                <div className="whitespace-normal break-words text-[11px] leading-tight">
                     {row.remarks || '-'}
                 </div>
             ) 

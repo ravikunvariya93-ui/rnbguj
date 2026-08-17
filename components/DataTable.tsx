@@ -57,7 +57,7 @@ export default function DataTable({ columns, data, emptyMessage = 'No data avail
               const customHeaderClass = col.headerClassName ? ` ${col.headerClassName}` : '';
               const borderClass = isLast ? '' : (isEmerald ? ' border-r border-emerald-300' : ' border-r border-slate-300');
               const textColor = isEmerald ? 'text-emerald-950' : 'text-slate-700';
-              const baseClass = `px-3 py-2.5 font-medium ${textColor}${borderClass}${getAlignClass(col.align)}${customHeaderClass}`;
+              const baseClass = `px-2 py-2 font-medium ${textColor}${borderClass}${getAlignClass(col.align)}${customHeaderClass}`;
               const colStyle: React.CSSProperties = {
                 ...(col.width ? { width: col.width } : {}),
                 ...(col.minWidth ? { minWidth: col.minWidth } : {}),
@@ -84,7 +84,7 @@ export default function DataTable({ columns, data, emptyMessage = 'No data avail
               );
             })}
             {actions && (
-              <th scope="col" className={`px-3 py-2.5 font-medium ${isEmerald ? 'text-emerald-950' : 'text-slate-700'} text-right`}>
+              <th scope="col" className={`px-2 py-2 font-medium ${isEmerald ? 'text-emerald-950' : 'text-slate-700'} text-right`}>
                 Actions
               </th>
             )}
@@ -107,7 +107,7 @@ export default function DataTable({ columns, data, emptyMessage = 'No data avail
                     const customCellClass = typeof col.cellClassName === 'function'
                       ? ` ${col.cellClassName(row, index)}`
                       : (col.cellClassName ? ` ${col.cellClassName}` : '');
-                    const cellClass = `px-3 py-2 ${textClass}${borderClass}${getAlignClass(col.align)}${col.minWidth ? ` min-w-[${col.minWidth}]` : ''}${customCellClass}`;
+                    const cellClass = `px-2 py-1.5 ${textClass}${borderClass}${getAlignClass(col.align)}${col.minWidth ? ` min-w-[${col.minWidth}]` : ''}${customCellClass}`;
                     const colStyle: React.CSSProperties = {
                       ...(col.width ? { width: col.width } : {}),
                       ...(col.minWidth ? { minWidth: col.minWidth } : {}),
@@ -125,7 +125,7 @@ export default function DataTable({ columns, data, emptyMessage = 'No data avail
                     );
                   })}
                   {actions && (
-                    <td className="px-3 py-2 whitespace-nowrap text-right">
+                    <td className="px-2 py-1.5 whitespace-nowrap text-right">
                       {actions(row, index)}
                     </td>
                   )}
@@ -147,7 +147,7 @@ export default function DataTable({ columns, data, emptyMessage = 'No data avail
                 const isLast = !actions && colIdx === columns.length - 1;
                 const borderClass = isLast ? '' : (isEmerald ? ' border-r border-emerald-300' : ' border-r border-slate-300');
                 const customFooterClass = col.footerClassName ? ` ${col.footerClassName}` : '';
-                const footerClass = `px-3 py-2.5 ${borderClass}${getAlignClass(col.align)}${customFooterClass}`;
+                const footerClass = `px-2 py-2 ${borderClass}${getAlignClass(col.align)}${customFooterClass}`;
                 const colStyle: React.CSSProperties = {
                   ...(col.width ? { width: col.width } : {}),
                   ...(col.minWidth ? { minWidth: col.minWidth } : {}),
