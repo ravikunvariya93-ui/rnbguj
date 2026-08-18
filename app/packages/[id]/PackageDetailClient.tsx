@@ -3352,7 +3352,10 @@ export default function PackageDetailClient({
                                                         <Link href={`/packages/${packageId}/bills?billId=${bill._id}`} className="p-1 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md cursor-pointer transition-colors" title="View Full Bill Page">
                                                             <Eye className="w-4 h-4" />
                                                         </Link>
-                                                        <Link href={`/packages/${packageId}/bills/${bill._id}/checklist`} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md cursor-pointer transition-colors" title="View Checklist">
+                                                        <Link href={`/packages/${packageId}/bills/${bill._id}/print-excess-saving`} target="_blank" rel="noopener noreferrer" className="p-1 text-teal-600 hover:bg-teal-50 rounded-md cursor-pointer transition-colors" title="Print Excess / Saving Statement">
+                                                            <Printer className="w-4 h-4" />
+                                                        </Link>
+                                                        <Link href={`/packages/${packageId}/bills/${bill._id}/checklist`} target="_blank" rel="noopener noreferrer" className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md cursor-pointer transition-colors" title="View Checklist">
                                                             <CheckSquare className="w-4 h-4" />
                                                         </Link>
                                                         <button onClick={() => handleOpenBillModal(bill)} className="p-1 text-emerald-700 hover:bg-emerald-100 rounded-md cursor-pointer transition-colors" title="Edit Bill">

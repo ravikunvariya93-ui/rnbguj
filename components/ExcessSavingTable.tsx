@@ -1,18 +1,23 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, LayoutList } from 'lucide-react';
+import Link from 'next/link';
+import { ChevronDown, ChevronUp, LayoutList, Printer } from 'lucide-react';
 
 interface ExcessSavingTableProps {
     items: any[];
     title?: string;
     initialExpanded?: boolean;
+    packageId?: string;
+    billId?: string;
 }
 
 export default function ExcessSavingTable({
     items = [],
     title = 'Excess / Saving Statement',
-    initialExpanded = false
+    initialExpanded = false,
+    packageId,
+    billId
 }: ExcessSavingTableProps) {
     const [isExpanded, setIsExpanded] = useState<boolean>(initialExpanded);
 
@@ -37,7 +42,7 @@ export default function ExcessSavingTable({
 
     return (
         <div className="bg-white rounded-2xl border border-emerald-200 p-6 shadow-xs mb-6">
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-emerald-100">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-emerald-100 flex-wrap gap-2">
                 <div className="flex items-center gap-3">
                     <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
                         <LayoutList className="w-4 h-4" />
@@ -49,25 +54,38 @@ export default function ExcessSavingTable({
                         </span>
                     )}
                 </div>
-                {items.length > 0 && (
-                    <button
-                        type="button"
-                        onClick={() => setIsExpanded(!isExpanded)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs font-bold rounded-xl transition-colors cursor-pointer border border-emerald-300"
-                    >
-                        {isExpanded ? (
-                            <>
-                                <ChevronUp className="w-3.5 h-3.5" />
-                                Collapse Item Details
-                            </>
-                        ) : (
-                            <>
-                                <ChevronDown className="w-3.5 h-3.5" />
-                                Expand Item Details ({items.length})
-                            </>
-                        )}
-                    </button>
-                )}
+                <div className="flex items-center gap-2">
+                    {packageId && billId && (
+                        <Link
+                            href={`/packages/${packageId}/bills/${billId}/print-excess-saving`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl transition-all shadow-2xs cursor-pointer"
+                        >
+                            <Printer className="w-3.5 h-3.5" />
+                            Print Statement
+                        </Link>
+                    )}
+                    {items.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs font-bold rounded-xl transition-colors cursor-pointer border border-emerald-300"
+                        >
+                            {isExpanded ? (
+                                <>
+                                    <ChevronUp className="w-3.5 h-3.5" />
+                                    Collapse Item Details
+                                </>
+                            ) : (
+                                <>
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                    Expand Item Details ({items.length})
+                                </>
+                            )}
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className="overflow-x-auto border border-emerald-300 rounded-xl shadow-2xs">

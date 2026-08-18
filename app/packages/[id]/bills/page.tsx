@@ -11,6 +11,7 @@ import {
     CheckSquare,
     Receipt,
     FileText,
+    Printer
 } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import ExcessSavingTable from '@/components/ExcessSavingTable';
@@ -168,12 +169,20 @@ export default async function PackageBillsPage({ params, searchParams }: Props) 
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 flex-shrink-0 pl-11 md:pl-0">
+                <div className="flex items-center flex-wrap gap-2 flex-shrink-0 pl-11 md:pl-0">
                     <Link
                         href={`/packages/${packageId}/bills/${activeBill._id.toString()}/edit`}
                         className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700/60 hover:bg-emerald-700 text-white border border-emerald-400/40 rounded-xl text-xs font-bold shadow-2xs transition-colors cursor-pointer"
                     >
                         <Edit2 className="w-4 h-4" /> Edit Bill
+                    </Link>
+                    <Link
+                        href={`/packages/${packageId}/bills/${activeBill._id.toString()}/print-excess-saving`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-emerald-50 text-emerald-800 rounded-xl text-xs font-bold shadow-sm transition-colors cursor-pointer"
+                    >
+                        <Printer className="w-4 h-4" /> Excess / Saving Statement
                     </Link>
                     <Link
                         href={`/packages/${packageId}/bills/${activeBill._id.toString()}/checklist`}
@@ -218,7 +227,12 @@ export default async function PackageBillsPage({ params, searchParams }: Props) 
             />
 
             {/* EXCESS / SAVING STATEMENT SECTION */}
-            <ExcessSavingTable items={activeBill.items || []} initialExpanded={false} />
+            <ExcessSavingTable 
+                items={activeBill.items || []} 
+                initialExpanded={false} 
+                packageId={packageId}
+                billId={activeBill._id.toString()}
+            />
 
             {/* WORK-WISE EXPENDITURE SECTION */}
             <WorkWiseExpenditureTable 
