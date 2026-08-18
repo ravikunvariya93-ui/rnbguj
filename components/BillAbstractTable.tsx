@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, LayoutList } from 'lucide-react';
+import { ChevronDown, ChevronUp, LayoutList, Download } from 'lucide-react';
+import { downloadPraisaWorkOrderExcel, downloadPraisaExcessWorkOrderExcel } from '@/lib/exportPraisaWorkOrder';
 
 interface BillAbstractTableProps {
     items: any[];
@@ -17,6 +18,14 @@ export default function BillAbstractTable({
     initialExpanded = false
 }: BillAbstractTableProps) {
     const [isExpanded, setIsExpanded] = useState<boolean>(initialExpanded);
+
+    const handleDownloadPraisa = () => {
+        downloadPraisaWorkOrderExcel(items, 'WorkOrder.xls');
+    };
+
+    const handleDownloadPraisaExcess = () => {
+        downloadPraisaExcessWorkOrderExcel(items, 'WorkOrder_Excess.xls');
+    };
 
     const totalUptoDate = items.reduce((s: number, i: any) => s + (i.uptoDateAmount || 0), 0);
     const totalPrevPaid = items.reduce((s: number, i: any) => s + (i.previousPaidAmount || 0), 0);
@@ -48,7 +57,7 @@ export default function BillAbstractTable({
 
     return (
         <div className="bg-white rounded-2xl border border-emerald-200 p-6 shadow-xs mb-6">
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-emerald-100">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-emerald-100 flex-wrap gap-2">
                 <div className="flex items-center gap-3">
                     <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
                         <LayoutList className="w-4 h-4" />
@@ -60,25 +69,49 @@ export default function BillAbstractTable({
                         </span>
                     )}
                 </div>
-                {items.length > 0 && (
-                    <button
-                        type="button"
-                        onClick={() => setIsExpanded(!isExpanded)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs font-bold rounded-xl transition-colors cursor-pointer border border-emerald-300"
-                    >
-                        {isExpanded ? (
-                            <>
-                                <ChevronUp className="w-3.5 h-3.5" />
-                                Collapse Line Items
-                            </>
-                        ) : (
-                            <>
-                                <ChevronDown className="w-3.5 h-3.5" />
-                                Expand Line Items ({items.length})
-                            </>
-                        )}
-                    </button>
-                )}
+                <div className="flex items-center gap-2">
+                    {items.length > 0 && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={handleDownloadPraisa}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl transition-all shadow-2xs cursor-pointer"
+                                title="Download PRAISA Work Order Excel (All Items)"
+                            >
+                                <Download className="w-3.5 h-3.5" />
+                                PRAISA Work Order
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleDownloadPraisaExcess}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl transition-all shadow-2xs cursor-pointer"
+                                title="Download PRAISA Excess Work Order Excel (Excess Items Only)"
+                            >
+                                <Download className="w-3.5 h-3.5" />
+                                PRAISA Excess Work Order
+                            </button>
+                        </>
+                    )}
+                    {items.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs font-bold rounded-xl transition-colors cursor-pointer border border-emerald-300"
+                        >
+                            {isExpanded ? (
+                                <>
+                                    <ChevronUp className="w-3.5 h-3.5" />
+                                    Collapse Line Items
+                                </>
+                            ) : (
+                                <>
+                                    <ChevronDown className="w-3.5 h-3.5" />
+                                    Expand Line Items ({items.length})
+                                </>
+                            )}
+                        </button>
+                    )}
+                </div>
             </div>
             
             <div className="overflow-x-auto border border-emerald-300 rounded-xl shadow-2xs">

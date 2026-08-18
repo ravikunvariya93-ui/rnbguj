@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
     Save, RefreshCw, Plus, Trash2, X, Loader2, ChevronDown, ChevronUp, 
-    Receipt, Layers, TrendingUp, ClipboardCheck, FileText, Calendar 
+    Receipt, Layers, TrendingUp, ClipboardCheck, FileText, Calendar, Download 
 } from 'lucide-react';
 import Link from 'next/link';
 import SearchableSelect from './SearchableSelect';
+import { downloadPraisaWorkOrderExcel, downloadPraisaExcessWorkOrderExcel } from '@/lib/exportPraisaWorkOrder';
 
 interface IBillItem {
     itemNo: string;
@@ -1200,6 +1201,28 @@ export default function BillForm({
                             <span className="inline-flex items-center text-sm font-semibold text-emerald-600">
                                 <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Fetching BOQ...
                             </span>
+                        )}
+                        {formData.items && formData.items.length > 0 && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => downloadPraisaWorkOrderExcel(formData.items, 'WorkOrder.xls')}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl transition-all shadow-2xs cursor-pointer"
+                                    title="Download PRAISA Work Order Excel (All Items)"
+                                >
+                                    <Download className="w-3.5 h-3.5" />
+                                    PRAISA Work Order
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => downloadPraisaExcessWorkOrderExcel(formData.items, 'WorkOrder_Excess.xls')}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl transition-all shadow-2xs cursor-pointer"
+                                    title="Download PRAISA Excess Work Order Excel (Excess Items Only)"
+                                >
+                                    <Download className="w-3.5 h-3.5" />
+                                    PRAISA Excess Work Order
+                                </button>
+                            </>
                         )}
                         {formData.items && formData.items.length > 0 && (
                             <button

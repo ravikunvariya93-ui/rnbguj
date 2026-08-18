@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown, ChevronUp, LayoutList, Printer } from 'lucide-react';
+import { ChevronDown, ChevronUp, LayoutList, Printer, Download } from 'lucide-react';
+import { downloadPraisaExcessWorkOrderExcel } from '@/lib/exportPraisaWorkOrder';
 
 interface ExcessSavingTableProps {
     items: any[];
@@ -55,6 +56,17 @@ export default function ExcessSavingTable({
                     )}
                 </div>
                 <div className="flex items-center gap-2">
+                    {items.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => downloadPraisaExcessWorkOrderExcel(items, 'WorkOrder_Excess.xls')}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl transition-all shadow-2xs cursor-pointer"
+                            title="Download PRAISA Excess Work Order Excel"
+                        >
+                            <Download className="w-3.5 h-3.5" />
+                            PRAISA Excess Work Order
+                        </button>
+                    )}
                     {packageId && billId && (
                         <Link
                             href={`/packages/${packageId}/bills/${billId}/print-excess-saving`}
