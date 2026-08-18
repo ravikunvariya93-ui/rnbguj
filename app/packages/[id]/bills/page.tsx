@@ -463,7 +463,11 @@ export default async function PackageBillsPage({ params, searchParams }: Props) 
             </div>
 
             {/* MEASUREMENT CHECKING TABLE */}
-            <MeasurementCheckingTable items={activeBill.items || []} initialExpanded={false} />
+            <MeasurementCheckingTable 
+                records={activeBill.measurementChecking || []} 
+                billItems={activeBill.items || []} 
+                initialExpanded={false} 
+            />
         </div>
     );
 }

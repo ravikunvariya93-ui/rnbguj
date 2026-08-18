@@ -454,19 +454,6 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                 <div className="sm:col-span-3">
                     <label htmlFor="tenderId" className="block text-sm font-medium text-gray-700">Tender ID</label>
                     <input type="text" name="tenderId" id="tenderId" value={formData.tenderId} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
-                    <div className="mt-2 flex items-center gap-2">
-                        <input
-                            type="checkbox"
-                            id="customTenderId"
-                            checked={isCustomTenderId}
-                            onChange={(e) => {
-                                setIsCustomTenderId(e.target.checked);
-                                if (!e.target.checked) generateTenderId();
-                            }}
-                            className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                        />
-                        <label htmlFor="customTenderId" className="text-xs text-gray-500 font-medium">Custom Tender ID</label>
-                    </div>
                 </div>
 
                 <div className="sm:col-span-2">
@@ -488,16 +475,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                 </div>
 
                 <div className="sm:col-span-2">
-                    <div className="flex items-center justify-between">
-                        <label htmlFor="noticeNo" className="block text-sm font-medium text-gray-700">Notice Number</label>
-                        <button
-                            type="button"
-                            onClick={() => setIsNoticeModalOpen(true)}
-                            className="inline-flex items-center text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
-                        >
-                            <Plus className="w-3.5 h-3.5 mr-1" /> Add New
-                        </button>
-                    </div>
+                    <label htmlFor="noticeNo" className="block text-sm font-medium text-gray-700">Notice Number</label>
                     <input type="text" name="noticeNo" id="noticeNo" value={formData.noticeNo || ''} onChange={handleChange} className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border" />
                 </div>
 

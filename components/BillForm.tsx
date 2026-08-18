@@ -192,7 +192,6 @@ export default function BillForm({
     const normalizedWorkOrderId = initialWorkOrderId || (typeof initialData?.workOrderId === 'object' ? initialData?.workOrderId?._id : initialData?.workOrderId) || sanitized.workOrderId || '';
 
     const [formData, setFormData] = useState<BillFormData>({
-        workOrderId: normalizedWorkOrderId,
         billType: 'Running',
         runningBillNumber: '1',
         billDate: sanitized.billDate ? formatDateForInput(sanitized.billDate) : getTodayDateFormatted(),
@@ -223,9 +222,7 @@ export default function BillForm({
         timeLimitDeposit: sanitized.timeLimitDeposit ?? 0,
         testingCharges: sanitized.testingCharges ?? 0,
         otherDeposit: sanitized.otherDeposit ?? 0,
-        otherDepositLabel: sanitized.otherDepositLabel || 'Other Deposit',
         otherDeposit2: sanitized.otherDeposit2 ?? 0,
-        otherDeposit2Label: sanitized.otherDeposit2Label || 'Other Deposit 2',
         totalDeduction: sanitized.totalDeduction ?? 0,
         ...sanitized,
         otherDepositLabel: sanitized.otherDepositLabel || 'Other Deposit',
@@ -2266,11 +2263,12 @@ export default function BillForm({
                                                             return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                                                         };
 
+                                                        let daysDelay = 0;
                                                         if (formData.billType === 'Running') {
                                                             const lastRecordDate = formData.lastRecordEntryDate ? parseDateStr(formData.lastRecordEntryDate) : null;
                                                             if (lastRecordDate) {
-                                                                const daysDelay = Math.max(0, Math.min(100, getDaysDiff(lastRecordDate, compTargetDate)));
-                                                                const sayAmt = parseFloat(formData.grossAmount) || 0;
+                                                                daysDelay = Math.max(0, Math.min(100, getDaysDiff(lastRecordDate, compTargetDate)));
+                                                                const sayAmt = Number(formData.grossAmount) || 0;
                                                                 totalCalculatedTLD = Math.ceil((0.001 * sayAmt * daysDelay) / 100) * 100;
                                                             }
                                                         } else {
@@ -2329,7 +2327,7 @@ export default function BillForm({
                                                         const lastRecordDate = formData.lastRecordEntryDate ? parseDateStr(formData.lastRecordEntryDate) : null;
                                                         if (lastRecordDate) {
                                                             daysDelay = Math.max(0, Math.min(100, getDaysDiff(lastRecordDate, compTargetDate)));
-                                                            const sayAmt = parseFloat(formData.grossAmount) || 0;
+                                                            const sayAmt = Number(formData.grossAmount) || 0;
                                                             totalCalculatedTLD = Math.ceil((0.001 * sayAmt * daysDelay) / 100) * 100;
                                                         }
                                                     } else {
