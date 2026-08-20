@@ -43,7 +43,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
     ]);
     const subDivisions = Array.from(new Set([...subDivisionsPkg, ...subDivisionsAw])).filter(Boolean).sort() as string[];
     const workTypes = Array.from(new Set([...workTypesPkg, ...workTypesAw])).filter(Boolean).sort() as string[];
-    const budgetHeads = Array.from(new Set([...budgetHeadsPkg, ...budgetHeadsAw])).filter(Boolean).sort() as string[];
+    const budgetHeads = Array.from(new Set(['Pending', ...budgetHeadsPkg, ...budgetHeadsAw])).filter(Boolean).sort() as string[];
     const consultants = dtpConsultants.filter(Boolean).sort() as string[];
 
     let query: any = {};
@@ -75,7 +75,27 @@ export default async function PackagesListPage({ searchParams }: Props) {
         filterLabels.push(`Work Type: ${params.workType}`);
     }
 
-    if (params.budgetHead) {
+    if (params.budgetHead === 'Pending') {
+        const worksInBudgetHead = await ApprovedWork.find({
+            $or: [
+                { budgetHead: 'Pending' },
+                { budgetHead: { $exists: false } },
+                { budgetHead: null },
+                { budgetHead: '' }
+            ]
+        }).select('workName').lean();
+        const workNamesInBudgetHead = worksInBudgetHead.map((aw: any) => aw.workName).filter(Boolean);
+        andConditions.push({
+            $or: [
+                { budgetHead: 'Pending' },
+                { budgetHead: { $exists: false } },
+                { budgetHead: null },
+                { budgetHead: '' },
+                { 'works.workName': { $in: workNamesInBudgetHead } }
+            ]
+        });
+        filterLabels.push('Budget Head: Pending');
+    } else if (params.budgetHead) {
         const worksInBudgetHead = await ApprovedWork.find({ budgetHead: params.budgetHead }).select('workName').lean();
         const workNamesInBudgetHead = worksInBudgetHead.map((aw: any) => aw.workName).filter(Boolean);
         andConditions.push({

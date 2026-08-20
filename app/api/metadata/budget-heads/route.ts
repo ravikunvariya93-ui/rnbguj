@@ -12,7 +12,7 @@ export async function GET() {
             ApprovedWork.distinct('budgetHead'),
             Package.distinct('budgetHead')
         ]);
-        const combined = Array.from(new Set([...budgetHeadsAw, ...budgetHeadsPkg]));
+        const combined = Array.from(new Set(['Pending', ...budgetHeadsAw, ...budgetHeadsPkg]));
         const filtered = combined.filter(Boolean).sort();
         return NextResponse.json(filtered);
     } catch (error: any) {

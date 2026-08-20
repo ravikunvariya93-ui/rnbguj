@@ -37,7 +37,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         ApprovedWork.distinct('budgetHead'),
     ]);
     const subDivisions = Array.from(new Set([...subDivisionsPkg, ...subDivisionsAw])).filter(Boolean).sort() as string[];
-    const budgetHeads = Array.from(new Set([...budgetHeadsPkg, ...budgetHeadsAw])).filter(Boolean).sort() as string[];
+    const budgetHeads = Array.from(new Set(['Pending', ...budgetHeadsPkg, ...budgetHeadsAw])).filter(Boolean).sort() as string[];
 
     let query: any = {};
     let filterLabels: string[] = [];
@@ -108,7 +108,27 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         filterLabels.push(`Sub Division: ${params.subDivision}`);
     }
 
-    if (params.budgetHead) {
+    if (params.budgetHead === 'Pending') {
+        const worksInBudgetHead = await ApprovedWork.find({
+            $or: [
+                { budgetHead: 'Pending' },
+                { budgetHead: { $exists: false } },
+                { budgetHead: null },
+                { budgetHead: '' }
+            ]
+        }).select('workName').lean();
+        const workNamesInBudgetHead = worksInBudgetHead.map((aw: any) => aw.workName).filter(Boolean);
+        andConditions.push({
+            $or: [
+                { budgetHead: 'Pending' },
+                { budgetHead: { $exists: false } },
+                { budgetHead: null },
+                { budgetHead: '' },
+                { 'works.workName': { $in: workNamesInBudgetHead } }
+            ]
+        });
+        filterLabels.push('Budget Head: Pending');
+    } else if (params.budgetHead) {
         const worksInBudgetHead = await ApprovedWork.find({ budgetHead: params.budgetHead }).select('workName').lean();
         const workNamesInBudgetHead = worksInBudgetHead.map((aw: any) => aw.workName).filter(Boolean);
         andConditions.push({
