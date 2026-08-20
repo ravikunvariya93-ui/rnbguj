@@ -22,6 +22,7 @@ export interface ListPageSearchParams {
   hasWorks?: string;
   buildingType?: string;
   committeeType?: string;
+  hasLoa?: string;
 }
 
 export interface EntityFormProps<T = any> {

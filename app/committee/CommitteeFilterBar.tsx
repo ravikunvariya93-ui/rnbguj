@@ -19,12 +19,14 @@ export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHead
     const [workType, setWorkType] = useState(searchParams.get('workType') || '');
     const [budgetHead, setBudgetHead] = useState(searchParams.get('budgetHead') || '');
     const [committeeType, setCommitteeType] = useState(searchParams.get('committeeType') || '');
+    const [hasLoa, setHasLoa] = useState(searchParams.get('hasLoa') || '');
 
     useEffect(() => {
         setSubDivision(searchParams.get('subDivision') || '');
         setWorkType(searchParams.get('workType') || '');
         setBudgetHead(searchParams.get('budgetHead') || '');
         setCommitteeType(searchParams.get('committeeType') || '');
+        setHasLoa(searchParams.get('hasLoa') || '');
     }, [searchParams]);
 
     const handleApplyFilters = () => {
@@ -43,6 +45,9 @@ export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHead
         if (committeeType) params.set('committeeType', committeeType);
         else params.delete('committeeType');
 
+        if (hasLoa) params.set('hasLoa', hasLoa);
+        else params.delete('hasLoa');
+
         router.push(`${pathname}?${params.toString()}`);
     };
 
@@ -52,17 +57,19 @@ export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHead
         params.delete('workType');
         params.delete('budgetHead');
         params.delete('committeeType');
+        params.delete('hasLoa');
         params.set('page', '1');
 
         setSubDivision('');
         setWorkType('');
         setBudgetHead('');
         setCommitteeType('');
+        setHasLoa('');
 
         router.push(`${pathname}?${params.toString()}`);
     };
 
-    const hasActiveFilters = !!(subDivision || workType || budgetHead || committeeType);
+    const hasActiveFilters = !!(subDivision || workType || budgetHead || committeeType || hasLoa);
 
     return (
         <div className="bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-200 shadow-2xs">
@@ -71,7 +78,7 @@ export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHead
                 <span>Filter Committee Records</span>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
                 {/* Sub Division */}
                 <div>
                     <label htmlFor="filterSubDivision" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Sub Division</label>
@@ -134,6 +141,21 @@ export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHead
                         <option value="Karobari">Karobari</option>
                         <option value="Not Required">Not Required</option>
                         <option value="Not Determined">Not Determined</option>
+                    </select>
+                </div>
+
+                {/* LOA Status */}
+                <div>
+                    <label htmlFor="filterHasLoa" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">LOA Status</label>
+                    <select
+                        id="filterHasLoa"
+                        value={hasLoa}
+                        onChange={(e) => setHasLoa(e.target.value)}
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
+                    >
+                        <option value="">All LOA Status</option>
+                        <option value="yes">LOA Given</option>
+                        <option value="no">LOA Not Given</option>
                     </select>
                 </div>
             </div>

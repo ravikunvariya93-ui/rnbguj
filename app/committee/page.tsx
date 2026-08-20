@@ -2,6 +2,8 @@ import { Suspense } from 'react';
 import dbConnect from '@/lib/db';
 import Package from '@/models/Package';
 import ApprovedWork from '@/models/ApprovedWork';
+import Tender from '@/models/Tender';
+import LOA from '@/models/LOA';
 import Link from 'next/link';
 import { Eye, Edit2, CheckCircle2, Clock } from 'lucide-react';
 import Pagination from '@/components/Pagination';
@@ -152,6 +154,36 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         }
     }
 
+    let packageIdsWithLoa: any[] = [];
+    let loaFetched = false;
+    const getPackageIdsWithLoa = async () => {
+        if (!loaFetched) {
+            const tendersWithLoaDocs = await LOA.find().distinct('tenderId');
+            const tendersWithLoaDate = await Tender.find({ acceptanceLetterDate: { $ne: null } }).distinct('_id');
+            const tendersWithLoaAll = Array.from(new Set([
+                ...tendersWithLoaDocs.map((id: any) => id.toString()),
+                ...tendersWithLoaDate.map((id: any) => id.toString())
+            ]));
+            packageIdsWithLoa = await Tender.find({
+                _id: { $in: tendersWithLoaAll },
+                packageId: { $exists: true, $ne: null },
+                cancelled: { $ne: true }
+            }).distinct('packageId');
+            loaFetched = true;
+        }
+        return packageIdsWithLoa;
+    };
+
+    if (params.hasLoa === 'yes') {
+        const pkgIds = await getPackageIdsWithLoa();
+        baseConditions.push({ _id: { $in: pkgIds } });
+        filterLabels.push('LOA: Given');
+    } else if (params.hasLoa === 'no') {
+        const pkgIds = await getPackageIdsWithLoa();
+        baseConditions.push({ _id: { $nin: pkgIds } });
+        filterLabels.push('LOA: Not Given');
+    }
+
     const andConditions: any[] = [...baseConditions];
 
     // Filter tabs
@@ -267,6 +299,27 @@ export default async function CommitteeListPage({ searchParams }: Props) {
             .lean(),
         ApprovedWork.find({}).select('workName subDivision workType budgetHead').lean() as Promise<any[]>
     ]);
+
+    // Fetch LOA information for the displayed packages
+    const displayedPkgIds = packagesRaw.map((p: any) => p._id);
+    const displayedTenders = await Tender.find({
+        packageId: { $in: displayedPkgIds },
+        cancelled: { $ne: true }
+    }).select('_id packageId acceptanceLetterDate').lean();
+
+    const tenderIds = displayedTenders.map((t: any) => t._id);
+    const displayedLoas = await LOA.find({
+        tenderId: { $in: tenderIds }
+    }).select('tenderId acceptanceLetterDate').lean();
+
+    const loaMap = new Map<string, { acceptanceLetterDate?: Date }>();
+    displayedTenders.forEach((t: any) => {
+        const matchingLoa = displayedLoas.find((l: any) => l.tenderId?.toString() === t._id.toString());
+        const date = matchingLoa?.acceptanceLetterDate || t.acceptanceLetterDate;
+        if (date || matchingLoa) {
+            loaMap.set(t.packageId.toString(), { acceptanceLetterDate: date });
+        }
+    });
         
     const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
     const workSubDivisionMap = new Map<string, string>();
@@ -301,6 +354,8 @@ export default async function CommitteeListPage({ searchParams }: Props) {
             }
         }
 
+        const loaInfo = loaMap.get(p._id.toString());
+
         return {
             ...p,
             _id: p._id.toString(),
@@ -308,7 +363,9 @@ export default async function CommitteeListPage({ searchParams }: Props) {
             workType: p.workType || inferredWorkType || '-',
             budgetHead: p.budgetHead || inferredBudgetHead || '-',
             committee: p.committee || '',
-            committeeDate: p.committeeDate || null
+            committeeDate: p.committeeDate || null,
+            hasLoa: !!loaInfo,
+            loaDate: loaInfo?.acceptanceLetterDate || null
         };
     });
 
@@ -411,6 +468,26 @@ export default async function CommitteeListPage({ searchParams }: Props) {
                 }
                 return <span className="text-slate-400 text-xs">-</span>;
             }
+        },
+        {
+            key: 'loaStatus',
+            label: 'LOA Status',
+            minWidth: '140px',
+            render: (row) => {
+                if (row.hasLoa) {
+                    return (
+                        <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 text-xs">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            {row.loaDate ? formatShortDate(row.loaDate) : 'LOA Given'}
+                        </span>
+                    );
+                }
+                return (
+                    <span className="text-slate-400 text-xs font-medium">
+                        Not Given
+                    </span>
+                );
+            }
         }
     ];
 
@@ -432,6 +509,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         if (params.workType) p.set('workType', params.workType);
         if (params.budgetHead) p.set('budgetHead', params.budgetHead);
         if (params.committeeType) p.set('committeeType', params.committeeType);
+        if (params.hasLoa) p.set('hasLoa', params.hasLoa);
         if (filterVal) p.set('filter', filterVal);
         const qs = p.toString();
         return qs ? `/committee?${qs}` : '/committee';
@@ -442,7 +520,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
             title="Committee Management"
             subtitle={filterLabel}
             searchPlaceholder="Search by package name..."
-            filterActive={!!params.filter || !!params.search || !!params.subDivision || !!params.workType || !!params.budgetHead || !!params.committeeType}
+            filterActive={!!params.filter || !!params.search || !!params.subDivision || !!params.workType || !!params.budgetHead || !!params.committeeType || !!params.hasLoa}
             clearFiltersHref="/committee"
         >
             <CommitteeFilterBar 
