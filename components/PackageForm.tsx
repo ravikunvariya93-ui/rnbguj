@@ -96,8 +96,8 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
         if (!bhRaw) return ''; // no budget head yet
         const cp = parseFloat(finalContractPrice) || 0;
         const bh = bhRaw.toLowerCase();
-        const bandhkamBudgets = ['15th finance commission', '2515 cdp-5', 'dp own fund', 'ddo shri pravas grant', 'icds'];
-        const karobariBudgets = ['3054 s.r.', 'buj'];
+        const bandhkamBudgets = ['15th finance commission', '2515 cdp-5', 'dp own fund', 'ddo shri pravas grant', 'icds', 'pending'];
+        const karobariBudgets = ['3054 s.r.', 'buj', 'pending'];
         const isBandhkam = cp < 2500000 && bandhkamBudgets.some(b => bh.includes(b));
         const isKarobari = cp >= 2500000 && karobariBudgets.some(b => bh.includes(b));
         return isBandhkam ? 'Bandhkam Committee' : isKarobari ? 'Karobari' : 'Not Required';
@@ -601,8 +601,8 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                                 <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
                                     ⚠️ Select a Budget Head to determine committee. Qualifying heads:
                                     <ul className="mt-1 ml-4 list-disc text-xs text-amber-600 space-y-0.5">
-                                        <li><strong>Bandhkam Committee</strong> (price &lt; ₹25L): 15th Finance Commission, 2515 CDP-5, DP OWN FUND - DDO Shri Pravas Grant, ICDS</li>
-                                        <li><strong>Karobari</strong> (price ≥ ₹25L): 3054 S.R., BUJ</li>
+                                        <li><strong>Bandhkam Committee</strong> (price &lt; ₹25L): 15th Finance Commission, 2515 CDP-5, DP OWN FUND - DDO Shri Pravas Grant, ICDS, Pending</li>
+                                        <li><strong>Karobari</strong> (price ≥ ₹25L): 3054 S.R., BUJ, Pending</li>
                                     </ul>
                                 </div>
                             )}

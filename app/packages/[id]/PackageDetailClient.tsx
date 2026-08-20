@@ -1933,8 +1933,8 @@ export default function PackageDetailClient({
                                                 const bhRaw = (pkgForm.budgetHead || '').trim();
                                                 const bh = bhRaw.toLowerCase();
                                                 const cp = tender?.contractPrice || 0;
-                                                const bandhkamBudgets = ['15th finance commission', '2515 cdp-5', 'dp own fund', 'ddo shri pravas grant', 'icds'];
-                                                const karobariBudgets = ['3054 s.r.', 'buj'];
+                                                const bandhkamBudgets = ['15th finance commission', '2515 cdp-5', 'dp own fund', 'ddo shri pravas grant', 'icds', 'pending'];
+                                                const karobariBudgets = ['3054 s.r.', 'buj', 'pending'];
                                                 const isBandhkam = cp < 2500000 && bandhkamBudgets.some(b => bh.includes(b));
                                                 const isKarobari = cp >= 2500000 && karobariBudgets.some(b => bh.includes(b));
                                                 const autoCommittee = !bhRaw ? '' : isBandhkam ? 'Bandhkam Committee' : isKarobari ? 'Karobari' : 'Not Required';

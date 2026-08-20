@@ -1,4 +1,4 @@
-﻿/**
+/**
  * migrate_committee.mjs
  * Bulk-updates the `committee` field on ALL packages based on:
  *   - The package's budgetHead
@@ -29,15 +29,16 @@ const TenderSchema  = new mongoose.Schema({ packageId: mongoose.Schema.Types.Obj
 const Package = mongoose.models.Package || mongoose.model('Package', PackageSchema);
 const Tender  = mongoose.models.Tender  || mongoose.model('Tender',  TenderSchema);
 
-const BANDHKAM_HEADS = ['15th finance commission','2515 cdp-5','dp own fund','ddo shri pravas grant','icds'];
-const KAROBARI_HEADS = ['3054 s.r.','buj'];
+const BANDHKAM_HEADS = ['15th finance commission','2515 cdp-5','dp own fund','ddo shri pravas grant','icds','pending'];
+const KAROBARI_HEADS = ['3054 s.r.','buj','pending'];
 
 function determineCommittee(budgetHead, contractPrice) {
-    const bh = (budgetHead || '').toLowerCase();
+    const bh = (budgetHead || '').trim().toLowerCase();
+    if (!bh) return '';
     const cp = contractPrice || 0;
     const isBandhkam = cp < 2500000 && BANDHKAM_HEADS.some(k => bh.includes(k));
     const isKarobari = cp >= 2500000 && KAROBARI_HEADS.some(k => bh.includes(k));
-    return isBandhkam ? 'Bandhkam Committee' : isKarobari ? 'Karobari' : '';
+    return isBandhkam ? 'Bandhkam Committee' : isKarobari ? 'Karobari' : 'Not Required';
 }
 
 async function main() {
