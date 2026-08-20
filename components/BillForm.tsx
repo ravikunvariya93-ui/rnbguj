@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
     Save, RefreshCw, Plus, Trash2, X, Loader2, ChevronDown, ChevronUp, 
-    Receipt, Layers, TrendingUp, ClipboardCheck, FileText, Calendar, Download 
+    Receipt, Layers, TrendingUp, FileText, Calendar, Download 
 } from 'lucide-react';
 import Link from 'next/link';
 import SearchableSelect from './SearchableSelect';
@@ -36,7 +36,6 @@ interface BillFormData {
     praisaBillDate?: string;
     voucherNo?: string;
     voucherDate?: string;
-    measurementChecking: any[];
     actualCompletionDate?: string;
     lastRecordEntryDate?: string;
     remarks: string;
@@ -173,7 +172,6 @@ export default function BillForm({
     const [isAbstractExpanded, setIsAbstractExpanded] = useState<boolean>(false);
     const [isExcessSavingExpanded, setIsExcessSavingExpanded] = useState<boolean>(false);
     const [isWorkWiseExpanded, setIsWorkWiseExpanded] = useState<boolean>(false);
-    const [isMeasurementCheckingExpanded, setIsMeasurementCheckingExpanded] = useState<boolean>(false);
 
     const sanitized = Object.fromEntries(
         Object.entries(initialData).map(([k, v]) => [k, v == null ? '' : v])
@@ -232,12 +230,6 @@ export default function BillForm({
         praisaBillDate: sanitized.praisaBillDate ? formatDateForInput(sanitized.praisaBillDate) : '',
         voucherNo: sanitized.voucherNo || '',
         voucherDate: sanitized.voucherDate ? formatDateForInput(sanitized.voucherDate) : '',
-        measurementChecking: (initialData.measurementChecking && initialData.measurementChecking.length > 0)
-            ? initialData.measurementChecking.map((mc: any) => ({
-                ...mc,
-                date: mc.date ? formatDateForInput(mc.date) : ''
-            }))
-            : [],
         labourCessApplicable: sanitized.labourCessApplicable ?? false,
         items: initialData.items || [] as IBillItem[],
         works: formattedInitialWorks,
@@ -297,12 +289,6 @@ export default function BillForm({
                 praisaBillDate: initialData.praisaBillDate ? formatDateForInput(initialData.praisaBillDate) : '',
                 voucherNo: initialData.voucherNo || '',
                 voucherDate: initialData.voucherDate ? formatDateForInput(initialData.voucherDate) : '',
-                measurementChecking: (initialData.measurementChecking && initialData.measurementChecking.length > 0)
-                    ? initialData.measurementChecking.map((mc: any) => ({
-                        ...mc,
-                        date: mc.date ? formatDateForInput(mc.date) : ''
-                    }))
-                    : [],
             }));
         }
     }, [initialData, isEditing]);
@@ -608,8 +594,7 @@ export default function BillForm({
             workOrderId: id, 
             works: (prev.works && prev.works.length > 0)
                 ? prev.works
-                : (mappedWorks.length > 0 ? mappedWorks : prev.works),
-            measurementChecking: []
+                : (mappedWorks.length > 0 ? mappedWorks : prev.works)
         }));
         
         // Fetch abstract if not editing (or if they change work order)
@@ -629,7 +614,6 @@ export default function BillForm({
                         works: (prev.works && prev.works.length > 0)
                             ? prev.works
                             : (data.works && data.works.length > 0 ? data.works : prev.works),
-                        measurementChecking: [],
                         auditMemoPreviouslyPaid: data.previouslyPaid || 0,
                     }));
                     setTableRawInputs({});
@@ -644,27 +628,10 @@ export default function BillForm({
                 setFetchingAbstract(false);
             }
         } else {
-            setFormData((prev: any) => ({ ...prev, items: [], measurementChecking: [] }));
+            setFormData((prev: any) => ({ ...prev, items: [] }));
             setTableRawInputs({});
             calculateTotals([]);
         }
-    };
-
-    const syncMCWithItems = (mc: any[], items: any[]) => {
-        if (!mc || mc.length === 0) return mc;
-        return mc.map((row: any) => {
-            const selectedItem = items.find((it: any) => it.itemNo === row.itemNo);
-            if (selectedItem) {
-                const rate = selectedItem.partRate > 0 ? selectedItem.partRate : selectedItem.fullRate;
-                const qty = parseFloat(row.quantity) || 0;
-                return {
-                    ...row,
-                    rate: rate,
-                    amount: parseFloat((qty * rate).toFixed(2))
-                };
-            }
-            return row;
-        });
     };
 
     const handleItemChange = (index: number, field: keyof IBillItem, value: string) => {
@@ -686,10 +653,7 @@ export default function BillForm({
         item.uptoDateAmount = parseFloat((item.quantity * item.partRate).toFixed(2));
         item.toBePaidAmount = parseFloat((item.uptoDateAmount - item.previousPaidAmount).toFixed(2));
         
-        setFormData((prev: any) => {
-            const nextMC = syncMCWithItems(prev.measurementChecking || [], newItems);
-            return { ...prev, items: newItems, measurementChecking: nextMC };
-        });
+        setFormData((prev: any) => ({ ...prev, items: newItems }));
         calculateTotals(newItems);
     };
 
@@ -750,10 +714,7 @@ export default function BillForm({
         item.toBePaidAmount = parseFloat((item.uptoDateAmount - item.previousPaidAmount).toFixed(2));
         
         newItems[index] = item;
-        setFormData((prev: any) => {
-            const nextMC = syncMCWithItems(prev.measurementChecking || [], newItems);
-            return { ...prev, items: newItems, measurementChecking: nextMC };
-        });
+        setFormData((prev: any) => ({ ...prev, items: newItems }));
         calculateTotals(newItems);
     };
 
@@ -780,57 +741,6 @@ export default function BillForm({
                 newWorks[index][field] = value;
             }
             return { ...prev, works: newWorks };
-        });
-    };
-
-    const addMeasurementCheckingRow = () => {
-        setIsMeasurementCheckingExpanded(true);
-        const today = getTodayDateFormatted();
-        setFormData((prev: any) => ({
-            ...prev,
-            measurementChecking: [
-                ...(prev.measurementChecking || []),
-                { date: today, itemNo: '', mbPageNo: '', quantity: 0, rate: 0, amount: 0 }
-            ]
-        }));
-    };
-
-    const removeMeasurementCheckingRow = (index: number) => {
-        setFormData((prev: any) => {
-            const nextMC = (prev.measurementChecking || []).filter((_: any, i: number) => i !== index);
-            return { ...prev, measurementChecking: nextMC };
-        });
-    };
-
-    const handleMeasurementCheckingChange = (index: number, field: string, value: any) => {
-        setFormData((prev: any) => {
-            const nextMC = [...(prev.measurementChecking || [])];
-            const row = { ...nextMC[index] };
-            
-            if (field === 'itemNo') {
-                row.itemNo = value;
-                const selectedItem = prev.items.find((it: any) => it.itemNo === value);
-                if (selectedItem) {
-                    row.rate = selectedItem.partRate > 0 ? selectedItem.partRate : selectedItem.fullRate;
-                } else {
-                    row.rate = 0;
-                }
-                const qty = parseFloat(row.quantity) || 0;
-                row.amount = parseFloat((qty * row.rate).toFixed(2));
-            } else if (field === 'quantity') {
-                row.quantity = value === '' ? 0 : parseFloat(value);
-                const rate = parseFloat(row.rate) || 0;
-                row.amount = parseFloat((row.quantity * rate).toFixed(2));
-            } else if (field === 'rate') {
-                row.rate = value === '' ? 0 : parseFloat(value);
-                const qty = parseFloat(row.quantity) || 0;
-                row.amount = parseFloat((qty * row.rate).toFixed(2));
-            } else {
-                row[field] = value;
-            }
-
-            nextMC[index] = row;
-            return { ...prev, measurementChecking: nextMC };
         });
     };
 
@@ -884,17 +794,6 @@ export default function BillForm({
             submissionData.praisaBillNo = formData.praisaBillNo || undefined;
             submissionData.voucherDate = parseDateOutput(formData.voucherDate) as any;
             submissionData.voucherNo = formData.voucherNo || undefined;
-            if (formData.measurementChecking && formData.measurementChecking.length > 0) {
-                submissionData.measurementChecking = formData.measurementChecking.map((mc: any) => ({
-                    ...mc,
-                    date: parseDateOutput(mc.date) as any,
-                    quantity: Number(mc.quantity || 0),
-                    rate: Number(mc.rate || 0),
-                    amount: Number(mc.amount || 0)
-                }));
-            } else {
-                submissionData.measurementChecking = [];
-            }
             if (formData.billType === 'Final') {
                 submissionData.actualCompletionDate = parseDateOutput(formData.actualCompletionDate || '') as any;
                 submissionData.lastRecordEntryDate = undefined;
@@ -2468,192 +2367,6 @@ export default function BillForm({
                         </div>
                     </div>
                 </div>
-            </div>
-
-            {/* Measurement Checking Section */}
-            <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
-                <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                        <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
-                            <ClipboardCheck className="w-4 h-4" />
-                        </span>
-                        <h3 className="font-bold text-slate-800">Measurement Checking (10% Checking)</h3>
-                        {formData.measurementChecking && formData.measurementChecking.length > 0 && (
-                            <span className="text-xs bg-emerald-100 text-emerald-900 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold">
-                                {formData.measurementChecking.length} records
-                            </span>
-                        )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={addMeasurementCheckingRow}
-                            className="inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs transition-all cursor-pointer"
-                        >
-                            <Plus className="w-3.5 h-3.5 mr-1" /> Add Measurement Row
-                        </button>
-                        {formData.measurementChecking && formData.measurementChecking.length > 0 && (
-                            <button
-                                type="button"
-                                onClick={() => setIsMeasurementCheckingExpanded(!isMeasurementCheckingExpanded)}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs font-bold rounded-xl transition-colors cursor-pointer border border-emerald-300"
-                            >
-                                {isMeasurementCheckingExpanded ? (
-                                    <>
-                                        <ChevronUp className="w-3.5 h-3.5" />
-                                        Collapse Measurement Breakdown
-                                    </>
-                                ) : (
-                                    <>
-                                        <ChevronDown className="w-3.5 h-3.5" />
-                                        Expand Measurement Breakdown ({formData.measurementChecking.length})
-                                    </>
-                                )}
-                            </button>
-                        )}
-                    </div>
-                </div>
-                
-                {isMeasurementCheckingExpanded && (
-                    <div className="p-6 overflow-x-auto">
-                        <table className="excel-table">
-                            <thead>
-                                <tr className="bg-emerald-100/90 text-emerald-950">
-                                    <th className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-left text-xs font-bold text-emerald-950 w-44">Date</th>
-                                    <th className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-left text-xs font-bold text-emerald-950">Item No.</th>
-                                    <th className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-left text-xs font-bold text-emerald-950 w-36">MB Page No.</th>
-                                    <th className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-right text-xs font-bold text-emerald-950 w-36">QTY.</th>
-                                    <th className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-right text-xs font-bold text-emerald-950 w-36">Rate (₹)</th>
-                                    <th className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-right text-xs font-bold text-emerald-950 w-36">Amount (₹)</th>
-                                    <th className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-center text-xs font-bold text-emerald-950 w-16">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-emerald-200/60 bg-white">
-                                {!formData.measurementChecking || formData.measurementChecking.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-500">
-                                            No measurement checking records added yet. Click "Add Measurement Row" above.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    formData.measurementChecking.map((mc: any, index: number) => (
-                                        <tr key={index} className="hover:bg-emerald-50/50">
-                                            <td className="border border-slate-200 px-3 py-2">
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="DD/MM/YYYY"
-                                                    value={mc.date || ''} 
-                                                    onChange={(e) => handleMeasurementCheckingChange(index, 'date', e.target.value)} 
-                                                    className="block w-full text-xs sm:text-sm border-emerald-200 rounded-lg p-1.5 border bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                                    required
-                                                />
-                                            </td>
-                                            
-                                            <td className="border border-slate-200 px-3 py-2">
-                                                <select
-                                                    value={mc.itemNo || ''}
-                                                    onChange={(e) => handleMeasurementCheckingChange(index, 'itemNo', e.target.value)}
-                                                    className="block w-full text-xs sm:text-sm border-emerald-200 rounded-lg p-1.5 border bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium"
-                                                    required
-                                                >
-                                                    <option value="">Select Item No.</option>
-                                                    {formData.items.map((item: any) => (
-                                                        <option key={item.itemNo} value={item.itemNo}>
-                                                            {item.itemNo} - {item.description.substring(0, 50)}...
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </td>
-                                            
-                                            <td className="border border-slate-200 px-3 py-2">
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="MB Page No."
-                                                    value={mc.mbPageNo || ''} 
-                                                    onChange={(e) => handleMeasurementCheckingChange(index, 'mbPageNo', e.target.value)} 
-                                                    className="block w-full text-xs sm:text-sm border-emerald-200 rounded-lg p-1.5 border bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                                    required
-                                                />
-                                            </td>
-                                            
-                                            <td className="border border-slate-200 px-3 py-2">
-                                                <input 
-                                                    type="number" 
-                                                    min="0"
-                                                    step="0.001"
-                                                    placeholder="QTY"
-                                                    value={mc.quantity === 0 ? '' : mc.quantity} 
-                                                    onChange={(e) => handleMeasurementCheckingChange(index, 'quantity', e.target.value)} 
-                                                    className="block w-full text-xs sm:text-sm border-emerald-200 rounded-lg p-1.5 border bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-right font-mono"
-                                                    required
-                                                />
-                                            </td>
-                                            
-                                            <td className="border border-slate-200 px-3 py-2">
-                                                <input 
-                                                    type="number" 
-                                                    value={mc.rate || ''} 
-                                                    readOnly 
-                                                    className="block w-full text-xs sm:text-sm border-slate-200 rounded-lg p-1.5 border bg-slate-50 text-right font-mono font-medium text-slate-700"
-                                                    placeholder="0.00"
-                                                />
-                                            </td>
-                                            
-                                            <td className="border border-slate-200 px-3 py-2">
-                                                <input 
-                                                    type="number" 
-                                                    value={mc.amount || ''} 
-                                                    readOnly 
-                                                    className="block w-full text-xs sm:text-sm border-slate-200 rounded-lg p-1.5 border bg-slate-50 text-right font-mono font-bold text-slate-800"
-                                                    placeholder="0.00"
-                                                />
-                                            </td>
-                                            
-                                            <td className="border border-slate-200 px-3 py-2 text-center">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeMeasurementCheckingRow(index)}
-                                                    className="text-rose-500 hover:text-rose-700 transition-colors p-1"
-                                                    title="Delete Row"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                            {formData.items.length > 0 && (() => {
-                                const totalMCAmount = (formData.measurementChecking || []).reduce((s: number, mc: any) => s + (mc.amount || 0), 0);
-                                const totalBillAmount = formData.items.reduce((s: number, i: any) => s + (i.uptoDateAmount || 0), 0);
-                                const requiredMCAmount = totalBillAmount * 0.10;
-                                const isMet = totalMCAmount >= requiredMCAmount;
-                                const diff = totalMCAmount - requiredMCAmount;
-                                return (
-                                    <tfoot className="bg-emerald-50/90 font-semibold border-t-2 border-emerald-300">
-                                        <tr className="border-b border-emerald-200">
-                                            <td colSpan={5} className="px-3 py-2 text-right text-xs text-slate-700 font-bold uppercase tracking-wider">Required Measurement Amount (10% of Total Amount):</td>
-                                            <td className="px-3 py-2 text-xs font-mono font-bold text-right text-slate-800">₹{requiredMCAmount.toFixed(2)}</td>
-                                            <td></td>
-                                        </tr>
-                                        <tr className={`border-b border-emerald-200 ${isMet ? "bg-emerald-100/80" : "bg-rose-100/80"}`}>
-                                            <td colSpan={5} className={`px-3 py-2.5 text-right text-xs uppercase font-extrabold ${isMet ? "text-emerald-950" : "text-rose-950"}`}>Total Measurement Amount:</td>
-                                            <td className={`px-3 py-2.5 text-xs font-mono font-black text-right ${isMet ? "text-emerald-950" : "text-rose-950"}`}>₹{totalMCAmount.toFixed(2)}</td>
-                                            <td></td>
-                                        </tr>
-                                        <tr className="bg-emerald-50/40">
-                                            <td colSpan={5} className="px-3 py-2 text-right text-xs text-slate-700 font-bold uppercase tracking-wider">Difference (+ / -):</td>
-                                            <td className={`px-3 py-2 text-xs font-mono font-bold text-right ${diff >= 0 ? "text-emerald-800" : "text-rose-700"}`}>
-                                                {diff >= 0 ? '+' : ''}₹{diff.toFixed(2)}
-                                            </td>
-                                            <td></td>
-                                        </tr>
-                                    </tfoot>
-                                );
-                            })()}
-                        </table>
-                    </div>
-                )}
             </div>
 
             {/* Footer / Summary Section */}

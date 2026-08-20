@@ -13,6 +13,8 @@ import ListPageLayout from '@/components/ListPageLayout';
 import DataTable from '@/components/DataTable';
 import { buildDashboardFilter, parsePagination, parseSort } from '@/lib/queryHelpers';
 import type { ListPageSearchParams, Column } from '@/lib/types';
+import { auth } from '@/auth';
+import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +24,11 @@ interface Props {
 
 export default async function PackagesListPage({ searchParams }: Props) {
     await dbConnect();
+    const session = await auth();
+    const userRole = (session?.user as any)?.role;
+    const auditorSubDivision = getAuditorSubDivision(userRole);
+    const isAuditor = isAuditorRole(userRole);
+
     const params = await searchParams;
     
     // Fetch unique/distinct values for filter selectors
@@ -114,6 +121,20 @@ export default async function PackagesListPage({ searchParams }: Props) {
         if (dashboardFilter.hasFilter && dashboardFilter.packageIds) {
             andConditions.push({ _id: { $in: dashboardFilter.packageIds } });
             filterLabels.push("Dashboard Filters Applied");
+        }
+    }
+
+    if (isAuditor && auditorSubDivision) {
+        const worksInAuditorSubDiv = await ApprovedWork.find({ subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } }).select('workName').lean();
+        const workNamesInAuditorSubDiv = worksInAuditorSubDiv.map((aw: any) => aw.workName).filter(Boolean);
+        andConditions.push({
+            $or: [
+                { subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } },
+                { 'works.workName': { $in: workNamesInAuditorSubDiv } }
+            ]
+        });
+        if (!params.subDivision) {
+            filterLabels.push(`Sub Division: ${auditorSubDivision}`);
         }
     }
 

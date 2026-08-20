@@ -18,6 +18,8 @@ import ViewBiddersModalButton from '@/components/ViewBiddersModalButton';
 import { buildDashboardFilter, parsePagination, parseSort } from '@/lib/queryHelpers';
 import type { ListPageSearchParams, Column } from '@/lib/types';
 import { formatShortDate } from '@/lib/dateUtils';
+import { auth } from '@/auth';
+import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +29,11 @@ interface Props {
 
 export default async function TendersListPage({ searchParams }: Props) {
     await dbConnect();
+    const session = await auth();
+    const userRole = (session?.user as any)?.role;
+    const auditorSubDivision = getAuditorSubDivision(userRole);
+    const isAuditor = isAuditorRole(userRole);
+
     const params = await searchParams;
 
     // Fetch agencies, years, sub-divisions, work types, approved works, and building types for inference
@@ -208,6 +215,21 @@ export default async function TendersListPage({ searchParams }: Props) {
     }
 
     const packageFilters: any[] = [];
+
+    if (isAuditor && auditorSubDivision) {
+        const worksInAuditorSubDiv = await ApprovedWork.find({ subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } }).select('workName').lean();
+        const workNames = worksInAuditorSubDiv.map((aw: any) => aw.workName).filter(Boolean);
+        packageFilters.push({
+            $or: [
+                { subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } },
+                { 'works.workName': { $in: workNames } }
+            ]
+        });
+        if (!params.subDivision) {
+            filterLabels.push(`Sub Division: ${auditorSubDivision}`);
+        }
+    }
+
     if (params.subDivision) {
         const worksInSubDiv = await ApprovedWork.find({ subDivision: params.subDivision }).select('workName').lean();
         const workNames = worksInSubDiv.map((aw: any) => aw.workName).filter(Boolean);

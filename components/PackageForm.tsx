@@ -82,6 +82,27 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
     const [newBudgetHeadValue, setNewBudgetHeadValue] = useState('');
     const [approvedWorks, setApprovedWorks] = useState<any[]>([]);
 
+    // Committee info
+    const [finalContractPrice, setFinalContractPrice] = useState<string>(
+        initialData.finalContractPrice !== undefined ? String(initialData.finalContractPrice) : ''
+    );
+    const [committeeDate, setCommitteeDate] = useState(
+        initialData.committeeDate ? new Date(initialData.committeeDate).toISOString().split('T')[0] : ''
+    );
+
+    // Auto-determine committee based on finalContractPrice and budgetHead
+    const autoCommittee = useMemo(() => {
+        const bhRaw = budgetHead.trim();
+        if (!bhRaw) return ''; // no budget head yet
+        const cp = parseFloat(finalContractPrice) || 0;
+        const bh = bhRaw.toLowerCase();
+        const bandhkamBudgets = ['15th finance commission', '2515 cdp-5', 'dp own fund', 'ddo shri pravas grant', 'icds'];
+        const karobariBudgets = ['3054 s.r.', 'buj'];
+        const isBandhkam = cp < 2500000 && bandhkamBudgets.some(b => bh.includes(b));
+        const isKarobari = cp >= 2500000 && karobariBudgets.some(b => bh.includes(b));
+        return isBandhkam ? 'Bandhkam Committee' : isKarobari ? 'Karobari' : 'Not Required';
+    }, [finalContractPrice, budgetHead]);
+
     useEffect(() => {
         const fetchBudgetHeads = async () => {
             try {
@@ -285,7 +306,9 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                 buildingType: workType === 'Building' ? buildingType : undefined,
                 budgetHead,
                 dtpConsultant,
-                works: selectedWorks
+                works: selectedWorks,
+                committee: autoCommittee,
+                committeeDate: committeeDate || undefined,
             };
 
             const url = isEditing ? `/api/packages/${initialData._id}` : '/api/packages';
@@ -528,6 +551,76 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                             <option value="ADD_NEW" className="text-emerald-600 font-bold">+ Add New Budget Head</option>
                         </select>
                     )}
+                </div>
+
+                {/* ─── Committee Section ─── */}
+                <div className="sm:col-span-6">
+                    <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-4">
+                        <h3 className="text-sm font-bold text-indigo-800 uppercase tracking-wide flex items-center gap-2">
+                            <span>🏛️</span> Committee Approval
+                        </h3>
+
+                        {/* Final Contract Price input — only relevant for Bandhkam/Karobari determination */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Final Contract Price (₹)
+                                <span className="ml-1 text-xs text-gray-500 font-normal">(used to determine required committee)</span>
+                            </label>
+                            <input
+                                type="number"
+                                placeholder="e.g. 2000000"
+                                value={finalContractPrice}
+                                onChange={(e) => setFinalContractPrice(e.target.value)}
+                                className="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                            />
+                        </div>
+
+                        {/* Auto-determined Committee */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Which Committee's Approval Required?</label>
+                            {autoCommittee ? (
+                                <div className="flex items-center gap-3">
+                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
+                                        autoCommittee === 'Bandhkam Committee'
+                                            ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                                            : autoCommittee === 'Karobari'
+                                            ? 'bg-purple-100 text-purple-800 border border-purple-300'
+                                            : 'bg-slate-100 text-slate-500 border border-slate-300'
+                                    }`}>
+                                        {autoCommittee}
+                                    </span>
+                                    {autoCommittee !== 'Not Required' && (
+                                        <span className="text-xs text-gray-500">
+                                            {autoCommittee === 'Bandhkam Committee'
+                                                ? `(Contract price < ₹25L & Budget Head matches)`
+                                                : `(Contract price ≥ ₹25L & Budget Head matches)`}
+                                        </span>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                                    ⚠️ Select a Budget Head to determine committee. Qualifying heads:
+                                    <ul className="mt-1 ml-4 list-disc text-xs text-amber-600 space-y-0.5">
+                                        <li><strong>Bandhkam Committee</strong> (price &lt; ₹25L): 15th Finance Commission, 2515 CDP-5, DP OWN FUND - DDO Shri Pravas Grant, ICDS</li>
+                                        <li><strong>Karobari</strong> (price ≥ ₹25L): 3054 S.R., BUJ</li>
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Committee Date — only for Bandhkam or Karobari */}
+                        {(autoCommittee === 'Bandhkam Committee' || autoCommittee === 'Karobari') && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Committee Date</label>
+                                <input
+                                    type="date"
+                                    value={committeeDate}
+                                    onChange={(e) => setCommitteeDate(e.target.value)}
+                                    className="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                                />
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className="sm:col-span-6">

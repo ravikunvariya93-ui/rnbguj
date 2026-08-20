@@ -16,6 +16,8 @@ import ListPageLayout from '@/components/ListPageLayout';
 import DataTable from '@/components/DataTable';
 import { parsePagination, parseSort } from '@/lib/queryHelpers';
 import type { ListPageSearchParams, Column } from '@/lib/types';
+import { auth } from '@/auth';
+import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +27,11 @@ interface Props {
 
 export default async function ApprovedWorksListPage({ searchParams }: Props) {
     await dbConnect();
+    const session = await auth();
+    const userRole = (session?.user as any)?.role;
+    const auditorSubDivision = getAuditorSubDivision(userRole);
+    const isAuditor = isAuditorRole(userRole);
+
     const params = await searchParams;
     const normalizeString = (str: string) => (str || '').trim().toLowerCase().replace(/\s+/g, ' ');
 
@@ -130,6 +137,13 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
             }
         }
     });
+
+    if (isAuditor && auditorSubDivision) {
+        andConditions.push({ subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } });
+        if (!typedParams.subDivision) {
+            filterLabels.push(`Sub Division: ${auditorSubDivision}`);
+        }
+    }
 
     if (andConditions.length > 0) {
         query.$and = andConditions;

@@ -26,10 +26,10 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { name, username, password, role } = await req.json();
+    const { name, username, password, role, designation } = await req.json();
     
     if (!name || !username || !password || !role) {
-      return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
+      return NextResponse.json({ error: 'Name, username, password and role are required' }, { status: 400 });
     }
 
     await dbConnect();
@@ -44,6 +44,8 @@ export async function POST(req: Request) {
       username,
       password: hashedPassword,
       role,
+      designation: designation || '',
+      nameHistory: [],
     });
 
     const { password: _, ...userWithoutPassword } = user.toObject();

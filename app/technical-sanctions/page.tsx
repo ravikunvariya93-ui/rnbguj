@@ -10,6 +10,9 @@ import ListPageLayout from '@/components/ListPageLayout';
 import DataTable from '@/components/DataTable';
 import { parsePagination, parseSort } from '@/lib/queryHelpers';
 import type { ListPageSearchParams, Column } from '@/lib/types';
+import ApprovedWork from '@/models/ApprovedWork';
+import { auth } from '@/auth';
+import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,11 +22,52 @@ interface Props {
 
 export default async function TechnicalSanctionsListPage({ searchParams }: Props) {
     await dbConnect();
+    const session = await auth();
+    const userRole = (session?.user as any)?.role;
+    const auditorSubDivision = getAuditorSubDivision(userRole);
+    const isAuditor = isAuditorRole(userRole);
+
     const params = await searchParams;
     
     let query: any = {};
+
+    if (isAuditor && auditorSubDivision) {
+        const worksInAuditorSubDiv = await ApprovedWork.find({
+            subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') }
+        }).select('workName').lean();
+        const workNamesInSubDiv = worksInAuditorSubDiv.map((aw: any) => aw.workName).filter(Boolean);
+
+        const packagesInSubDiv = await Package.find({
+            $or: [
+                { subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } },
+                { 'works.workName': { $in: workNamesInSubDiv } }
+            ]
+        }).select('works').lean();
+
+        const tsIdsFromPackages: string[] = [];
+        packagesInSubDiv.forEach((pkg: any) => {
+            (pkg.works || []).forEach((w: any) => {
+                if (w.workId) tsIdsFromPackages.push(w.workId.toString());
+            });
+        });
+
+        query.$or = [
+            { workName: { $in: workNamesInSubDiv } },
+            { _id: { $in: tsIdsFromPackages } }
+        ];
+    }
+
     if (params.search) {
-        query.workName = { $regex: params.search, $options: 'i' };
+        if (query.$or) {
+            query = {
+                $and: [
+                    { $or: query.$or },
+                    { workName: { $regex: params.search, $options: 'i' } }
+                ]
+            };
+        } else {
+            query.workName = { $regex: params.search, $options: 'i' };
+        }
     }
 
     const { page, limit, skip } = parsePagination(params);

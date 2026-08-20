@@ -15,6 +15,7 @@ export const authConfig = {
       if (user) {
         token.role = user.role;
         token.username = user.username;
+        token.designation = user.designation;
       }
       return token;
     },
@@ -23,6 +24,7 @@ export const authConfig = {
         session.user.role = token.role;
         session.user.username = token.username;
         session.user.id = token.sub;
+        session.user.designation = token.designation;
       }
       return session;
     }

@@ -13,6 +13,8 @@ export interface IPackage extends Document {
     }[];
     dtpConsultant?: string;
     budgetHead?: string;
+    committee?: string;
+    committeeDate?: Date;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -30,6 +32,8 @@ const PackageSchema: Schema = new Schema({
         tsNotRequired: { type: Boolean, default: false }
     }],
     dtpConsultant: { type: String },
+    committee: { type: String },
+    committeeDate: { type: Date },
 }, {
     timestamps: true,
 });

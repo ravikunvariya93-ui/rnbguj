@@ -5,13 +5,16 @@ import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { 
     Building2, FileText, Home, CheckCircle, 
-    Package, Layers, X, User, LogOut, Users, ClipboardList, TrendingUp 
+    Package, Layers, X, User, LogOut, Users, ClipboardList, TrendingUp, Landmark 
 } from 'lucide-react';
+import { ALL_AUDITOR_ROLES, ROLE_LABELS, isAuditorRole } from '@/lib/roles';
 
 interface SidebarProps {
     isOpen?: boolean;
     onClose?: () => void;
 }
+
+const AUDITOR_ROLES = ALL_AUDITOR_ROLES;
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     const pathname = usePathname();
@@ -19,20 +22,24 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     const user = session?.user as any;
 
     const navigation = [
-        { name: 'Dashboard', href: '/', icon: Home, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
-        { name: 'Approved Work', href: '/approved-works', icon: CheckCircle, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
-        { name: 'TS', href: '/technical-sanctions', icon: Layers, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
-        { name: 'Package', href: '/packages', icon: Package, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
-        { name: 'Tender', href: '/tenders', icon: FileText, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
-        { name: 'Agreement', href: '/agreements', icon: ClipboardList, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
-        { name: 'Bill', href: '/bills', icon: FileText, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
-        { name: 'Excess Proposal', href: '/excess-proposals', icon: TrendingUp, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER'] },
-        { name: 'User Management', href: '/admin/users', icon: Users, roles: ['ADMIN'] },
+        { name: 'Dashboard',       href: '/',                  icon: Home,          roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...AUDITOR_ROLES] },
+        { name: 'Approved Work',   href: '/approved-works',    icon: CheckCircle,   roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...AUDITOR_ROLES] },
+        { name: 'TS',              href: '/technical-sanctions', icon: Layers,      roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...AUDITOR_ROLES] },
+        { name: 'Package',         href: '/packages',          icon: Package,       roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...AUDITOR_ROLES] },
+        { name: 'Committee',       href: '/committee',         icon: Landmark,      roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...AUDITOR_ROLES] },
+        { name: 'Tender',          href: '/tenders',           icon: FileText,      roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...AUDITOR_ROLES] },
+        { name: 'Agreement',       href: '/agreements',        icon: ClipboardList, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...AUDITOR_ROLES] },
+        { name: 'Bill',            href: '/bills',             icon: FileText,      roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', ...AUDITOR_ROLES] },
+        { name: 'Excess Proposal', href: '/excess-proposals',  icon: TrendingUp,    roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...AUDITOR_ROLES] },
+        { name: 'User Management', href: '/admin/users',       icon: Users,         roles: ['ADMIN'] },
     ];
 
     const filteredNavigation = navigation.filter(item => 
         !item.roles || (user?.role && item.roles.includes(user.role))
     );
+
+    // Human-readable role label for sidebar footer
+    const roleLabel = user?.role ? (ROLE_LABELS[user.role] || user.role) : 'No Role';
 
     return (
         <>
@@ -105,7 +112,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                         </div>
                         <div className="flex-1 overflow-hidden">
                             <p className="text-sm font-bold truncate text-slate-800">{user?.name || 'Guest User'}</p>
-                            <p className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wider">{user?.role || 'No Role'}</p>
+                            <p className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wider truncate">{roleLabel}</p>
                         </div>
                     </Link>
                     <button

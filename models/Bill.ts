@@ -20,15 +20,6 @@ export interface IBillWork {
     amount: number;
 }
 
-export interface IMeasurementChecking {
-    date: Date;
-    itemNo: string;
-    mbPageNo: string;
-    quantity: number;
-    rate: number;
-    amount: number;
-}
-
 export interface IBill extends Document {
     workOrderId: mongoose.Schema.Types.ObjectId;
     billType: 'Running' | 'Final';
@@ -48,7 +39,6 @@ export interface IBill extends Document {
     praisaBillDate?: Date;
     voucherNo?: string;
     voucherDate?: Date;
-    measurementChecking?: IMeasurementChecking[];
 
     // Audit Memo Fields
     auditMemoPreviouslyPaid?: number;
@@ -101,15 +91,6 @@ const BillWorkSchema = new Schema({
     amount: { type: Number, required: true }
 });
 
-const MeasurementCheckingSchema = new Schema({
-    date: { type: Date, required: true },
-    itemNo: { type: String, required: true },
-    mbPageNo: { type: String, required: true },
-    quantity: { type: Number, required: true },
-    rate: { type: Number, required: true },
-    amount: { type: Number, required: true }
-});
-
 const BillSchema: Schema = new Schema({
     workOrderId: { type: mongoose.Schema.Types.ObjectId, ref: 'WorkOrder', required: true },
     billType: { type: String, enum: ['Running', 'Final'], required: true },
@@ -134,7 +115,6 @@ const BillSchema: Schema = new Schema({
     praisaBillDate: { type: Date },
     voucherNo: { type: String },
     voucherDate: { type: Date },
-    measurementChecking: [MeasurementCheckingSchema],
 
     // Audit Memo
     auditMemoPreviouslyPaid: { type: Number, default: 0 },

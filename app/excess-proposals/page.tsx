@@ -4,13 +4,17 @@ import Package from '@/models/Package';
 import WorkOrder from '@/models/WorkOrder';
 import LOA from '@/models/LOA';
 import Tender from '@/models/Tender';
+import ApprovedWork from '@/models/ApprovedWork';
 import ExcessProposalsClient from './ExcessProposalsClient';
+import { auth } from '@/auth';
+import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 
 // Register models for populate
 void Package;
 void WorkOrder;
 void LOA;
 void Tender;
+void ApprovedWork;
 
 export const dynamic = 'force-dynamic';
 
@@ -33,14 +37,35 @@ function serialize<T>(obj: T): T {
 
 export default async function ExcessProposalsPage() {
     await dbConnect();
+    const session = await auth();
+    const userRole = (session?.user as any)?.role;
+    const auditorSubDivision = getAuditorSubDivision(userRole);
+    const isAuditor = isAuditorRole(userRole);
+
+    let proposalQuery: any = {};
+    let packageQuery: any = {};
+
+    if (isAuditor && auditorSubDivision) {
+        const worksInAuditorSubDiv = await ApprovedWork.find({ subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } }).select('workName').lean();
+        const workNames = worksInAuditorSubDiv.map((aw: any) => aw.workName).filter(Boolean);
+        const subDivPackageCondition = {
+            $or: [
+                { subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } },
+                { 'works.workName': { $in: workNames } }
+            ]
+        };
+        const matchingPkgIds = (await Package.find(subDivPackageCondition as any).distinct('_id')) as any[];
+        proposalQuery.packageId = { $in: matchingPkgIds };
+        packageQuery = subDivPackageCondition;
+    }
 
     const [rawProposals, rawPackages] = await Promise.all([
-        ExcessProposal.find({})
+        ExcessProposal.find(proposalQuery)
             .populate('packageId', 'packageName subDivision dtpConsultant')
             .populate('workOrderId', 'agreementNo agreementYear agencyName')
             .sort({ proposalDate: -1, createdAt: -1 })
             .lean(),
-        Package.find({}, 'packageName subDivision').sort({ packageName: 1 }).lean(),
+        Package.find(packageQuery, 'packageName subDivision').sort({ packageName: 1 }).lean(),
     ]);
 
     // Resolve contractor name from each package's winning (non-cancelled) tender

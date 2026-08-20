@@ -17,6 +17,8 @@ import MasterReportTable from '@/components/MasterReportTable';
 import { formatShortDate } from '@/lib/dateUtils';
 import type { Column } from '@/lib/types';
 import Link from 'next/link';
+import { auth } from '@/auth';
+import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +35,11 @@ interface Props {
 
 export default async function Home({ searchParams }: Props) {
     await dbConnect();
+    const session = await auth();
+    const userRole = (session?.user as any)?.role;
+    const auditorSubDivision = getAuditorSubDivision(userRole);
+    const isAuditor = isAuditorRole(userRole);
+
     const params = await searchParams;
 
     const getQueryString = (overrides: Record<string, string | null>) => {
@@ -80,6 +87,9 @@ export default async function Home({ searchParams }: Props) {
     const approvedWorkQuery: any = {};
     if (shouldFilter) {
         approvedWorkQuery.workType = { $in: activeWorkTypes };
+    }
+    if (isAuditor && auditorSubDivision) {
+        approvedWorkQuery.subDivision = { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') };
     }
 
     const filterLabelText = !shouldFilter ? 'All' : activeWorkTypes.length === 0 ? 'None' : activeWorkTypes.join(', ');

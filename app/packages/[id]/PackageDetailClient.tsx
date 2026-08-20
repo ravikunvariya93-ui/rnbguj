@@ -29,10 +29,11 @@ interface PackageDetailClientProps {
     workOrder: any;
     bills: any[];
     excessProposals?: any[];
+    depositRefunds?: any[];
     maxAgreementNos?: Record<string, number>;
 }
 
-type SectionType = 'package' | 'dtp' | 'tender' | 'boq' | 'approval' | 'loa' | 'workOrder' | 'bills';
+type SectionType = 'package' | 'dtp' | 'tender' | 'boq' | 'approval' | 'loa' | 'workOrder' | 'bills' | 'depositRefund';
 
 export default function PackageDetailClient({
     packageId,
@@ -47,6 +48,7 @@ export default function PackageDetailClient({
     workOrder: initialWorkOrder,
     bills: initialBills,
     excessProposals: initialExcessProposals = [],
+    depositRefunds: initialDepositRefunds = [],
     maxAgreementNos = {},
 }: PackageDetailClientProps) {
     const router = useRouter();
@@ -66,6 +68,25 @@ export default function PackageDetailClient({
     const [workOrder, setWorkOrder] = useState(initialWorkOrder);
     const [bills, setBills] = useState(initialBills);
     const [excessProposals, setExcessProposals] = useState<any[]>(initialExcessProposals || []);
+    const [depositRefunds, setDepositRefunds] = useState<any[]>(initialDepositRefunds || []);
+
+    const additionalSdRefund = useMemo(() => {
+        return depositRefunds.find((dr: any) => dr.refundType === 'Additional SD') || null;
+    }, [depositRefunds]);
+
+    const [additionalSdForm, setAdditionalSdForm] = useState<any>({
+        orderNo: '',
+        orderDate: '',
+        applicationRef: '',
+        applicationDate: '',
+        actualCompletionDate: '',
+        bankName: '',
+        fdrNumber: '',
+        fdrDate: '',
+        amount: '',
+        status: 'Pending',
+        remarks: '',
+    });
 
     // Excess Proposal modal states
     const [isExcessModalOpen, setIsExcessModalOpen] = useState(false);
@@ -254,7 +275,9 @@ export default function PackageDetailClient({
         setLoa(initialLoa);
         setWorkOrder(initialWorkOrder);
         setBills(initialBills);
-    }, [initialPkg, initialDtp, initialTender, initialTenders, initialApproval, initialLoa, initialWorkOrder, initialBills]);
+        setExcessProposals(initialExcessProposals || []);
+        setDepositRefunds(initialDepositRefunds || []);
+    }, [initialPkg, initialDtp, initialTender, initialTenders, initialApproval, initialLoa, initialWorkOrder, initialBills, initialExcessProposals, initialDepositRefunds]);
 
     // Sync selectedTrialId state when active tender or tenders change
     useEffect(() => {
@@ -428,6 +451,8 @@ export default function PackageDetailClient({
                 dtpConsultant: pkg.dtpConsultant || '',
                 works: pkg.works || [],
                 budgetHead: pkg.budgetHead || '',
+                committee: pkg.committee || '',
+                committeeDate: pkg.committeeDate ? new Date(pkg.committeeDate).toISOString().split('T')[0] : '',
             });
         } else if (section === 'dtp') {
             setDtpForm({
@@ -516,11 +541,68 @@ export default function PackageDetailClient({
                 workDurationMonths: workOrder?.workDurationMonths || loa?.workDurationMonths || '',
                 stipulatedCompletionDate: workOrder?.stipulatedCompletionDate ? formatDateForInput(workOrder.stipulatedCompletionDate) : '',
             });
+        } else if (section === 'depositRefund') {
+            const finalBill = bills?.find((b: any) => b.billType === 'Final' || b.actualCompletionDate);
+            const defActualDate = finalBill?.actualCompletionDate
+                ? formatDateForInput(finalBill.actualCompletionDate)
+                : (workOrder?.stipulatedCompletionDate ? formatDateForInput(workOrder.stipulatedCompletionDate) : '');
+
+            setAdditionalSdForm({
+                _id: additionalSdRefund?._id || undefined,
+                packageId: packageId,
+                workOrderId: workOrder?._id || undefined,
+                refundType: 'Additional SD',
+                orderNo: additionalSdRefund?.orderNo || '219',
+                orderDate: additionalSdRefund?.orderDate ? formatDateForInput(additionalSdRefund.orderDate) : formatDateForInput(new Date()),
+                applicationRef: additionalSdRefund?.applicationRef || (tender?.contractorName ? `${tender.contractorName} ની અરજી` : ''),
+                applicationDate: additionalSdRefund?.applicationDate ? formatDateForInput(additionalSdRefund.applicationDate) : '',
+                actualCompletionDate: additionalSdRefund?.actualCompletionDate ? formatDateForInput(additionalSdRefund.actualCompletionDate) : defActualDate,
+                bankName: additionalSdRefund?.bankName || workOrder?.additionalSecurityDepositBankName || '',
+                fdrNumber: additionalSdRefund?.fdrNumber || workOrder?.additionalSecurityDepositNumber || '',
+                fdrDate: additionalSdRefund?.fdrDate ? formatDateForInput(additionalSdRefund.fdrDate) : (workOrder?.additionalSecurityDepositDate ? formatDateForInput(workOrder.additionalSecurityDepositDate) : ''),
+                amount: additionalSdRefund?.amount !== undefined && additionalSdRefund?.amount !== null ? additionalSdRefund.amount : (workOrder?.additionalSecurityDepositAmount || ''),
+                status: additionalSdRefund?.status || 'Pending',
+                remarks: additionalSdRefund?.remarks || '',
+            });
         }
     };
 
     const handleCancelEdit = () => {
         setEditingSection(null);
+    };
+
+    const handleSaveAdditionalSdRefund = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const payload = {
+                ...additionalSdForm,
+                packageId,
+                workOrderId: workOrder?._id || undefined,
+                refundType: 'Additional SD',
+            };
+            if (payload.orderDate) payload.orderDate = parseDateStr(payload.orderDate)?.toISOString() || payload.orderDate;
+            if (payload.applicationDate) payload.applicationDate = parseDateStr(payload.applicationDate)?.toISOString() || payload.applicationDate;
+            if (payload.actualCompletionDate) payload.actualCompletionDate = parseDateStr(payload.actualCompletionDate)?.toISOString() || payload.actualCompletionDate;
+            if (payload.fdrDate) payload.fdrDate = parseDateStr(payload.fdrDate)?.toISOString() || payload.fdrDate;
+            if (payload.amount !== undefined && payload.amount !== '') payload.amount = Number(payload.amount);
+
+            const res = await fetch('/api/deposit-refunds', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const result = await res.json();
+            if (!result.success) throw new Error(result.error || 'Failed to save Deposit Refund details.');
+
+            showToast('success', 'Additional SD Refund details saved successfully!');
+            setEditingSection(null);
+            router.refresh();
+        } catch (err: any) {
+            showToast('error', err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     // Generic form handlers
@@ -1846,6 +1928,67 @@ export default function PackageDetailClient({
                                                     )}
                                                 </td>
                                             </tr>
+                                            {/* Committee Section */}
+                                            {(() => {
+                                                const bhRaw = (pkgForm.budgetHead || '').trim();
+                                                const bh = bhRaw.toLowerCase();
+                                                const cp = tender?.contractPrice || 0;
+                                                const bandhkamBudgets = ['15th finance commission', '2515 cdp-5', 'dp own fund', 'ddo shri pravas grant', 'icds'];
+                                                const karobariBudgets = ['3054 s.r.', 'buj'];
+                                                const isBandhkam = cp < 2500000 && bandhkamBudgets.some(b => bh.includes(b));
+                                                const isKarobari = cp >= 2500000 && karobariBudgets.some(b => bh.includes(b));
+                                                const autoCommittee = !bhRaw ? '' : isBandhkam ? 'Bandhkam Committee' : isKarobari ? 'Karobari' : 'Not Required';
+                                                // Sync auto-determined value into form
+                                                if (autoCommittee && pkgForm.committee !== autoCommittee) {
+                                                    setTimeout(() => setPkgForm((prev: any) => ({ ...prev, committee: autoCommittee })), 0);
+                                                }
+                                                const showDate = autoCommittee === 'Bandhkam Committee' || autoCommittee === 'Karobari';
+                                                return (
+                                                    <>
+                                                        <tr>
+                                                            <td className="excel-label">Committee Required</td>
+                                                            <td className="excel-value" colSpan={3}>
+                                                                {autoCommittee ? (
+                                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                                                                        autoCommittee === 'Bandhkam Committee'
+                                                                            ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                                                            : autoCommittee === 'Karobari'
+                                                                            ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                                                            : 'bg-slate-100 text-slate-500 border border-slate-300'
+                                                                    }`}>
+                                                                        {autoCommittee}
+                                                                    </span>
+                                                                ) : (
+                                                                    <select
+                                                                        value={pkgForm.committee || ''}
+                                                                        onChange={(e) => setPkgForm((prev: any) => ({ ...prev, committee: e.target.value }))}
+                                                                        className="excel-cell-select"
+                                                                    >
+                                                                        <option value="">-- Select Committee --</option>
+                                                                        <option value="Bandhkam Committee">Bandhkam Committee</option>
+                                                                        <option value="Karobari">Karobari</option>
+                                                                        <option value="Not Required">Not Required</option>
+                                                                    </select>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                        {/* Show date only for Bandhkam / Karobari */}
+                                                        {showDate && (
+                                                            <tr>
+                                                                <td className="excel-label">Committee Date</td>
+                                                                <td className="excel-value" colSpan={3}>
+                                                                    <input
+                                                                        type="date"
+                                                                        value={pkgForm.committeeDate || ''}
+                                                                        onChange={(e) => setPkgForm((prev: any) => ({ ...prev, committeeDate: e.target.value }))}
+                                                                        className="excel-cell-input"
+                                                                    />
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
                                         </tbody>
                                     </table>
                                 </div>
@@ -1989,6 +2132,33 @@ export default function PackageDetailClient({
                                                 <td className="excel-label">Budget Head</td>
                                                 <td className="excel-value" colSpan={3}>{pkg.budgetHead || '-'}</td>
                                             </tr>
+                                            <tr>
+                                                <td className="excel-label">Committee Required</td>
+                                                <td className="excel-value" colSpan={3}>
+                                                    {pkg.committee ? (
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                                                            pkg.committee === 'Bandhkam Committee'
+                                                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                                                : pkg.committee === 'Karobari'
+                                                                ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                                                : 'bg-slate-100 text-slate-500 border border-slate-300'
+                                                        }`}>
+                                                            {pkg.committee}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-slate-400 italic text-xs">Not determined</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                            {/* Show Committee Date only for Bandhkam Committee or Karobari */}
+                                            {(pkg.committee === 'Bandhkam Committee' || pkg.committee === 'Karobari') && (
+                                                <tr>
+                                                    <td className="excel-label">Committee Date</td>
+                                                    <td className="excel-value" colSpan={3}>
+                                                        {pkg.committeeDate ? formatDate(pkg.committeeDate) : '-'}
+                                                    </td>
+                                                </tr>
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
@@ -3297,7 +3467,7 @@ export default function PackageDetailClient({
                                             <th className="border border-emerald-300 px-4 py-2 bg-emerald-100/90 text-right text-emerald-950 font-bold">Gross (₹)</th>
                                             <th className="border border-emerald-300 px-4 py-2 bg-emerald-100/90 text-right text-emerald-950 font-bold">Deductions (₹)</th>
                                             <th className="border border-emerald-300 px-4 py-2 bg-emerald-100/90 text-right text-emerald-950 font-bold">Net Paid (₹)</th>
-                                            <th className="border border-emerald-300 px-4 py-2 bg-emerald-100/90 text-center w-24 text-emerald-950 font-bold">Actions</th>
+                                            <th className="border border-emerald-300 px-4 py-2 bg-emerald-100/90 text-center w-36 text-emerald-950 font-bold">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-emerald-200/60">
@@ -3321,9 +3491,9 @@ export default function PackageDetailClient({
                                                         
                                                         const getDaysDiff = (date1: Date, date2: Date) => {
                                                              const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
-                                                            const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
-                                                            const diffTime = d1.getTime() - d2.getTime();
-                                                            return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                                             const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
+                                                             const diffTime = d1.getTime() - d2.getTime();
+                                                             return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                                                         };
                                                         
                                                         let daysDelay = 0;
@@ -3351,6 +3521,9 @@ export default function PackageDetailClient({
                                                     <div className="flex items-center justify-center gap-2">
                                                         <Link href={`/packages/${packageId}/bills?billId=${bill._id}`} className="p-1 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md cursor-pointer transition-colors" title="View Full Bill Page">
                                                             <Eye className="w-4 h-4" />
+                                                        </Link>
+                                                        <Link href={`/packages/${packageId}/bills/${bill._id}/deduction`} target="_blank" rel="noopener noreferrer" className="p-1 text-emerald-800 hover:bg-emerald-100 rounded-md cursor-pointer transition-colors" title="View Deduction Statement (Deduction.xls format)">
+                                                            <FileSpreadsheet className="w-4 h-4" />
                                                         </Link>
                                                         <Link href={`/packages/${packageId}/bills/${bill._id}/print-excess-saving`} target="_blank" rel="noopener noreferrer" className="p-1 text-teal-600 hover:bg-teal-50 rounded-md cursor-pointer transition-colors" title="Print Excess / Saving Statement">
                                                             <Printer className="w-4 h-4" />
@@ -3538,6 +3711,278 @@ export default function PackageDetailClient({
                                 >
                                     <Plus className="w-3.5 h-3.5" /> Submit Excess Proposal
                                 </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* 9. Deposit Refund Section */}
+                <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
+                    <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-slate-800">Deposit Refund</h3>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                additionalSdRefund?.status === 'Refunded'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : additionalSdRefund?.status === 'Order Generated'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-amber-100 text-amber-800'
+                            }`}>
+                                {additionalSdRefund?.status === 'Refunded' ? '✅ Refunded' : additionalSdRefund?.status === 'Order Generated' ? '📄 Order Generated' : '⏳ Pending'}
+                            </span>
+                            {workOrder?.additionalSecurityDepositAmount > 0 && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
+                                    Additional SD: ₹{Number(workOrder.additionalSecurityDepositAmount).toLocaleString('en-IN')}
+                                </span>
+                            )}
+                        </div>
+
+                        {editingSection !== 'depositRefund' && (
+                            <button
+                                onClick={() => handleStartEdit('depositRefund')}
+                                className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all cursor-pointer"
+                            >
+                                {additionalSdRefund ? (
+                                    <><Edit2 className="w-3.5 h-3.5" /> Modify Additional SD Refund</>
+                                ) : (
+                                    <><Plus className="w-3.5 h-3.5" /> Add Additional SD Refund</>
+                                )}
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="p-6">
+                        {editingSection === 'depositRefund' ? (
+                            <form onSubmit={handleSaveAdditionalSdRefund} className="space-y-4">
+                                <div className="p-3 bg-emerald-100/60 border border-emerald-200 rounded-xl">
+                                    <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wider mb-3">Additional SD Refund Parameters</h4>
+                                    
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                                        <div>
+                                            <label className="block font-bold text-slate-700 mb-1">Refund Order / WS No.</label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. 219"
+                                                value={additionalSdForm.orderNo}
+                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, orderNo: e.target.value }))}
+                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-bold text-slate-700 mb-1">Refund Order Date</label>
+                                            <input
+                                                type="date"
+                                                value={additionalSdForm.orderDate}
+                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, orderDate: e.target.value }))}
+                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-bold text-slate-700 mb-1">Status</label>
+                                            <select
+                                                value={additionalSdForm.status}
+                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, status: e.target.value }))}
+                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                            >
+                                                <option value="Pending">Pending</option>
+                                                <option value="Order Generated">Order Generated</option>
+                                                <option value="Refunded">Refunded</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="sm:col-span-2">
+                                            <label className="block font-bold text-slate-700 mb-1">Contractor Application Reference (વંચાણે લીધા)</label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. હરપાલસિંહ અમરસિંહ સરવૈયા ની અરજી"
+                                                value={additionalSdForm.applicationRef}
+                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, applicationRef: e.target.value }))}
+                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-bold text-slate-700 mb-1">Actual Completion Date</label>
+                                            <input
+                                                type="date"
+                                                value={additionalSdForm.actualCompletionDate}
+                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, actualCompletionDate: e.target.value }))}
+                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-bold text-slate-700 mb-1">Bank Name</label>
+                                            <select
+                                                value={additionalSdForm.bankName}
+                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, bankName: e.target.value }))}
+                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                            >
+                                                <option value="">-- Select Bank --</option>
+                                                {banks.map((b: any) => (
+                                                    <option key={b._id || b.name} value={b.name}>{b.name}</option>
+                                                ))}
+                                                {additionalSdForm.bankName && !banks.some((b: any) => b.name === additionalSdForm.bankName) && (
+                                                    <option value={additionalSdForm.bankName}>{additionalSdForm.bankName}</option>
+                                                )}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-bold text-slate-700 mb-1">FDR / BG Number</label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. 01360IBG25000003"
+                                                value={additionalSdForm.fdrNumber}
+                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, fdrNumber: e.target.value }))}
+                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-bold text-slate-700 mb-1">FDR Issue Date</label>
+                                            <input
+                                                type="date"
+                                                value={additionalSdForm.fdrDate}
+                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, fdrDate: e.target.value }))}
+                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-bold text-slate-700 mb-1">FDR Amount (₹)</label>
+                                            <input
+                                                type="number"
+                                                placeholder="e.g. 225000"
+                                                value={additionalSdForm.amount}
+                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, amount: e.target.value }))}
+                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-slate-800 text-right focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                            />
+                                        </div>
+
+                                        <div className="sm:col-span-2 md:col-span-2">
+                                            <label className="block font-bold text-slate-700 mb-1">Remarks</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Optional notes or reference..."
+                                                value={additionalSdForm.remarks}
+                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, remarks: e.target.value }))}
+                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-2 pt-2">
+                                    <button type="button" onClick={handleCancelEdit} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold cursor-pointer hover:bg-slate-50">Cancel</button>
+                                    <button type="submit" disabled={loading} className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 cursor-pointer disabled:opacity-50 flex items-center gap-2">
+                                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save Deposit Refund
+                                    </button>
+                                </div>
+                            </form>
+                        ) : (
+                            <div className="space-y-4">
+                                {/* Additional SD Refund Card */}
+                                <div className="bg-white border border-emerald-200 rounded-xl overflow-hidden shadow-2xs">
+                                    <div className="px-4 py-2.5 bg-emerald-100/70 border-b border-emerald-200 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Receipt className="w-4 h-4 text-emerald-800" />
+                                            <span className="text-xs font-bold text-emerald-950 uppercase tracking-wider">Additional Security Deposit (SD) Refund</span>
+                                        </div>
+                                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                            additionalSdRefund?.status === 'Refunded'
+                                                ? 'bg-emerald-100 text-emerald-800'
+                                                : additionalSdRefund?.status === 'Order Generated'
+                                                ? 'bg-blue-100 text-blue-800'
+                                                : 'bg-amber-100 text-amber-800'
+                                        }`}>
+                                            {additionalSdRefund?.status || 'Pending'}
+                                        </span>
+                                    </div>
+
+                                    <div className="p-4">
+                                        <div className="overflow-x-auto">
+                                            <table className="excel-table mb-3">
+                                                <tbody>
+                                                    <tr>
+                                                        <td className="excel-label w-[20%]">FDR Bank Name</td>
+                                                        <td className="excel-value w-[30%]">{additionalSdRefund?.bankName || workOrder?.additionalSecurityDepositBankName || '-'}</td>
+                                                        <td className="excel-label w-[20%]">FDR / BG Number</td>
+                                                        <td className="excel-value font-mono w-[30%]">{additionalSdRefund?.fdrNumber || workOrder?.additionalSecurityDepositNumber || '-'}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">FDR Issue Date</td>
+                                                        <td className="excel-value">
+                                                            {additionalSdRefund?.fdrDate
+                                                                ? new Date(additionalSdRefund.fdrDate).toLocaleDateString('en-GB')
+                                                                : (workOrder?.additionalSecurityDepositDate ? new Date(workOrder.additionalSecurityDepositDate).toLocaleDateString('en-GB') : '-')}
+                                                        </td>
+                                                        <td className="excel-label">Additional SD Amount</td>
+                                                        <td className="excel-value font-mono font-bold text-emerald-900">
+                                                            ₹{Number(additionalSdRefund?.amount !== undefined ? additionalSdRefund.amount : (workOrder?.additionalSecurityDepositAmount || 0)).toLocaleString('en-IN')}
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">Work Order Start Date</td>
+                                                        <td className="excel-value">
+                                                            {workOrder?.timeLimitStartsFrom
+                                                                ? new Date(workOrder.timeLimitStartsFrom).toLocaleDateString('en-GB')
+                                                                : (workOrder?.workOrderDate ? new Date(workOrder.workOrderDate).toLocaleDateString('en-GB') : '-')}
+                                                        </td>
+                                                        <td className="excel-label">Stipulated Completion Date</td>
+                                                        <td className="excel-value">
+                                                            {workOrder?.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate).toLocaleDateString('en-GB') : '-'}
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">Actual Completion Date</td>
+                                                        <td className="excel-value font-semibold text-slate-800">
+                                                            {additionalSdRefund?.actualCompletionDate
+                                                                ? new Date(additionalSdRefund.actualCompletionDate).toLocaleDateString('en-GB')
+                                                                : (bills?.find((b: any) => b.billType === 'Final' || b.actualCompletionDate)?.actualCompletionDate
+                                                                    ? new Date(bills.find((b: any) => b.billType === 'Final' || b.actualCompletionDate).actualCompletionDate).toLocaleDateString('en-GB')
+                                                                    : 'Not Recorded')}
+                                                        </td>
+                                                        <td className="excel-label">Refund Order No & Date</td>
+                                                        <td className="excel-value font-mono">
+                                                            {additionalSdRefund?.orderNo ? `No: ${additionalSdRefund.orderNo}` : '-'} &nbsp;|&nbsp; {additionalSdRefund?.orderDate ? new Date(additionalSdRefund.orderDate).toLocaleDateString('en-GB') : '-'}
+                                                        </td>
+                                                    </tr>
+                                                    {additionalSdRefund?.applicationRef && (
+                                                        <tr>
+                                                            <td className="excel-label">Contractor Application</td>
+                                                            <td className="excel-value" colSpan={3}>{additionalSdRefund.applicationRef}</td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <div className="bg-emerald-50/80 border border-emerald-200 p-3 rounded-xl text-xs text-slate-700 leading-relaxed mb-3">
+                                            <strong>ℹ️ ITB Clause 34.1(B) Rule:</strong> ટેન્ડરના આઇ.ટી.બી. કલોઝ નં.૩૪.૧(બી) મુજબ કામ પૂર્ણ થયાનાં ૨૮ દિવસ પછી રજુ કરેલ એડીશનલ પર્ફોમન્સ સિકયોરીટી ડીપોઝીટ પેટે રજુ કરેલ એફ.ડી.આર. પરત કરવાની રહે છે.
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center justify-end gap-3 pt-2 border-t border-slate-100">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleStartEdit('depositRefund')}
+                                                className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 px-3.5 py-2 rounded-xl transition-all cursor-pointer"
+                                            >
+                                                <Edit2 className="w-3.5 h-3.5 text-slate-500" /> Edit Refund Details
+                                            </button>
+                                            <Link
+                                                href={`/packages/${packageId}/print-additional-sd`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-xl transition-all shadow-xs cursor-pointer"
+                                            >
+                                                <Printer className="w-4 h-4" /> Print Additional SD Order / Export to Word (.doc)
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>

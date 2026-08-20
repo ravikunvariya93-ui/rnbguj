@@ -11,13 +11,16 @@ import {
     CheckSquare,
     Receipt,
     FileText,
-    Printer
+    Printer,
+    FileSpreadsheet,
+    ShieldAlert
 } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import ExcessSavingTable from '@/components/ExcessSavingTable';
 import BillAbstractTable from '@/components/BillAbstractTable';
 import WorkWiseExpenditureTable from '@/components/WorkWiseExpenditureTable';
-import MeasurementCheckingTable from '@/components/MeasurementCheckingTable';
+import { auth } from '@/auth';
+import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 
 // Ensure models are registered for populate
 void WorkOrder;
@@ -68,6 +71,11 @@ interface Props {
 
 export default async function PackageBillsPage({ params, searchParams }: Props) {
     await dbConnect();
+    const session = await auth();
+    const userRole = (session?.user as any)?.role;
+    const auditorSubDivision = getAuditorSubDivision(userRole);
+    const isAuditor = isAuditorRole(userRole);
+
     const { id: packageId } = await params;
     const { billId } = await searchParams;
 
@@ -82,6 +90,29 @@ export default async function PackageBillsPage({ params, searchParams }: Props) 
     const tenderIds = tenders.map(t => t._id);
     const tenderRaw = tenders.find(t => !t.cancelled) || tenders[0] || null;
     const tender = serialize(tenderRaw);
+
+    // Auditor access check: verify this package's subDivision matches auditor's assigned subDivision
+    if (isAuditor && auditorSubDivision) {
+        const packageSubDivision: string = pkgRaw?.subDivision || '';
+        if (packageSubDivision.toLowerCase() !== auditorSubDivision.toLowerCase()) {
+            return (
+                <div className="max-w-xl mx-auto mt-24 text-center px-4">
+                    <div className="bg-red-50 border border-red-200 rounded-2xl p-10">
+                        <ShieldAlert className="w-12 h-12 text-red-400 mx-auto mb-4" />
+                        <h2 className="text-xl font-bold text-red-700 mb-2">Access Denied</h2>
+                        <p className="text-sm text-red-600 mb-6">
+                            You are assigned to <strong>{auditorSubDivision}</strong> sub-division only.
+                            This package belongs to <strong>{packageSubDivision || 'a different sub-division'}</strong>.
+                        </p>
+                        <Link href="/bills" className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-colors">
+                            <ArrowLeft className="w-4 h-4" /> Back to Bills
+                        </Link>
+                    </div>
+                </div>
+            );
+        }
+    }
+
 
     // Find LOAs for these tenders
     const loas = await LOA.find({ tenderId: { $in: tenderIds } }).lean() as any[];
@@ -175,6 +206,14 @@ export default async function PackageBillsPage({ params, searchParams }: Props) 
                         className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-700/60 hover:bg-emerald-700 text-white border border-emerald-400/40 rounded-xl text-xs font-bold shadow-2xs transition-colors cursor-pointer"
                     >
                         <Edit2 className="w-4 h-4" /> Edit Bill
+                    </Link>
+                    <Link
+                        href={`/packages/${packageId}/bills/${activeBill._id.toString()}/deduction`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-emerald-50 text-emerald-800 rounded-xl text-xs font-bold shadow-sm transition-colors cursor-pointer"
+                    >
+                        <FileSpreadsheet className="w-4 h-4 text-emerald-700" /> Deduction (Deduction.xls)
                     </Link>
                     <Link
                         href={`/packages/${packageId}/bills/${activeBill._id.toString()}/print-excess-saving`}
@@ -461,13 +500,6 @@ export default async function PackageBillsPage({ params, searchParams }: Props) 
                     </div>
                 </div>
             </div>
-
-            {/* MEASUREMENT CHECKING TABLE */}
-            <MeasurementCheckingTable 
-                records={activeBill.measurementChecking || []} 
-                billItems={activeBill.items || []} 
-                initialExpanded={false} 
-            />
         </div>
     );
 }

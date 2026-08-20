@@ -13,11 +13,15 @@ import AgreementsFilterBar from '@/components/AgreementsFilterBar';
 import { parsePagination, parseSort } from '@/lib/queryHelpers';
 import type { ListPageSearchParams, Column } from '@/lib/types';
 import { formatShortDate } from '@/lib/dateUtils';
+import ApprovedWork from '@/models/ApprovedWork';
+import { auth } from '@/auth';
+import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 
 // Register models for populating nested relationships
 void LOA;
 void Tender;
 void Package;
+void ApprovedWork;
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +38,11 @@ interface Props {
 
 export default async function AgreementsListPage({ searchParams }: Props) {
     await dbConnect();
+    const session = await auth();
+    const userRole = (session?.user as any)?.role;
+    const auditorSubDivision = getAuditorSubDivision(userRole);
+    const isAuditor = isAuditorRole(userRole);
+
     const params = await searchParams;
 
     // Fetch filters metadata (subdivisions are no longer required)
@@ -131,6 +140,30 @@ export default async function AgreementsListPage({ searchParams }: Props) {
         } else {
             query._id = { $in: matchingWoIds };
         }
+    }
+
+    if (isAuditor && auditorSubDivision) {
+        const worksInAuditorSubDiv = await ApprovedWork.find({ subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } }).select('workName').lean();
+        const workNames = worksInAuditorSubDiv.map((aw: any) => aw.workName).filter(Boolean);
+        const matchingPkgs = await Package.find({
+            $or: [
+                { subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } },
+                { 'works.workName': { $in: workNames } }
+            ]
+        } as any).distinct('_id') as any[];
+        const matchingTenders = await Tender.find({ packageId: { $in: matchingPkgs } } as any).distinct('_id') as any[];
+        const matchingLoas = await LOA.find({ tenderId: { $in: matchingTenders } } as any).distinct('_id') as any[];
+        const matchingWoIds = await WorkOrder.find({ loaId: { $in: matchingLoas } } as any).distinct('_id') as any[];
+        const matchingWoIdsStr = matchingWoIds.map(id => id.toString());
+
+        if (query._id) {
+            const directWoIds = query._id.$in || [];
+            const intersected = directWoIds.filter((id: string) => matchingWoIdsStr.includes(id));
+            query._id = { $in: intersected };
+        } else {
+            query._id = { $in: matchingWoIds };
+        }
+        filterLabels.push(`Sub Division: ${auditorSubDivision}`);
     }
 
     // Agreement Year filter

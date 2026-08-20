@@ -12,7 +12,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
   const { id } = await params;
   try {
-    const { name, username, password, role } = await req.json();
+    const { name, username, password, role, designation } = await req.json();
     await dbConnect();
     
     // Check if another user already has the new username
@@ -23,9 +23,39 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       }
     }
 
-    const updateData: any = { name, username, role };
+    // Fetch current state to detect changes for nameHistory
+    const currentUser = await User.findById(id);
+    if (!currentUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const nameChanged = name && name !== currentUser.name;
+    const designationChanged = designation !== undefined && designation !== currentUser.designation;
+
+    // If name or designation changed, archive the old values into nameHistory
+    let historyPush = null;
+    if (nameChanged || designationChanged) {
+      historyPush = {
+        name: currentUser.name,
+        designation: currentUser.designation || '',
+        changedAt: new Date(),
+        changedBy: (session?.user as any)?.username || 'admin',
+      };
+    }
+
+    const updateData: any = { role };
+    if (name) updateData.name = name;
+    if (username) updateData.username = username;
+    if (designation !== undefined) updateData.designation = designation;
     if (password) {
       updateData.password = bcrypt.hashSync(password, 10);
+    }
+
+    // Push to history if there was a change
+    if (historyPush) {
+      await User.findByIdAndUpdate(id, {
+        $push: { nameHistory: historyPush },
+      });
     }
 
     const user = await User.findByIdAndUpdate(id, updateData, { new: true }).select('-password');

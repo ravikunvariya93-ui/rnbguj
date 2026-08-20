@@ -4,19 +4,23 @@ import Bill from '@/models/Bill';
 import WorkOrder from '@/models/WorkOrder';
 import LOA from '@/models/LOA';
 import Tender from '@/models/Tender';
+import Package from '@/models/Package';
 import Link from 'next/link';
-import { Plus, Eye, Edit2 } from 'lucide-react';
+import { Eye, Edit2 } from 'lucide-react';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
 import Pagination from '@/components/Pagination';
 import ListPageLayout from '@/components/ListPageLayout';
 import DataTable from '@/components/DataTable';
 import { parsePagination, parseSort } from '@/lib/queryHelpers';
 import type { ListPageSearchParams, Column } from '@/lib/types';
+import { auth } from '@/auth';
+import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 
 // Ensure models are registered for populate
 void WorkOrder;
 void LOA;
 void Tender;
+void Package;
 
 export const dynamic = 'force-dynamic';
 
@@ -26,20 +30,42 @@ interface Props {
 
 export default async function BillsPage({ searchParams }: Props) {
     await dbConnect();
+    const session = await auth();
+    const userRole = (session?.user as any)?.role;
+    const auditorSubDivision = getAuditorSubDivision(userRole);
+    const isAuditor = isAuditorRole(userRole);
+
     const params = await searchParams;
     
+    // Build base query — auditors are limited to their subDivision
     let query: any = {};
+
+    // If auditor, find WorkOrder IDs that belong to their subDivision (via Package.subDivision)
+    if (isAuditor && auditorSubDivision) {
+        const packageIds = (await Package.find({
+            subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') }
+        }).distinct('_id')) as any[];
+        const tenderIds = (await Tender.find({ packageId: { $in: packageIds } }).distinct('_id')) as any[];
+        const loaIds = (await LOA.find({ tenderId: { $in: tenderIds } }).distinct('_id')) as any[];
+        const workOrderIds = (await WorkOrder.find({ loaId: { $in: loaIds } }).distinct('_id')) as any[];
+        query.workOrderId = { $in: workOrderIds };
+    }
+
     if (params.search) {
-        // Find matching Tenders
-        const matchingTenders = await Tender.find({
-            $or: [
-                { packageName: { $regex: params.search, $options: 'i' } }
-            ]
-        }).distinct('_id');
+        // Find matching Tenders by package name
+        let matchingPackageIds: any[] = [];
+        const packageSearchFilter: any = {
+            packageName: { $regex: params.search, $options: 'i' }
+        };
+        // Restrict to auditor's subDivision if applicable
+        if (isAuditor && auditorSubDivision) {
+            packageSearchFilter.subDivision = { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') };
+        }
+        matchingPackageIds = (await Package.find(packageSearchFilter).distinct('_id')) as any[];
 
-        const matchingLOAs = await LOA.find({ tenderId: { $in: matchingTenders } }).distinct('_id');
-        const matchingWorkOrders = await WorkOrder.find({ loaId: { $in: matchingLOAs } }).distinct('_id');
-
+        const matchingTenders = (await Tender.find({ packageId: { $in: matchingPackageIds } }).distinct('_id')) as any[];
+        const matchingLOAs = (await LOA.find({ tenderId: { $in: matchingTenders } }).distinct('_id')) as any[];
+        const matchingWorkOrders = (await WorkOrder.find({ loaId: { $in: matchingLOAs } }).distinct('_id')) as any[];
         query.workOrderId = { $in: matchingWorkOrders };
     }
 
@@ -141,8 +167,11 @@ export default async function BillsPage({ searchParams }: Props) {
 
     return (
         <ListPageLayout
-            title="Bills"
-            subtitle="A list of all project bills including running and final bills."
+            title={isAuditor ? `Bills — ${auditorSubDivision}` : 'Bills'}
+            subtitle={isAuditor 
+                ? `Showing bills for ${auditorSubDivision} sub-division only.`
+                : 'A list of all project bills including running and final bills.'
+            }
             addHref="/bills/new"
             addLabel="Add Bill"
             searchPlaceholder="Search by package name..."
@@ -152,7 +181,7 @@ export default async function BillsPage({ searchParams }: Props) {
             <DataTable 
                 columns={columns} 
                 data={bills} 
-                emptyMessage="No bills found. Click 'Add Bill' to create one."
+                emptyMessage="No bills found."
                 actions={renderActions}
             />
             <Suspense fallback={<div className="h-10 w-full bg-gray-50 animate-pulse mt-4 rounded-md" />}>

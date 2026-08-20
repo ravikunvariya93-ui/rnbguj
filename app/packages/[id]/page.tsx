@@ -10,8 +10,13 @@ import WorkOrder from '@/models/WorkOrder';
 import Bill from '@/models/Bill';
 import BOQ from '@/models/BOQ';
 import ExcessProposal from '@/models/ExcessProposal';
+import DepositRefund from '@/models/DepositRefund';
 import { notFound } from 'next/navigation';
 import PackageDetailClient from './PackageDetailClient';
+import Link from 'next/link';
+import { ArrowLeft, ShieldAlert } from 'lucide-react';
+import { auth } from '@/auth';
+import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,10 +56,42 @@ function serialize<T>(obj: T): T {
 
 export default async function PackageDetailPage({ params }: { params: Promise<{ id: string }> }) {
     await dbConnect();
+    const session = await auth();
+    const userRole = (session?.user as any)?.role;
+    const auditorSubDivision = getAuditorSubDivision(userRole);
+    const isAuditor = isAuditorRole(userRole);
+
     const { id } = await params;
 
     const pkg = await Package.findById(id).populate('works.workId').lean() as any;
     if (!pkg) notFound();
+
+    // Auditor access check: verify package belongs to auditor's sub-division
+    if (isAuditor && auditorSubDivision) {
+        const worksInAuditorSubDiv = await ApprovedWork.find({ subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } }).select('workName').lean();
+        const workNames = new Set(worksInAuditorSubDiv.map((aw: any) => (aw.workName || '').toLowerCase().trim()));
+        const pkgSubDiv = (pkg.subDivision || '').toLowerCase().trim();
+        const hasMatchingWork = (pkg.works || []).some((w: any) => workNames.has((w.workName || '').toLowerCase().trim()));
+        const isAllowed = pkgSubDiv === auditorSubDivision.toLowerCase().trim() || hasMatchingWork;
+
+        if (!isAllowed) {
+            return (
+                <div className="max-w-xl mx-auto mt-24 text-center px-4">
+                    <div className="bg-red-50 border border-red-200 rounded-2xl p-10">
+                        <ShieldAlert className="w-12 h-12 text-red-400 mx-auto mb-4" />
+                        <h2 className="text-xl font-bold text-red-700 mb-2">Access Denied</h2>
+                        <p className="text-sm text-red-600 mb-6">
+                            You are assigned to <strong>{auditorSubDivision}</strong> sub-division only.
+                            This package belongs to <strong>{pkg.subDivision || 'a different sub-division'}</strong>.
+                        </p>
+                        <Link href="/packages" className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-colors">
+                            <ArrowLeft className="w-4 h-4" /> Back to Packages
+                        </Link>
+                    </div>
+                </div>
+            );
+        }
+    }
 
     // Fetch all ApprovedWorks to match details by name on client side
     const approvedWorks = await ApprovedWork.find({}).lean() as any[];
@@ -91,6 +128,11 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
         .sort({ proposalDate: -1, createdAt: -1 })
         .lean() as any[];
 
+    // Deposit Refunds
+    const depositRefunds = await DepositRefund.find({ packageId: pkg._id })
+        .sort({ orderDate: -1, createdAt: -1 })
+        .lean() as any[];
+
     // Fetch all work orders to determine the maximum agreement number per year
     const allWorkOrders = await WorkOrder.find({ notRequired: { $ne: true } }, 'agreementYear agreementNo').lean() as any[];
     const maxAgreementNos: Record<string, number> = {};
@@ -117,6 +159,7 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
             workOrder={workOrder ? serialize(workOrder) : null}
             bills={serialize(bills)}
             excessProposals={serialize(excessProposals)}
+            depositRefunds={serialize(depositRefunds)}
             maxAgreementNos={maxAgreementNos}
         />
     );
