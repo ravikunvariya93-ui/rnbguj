@@ -42,7 +42,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
         Package.distinct('dtpConsultant')
     ]);
     const subDivisions = Array.from(new Set([...subDivisionsPkg, ...subDivisionsAw])).filter(Boolean).sort() as string[];
-    const workTypes = Array.from(new Set([...workTypesPkg, ...workTypesAw])).filter(Boolean).sort() as string[];
+    const workTypes = Array.from(new Set(['Pending', ...workTypesPkg, ...workTypesAw])).filter(Boolean).sort() as string[];
     const budgetHeads = Array.from(new Set(['Pending', ...budgetHeadsPkg, ...budgetHeadsAw])).filter(Boolean).sort() as string[];
     const consultants = dtpConsultants.filter(Boolean).sort() as string[];
 
@@ -63,7 +63,28 @@ export default async function PackagesListPage({ searchParams }: Props) {
         filterLabels.push(`Sub Division: ${params.subDivision}`);
     }
 
-    if (params.workType) {
+    if (params.workType === 'Pending') {
+        const worksWithWorkType = await ApprovedWork.find({
+            workType: { $exists: true, $ne: null, $nin: ['', 'Pending'] }
+        }).select('workName').lean();
+        const workNamesWithWorkType = worksWithWorkType.map((aw: any) => aw.workName).filter(Boolean);
+        andConditions.push({
+            $and: [
+                {
+                    $or: [
+                        { workType: { $exists: false } },
+                        { workType: null },
+                        { workType: '' },
+                        { workType: 'Pending' }
+                    ]
+                },
+                {
+                    'works.workName': { $nin: workNamesWithWorkType }
+                }
+            ]
+        });
+        filterLabels.push('Work Type: Pending');
+    } else if (params.workType) {
         const worksInWorkType = await ApprovedWork.find({ workType: params.workType }).select('workName').lean();
         const workNamesInWorkType = worksInWorkType.map((aw: any) => aw.workName).filter(Boolean);
         andConditions.push({

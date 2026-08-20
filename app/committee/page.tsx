@@ -30,18 +30,129 @@ export default async function CommitteeListPage({ searchParams }: Props) {
     const params = await searchParams;
     
     // Fetch unique/distinct values for filter selectors
-    const [subDivisionsPkg, subDivisionsAw, budgetHeadsPkg, budgetHeadsAw] = await Promise.all([
+    const [subDivisionsPkg, subDivisionsAw, workTypesPkg, workTypesAw, budgetHeadsPkg, budgetHeadsAw] = await Promise.all([
         Package.distinct('subDivision'),
         ApprovedWork.distinct('subDivision'),
+        Package.distinct('workType'),
+        ApprovedWork.distinct('workType'),
         Package.distinct('budgetHead'),
         ApprovedWork.distinct('budgetHead'),
     ]);
     const subDivisions = Array.from(new Set([...subDivisionsPkg, ...subDivisionsAw])).filter(Boolean).sort() as string[];
+    const workTypes = Array.from(new Set(['Pending', ...workTypesPkg, ...workTypesAw])).filter(Boolean).sort() as string[];
     const budgetHeads = Array.from(new Set(['Pending', ...budgetHeadsPkg, ...budgetHeadsAw])).filter(Boolean).sort() as string[];
 
-    let query: any = {};
     let filterLabels: string[] = [];
-    const andConditions: any[] = [];
+    const baseConditions: any[] = [];
+
+    if (params.committeeType) {
+        if (params.committeeType === 'Not Determined') {
+            baseConditions.push({
+                $or: [
+                    { committee: { $exists: false } },
+                    { committee: null },
+                    { committee: '' },
+                    { committee: 'Not Determined' }
+                ]
+            });
+        } else {
+            baseConditions.push({ committee: params.committeeType });
+        }
+        filterLabels.push(`Committee: ${params.committeeType}`);
+    }
+
+    if (params.subDivision) {
+        const worksInSubDiv = await ApprovedWork.find({ subDivision: params.subDivision }).select('workName').lean();
+        const workNamesInSubDiv = worksInSubDiv.map((aw: any) => aw.workName).filter(Boolean);
+        baseConditions.push({
+            $or: [
+                { subDivision: params.subDivision },
+                { 'works.workName': { $in: workNamesInSubDiv } }
+            ]
+        });
+        filterLabels.push(`Sub Division: ${params.subDivision}`);
+    }
+
+    if (params.workType === 'Pending') {
+        const worksWithWorkType = await ApprovedWork.find({
+            workType: { $exists: true, $ne: null, $nin: ['', 'Pending'] }
+        }).select('workName').lean();
+        const workNamesWithWorkType = worksWithWorkType.map((aw: any) => aw.workName).filter(Boolean);
+        baseConditions.push({
+            $and: [
+                {
+                    $or: [
+                        { workType: { $exists: false } },
+                        { workType: null },
+                        { workType: '' },
+                        { workType: 'Pending' }
+                    ]
+                },
+                {
+                    'works.workName': { $nin: workNamesWithWorkType }
+                }
+            ]
+        });
+        filterLabels.push('Work Type: Pending');
+    } else if (params.workType) {
+        const worksInWorkType = await ApprovedWork.find({ workType: params.workType }).select('workName').lean();
+        const workNamesInWorkType = worksInWorkType.map((aw: any) => aw.workName).filter(Boolean);
+        baseConditions.push({
+            $or: [
+                { workType: params.workType },
+                { 'works.workName': { $in: workNamesInWorkType } }
+            ]
+        });
+        filterLabels.push(`Work Type: ${params.workType}`);
+    }
+
+    if (params.budgetHead === 'Pending') {
+        const worksInBudgetHead = await ApprovedWork.find({
+            $or: [
+                { budgetHead: 'Pending' },
+                { budgetHead: { $exists: false } },
+                { budgetHead: null },
+                { budgetHead: '' }
+            ]
+        }).select('workName').lean();
+        const workNamesInBudgetHead = worksInBudgetHead.map((aw: any) => aw.workName).filter(Boolean);
+        baseConditions.push({
+            $or: [
+                { budgetHead: 'Pending' },
+                { budgetHead: { $exists: false } },
+                { budgetHead: null },
+                { budgetHead: '' },
+                { 'works.workName': { $in: workNamesInBudgetHead } }
+            ]
+        });
+        filterLabels.push('Budget Head: Pending');
+    } else if (params.budgetHead) {
+        const worksInBudgetHead = await ApprovedWork.find({ budgetHead: params.budgetHead }).select('workName').lean();
+        const workNamesInBudgetHead = worksInBudgetHead.map((aw: any) => aw.workName).filter(Boolean);
+        baseConditions.push({
+            $or: [
+                { budgetHead: params.budgetHead },
+                { 'works.workName': { $in: workNamesInBudgetHead } }
+            ]
+        });
+        filterLabels.push(`Budget Head: ${params.budgetHead}`);
+    }
+
+    if (isAuditor && auditorSubDivision) {
+        const worksInAuditorSubDiv = await ApprovedWork.find({ subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } }).select('workName').lean();
+        const workNamesInAuditorSubDiv = worksInAuditorSubDiv.map((aw: any) => aw.workName).filter(Boolean);
+        baseConditions.push({
+            $or: [
+                { subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } },
+                { 'works.workName': { $in: workNamesInAuditorSubDiv } }
+            ]
+        });
+        if (!params.subDivision) {
+            filterLabels.push(`Sub Division: ${auditorSubDivision}`);
+        }
+    }
+
+    const andConditions: any[] = [...baseConditions];
 
     // Filter tabs
     if (params.filter === 'pending_date') {
@@ -80,80 +191,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         filterLabels.push('Not Determined');
     }
 
-    if (params.committeeType) {
-        if (params.committeeType === 'Not Determined') {
-            andConditions.push({
-                $or: [
-                    { committee: { $exists: false } },
-                    { committee: null },
-                    { committee: '' },
-                    { committee: 'Not Determined' }
-                ]
-            });
-        } else {
-            andConditions.push({ committee: params.committeeType });
-        }
-        filterLabels.push(`Committee: ${params.committeeType}`);
-    }
-
-    if (params.subDivision) {
-        const worksInSubDiv = await ApprovedWork.find({ subDivision: params.subDivision }).select('workName').lean();
-        const workNamesInSubDiv = worksInSubDiv.map((aw: any) => aw.workName).filter(Boolean);
-        andConditions.push({
-            $or: [
-                { subDivision: params.subDivision },
-                { 'works.workName': { $in: workNamesInSubDiv } }
-            ]
-        });
-        filterLabels.push(`Sub Division: ${params.subDivision}`);
-    }
-
-    if (params.budgetHead === 'Pending') {
-        const worksInBudgetHead = await ApprovedWork.find({
-            $or: [
-                { budgetHead: 'Pending' },
-                { budgetHead: { $exists: false } },
-                { budgetHead: null },
-                { budgetHead: '' }
-            ]
-        }).select('workName').lean();
-        const workNamesInBudgetHead = worksInBudgetHead.map((aw: any) => aw.workName).filter(Boolean);
-        andConditions.push({
-            $or: [
-                { budgetHead: 'Pending' },
-                { budgetHead: { $exists: false } },
-                { budgetHead: null },
-                { budgetHead: '' },
-                { 'works.workName': { $in: workNamesInBudgetHead } }
-            ]
-        });
-        filterLabels.push('Budget Head: Pending');
-    } else if (params.budgetHead) {
-        const worksInBudgetHead = await ApprovedWork.find({ budgetHead: params.budgetHead }).select('workName').lean();
-        const workNamesInBudgetHead = worksInBudgetHead.map((aw: any) => aw.workName).filter(Boolean);
-        andConditions.push({
-            $or: [
-                { budgetHead: params.budgetHead },
-                { 'works.workName': { $in: workNamesInBudgetHead } }
-            ]
-        });
-        filterLabels.push(`Budget Head: ${params.budgetHead}`);
-    }
-
-    if (isAuditor && auditorSubDivision) {
-        const worksInAuditorSubDiv = await ApprovedWork.find({ subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } }).select('workName').lean();
-        const workNamesInAuditorSubDiv = worksInAuditorSubDiv.map((aw: any) => aw.workName).filter(Boolean);
-        andConditions.push({
-            $or: [
-                { subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } },
-                { 'works.workName': { $in: workNamesInAuditorSubDiv } }
-            ]
-        });
-        if (!params.subDivision) {
-            filterLabels.push(`Sub Division: ${auditorSubDivision}`);
-        }
-    }
-
+    let query: any = {};
     if (andConditions.length > 0) {
         query.$and = andConditions;
     }
@@ -161,6 +199,23 @@ export default async function CommitteeListPage({ searchParams }: Props) {
     if (params.search) {
         query.packageName = { $regex: params.search, $options: 'i' };
     }
+
+    const baseSearchQuery: any = {};
+    if (params.search) {
+        baseSearchQuery.packageName = { $regex: params.search, $options: 'i' };
+    }
+
+    const buildCountQuery = (extraCondition?: any) => {
+        const conditions = [...baseConditions];
+        if (extraCondition) {
+            conditions.push(extraCondition);
+        }
+        const q: any = { ...baseSearchQuery };
+        if (conditions.length > 0) {
+            q.$and = conditions;
+        }
+        return q;
+    };
 
     const filterLabel = filterLabels.length > 0
         ? `Filtered by: ${filterLabels.join(' | ')}`
@@ -172,23 +227,36 @@ export default async function CommitteeListPage({ searchParams }: Props) {
     const totalItems = await Package.countDocuments(query);
     const totalPages = Math.ceil(totalItems / limit);
 
-    // Fetch counts for quick filter badges
-    const [pendingDateCount, bandhkamCount, karobariCount, notRequiredCount, notDeterminedCount] = await Promise.all([
-        Package.countDocuments({
+    // Fetch counts for quick filter badges respecting active filters
+    const [
+        allCount,
+        pendingDateCount,
+        dateAddedCount,
+        bandhkamCount,
+        karobariCount,
+        notRequiredCount,
+        notDeterminedCount
+    ] = await Promise.all([
+        Package.countDocuments(buildCountQuery()),
+        Package.countDocuments(buildCountQuery({
             committee: { $in: ['Bandhkam Committee', 'Karobari'] },
             $or: [{ committeeDate: { $exists: false } }, { committeeDate: null }]
-        }),
-        Package.countDocuments({ committee: 'Bandhkam Committee' }),
-        Package.countDocuments({ committee: 'Karobari' }),
-        Package.countDocuments({ committee: 'Not Required' }),
-        Package.countDocuments({
+        })),
+        Package.countDocuments(buildCountQuery({
+            committee: { $in: ['Bandhkam Committee', 'Karobari'] },
+            committeeDate: { $exists: true, $ne: null }
+        })),
+        Package.countDocuments(buildCountQuery({ committee: 'Bandhkam Committee' })),
+        Package.countDocuments(buildCountQuery({ committee: 'Karobari' })),
+        Package.countDocuments(buildCountQuery({ committee: 'Not Required' })),
+        Package.countDocuments(buildCountQuery({
             $or: [
                 { committee: { $exists: false } },
                 { committee: null },
                 { committee: '' },
                 { committee: 'Not Determined' }
             ]
-        })
+        }))
     ]);
 
     const [packagesRaw, allApprovedWorks] = await Promise.all([
@@ -202,11 +270,13 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         
     const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
     const workSubDivisionMap = new Map<string, string>();
+    const workTypeMap = new Map<string, string>();
     const workBudgetHeadMap = new Map<string, string>();
     allApprovedWorks.forEach((aw: any) => {
         if (aw.workName) {
             const key = normalize(aw.workName);
             workSubDivisionMap.set(key, aw.subDivision || '');
+            workTypeMap.set(key, aw.workType || '');
             workBudgetHeadMap.set(key, aw.budgetHead || '');
         }
     });
@@ -215,6 +285,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         const firstWorkName = p.works && p.works[0]?.workName;
         const normalizedKey = firstWorkName ? normalize(firstWorkName) : '';
         const inferredSubDivision = normalizedKey ? workSubDivisionMap.get(normalizedKey) : '';
+        const inferredWorkType = normalizedKey ? workTypeMap.get(normalizedKey) : '';
         
         let inferredBudgetHead = '';
         if (p.works && p.works.length > 0) {
@@ -234,6 +305,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
             ...p,
             _id: p._id.toString(),
             subDivision: p.subDivision || inferredSubDivision || '-',
+            workType: p.workType || inferredWorkType || '-',
             budgetHead: p.budgetHead || inferredBudgetHead || '-',
             committee: p.committee || '',
             committeeDate: p.committeeDate || null
@@ -263,6 +335,13 @@ export default async function CommitteeListPage({ searchParams }: Props) {
             sortable: true,
             minWidth: '140px',
             render: (row) => row.subDivision
+        },
+        { 
+            key: 'workType', 
+            label: 'Work Type', 
+            sortable: true,
+            minWidth: '140px',
+            render: (row) => row.workType || '-'
         },
         {
             key: 'budgetHead',
@@ -346,33 +425,46 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         </div>
     );
 
+    const getFilterUrl = (filterVal?: string) => {
+        const p = new URLSearchParams();
+        if (params.search) p.set('search', params.search);
+        if (params.subDivision) p.set('subDivision', params.subDivision);
+        if (params.workType) p.set('workType', params.workType);
+        if (params.budgetHead) p.set('budgetHead', params.budgetHead);
+        if (params.committeeType) p.set('committeeType', params.committeeType);
+        if (filterVal) p.set('filter', filterVal);
+        const qs = p.toString();
+        return qs ? `/committee?${qs}` : '/committee';
+    };
+
     return (
         <ListPageLayout
             title="Committee Management"
             subtitle={filterLabel}
             searchPlaceholder="Search by package name..."
-            filterActive={!!params.filter || !!params.search || !!params.subDivision || !!params.budgetHead || !!params.committeeType}
+            filterActive={!!params.filter || !!params.search || !!params.subDivision || !!params.workType || !!params.budgetHead || !!params.committeeType}
             clearFiltersHref="/committee"
         >
             <CommitteeFilterBar 
                 subDivisions={subDivisions} 
+                workTypes={workTypes}
                 budgetHeads={budgetHeads} 
             />
             
             {/* Filter Tabs */}
             <div className="mb-6 flex flex-wrap items-center gap-2">
                 <Link
-                    href="/committee"
+                    href={getFilterUrl(undefined)}
                     className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
                         !params.filter
                             ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                 >
-                    All Packages
+                    All Packages ({allCount})
                 </Link>
                 <Link
-                    href="/committee?filter=pending_date"
+                    href={getFilterUrl('pending_date')}
                     className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
                         params.filter === 'pending_date'
                             ? 'bg-amber-600 border-amber-600 text-white shadow-xs'
@@ -390,7 +482,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
                     )}
                 </Link>
                 <Link
-                    href="/committee?filter=date_added"
+                    href={getFilterUrl('date_added')}
                     className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
                         params.filter === 'date_added'
                             ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
@@ -398,10 +490,10 @@ export default async function CommitteeListPage({ searchParams }: Props) {
                     }`}
                 >
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    Date Added
+                    Date Added ({dateAddedCount})
                 </Link>
                 <Link
-                    href="/committee?filter=bandhkam"
+                    href={getFilterUrl('bandhkam')}
                     className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
                         params.filter === 'bandhkam'
                             ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
@@ -411,7 +503,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
                     Bandhkam Committee ({bandhkamCount})
                 </Link>
                 <Link
-                    href="/committee?filter=karobari"
+                    href={getFilterUrl('karobari')}
                     className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
                         params.filter === 'karobari'
                             ? 'bg-purple-600 border-purple-600 text-white shadow-xs'
@@ -421,7 +513,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
                     Karobari ({karobariCount})
                 </Link>
                 <Link
-                    href="/committee?filter=not_required"
+                    href={getFilterUrl('not_required')}
                     className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
                         params.filter === 'not_required'
                             ? 'bg-slate-700 border-slate-700 text-white shadow-xs'
@@ -431,7 +523,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
                     Not Required ({notRequiredCount})
                 </Link>
                 <Link
-                    href="/committee?filter=not_determined"
+                    href={getFilterUrl('not_determined')}
                     className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${
                         params.filter === 'not_determined'
                             ? 'bg-amber-600 border-amber-600 text-white shadow-xs'

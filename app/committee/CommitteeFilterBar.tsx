@@ -6,20 +6,23 @@ import { Filter, X } from 'lucide-react';
 
 interface CommitteeFilterBarProps {
     subDivisions: string[];
+    workTypes: string[];
     budgetHeads: string[];
 }
 
-export default function CommitteeFilterBar({ subDivisions, budgetHeads }: CommitteeFilterBarProps) {
+export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHeads }: CommitteeFilterBarProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
     const [subDivision, setSubDivision] = useState(searchParams.get('subDivision') || '');
+    const [workType, setWorkType] = useState(searchParams.get('workType') || '');
     const [budgetHead, setBudgetHead] = useState(searchParams.get('budgetHead') || '');
     const [committeeType, setCommitteeType] = useState(searchParams.get('committeeType') || '');
 
     useEffect(() => {
         setSubDivision(searchParams.get('subDivision') || '');
+        setWorkType(searchParams.get('workType') || '');
         setBudgetHead(searchParams.get('budgetHead') || '');
         setCommitteeType(searchParams.get('committeeType') || '');
     }, [searchParams]);
@@ -30,6 +33,9 @@ export default function CommitteeFilterBar({ subDivisions, budgetHeads }: Commit
 
         if (subDivision) params.set('subDivision', subDivision);
         else params.delete('subDivision');
+
+        if (workType) params.set('workType', workType);
+        else params.delete('workType');
 
         if (budgetHead) params.set('budgetHead', budgetHead);
         else params.delete('budgetHead');
@@ -43,18 +49,20 @@ export default function CommitteeFilterBar({ subDivisions, budgetHeads }: Commit
     const handleClearFilters = () => {
         const params = new URLSearchParams(searchParams.toString());
         params.delete('subDivision');
+        params.delete('workType');
         params.delete('budgetHead');
         params.delete('committeeType');
         params.set('page', '1');
 
         setSubDivision('');
+        setWorkType('');
         setBudgetHead('');
         setCommitteeType('');
 
         router.push(`${pathname}?${params.toString()}`);
     };
 
-    const hasActiveFilters = !!(subDivision || budgetHead || committeeType);
+    const hasActiveFilters = !!(subDivision || workType || budgetHead || committeeType);
 
     return (
         <div className="bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-200 shadow-2xs">
@@ -63,7 +71,7 @@ export default function CommitteeFilterBar({ subDivisions, budgetHeads }: Commit
                 <span>Filter Committee Records</span>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
                 {/* Sub Division */}
                 <div>
                     <label htmlFor="filterSubDivision" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Sub Division</label>
@@ -76,6 +84,22 @@ export default function CommitteeFilterBar({ subDivisions, budgetHeads }: Commit
                         <option value="">All Sub Divisions</option>
                         {subDivisions.map(sd => (
                             <option key={sd} value={sd}>{sd}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Work Type */}
+                <div>
+                    <label htmlFor="filterWorkType" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Work Type</label>
+                    <select
+                        id="filterWorkType"
+                        value={workType}
+                        onChange={(e) => setWorkType(e.target.value)}
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
+                    >
+                        <option value="">All Work Types</option>
+                        {workTypes.map(wt => (
+                            <option key={wt} value={wt}>{wt}</option>
                         ))}
                     </select>
                 </div>
