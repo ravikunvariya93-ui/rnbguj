@@ -3522,6 +3522,9 @@ export default function PackageDetailClient({
                                                         <Link href={`/packages/${packageId}/bills/${bill._id}/deduction`} target="_blank" rel="noopener noreferrer" className="p-1.5 text-emerald-800 hover:bg-emerald-100 rounded-md cursor-pointer transition-colors" title="View Deduction Statement">
                                                             <FileSpreadsheet className="w-4 h-4" />
                                                         </Link>
+                                                        <Link href={`/packages/${packageId}/bills/${bill._id}/checklist`} target="_blank" rel="noopener noreferrer" className="p-1.5 text-emerald-800 hover:bg-emerald-100 rounded-md cursor-pointer transition-colors" title="View Bill Checklist">
+                                                            <ClipboardCheck className="w-4 h-4" />
+                                                        </Link>
                                                         <button onClick={() => handleOpenBillModal(bill)} className="p-1.5 text-emerald-700 hover:bg-emerald-100 rounded-md cursor-pointer transition-colors" title="Edit Bill">
                                                             <Edit2 className="w-4 h-4" />
                                                         </button>

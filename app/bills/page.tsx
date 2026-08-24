@@ -6,8 +6,7 @@ import LOA from '@/models/LOA';
 import Tender from '@/models/Tender';
 import Package from '@/models/Package';
 import Link from 'next/link';
-import { Eye, Edit2 } from 'lucide-react';
-import GenericDeleteButton from '@/components/GenericDeleteButton';
+import { Eye, Edit2, ClipboardCheck } from 'lucide-react';
 import Pagination from '@/components/Pagination';
 import ListPageLayout from '@/components/ListPageLayout';
 import DataTable from '@/components/DataTable';
@@ -146,21 +145,20 @@ export default async function BillsPage({ searchParams }: Props) {
         const tender = (row.workOrderId as any)?.loaId?.tenderId;
         const packageId = tender?.packageId;
         const viewHref = packageId ? `/packages/${packageId}/bills/${row._id}/deduction` : `/bills`;
+        const checklistHref = packageId ? `/packages/${packageId}/bills/${row._id}/checklist` : `/bills/${row._id}/checklist`;
         const editHref = packageId ? `/packages/${packageId}/bills/${row._id}/edit` : `/bills`;
 
         return (
             <div className="flex items-center justify-end space-x-3">
-                <Link href={viewHref} className="text-gray-600 hover:text-emerald-700 p-1 transition-colors" title="View Details in Package">
+                <Link href={viewHref} target="_blank" rel="noopener noreferrer" className="text-gray-600 hover:text-emerald-700 p-1 transition-colors" title="View Deduction Statement">
                     <Eye className="w-5 h-5" />
+                </Link>
+                <Link href={checklistHref} target="_blank" rel="noopener noreferrer" className="text-emerald-700 hover:text-emerald-900 p-1 transition-colors" title="View Bill Checklist">
+                    <ClipboardCheck className="w-5 h-5" />
                 </Link>
                 <Link href={editHref} className="text-emerald-600 hover:text-emerald-900 p-1 transition-colors" title="Edit Item">
                     <Edit2 className="w-5 h-5" />
                 </Link>
-                <GenericDeleteButton 
-                    itemId={row._id} 
-                    itemName={`Bill ${row.runningBillNumber}`} 
-                    apiPath="/api/bills" 
-                />
             </div>
         );
     };
