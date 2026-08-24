@@ -56,7 +56,7 @@ backups/
 scratch/
 inspect_bills*.js
 *.docx
-70.pdf
+*.pdf
 public/uploads/
 start_server.ps1
 

@@ -104,7 +104,7 @@ export default async function BillsPage({ searchParams }: Props) {
                 const nth = row.runningBillNumber === 1 ? 'st' : row.runningBillNumber === 2 ? 'nd' : row.runningBillNumber === 3 ? 'rd' : 'th';
                 const label = `${row.runningBillNumber}${nth} and ${row.billType} Bill`;
                 return packageId ? (
-                    <Link href={`/packages/${packageId}/bills?billId=${row._id}`} className="text-emerald-700 hover:underline font-semibold">
+                    <Link href={`/packages/${packageId}/bills/${row._id}/deduction`} className="text-emerald-700 hover:underline font-semibold" target="_blank" rel="noopener noreferrer">
                         {label}
                     </Link>
                 ) : (
@@ -145,7 +145,7 @@ export default async function BillsPage({ searchParams }: Props) {
     const renderActions = (row: any) => {
         const tender = (row.workOrderId as any)?.loaId?.tenderId;
         const packageId = tender?.packageId;
-        const viewHref = packageId ? `/packages/${packageId}/bills?billId=${row._id}` : `/bills`;
+        const viewHref = packageId ? `/packages/${packageId}/bills/${row._id}/deduction` : `/bills`;
         const editHref = packageId ? `/packages/${packageId}/bills/${row._id}/edit` : `/bills`;
 
         return (

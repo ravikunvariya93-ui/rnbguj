@@ -3519,23 +3519,11 @@ export default function PackageDetailClient({
                                                 <td className="border border-slate-200 px-4 py-1.5 text-right font-mono font-extrabold text-emerald-700">₹{bill.netPaidAmount?.toLocaleString('en-IN') || 0}</td>
                                                 <td className="border border-slate-200 px-4 py-1.5">
                                                     <div className="flex items-center justify-center gap-2">
-                                                        <Link href={`/packages/${packageId}/bills?billId=${bill._id}`} className="p-1 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md cursor-pointer transition-colors" title="View Full Bill Page">
-                                                            <Eye className="w-4 h-4" />
-                                                        </Link>
-                                                        <Link href={`/packages/${packageId}/bills/${bill._id}/deduction`} target="_blank" rel="noopener noreferrer" className="p-1 text-emerald-800 hover:bg-emerald-100 rounded-md cursor-pointer transition-colors" title="View Deduction Statement (Deduction.xls format)">
+                                                        <Link href={`/packages/${packageId}/bills/${bill._id}/deduction`} target="_blank" rel="noopener noreferrer" className="p-1.5 text-emerald-800 hover:bg-emerald-100 rounded-md cursor-pointer transition-colors" title="View Deduction Statement">
                                                             <FileSpreadsheet className="w-4 h-4" />
                                                         </Link>
-                                                        <Link href={`/packages/${packageId}/bills/${bill._id}/print-excess-saving`} target="_blank" rel="noopener noreferrer" className="p-1 text-teal-600 hover:bg-teal-50 rounded-md cursor-pointer transition-colors" title="Print Excess / Saving Statement">
-                                                            <Printer className="w-4 h-4" />
-                                                        </Link>
-                                                        <Link href={`/packages/${packageId}/bills/${bill._id}/checklist`} target="_blank" rel="noopener noreferrer" className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md cursor-pointer transition-colors" title="View Checklist">
-                                                            <CheckSquare className="w-4 h-4" />
-                                                        </Link>
-                                                        <button onClick={() => handleOpenBillModal(bill)} className="p-1 text-emerald-700 hover:bg-emerald-100 rounded-md cursor-pointer transition-colors" title="Edit Bill">
+                                                        <button onClick={() => handleOpenBillModal(bill)} className="p-1.5 text-emerald-700 hover:bg-emerald-100 rounded-md cursor-pointer transition-colors" title="Edit Bill">
                                                             <Edit2 className="w-4 h-4" />
-                                                        </button>
-                                                        <button onClick={() => handleDeleteBill(bill._id)} className="p-1 text-rose-600 hover:bg-rose-50 rounded-md cursor-pointer transition-colors" title="Delete Bill">
-                                                            <Trash2 className="w-4 h-4" />
                                                         </button>
                                                     </div>
                                                 </td>

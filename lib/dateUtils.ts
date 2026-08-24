@@ -19,10 +19,10 @@ export function formatDate(d: Date): string {
     return `${day}/${month}/${d.getFullYear()}`;
 }
 
-export function formatDateForInput(dateString: string): string {
+export function formatDateForInput(dateString: string | Date | null | undefined): string {
     if (!dateString) return '';
     try {
-        const dateObj = new Date(dateString);
+        const dateObj = dateString instanceof Date ? dateString : new Date(dateString);
         if (isNaN(dateObj.getTime())) return '';
         return formatDate(dateObj);
     } catch {

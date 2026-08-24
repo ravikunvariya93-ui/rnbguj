@@ -82,18 +82,18 @@ function parseBoqUniversal(pdfData: any): any[] {
                 if (/Description\s+of\s+Item/i.test(lineStr)) continue;
 
                 const first = line.texts[0];
-                if (!first || first.x > 4.5 || !/^\d{1,3}$/.test(first.text)) continue;
+                if (!first || first.x > 7.0 || !/^\d{1,3}$/.test(first.text)) continue;
                 const itemNum = parseInt(first.text, 10);
                 if (itemNum < 1 || itemNum > 999) continue;
 
-                const qtyText = line.texts.find((t: any) => t.x >= 19.0 && t.x <= 24.8 && isNum(t.text));
+                const qtyText = line.texts.find((t: any) => t.x >= 19.0 && t.x <= 25.0 && isNum(t.text));
                 const unitText = line.texts.find((t: any) => t.x >= 23.8 && t.x <= 27.5 && /^[A-Za-z.()]+$/i.test(t.text) && !/^(Total|Page|Rupees|Rates)/i.test(t.text));
                 const rateText = line.texts.find((t: any) => t.x >= 26.5 && t.x <= 31.5 && isNum(t.text));
-                const amtText = line.texts.find((t: any) => t.x >= 31.0 && isNum(t.text));
+                const amtText = line.texts.find((t: any) => t.x >= 30.5 && isNum(t.text));
 
                 if (qtyText && amtText) {
                     const descParts: string[] = [];
-                    line.texts.filter((t: any) => t.x >= 4.5 && t.x < qtyText.x && t !== first).forEach((t: any) => descParts.push(t.text));
+                    line.texts.filter((t: any) => t.x > first.x && t.x < qtyText.x && t !== first).forEach((t: any) => descParts.push(t.text));
 
                     let nextL = lIdx + 1;
                     while (nextL < p.lines.length) {
@@ -102,10 +102,10 @@ function parseBoqUniversal(pdfData: any): any[] {
                         if (/^1\s+2\s+3\s+4\s+5\s+6$/.test(nextLineStr.trim())) break;
 
                         const nextFirst = nextLine.texts[0];
-                        if (nextFirst && nextFirst.x <= 4.5 && /^\d{1,3}$/.test(nextFirst.text)) break;
+                        if (nextFirst && nextFirst.x <= 7.0 && /^\d{1,3}$/.test(nextFirst.text)) break;
                         if (nextFirst && /^(Total|Rupees|Page\s*\d|\*Estimated|Signature)/i.test(nextFirst.text)) break;
 
-                        nextLine.texts.filter((t: any) => t.x >= 4.5 && t.x < 20.5).forEach((t: any) => descParts.push(t.text));
+                        nextLine.texts.filter((t: any) => t.x >= 4.0 && t.x < 21.0).forEach((t: any) => descParts.push(t.text));
                         nextL++;
                     }
 

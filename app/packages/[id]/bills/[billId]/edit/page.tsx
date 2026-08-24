@@ -41,10 +41,10 @@ export default async function EditPackageBillPage({ params }: Props) {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="mb-6">
                 <Link
-                    href={`/packages/${packageId}/bills?billId=${billId}`}
+                    href={`/packages/${packageId}`}
                     className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
                 >
-                    <ArrowLeft className="w-4 h-4" /> Back to Bill
+                    <ArrowLeft className="w-4 h-4" /> Back to Package
                 </Link>
             </div>
 
@@ -53,7 +53,7 @@ export default async function EditPackageBillPage({ params }: Props) {
                 <p className="mt-1 text-xs text-slate-500">Update the financial or temporal details of this bill record.</p>
             </div>
 
-            <BillForm initialData={serializedBill} isEditing={true} redirectTo={`/packages/${packageId}/bills?billId=${billId}`} />
+            <BillForm initialData={serializedBill} isEditing={true} redirectTo={`/packages/${packageId}`} />
         </div>
     );
 }

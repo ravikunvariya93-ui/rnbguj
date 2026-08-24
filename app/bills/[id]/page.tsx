@@ -30,7 +30,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
 
     const packageId = bill.workOrderId?.loaId?.tenderId?.packageId;
     if (packageId) {
-        redirect(`/packages/${packageId}/bills?billId=${id}`);
+        redirect(`/packages/${packageId}`);
     }
 
     redirect('/bills');

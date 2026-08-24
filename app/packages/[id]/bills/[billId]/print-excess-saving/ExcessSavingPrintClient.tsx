@@ -195,10 +195,10 @@ export default function ExcessSavingPrintClient({
             <div className="no-print bg-slate-900 text-white px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-50 shadow-md">
                 <div className="flex items-center gap-3">
                     <Link
-                        href={`/packages/${packageData?._id}/bills?billId=${bill?._id}`}
+                        href={`/packages/${packageData?._id}`}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition-all border border-slate-700 cursor-pointer"
                     >
-                        <ArrowLeft className="w-4 h-4" /> Back to Bill
+                        <ArrowLeft className="w-4 h-4" /> Back to Package
                     </Link>
                     <div className="border-l border-slate-700 pl-3">
                         <h1 className="text-sm font-bold text-white flex items-center gap-2">
