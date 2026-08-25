@@ -14,7 +14,7 @@ import { parsePagination, parseSort } from '@/lib/queryHelpers';
 import type { ListPageSearchParams, Column } from '@/lib/types';
 import { auth } from '@/auth';
 import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
-import { formatShortDate } from '@/lib/dateUtils';
+import { formatShortDate, formatDate, parseDateStr } from '@/lib/dateUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -174,7 +174,54 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         return packageIdsWithLoa;
     };
 
-    if (params.hasLoa === 'yes') {
+    const getPackageIdsWithLoaDateRange = async (fromStr?: string, toStr?: string) => {
+        const dateQuery: any = {};
+        if (fromStr) {
+            const fromD = parseDateStr(fromStr) || new Date(fromStr);
+            if (!isNaN(fromD.getTime())) {
+                fromD.setHours(0, 0, 0, 0);
+                dateQuery.$gte = fromD;
+            }
+        }
+        if (toStr) {
+            const toD = parseDateStr(toStr) || new Date(toStr);
+            if (!isNaN(toD.getTime())) {
+                toD.setHours(23, 59, 59, 999);
+                dateQuery.$lte = toD;
+            }
+        }
+
+        const matchingLoas = await LOA.find({ acceptanceLetterDate: dateQuery }).distinct('tenderId');
+        const matchingTendersWithDate = await Tender.find({ acceptanceLetterDate: dateQuery }).distinct('_id');
+
+        const allMatchingTenderIds = Array.from(new Set([
+            ...matchingLoas.map((id: any) => id.toString()),
+            ...matchingTendersWithDate.map((id: any) => id.toString())
+        ]));
+
+        const matchingPackageIds = await Tender.find({
+            _id: { $in: allMatchingTenderIds },
+            packageId: { $exists: true, $ne: null },
+            cancelled: { $ne: true }
+        }).distinct('packageId');
+
+        return matchingPackageIds;
+    };
+
+    const loaFrom = params.loaFromDate || params.fromDate;
+    const loaTo = params.loaToDate || params.toDate;
+
+    if (loaFrom || loaTo) {
+        const pkgIds = await getPackageIdsWithLoaDateRange(loaFrom, loaTo);
+        baseConditions.push({ _id: { $in: pkgIds } });
+        if (loaFrom && loaTo) {
+            filterLabels.push(`LOA Date: ${formatDate(loaFrom)} to ${formatDate(loaTo)}`);
+        } else if (loaFrom) {
+            filterLabels.push(`LOA Date from: ${formatDate(loaFrom)}`);
+        } else if (loaTo) {
+            filterLabels.push(`LOA Date up to: ${formatDate(loaTo)}`);
+        }
+    } else if (params.hasLoa === 'yes') {
         const pkgIds = await getPackageIdsWithLoa();
         baseConditions.push({ _id: { $in: pkgIds } });
         filterLabels.push('LOA: Given');
@@ -254,10 +301,6 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         : "List of all packages with Committee approval status and dates.";
 
     const { page, limit, skip } = parsePagination(params);
-    const sortObj = parseSort(params, { createdAt: -1 });
-
-    const totalItems = await Package.countDocuments(query);
-    const totalPages = Math.ceil(totalItems / limit);
 
     // Fetch counts for quick filter badges respecting active filters
     const [
@@ -267,7 +310,11 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         bandhkamCount,
         karobariCount,
         notRequiredCount,
-        notDeterminedCount
+        notDeterminedCount,
+        packagesRaw,
+        allApprovedWorks,
+        allTenders,
+        allLoas
     ] = await Promise.all([
         Package.countDocuments(buildCountQuery()),
         Package.countDocuments(buildCountQuery({
@@ -288,36 +335,29 @@ export default async function CommitteeListPage({ searchParams }: Props) {
                 { committee: '' },
                 { committee: 'Not Determined' }
             ]
-        }))
+        })),
+        Package.find(query).lean(),
+        ApprovedWork.find({}).select('workName subDivision workType budgetHead').lean() as Promise<any[]>,
+        Tender.find({ cancelled: { $ne: true } }).select('_id packageId acceptanceLetterDate').lean(),
+        LOA.find({}).select('tenderId acceptanceLetterDate').lean()
     ]);
 
-    const [packagesRaw, allApprovedWorks] = await Promise.all([
-        Package.find(query)
-            .sort(sortObj)
-            .skip(skip)
-            .limit(limit)
-            .lean(),
-        ApprovedWork.find({}).select('workName subDivision workType budgetHead').lean() as Promise<any[]>
-    ]);
-
-    // Fetch LOA information for the displayed packages
-    const displayedPkgIds = packagesRaw.map((p: any) => p._id);
-    const displayedTenders = await Tender.find({
-        packageId: { $in: displayedPkgIds },
-        cancelled: { $ne: true }
-    }).select('_id packageId acceptanceLetterDate').lean();
-
-    const tenderIds = displayedTenders.map((t: any) => t._id);
-    const displayedLoas = await LOA.find({
-        tenderId: { $in: tenderIds }
-    }).select('tenderId acceptanceLetterDate').lean();
+    const loaByTenderId = new Map<string, Date>();
+    allLoas.forEach((l: any) => {
+        if (l.tenderId && l.acceptanceLetterDate) {
+            loaByTenderId.set(l.tenderId.toString(), l.acceptanceLetterDate);
+        }
+    });
 
     const loaMap = new Map<string, { acceptanceLetterDate?: Date }>();
-    displayedTenders.forEach((t: any) => {
-        const matchingLoa = displayedLoas.find((l: any) => l.tenderId?.toString() === t._id.toString());
-        const date = matchingLoa?.acceptanceLetterDate || t.acceptanceLetterDate;
-        if (date || matchingLoa) {
-            loaMap.set(t.packageId.toString(), { acceptanceLetterDate: date });
+    allTenders.forEach((t: any) => {
+        if (t.packageId) {
+            const date = loaByTenderId.get(t._id.toString()) || t.acceptanceLetterDate;
+            if (date) {
+                loaMap.set(t.packageId.toString(), { acceptanceLetterDate: date });
+            } else if (loaByTenderId.has(t._id.toString())) {
+                loaMap.set(t.packageId.toString(), {});
+            }
         }
     });
         
@@ -334,7 +374,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         }
     });
 
-    const packages = packagesRaw.map((p: any) => {
+    const allResolvedPackages = packagesRaw.map((p: any) => {
         const firstWorkName = p.works && p.works[0]?.workName;
         const normalizedKey = firstWorkName ? normalize(firstWorkName) : '';
         const inferredSubDivision = normalizedKey ? workSubDivisionMap.get(normalizedKey) : '';
@@ -368,6 +408,55 @@ export default async function CommitteeListPage({ searchParams }: Props) {
             loaDate: loaInfo?.acceptanceLetterDate || null
         };
     });
+
+    // Global in-memory sorting across all resolved packages
+    const sortField = params.sort;
+    const sortOrder = params.order === 'desc' ? -1 : 1;
+
+    if (sortField) {
+        allResolvedPackages.sort((a: any, b: any) => {
+            if (sortField === 'loaDate' || sortField === 'loaStatus') {
+                const timeA = a.loaDate ? new Date(a.loaDate).getTime() : (a.hasLoa ? 1 : 0);
+                const timeB = b.loaDate ? new Date(b.loaDate).getTime() : (b.hasLoa ? 1 : 0);
+                if (!timeA && !timeB) return 0;
+                if (!timeA) return 1;
+                if (!timeB) return -1;
+                return (timeA - timeB) * sortOrder;
+            }
+
+            if (sortField === 'committeeDate') {
+                const timeA = a.committeeDate ? new Date(a.committeeDate).getTime() : 0;
+                const timeB = b.committeeDate ? new Date(b.committeeDate).getTime() : 0;
+                if (!timeA && !timeB) return 0;
+                if (!timeA) return 1;
+                if (!timeB) return -1;
+                return (timeA - timeB) * sortOrder;
+            }
+
+            const valA = a[sortField];
+            const valB = b[sortField];
+
+            if (typeof valA === 'string' || typeof valB === 'string') {
+                const strA = (valA || '').toString().trim().toLowerCase();
+                const strB = (valB || '').toString().trim().toLowerCase();
+                return strA.localeCompare(strB) * sortOrder;
+            }
+
+            if (valA < valB) return -1 * sortOrder;
+            if (valA > valB) return 1 * sortOrder;
+            return 0;
+        });
+    } else {
+        allResolvedPackages.sort((a: any, b: any) => {
+            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return timeB - timeA;
+        });
+    }
+
+    const totalItems = allResolvedPackages.length;
+    const totalPages = Math.ceil(totalItems / limit);
+    const packages = allResolvedPackages.slice(skip, skip + limit);
 
     const columns: Column[] = [
         { 
@@ -470,9 +559,10 @@ export default async function CommitteeListPage({ searchParams }: Props) {
             }
         },
         {
-            key: 'loaStatus',
-            label: 'LOA Status',
-            minWidth: '140px',
+            key: 'loaDate',
+            label: 'LOA Status / Date',
+            sortable: true,
+            minWidth: '150px',
             render: (row) => {
                 if (row.hasLoa) {
                     return (
@@ -510,6 +600,12 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         if (params.budgetHead) p.set('budgetHead', params.budgetHead);
         if (params.committeeType) p.set('committeeType', params.committeeType);
         if (params.hasLoa) p.set('hasLoa', params.hasLoa);
+        if (params.loaFromDate) p.set('loaFromDate', params.loaFromDate);
+        if (params.loaToDate) p.set('loaToDate', params.loaToDate);
+        if (params.fromDate) p.set('fromDate', params.fromDate);
+        if (params.toDate) p.set('toDate', params.toDate);
+        if (params.sort) p.set('sort', params.sort);
+        if (params.order) p.set('order', params.order);
         if (filterVal) p.set('filter', filterVal);
         const qs = p.toString();
         return qs ? `/committee?${qs}` : '/committee';
@@ -520,7 +616,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
             title="Committee Management"
             subtitle={filterLabel}
             searchPlaceholder="Search by package name..."
-            filterActive={!!params.filter || !!params.search || !!params.subDivision || !!params.workType || !!params.budgetHead || !!params.committeeType || !!params.hasLoa}
+            filterActive={!!params.filter || !!params.search || !!params.subDivision || !!params.workType || !!params.budgetHead || !!params.committeeType || !!params.hasLoa || !!params.loaFromDate || !!params.loaToDate || !!params.fromDate || !!params.toDate || !!params.sort}
             clearFiltersHref="/committee"
         >
             <CommitteeFilterBar 

@@ -51,7 +51,7 @@ export default async function BillsPage({ searchParams }: Props) {
     }
 
     if (params.search) {
-        // Find matching Tenders by package name
+        // Find matching Tenders by package name or contractor name
         let matchingPackageIds: any[] = [];
         const packageSearchFilter: any = {
             packageName: { $regex: params.search, $options: 'i' }
@@ -62,7 +62,14 @@ export default async function BillsPage({ searchParams }: Props) {
         }
         matchingPackageIds = (await Package.find(packageSearchFilter).distinct('_id')) as any[];
 
-        const matchingTenders = (await Tender.find({ packageId: { $in: matchingPackageIds } }).distinct('_id')) as any[];
+        const tenderSearchFilter: any = {
+            $or: [
+                { packageId: { $in: matchingPackageIds } },
+                { contractorName: { $regex: params.search, $options: 'i' } }
+            ]
+        };
+
+        const matchingTenders = (await Tender.find(tenderSearchFilter).distinct('_id')) as any[];
         const matchingLOAs = (await LOA.find({ tenderId: { $in: matchingTenders } }).distinct('_id')) as any[];
         const matchingWorkOrders = (await WorkOrder.find({ loaId: { $in: matchingLOAs } }).distinct('_id')) as any[];
         query.workOrderId = { $in: matchingWorkOrders };
@@ -127,11 +134,21 @@ export default async function BillsPage({ searchParams }: Props) {
                 )
             }
         },
+        {
+            key: 'contractorName',
+            label: 'Contractor Name',
+            sortable: true,
+            minWidth: '160px',
+            render: (row) => {
+                const tender = (row.workOrderId as any)?.loaId?.tenderId;
+                return <span className="font-medium text-slate-800">{tender?.contractorName || '-'}</span>;
+            }
+        },
         { 
             key: 'grossamount', 
             label: 'Gross Amount', 
             sortable: true,
-            render: (row) => <span className="font-mono">₹{row.grossAmount?.toLocaleString('en-IN')}</span>
+            render: (row) => <span className="font-mono font-semibold text-slate-800">₹{row.grossAmount?.toLocaleString('en-IN')}</span>
         },
         { 
             key: 'billdate', 
@@ -172,7 +189,7 @@ export default async function BillsPage({ searchParams }: Props) {
             }
             addHref="/bills/new"
             addLabel="Add Bill"
-            searchPlaceholder="Search by package name..."
+            searchPlaceholder="Search by package or contractor name..."
             filterActive={!!params.search}
             clearFiltersHref="/bills"
         >

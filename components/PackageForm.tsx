@@ -11,6 +11,7 @@ interface PackageFormProps {
 }
 
 import SearchableSelect from './SearchableSelect';
+import { formatDateForInput, parseDateStr } from '@/lib/dateUtils';
 
 export default function PackageForm({ initialData = {}, isEditing = false }: PackageFormProps) {
     const router = useRouter();
@@ -87,21 +88,27 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
         initialData.finalContractPrice !== undefined ? String(initialData.finalContractPrice) : ''
     );
     const [committeeDate, setCommitteeDate] = useState(
-        initialData.committeeDate ? new Date(initialData.committeeDate).toISOString().split('T')[0] : ''
+        initialData.committeeDate ? formatDateForInput(initialData.committeeDate) : ''
     );
 
-    // Auto-determine committee based on finalContractPrice and budgetHead
+    // Auto-determine committee based on workType, finalContractPrice and budgetHead
     const autoCommittee = useMemo(() => {
+        const isBuilding = (workType || '').trim().toLowerCase() === 'building';
+        const cp = parseFloat(finalContractPrice) || 0;
+
+        if (isBuilding) {
+            return cp >= 3000000 ? 'Karobari' : 'Bandhkam Committee';
+        }
+
         const bhRaw = budgetHead.trim();
         if (!bhRaw) return ''; // no budget head yet
-        const cp = parseFloat(finalContractPrice) || 0;
         const bh = bhRaw.toLowerCase();
         const bandhkamBudgets = ['15th finance commission', '2515 cdp-5', 'dp own fund', 'ddo shri pravas grant', 'icds', 'pending'];
         const karobariBudgets = ['3054 s.r.', 'buj', 'pending'];
-        const isBandhkam = cp < 2500000 && bandhkamBudgets.some(b => bh.includes(b));
-        const isKarobari = cp >= 2500000 && karobariBudgets.some(b => bh.includes(b));
+        const isBandhkam = cp < 3000000 && bandhkamBudgets.some(b => bh.includes(b));
+        const isKarobari = cp >= 3000000 && karobariBudgets.some(b => bh.includes(b));
         return isBandhkam ? 'Bandhkam Committee' : isKarobari ? 'Karobari' : 'Not Required';
-    }, [finalContractPrice, budgetHead]);
+    }, [workType, finalContractPrice, budgetHead]);
 
     useEffect(() => {
         const fetchBudgetHeads = async () => {
@@ -308,7 +315,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                 dtpConsultant,
                 works: selectedWorks,
                 committee: autoCommittee,
-                committeeDate: committeeDate || undefined,
+                committeeDate: committeeDate ? (parseDateStr(committeeDate)?.toISOString() || committeeDate) : undefined,
             };
 
             const url = isEditing ? `/api/packages/${initialData._id}` : '/api/packages';
@@ -591,18 +598,21 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                                     </span>
                                     {autoCommittee !== 'Not Required' && (
                                         <span className="text-xs text-gray-500">
-                                            {autoCommittee === 'Bandhkam Committee'
-                                                ? `(Contract price < ₹25L & Budget Head matches)`
-                                                : `(Contract price ≥ ₹25L & Budget Head matches)`}
+                                            {(workType || '').trim().toLowerCase() === 'building'
+                                                ? `(Building Work: ${autoCommittee === 'Bandhkam Committee' ? 'Price < ₹30L → Bandhkam' : 'Price ≥ ₹30L → Karobari'})`
+                                                : autoCommittee === 'Bandhkam Committee'
+                                                ? `(Contract price < ₹30L & Budget Head matches)`
+                                                : `(Contract price ≥ ₹30L & Budget Head matches)`}
                                         </span>
                                     )}
                                 </div>
                             ) : (
                                 <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                                    ⚠️ Select a Budget Head to determine committee. Qualifying heads:
+                                    ⚠️ Select Work Type or Budget Head to determine committee.
                                     <ul className="mt-1 ml-4 list-disc text-xs text-amber-600 space-y-0.5">
-                                        <li><strong>Bandhkam Committee</strong> (price &lt; ₹25L): 15th Finance Commission, 2515 CDP-5, DP OWN FUND - DDO Shri Pravas Grant, ICDS, Pending</li>
-                                        <li><strong>Karobari</strong> (price ≥ ₹25L): 3054 S.R., BUJ, Pending</li>
+                                        <li><strong>Building Works</strong>: Always required (Bandhkam &lt; ₹30L, Karobari ≥ ₹30L)</li>
+                                        <li><strong>Other Works - Bandhkam</strong> (price &lt; ₹30L): 15th Finance Commission, 2515 CDP-5, DP OWN FUND - DDO Shri Pravas Grant, ICDS, Pending</li>
+                                        <li><strong>Other Works - Karobari</strong> (price ≥ ₹30L): 3054 S.R., BUJ, Pending</li>
                                     </ul>
                                 </div>
                             )}
@@ -613,10 +623,29 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Committee Date</label>
                                 <input
-                                    type="date"
+                                    type="text"
+                                    placeholder="DD/MM/YYYY"
                                     value={committeeDate}
                                     onChange={(e) => setCommitteeDate(e.target.value)}
-                                    className="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                                    onPaste={(e) => {
+                                        const pasted = e.clipboardData.getData('text');
+                                        if (pasted) {
+                                            const formatted = formatDateForInput(pasted.trim());
+                                            if (formatted) {
+                                                e.preventDefault();
+                                                setCommitteeDate(formatted);
+                                            }
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        if (committeeDate) {
+                                            const formatted = formatDateForInput(committeeDate.trim());
+                                            if (formatted) {
+                                                setCommitteeDate(formatted);
+                                            }
+                                        }
+                                    }}
+                                    className="block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border font-mono"
                                 />
                             </div>
                         )}

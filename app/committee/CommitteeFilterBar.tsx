@@ -20,6 +20,16 @@ export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHead
     const [budgetHead, setBudgetHead] = useState(searchParams.get('budgetHead') || '');
     const [committeeType, setCommitteeType] = useState(searchParams.get('committeeType') || '');
     const [hasLoa, setHasLoa] = useState(searchParams.get('hasLoa') || '');
+    const [loaFromDate, setLoaFromDate] = useState(searchParams.get('loaFromDate') || searchParams.get('fromDate') || '');
+    const [loaToDate, setLoaToDate] = useState(searchParams.get('loaToDate') || searchParams.get('toDate') || '');
+    
+    const getSortKey = () => {
+        const s = searchParams.get('sort');
+        const o = searchParams.get('order') || 'asc';
+        if (!s) return '';
+        return `${s}_${o}`;
+    };
+    const [sortOption, setSortOption] = useState(getSortKey());
 
     useEffect(() => {
         setSubDivision(searchParams.get('subDivision') || '');
@@ -27,6 +37,9 @@ export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHead
         setBudgetHead(searchParams.get('budgetHead') || '');
         setCommitteeType(searchParams.get('committeeType') || '');
         setHasLoa(searchParams.get('hasLoa') || '');
+        setLoaFromDate(searchParams.get('loaFromDate') || searchParams.get('fromDate') || '');
+        setLoaToDate(searchParams.get('loaToDate') || searchParams.get('toDate') || '');
+        setSortOption(getSortKey());
     }, [searchParams]);
 
     const handleApplyFilters = () => {
@@ -48,6 +61,27 @@ export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHead
         if (hasLoa) params.set('hasLoa', hasLoa);
         else params.delete('hasLoa');
 
+        if (loaFromDate) params.set('loaFromDate', loaFromDate);
+        else {
+            params.delete('loaFromDate');
+            params.delete('fromDate');
+        }
+
+        if (loaToDate) params.set('loaToDate', loaToDate);
+        else {
+            params.delete('loaToDate');
+            params.delete('toDate');
+        }
+
+        if (sortOption) {
+            const [field, order] = sortOption.split('_');
+            params.set('sort', field);
+            params.set('order', order || 'asc');
+        } else {
+            params.delete('sort');
+            params.delete('order');
+        }
+
         router.push(`${pathname}?${params.toString()}`);
     };
 
@@ -58,6 +92,12 @@ export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHead
         params.delete('budgetHead');
         params.delete('committeeType');
         params.delete('hasLoa');
+        params.delete('loaFromDate');
+        params.delete('loaToDate');
+        params.delete('fromDate');
+        params.delete('toDate');
+        params.delete('sort');
+        params.delete('order');
         params.set('page', '1');
 
         setSubDivision('');
@@ -65,11 +105,14 @@ export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHead
         setBudgetHead('');
         setCommitteeType('');
         setHasLoa('');
+        setLoaFromDate('');
+        setLoaToDate('');
+        setSortOption('');
 
         router.push(`${pathname}?${params.toString()}`);
     };
 
-    const hasActiveFilters = !!(subDivision || workType || budgetHead || committeeType || hasLoa);
+    const hasActiveFilters = !!(subDivision || workType || budgetHead || committeeType || hasLoa || loaFromDate || loaToDate || sortOption);
 
     return (
         <div className="bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-200 shadow-2xs">
@@ -78,7 +121,7 @@ export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHead
                 <span>Filter Committee Records</span>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3 items-end">
                 {/* Sub Division */}
                 <div>
                     <label htmlFor="filterSubDivision" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Sub Division</label>
@@ -86,7 +129,7 @@ export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHead
                         id="filterSubDivision"
                         value={subDivision}
                         onChange={(e) => setSubDivision(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     >
                         <option value="">All Sub Divisions</option>
                         {subDivisions.map(sd => (
@@ -102,7 +145,7 @@ export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHead
                         id="filterWorkType"
                         value={workType}
                         onChange={(e) => setWorkType(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     >
                         <option value="">All Work Types</option>
                         {workTypes.map(wt => (
@@ -118,7 +161,7 @@ export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHead
                         id="filterBudgetHead"
                         value={budgetHead}
                         onChange={(e) => setBudgetHead(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     >
                         <option value="">All Budget Heads</option>
                         {budgetHeads.map(bh => (
@@ -134,7 +177,7 @@ export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHead
                         id="filterCommitteeType"
                         value={committeeType}
                         onChange={(e) => setCommitteeType(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     >
                         <option value="">All Types</option>
                         <option value="Bandhkam Committee">Bandhkam Committee</option>
@@ -151,11 +194,62 @@ export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHead
                         id="filterHasLoa"
                         value={hasLoa}
                         onChange={(e) => setHasLoa(e.target.value)}
-                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     >
                         <option value="">All LOA Status</option>
                         <option value="yes">LOA Given</option>
                         <option value="no">LOA Not Given</option>
+                    </select>
+                </div>
+
+                {/* LOA From Date */}
+                <div>
+                    <label htmlFor="filterLoaFromDate" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">LOA From Date</label>
+                    <input
+                        type="date"
+                        id="filterLoaFromDate"
+                        value={loaFromDate}
+                        onChange={(e) => setLoaFromDate(e.target.value)}
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-1.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
+                    />
+                </div>
+
+                {/* LOA To Date */}
+                <div>
+                    <label htmlFor="filterLoaToDate" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">LOA To Date</label>
+                    <input
+                        type="date"
+                        id="filterLoaToDate"
+                        value={loaToDate}
+                        onChange={(e) => setLoaToDate(e.target.value)}
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-1.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
+                    />
+                </div>
+
+                {/* Sort By */}
+                <div>
+                    <label htmlFor="filterSortBy" className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Sort By</label>
+                    <select
+                        id="filterSortBy"
+                        value={sortOption}
+                        onChange={(e) => setSortOption(e.target.value)}
+                        className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
+                    >
+                        <option value="">Default (Newest First)</option>
+                        <option value="packageName_asc">Package Name (A → Z)</option>
+                        <option value="packageName_desc">Package Name (Z → A)</option>
+                        <option value="subDivision_asc">Sub Division (A → Z)</option>
+                        <option value="subDivision_desc">Sub Division (Z → A)</option>
+                        <option value="workType_asc">Work Type (A → Z)</option>
+                        <option value="workType_desc">Work Type (Z → A)</option>
+                        <option value="budgetHead_asc">Budget Head (A → Z)</option>
+                        <option value="budgetHead_desc">Budget Head (Z → A)</option>
+                        <option value="committee_asc">Committee (A → Z)</option>
+                        <option value="committee_desc">Committee (Z → A)</option>
+                        <option value="committeeDate_desc">Committee Date (Latest First)</option>
+                        <option value="committeeDate_asc">Committee Date (Oldest First)</option>
+                        <option value="loaDate_desc">LOA Date (Latest First)</option>
+                        <option value="loaDate_asc">LOA Date (Oldest First)</option>
                     </select>
                 </div>
             </div>

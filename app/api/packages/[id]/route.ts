@@ -6,6 +6,7 @@ import Tender from '@/models/Tender';
 import Approval from '@/models/Approval';
 import LOA from '@/models/LOA';
 import WorkOrder from '@/models/WorkOrder';
+import { parseDateStr } from '@/lib/dateUtils';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -30,6 +31,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         const body = await request.json();
 
         delete body._id;
+        if (body.committeeDate !== undefined) {
+            body.committeeDate = body.committeeDate ? parseDateStr(body.committeeDate) : null;
+        }
 
         const pkg = await Package.findByIdAndUpdate(id, body, {
             new: true,

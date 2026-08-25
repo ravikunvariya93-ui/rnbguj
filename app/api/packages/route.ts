@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Package from '@/models/Package';
+import { parseDateStr } from '@/lib/dateUtils';
 
 export async function POST(request: Request) {
     try {
         await dbConnect();
         const body = await request.json();
+        if (body.committeeDate !== undefined) {
+            body.committeeDate = body.committeeDate ? parseDateStr(body.committeeDate) : null;
+        }
 
         const pkg = await Package.create(body);
 

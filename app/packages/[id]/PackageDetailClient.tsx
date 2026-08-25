@@ -452,7 +452,7 @@ export default function PackageDetailClient({
                 works: pkg.works || [],
                 budgetHead: pkg.budgetHead || '',
                 committee: pkg.committee || '',
-                committeeDate: pkg.committeeDate ? new Date(pkg.committeeDate).toISOString().split('T')[0] : '',
+                committeeDate: pkg.committeeDate ? formatDateForInput(pkg.committeeDate) : '',
             });
         } else if (section === 'dtp') {
             setDtpForm({
@@ -789,7 +789,8 @@ export default function PackageDetailClient({
             const submissionData = {
                 ...pkgForm,
                 buildingType: pkgForm.workType === 'Building' ? pkgForm.buildingType : undefined,
-                works: sanitizedWorks
+                works: sanitizedWorks,
+                committeeDate: pkgForm.committeeDate ? (parseDateStr(pkgForm.committeeDate)?.toISOString() || pkgForm.committeeDate) : null,
             };
             const res = await fetch(`/api/packages/${packageId}`, {
                 method: 'PUT',
@@ -1930,14 +1931,23 @@ export default function PackageDetailClient({
                                             </tr>
                                             {/* Committee Section */}
                                             {(() => {
+                                                const isBuilding = (pkgForm.workType || '').trim().toLowerCase() === 'building';
                                                 const bhRaw = (pkgForm.budgetHead || '').trim();
                                                 const bh = bhRaw.toLowerCase();
                                                 const cp = tender?.contractPrice || 0;
-                                                const bandhkamBudgets = ['15th finance commission', '2515 cdp-5', 'dp own fund', 'ddo shri pravas grant', 'icds', 'pending'];
-                                                const karobariBudgets = ['3054 s.r.', 'buj', 'pending'];
-                                                const isBandhkam = cp < 2500000 && bandhkamBudgets.some(b => bh.includes(b));
-                                                const isKarobari = cp >= 2500000 && karobariBudgets.some(b => bh.includes(b));
-                                                const autoCommittee = !bhRaw ? '' : isBandhkam ? 'Bandhkam Committee' : isKarobari ? 'Karobari' : 'Not Required';
+                                                
+                                                let autoCommittee = '';
+                                                if (isBuilding) {
+                                                    autoCommittee = cp >= 3000000 ? 'Karobari' : 'Bandhkam Committee';
+                                                } else if (!bhRaw) {
+                                                    autoCommittee = '';
+                                                } else {
+                                                    const bandhkamBudgets = ['15th finance commission', '2515 cdp-5', 'dp own fund', 'ddo shri pravas grant', 'icds', 'pending'];
+                                                    const karobariBudgets = ['3054 s.r.', 'buj', 'pending'];
+                                                    const isBandhkam = cp < 3000000 && bandhkamBudgets.some(b => bh.includes(b));
+                                                    const isKarobari = cp >= 3000000 && karobariBudgets.some(b => bh.includes(b));
+                                                    autoCommittee = isBandhkam ? 'Bandhkam Committee' : isKarobari ? 'Karobari' : 'Not Required';
+                                                }
                                                 // Sync auto-determined value into form
                                                 if (autoCommittee && pkgForm.committee !== autoCommittee) {
                                                     setTimeout(() => setPkgForm((prev: any) => ({ ...prev, committee: autoCommittee })), 0);
@@ -1978,9 +1988,28 @@ export default function PackageDetailClient({
                                                                 <td className="excel-label">Committee Date</td>
                                                                 <td className="excel-value" colSpan={3}>
                                                                     <input
-                                                                        type="date"
+                                                                        type="text"
+                                                                        placeholder="DD/MM/YYYY"
                                                                         value={pkgForm.committeeDate || ''}
                                                                         onChange={(e) => setPkgForm((prev: any) => ({ ...prev, committeeDate: e.target.value }))}
+                                                                        onPaste={(e) => {
+                                                                            const pasted = e.clipboardData.getData('text');
+                                                                            if (pasted) {
+                                                                                const formatted = formatDateForInput(pasted.trim());
+                                                                                if (formatted) {
+                                                                                    e.preventDefault();
+                                                                                    setPkgForm((prev: any) => ({ ...prev, committeeDate: formatted }));
+                                                                                }
+                                                                            }
+                                                                        }}
+                                                                        onBlur={() => {
+                                                                            if (pkgForm.committeeDate) {
+                                                                                const formatted = formatDateForInput(pkgForm.committeeDate.trim());
+                                                                                if (formatted) {
+                                                                                    setPkgForm((prev: any) => ({ ...prev, committeeDate: formatted }));
+                                                                                }
+                                                                            }
+                                                                        }}
                                                                         className="excel-cell-input"
                                                                     />
                                                                 </td>
@@ -3486,8 +3515,8 @@ export default function PackageDetailClient({
                                                 </td>
                                                 <td className="border border-slate-200 px-4 py-1.5 text-center font-semibold">
                                                     {(() => {
-                                                        const compTargetDate = workOrder?.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate) : null;
-                                                        if (!compTargetDate) return '-';
+                                                        const compTargetDate = workOrder?.stipulatedCompletionDate ? (parseDateStr(workOrder.stipulatedCompletionDate) || new Date(workOrder.stipulatedCompletionDate)) : null;
+                                                        if (!compTargetDate || isNaN(compTargetDate.getTime())) return '-';
                                                         
                                                         const getDaysDiff = (date1: Date, date2: Date) => {
                                                              const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
@@ -3499,11 +3528,17 @@ export default function PackageDetailClient({
                                                         let daysDelay = 0;
                                                         if (bill.billType === 'Running') {
                                                             if (bill.lastRecordEntryDate) {
-                                                                daysDelay = Math.max(0, getDaysDiff(new Date(bill.lastRecordEntryDate), compTargetDate));
+                                                                const dt = parseDateStr(bill.lastRecordEntryDate) || new Date(bill.lastRecordEntryDate);
+                                                                if (!isNaN(dt.getTime())) {
+                                                                    daysDelay = Math.max(0, getDaysDiff(dt, compTargetDate));
+                                                                }
                                                             }
                                                         } else {
                                                             if (bill.actualCompletionDate) {
-                                                                daysDelay = Math.max(0, getDaysDiff(new Date(bill.actualCompletionDate), compTargetDate));
+                                                                const dt = parseDateStr(bill.actualCompletionDate) || new Date(bill.actualCompletionDate);
+                                                                if (!isNaN(dt.getTime())) {
+                                                                    daysDelay = Math.max(0, getDaysDiff(dt, compTargetDate));
+                                                                }
                                                             }
                                                         }
                                                         
