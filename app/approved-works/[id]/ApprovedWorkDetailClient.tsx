@@ -7,9 +7,10 @@ import {
     ArrowLeft, Save, Edit2, Plus, Trash2, CheckCircle2, XCircle, X, Loader2, 
     Calendar, FileText, Settings, Award, Check, ChevronDown, ListPlus, 
     Receipt, DollarSign, Eye, AlertCircle, FileCheck, Layers, ClipboardCheck,
-    Briefcase, FileSpreadsheet, Percent, Building2, User2, Clock
+    Briefcase, FileSpreadsheet, Percent, Building2, User2, Clock, Languages
 } from 'lucide-react';
 import { parseDateStr, formatDate, formatDateForInput } from '@/lib/dateUtils';
+import { transliteratePackageNameToGujarati } from '@/lib/transliterateGujarati';
 import SearchableSelect from '@/components/SearchableSelect';
 import BillForm from '@/components/BillForm';
 
@@ -223,6 +224,7 @@ export default function ApprovedWorkDetailClient({
         } else if (section === 'package') {
             setPkgForm({
                 packageName: pkg?.packageName || work.workName + (work.workType ? " " + work.workType + " Package" : " Package"),
+                packageNameGujarati: pkg?.packageNameGujarati || (work.workNameGujarati ? work.workNameGujarati + (work.workType ? " " + work.workType + " પેકેજ" : " પેકેજ") : ''),
                 subDivision: pkg?.subDivision || work.subDivision || '',
                 dtpConsultant: pkg?.dtpConsultant || '',
                 works: pkg?.works || [{ workId: ts?._id, workName: work.workName, amount: (ts?.tsAmount || 0) * 100000 }],
@@ -493,6 +495,7 @@ export default function ApprovedWorkDetailClient({
         try {
             const data = {
                 packageName: pkgForm.packageName,
+                packageNameGujarati: pkgForm.packageNameGujarati,
                 subDivision: pkgForm.subDivision,
                 dtpConsultant: pkgForm.dtpConsultant,
                 works: [{ workId: ts._id, workName: work.workName, amount: (ts.tsAmount || 0) * 100000 }]
@@ -1424,7 +1427,44 @@ export default function ApprovedWorkDetailClient({
                                             <tr>
                                                 <td className="excel-label">Package Name *</td>
                                                 <td className="excel-value" colSpan={3}>
-                                                    <input type="text" name="packageName" value={pkgForm.packageName} onChange={(e) => setPkgForm((prev: any) => ({ ...prev, packageName: e.target.value }))} required className="excel-cell-input" />
+                                                    <div className="flex items-center gap-2">
+                                                        <input 
+                                                            type="text" 
+                                                            name="packageName" 
+                                                            value={pkgForm.packageName || ''} 
+                                                            onChange={(e) => setPkgForm((prev: any) => ({ ...prev, packageName: e.target.value }))} 
+                                                            required 
+                                                            className="excel-cell-input flex-grow" 
+                                                            placeholder="e.g. Resurfacing Of Ugalavan to Sarera Road (NPBT) KM.0/000 to 3/100, Ta.Jesar Dist.Bhavnagar"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (pkgForm.packageName) {
+                                                                    const converted = transliteratePackageNameToGujarati(pkgForm.packageName);
+                                                                    setPkgForm((prev: any) => ({ ...prev, packageNameGujarati: converted }));
+                                                                }
+                                                            }}
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#107c41] hover:bg-[#0f5b30] text-white rounded-lg text-xs font-semibold whitespace-nowrap shadow-xs transition-colors cursor-pointer"
+                                                            title="Transliterate English Package Name to Gujarati script (no translation)"
+                                                        >
+                                                            <Languages className="w-3.5 h-3.5" />
+                                                            Convert to Gujarati
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td className="excel-label">Package Name in Gujarati</td>
+                                                <td className="excel-value" colSpan={3}>
+                                                    <input 
+                                                        type="text" 
+                                                        name="packageNameGujarati" 
+                                                        value={pkgForm.packageNameGujarati || ''} 
+                                                        onChange={(e) => setPkgForm((prev: any) => ({ ...prev, packageNameGujarati: e.target.value }))} 
+                                                        className="excel-cell-input font-medium" 
+                                                        placeholder="દા.ત. રીસરફેસીંગ ઓફ ઉગલવાણ ટુ સરેરા રોડ (એનપીબીટી) કિમી ૦/૦૦૦ ટુ ૩/૧૦૦, તા. જેસર, જિ. ભાવનગર"
+                                                    />
                                                 </td>
                                             </tr>
                                             <tr>
@@ -1476,7 +1516,12 @@ export default function ApprovedWorkDetailClient({
                                     <tbody>
                                         <tr>
                                             <td className="excel-label">Package Name</td>
-                                            <td className="excel-value w-[30%]">{pkg.packageName}</td>
+                                            <td className="excel-value w-[30%]">
+                                                <div>{pkg.packageName}</div>
+                                                {pkg.packageNameGujarati && (
+                                                    <div className="text-xs text-slate-500 font-medium mt-0.5">{pkg.packageNameGujarati}</div>
+                                                )}
+                                            </td>
                                             <td className="excel-label">Sub-Division / DTP Consultant</td>
                                             <td className="excel-value w-[30%]">{pkg.subDivision || '-'} &nbsp;|&nbsp; {pkg.dtpConsultant || '-'}</td>
                                         </tr>

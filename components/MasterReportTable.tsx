@@ -246,7 +246,28 @@ export default function MasterReportTable({ data }: MasterReportTableProps) {
     const handleExport = () => {
         const table = document.getElementById('master-data-table');
         if (table) {
-            const wb = utils.table_to_book(table, { sheet: "Master Report" });
+            const tableClone = table.cloneNode(true) as HTMLElement;
+            const links = tableClone.querySelectorAll('a');
+            links.forEach((a) => {
+                a.removeAttribute('href');
+                const span = document.createElement('span');
+                span.textContent = a.textContent || '';
+                a.parentNode?.replaceChild(span, a);
+            });
+
+            const wb = utils.table_to_book(tableClone, { sheet: "Master Report" });
+            Object.keys(wb.Sheets).forEach((sheetName) => {
+                const ws = wb.Sheets[sheetName];
+                if (ws['!links']) delete ws['!links'];
+                if (ws['!hyperlinks']) delete ws['!hyperlinks'];
+                Object.keys(ws).forEach((cellRef) => {
+                    if (cellRef.startsWith('!')) return;
+                    const cell = ws[cellRef];
+                    if (cell && cell.l) {
+                        delete cell.l;
+                    }
+                });
+            });
             writeFile(wb, "Approved_Works_Master_Report.xlsx");
         }
     };

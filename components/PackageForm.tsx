@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save, Plus, Trash2, Loader2 } from 'lucide-react';
+import { Save, Plus, Trash2, Loader2, Languages } from 'lucide-react';
 import Link from 'next/link';
 
 interface PackageFormProps {
@@ -12,6 +12,7 @@ interface PackageFormProps {
 
 import SearchableSelect from './SearchableSelect';
 import { formatDateForInput, parseDateStr } from '@/lib/dateUtils';
+import { transliteratePackageNameToGujarati } from '@/lib/transliterateGujarati';
 
 export default function PackageForm({ initialData = {}, isEditing = false }: PackageFormProps) {
     const router = useRouter();
@@ -19,6 +20,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
 
     // Basic info
     const [packageName, setPackageName] = useState(initialData.packageName || '');
+    const [packageNameGujarati, setPackageNameGujarati] = useState(initialData.packageNameGujarati || '');
     const [subDivision, setSubDivision] = useState(initialData.subDivision || '');
     const [workType, setWorkType] = useState(initialData.workType || '');
     const [buildingType, setBuildingType] = useState(initialData.buildingType || '');
@@ -308,6 +310,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
         try {
             const submissionData = {
                 packageName,
+                packageNameGujarati,
                 subDivision,
                 workType,
                 buildingType: workType === 'Building' ? buildingType : undefined,
@@ -386,14 +389,42 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
 
                 <div className="sm:col-span-6">
-                    <label htmlFor="packageName" className="block text-sm font-medium text-gray-700"> Package Name * </label>
+                    <div className="flex items-center justify-between mb-1">
+                        <label htmlFor="packageName" className="block text-sm font-medium text-gray-700"> Package Name * </label>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (packageName) {
+                                    setPackageNameGujarati(transliteratePackageNameToGujarati(packageName));
+                                }
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                            title="Transliterate English Package Name to Gujarati script (no translation)"
+                        >
+                            <Languages className="w-3.5 h-3.5" />
+                            Convert to Gujarati
+                        </button>
+                    </div>
                     <input
                         type="text"
                         id="packageName"
                         required
                         value={packageName}
                         onChange={(e) => setPackageName(e.target.value)}
+                        placeholder="e.g. Resurfacing Of Ugalavan to Sarera Road (NPBT) KM.0/000 to 3/100, Ta.Jesar Dist.Bhavnagar"
                         className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border"
+                    />
+                </div>
+
+                <div className="sm:col-span-6">
+                    <label htmlFor="packageNameGujarati" className="block text-sm font-medium text-gray-700"> Package Name in Gujarati </label>
+                    <input
+                        type="text"
+                        id="packageNameGujarati"
+                        value={packageNameGujarati}
+                        onChange={(e) => setPackageNameGujarati(e.target.value)}
+                        placeholder="દા.ત. રીસરફેસીંગ ઓફ ઉગલવાણ ટુ સરેરા રોડ (એનપીબીટી) કિમી ૦/૦૦૦ ટુ ૩/૧૦૦, તા. જેસર, જિ. ભાવનગર"
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md p-2 border font-medium"
                     />
                 </div>
 

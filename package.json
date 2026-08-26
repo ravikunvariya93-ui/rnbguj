@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "db:backup": "node scripts/backup_database.mjs",
-    "db:restore": "node scripts/restore_database.mjs"
+    "db:restore": "node scripts/restore_database.mjs",
+    "db:convert-gujarati": "node --env-file=.env.local scripts/convert_all_packages_to_gujarati.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1110.0",

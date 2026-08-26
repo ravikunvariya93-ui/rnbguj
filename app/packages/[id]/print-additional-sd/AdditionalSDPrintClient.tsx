@@ -125,7 +125,7 @@ export default function AdditionalSDPrintClient({
     const orderDateFormatted = formatDateToOutput(orderDateInput);
 
     const contractorName = tender?.contractorName || agency?.name || 'ઇજારદારશ્રી';
-    const packageName = packageData?.packageName || tender?.packageName || 'સદર કામ';
+    const packageName = packageData?.packageNameGujarati || packageData?.packageName || tender?.packageName || 'સદર કામ';
 
     const startDate = workOrder?.timeLimitStartsFrom || workOrder?.workOrderDate || loa?.acceptanceLetterDate;
     const startDateFormatted = formatDateToOutput(startDate);

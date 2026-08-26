@@ -2,6 +2,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IPackage extends Document {
     packageName: string;
+    packageNameGujarati?: string;
     subDivision?: string;
     workType?: string;
     buildingType?: string;
@@ -21,6 +22,7 @@ export interface IPackage extends Document {
 
 const PackageSchema: Schema = new Schema({
     packageName: { type: String, required: true },
+    packageNameGujarati: { type: String },
     subDivision: { type: String },
     workType: { type: String },
     buildingType: { type: String },

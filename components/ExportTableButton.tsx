@@ -18,7 +18,50 @@ export default function ExportTableButton({ tableId, filename = "Export.xlsx" }:
             try {
                 const table = document.getElementById(tableId);
                 if (table) {
-                    const wb = utils.table_to_book(table, { sheet: "Sheet 1" });
+                    // Clone the table to strip links without modifying the rendered DOM
+                    const tableClone = table.cloneNode(true) as HTMLElement;
+
+                    // Remove all <a> tag hrefs and unwrap to plain text
+                    const links = tableClone.querySelectorAll('a');
+                    links.forEach((a) => {
+                        a.removeAttribute('href');
+                        const span = document.createElement('span');
+                        span.textContent = a.textContent || '';
+                        a.parentNode?.replaceChild(span, a);
+                    });
+
+                    // Remove any actions header and column cells if present
+                    const headerRow = tableClone.querySelector('thead tr');
+                    if (headerRow) {
+                        const ths = Array.from(headerRow.querySelectorAll('th'));
+                        const actionIndex = ths.findIndex(th => th.textContent?.trim().toLowerCase() === 'actions');
+                        if (actionIndex !== -1) {
+                            ths[actionIndex].remove();
+                            tableClone.querySelectorAll('tbody tr').forEach(tr => {
+                                const tds = Array.from(tr.querySelectorAll('td'));
+                                if (tds[actionIndex]) {
+                                    tds[actionIndex].remove();
+                                }
+                            });
+                        }
+                    }
+
+                    const wb = utils.table_to_book(tableClone, { sheet: "Sheet 1" });
+
+                    // Remove all hyperlink objects and metadata from worksheet cells
+                    Object.keys(wb.Sheets).forEach((sheetName) => {
+                        const ws = wb.Sheets[sheetName];
+                        if (ws['!links']) delete ws['!links'];
+                        if (ws['!hyperlinks']) delete ws['!hyperlinks'];
+                        Object.keys(ws).forEach((cellRef) => {
+                            if (cellRef.startsWith('!')) return;
+                            const cell = ws[cellRef];
+                            if (cell && cell.l) {
+                                delete cell.l;
+                            }
+                        });
+                    });
+
                     writeFile(wb, filename);
                 } else {
                     console.error(`ExportTableButton: Table with id '${tableId}' not found.`);

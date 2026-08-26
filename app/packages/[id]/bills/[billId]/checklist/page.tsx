@@ -70,7 +70,7 @@ export default async function PackageBillChecklistPage({
     const tender = loa?.tenderId as any;
     const pkg = tender?.packageId as any;
 
-    const workName = tender?.packageName || pkg?.packageName || '-';
+    const workName = pkg?.packageNameGujarati || tender?.packageName || pkg?.packageName || '-';
     const yojanaName = pkg?.budgetHead || '-';
     const saiddhantikAmount = pkg?.estimatedAmount ?? null;
     const adminApprovalAmount = tender?.estimatedAmount ?? null;

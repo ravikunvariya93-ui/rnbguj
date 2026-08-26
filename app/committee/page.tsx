@@ -276,12 +276,25 @@ export default async function CommitteeListPage({ searchParams }: Props) {
     }
 
     if (params.search) {
-        query.packageName = { $regex: params.search, $options: 'i' };
+        const searchCond = {
+            $or: [
+                { packageName: { $regex: params.search, $options: 'i' } },
+                { packageNameGujarati: { $regex: params.search, $options: 'i' } }
+            ]
+        };
+        if (query.$and) {
+            query.$and.push(searchCond);
+        } else {
+            query.$and = [searchCond];
+        }
     }
 
     const baseSearchQuery: any = {};
     if (params.search) {
-        baseSearchQuery.packageName = { $regex: params.search, $options: 'i' };
+        baseSearchQuery.$or = [
+            { packageName: { $regex: params.search, $options: 'i' } },
+            { packageNameGujarati: { $regex: params.search, $options: 'i' } }
+        ];
     }
 
     const buildCountQuery = (extraCondition?: any) => {
@@ -338,7 +351,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         })),
         Package.find(query).lean(),
         ApprovedWork.find({}).select('workName subDivision workType budgetHead').lean() as Promise<any[]>,
-        Tender.find({ cancelled: { $ne: true } }).select('_id packageId acceptanceLetterDate').lean(),
+        Tender.find({ cancelled: { $ne: true } }).select('_id packageId acceptanceLetterDate contractorName estimatedAmount contractPrice aboveBelowPercentage aboveBelowInWord bidders').lean(),
         LOA.find({}).select('tenderId acceptanceLetterDate').lean()
     ]);
 
@@ -350,8 +363,10 @@ export default async function CommitteeListPage({ searchParams }: Props) {
     });
 
     const loaMap = new Map<string, { acceptanceLetterDate?: Date }>();
+    const tenderMap = new Map<string, any>();
     allTenders.forEach((t: any) => {
         if (t.packageId) {
+            tenderMap.set(t.packageId.toString(), t);
             const date = loaByTenderId.get(t._id.toString()) || t.acceptanceLetterDate;
             if (date) {
                 loaMap.set(t.packageId.toString(), { acceptanceLetterDate: date });
@@ -395,6 +410,13 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         }
 
         const loaInfo = loaMap.get(p._id.toString());
+        const tender = tenderMap.get(p._id.toString());
+
+        const tenderAmount = tender?.estimatedAmount ?? p.estimatedAmount ?? (p.works && p.works.length > 0 ? p.works.reduce((acc: number, w: any) => acc + (w.amount || 0), 0) : null);
+        const contractorName = tender?.contractorName || '';
+        const contractPrice = tender?.contractPrice ?? null;
+        const aboveBelowPercentage = tender?.aboveBelowPercentage ?? (tender?.bidders && tender.bidders[0]?.percentage != null ? tender.bidders[0].percentage : null);
+        const aboveBelow = tender?.aboveBelowInWord || (tender?.bidders && tender.bidders[0]?.aboveBelow ? tender.bidders[0].aboveBelow : '');
 
         return {
             ...p,
@@ -405,7 +427,12 @@ export default async function CommitteeListPage({ searchParams }: Props) {
             committee: p.committee || '',
             committeeDate: p.committeeDate || null,
             hasLoa: !!loaInfo,
-            loaDate: loaInfo?.acceptanceLetterDate || null
+            loaDate: loaInfo?.acceptanceLetterDate || null,
+            contractorName,
+            tenderAmount,
+            contractPrice,
+            aboveBelowPercentage,
+            aboveBelow,
         };
     });
 
@@ -415,26 +442,16 @@ export default async function CommitteeListPage({ searchParams }: Props) {
 
     if (sortField) {
         allResolvedPackages.sort((a: any, b: any) => {
-            if (sortField === 'loaDate' || sortField === 'loaStatus') {
-                const timeA = a.loaDate ? new Date(a.loaDate).getTime() : (a.hasLoa ? 1 : 0);
-                const timeB = b.loaDate ? new Date(b.loaDate).getTime() : (b.hasLoa ? 1 : 0);
-                if (!timeA && !timeB) return 0;
-                if (!timeA) return 1;
-                if (!timeB) return -1;
-                return (timeA - timeB) * sortOrder;
-            }
-
-            if (sortField === 'committeeDate') {
-                const timeA = a.committeeDate ? new Date(a.committeeDate).getTime() : 0;
-                const timeB = b.committeeDate ? new Date(b.committeeDate).getTime() : 0;
-                if (!timeA && !timeB) return 0;
-                if (!timeA) return 1;
-                if (!timeB) return -1;
-                return (timeA - timeB) * sortOrder;
-            }
-
             const valA = a[sortField];
             const valB = b[sortField];
+
+            if (valA == null && valB == null) return 0;
+            if (valA == null) return 1;
+            if (valB == null) return -1;
+
+            if (typeof valA === 'number' && typeof valB === 'number') {
+                return (valA - valB) * sortOrder;
+            }
 
             if (typeof valA === 'string' || typeof valB === 'string') {
                 const strA = (valA || '').toString().trim().toLowerCase();
@@ -468,7 +485,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
             key: 'packageName', 
             label: 'Package Name', 
             sortable: true,
-            minWidth: '280px',
+            minWidth: '260px',
             render: (row) => (
                 <Link href={`/packages/${row._id}`} className="max-w-md whitespace-normal break-words font-medium text-emerald-600 hover:underline">
                     {row.packageName}
@@ -476,105 +493,85 @@ export default async function CommitteeListPage({ searchParams }: Props) {
             )
         },
         { 
-            key: 'subDivision', 
-            label: 'Sub Division', 
+            key: 'packageNameGujarati', 
+            label: 'Package Name in Gujarati', 
             sortable: true,
-            minWidth: '140px',
-            render: (row) => row.subDivision
+            minWidth: '260px',
+            render: (row) => (
+                <Link href={`/packages/${row._id}`} className="max-w-md whitespace-normal break-words font-medium text-slate-700 hover:text-emerald-600 hover:underline">
+                    {row.packageNameGujarati || '-'}
+                </Link>
+            )
         },
         { 
-            key: 'workType', 
-            label: 'Work Type', 
+            key: 'contractorName', 
+            label: 'Contractor Name', 
             sortable: true,
-            minWidth: '140px',
-            render: (row) => row.workType || '-'
+            minWidth: '200px',
+            render: (row) => row.contractorName ? (
+                <span className="font-semibold text-slate-800">{row.contractorName}</span>
+            ) : (
+                <span className="text-slate-400 text-xs">-</span>
+            )
         },
-        {
-            key: 'budgetHead',
-            label: 'Budget Head',
+        { 
+            key: 'tenderAmount', 
+            label: 'Tender Amount', 
             sortable: true,
+            align: 'right',
+            minWidth: '150px',
+            render: (row) => row.tenderAmount != null ? (
+                <span className="font-mono font-semibold text-slate-800">
+                    ₹{Number(row.tenderAmount).toLocaleString('en-IN')}
+                </span>
+            ) : (
+                <span className="text-slate-400 text-xs">-</span>
+            )
+        },
+        { 
+            key: 'contractPrice', 
+            label: 'Final Contract Price', 
+            sortable: true,
+            align: 'right',
             minWidth: '160px',
-            render: (row) => row.budgetHead
+            render: (row) => row.contractPrice != null ? (
+                <span className="font-mono font-bold text-emerald-700">
+                    ₹{Number(row.contractPrice).toLocaleString('en-IN')}
+                </span>
+            ) : (
+                <span className="text-slate-400 text-xs">-</span>
+            )
         },
-        {
-            key: 'committee',
-            label: 'Committee Required',
+        { 
+            key: 'aboveBelowPercentage', 
+            label: 'Above/ Below Percentage', 
             sortable: true,
+            align: 'right',
             minWidth: '180px',
-            render: (row) => {
-                if (row.committee === 'Bandhkam Committee') {
-                    return (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                            Bandhkam Committee
-                        </span>
-                    );
-                }
-                if (row.committee === 'Karobari') {
-                    return (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
-                            Karobari
-                        </span>
-                    );
-                }
-                if (row.committee === 'Not Required') {
-                    return (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-500 border border-slate-300">
-                            Not Required
-                        </span>
-                    );
-                }
-                return (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                        Not Determined
-                    </span>
-                );
-            }
+            render: (row) => row.aboveBelowPercentage != null ? (
+                <span className="font-mono font-semibold text-slate-700">
+                    {row.aboveBelowPercentage}%
+                </span>
+            ) : (
+                <span className="text-slate-400 text-xs">-</span>
+            )
         },
-        {
-            key: 'committeeDate',
-            label: 'Committee Date',
+        { 
+            key: 'aboveBelow', 
+            label: 'Above/ Below?', 
             sortable: true,
-            minWidth: '150px',
+            minWidth: '130px',
             render: (row) => {
-                if (row.committee === 'Not Required') {
-                    return <span className="text-slate-400 text-xs">-</span>;
-                }
-                if (row.committeeDate) {
-                    return (
-                        <span className="inline-flex items-center gap-1 font-semibold text-slate-800 text-xs">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            {formatShortDate(row.committeeDate)}
-                        </span>
-                    );
-                }
-                if (row.committee === 'Bandhkam Committee' || row.committee === 'Karobari') {
-                    return (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                            <Clock className="w-3 h-3 text-amber-600" />
-                            Pending Date
-                        </span>
-                    );
-                }
-                return <span className="text-slate-400 text-xs">-</span>;
-            }
-        },
-        {
-            key: 'loaDate',
-            label: 'LOA Status / Date',
-            sortable: true,
-            minWidth: '150px',
-            render: (row) => {
-                if (row.hasLoa) {
-                    return (
-                        <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 text-xs">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            {row.loaDate ? formatShortDate(row.loaDate) : 'LOA Given'}
-                        </span>
-                    );
-                }
+                if (!row.aboveBelow) return <span className="text-slate-400 text-xs">-</span>;
+                const isBelow = row.aboveBelow.toLowerCase().includes('below');
+                const isAbove = row.aboveBelow.toLowerCase().includes('above');
                 return (
-                    <span className="text-slate-400 text-xs font-medium">
-                        Not Given
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                        isBelow ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                        isAbove ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                        'bg-slate-100 text-slate-700 border border-slate-200'
+                    }`}>
+                        {row.aboveBelow}
                     </span>
                 );
             }
