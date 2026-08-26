@@ -47,7 +47,7 @@ export default function ExcessSavingPrintClient({
     const budgetHead = packageData?.budgetHead || '-';
     const contractorName = tender?.contractorName || '-';
     const contractorGstNo = agency?.gstNo || '';
-    const workOrderNo = workOrder?.workOrderNo || '-';
+    const workOrderNo = workOrder?.workOrderWorksheetNo || workOrder?.workOrderNo || '-';
     const workOrderDate = formatDateDMY(workOrder?.workOrderDate);
     const tenderAmount = tender?.contractPrice || tender?.estimatedAmount || 0;
     const tenderPercent = tender?.aboveBelowPercentage != null ? `${tender.aboveBelowPercentage}% ${tender.aboveBelowInWord || ''}` : '';

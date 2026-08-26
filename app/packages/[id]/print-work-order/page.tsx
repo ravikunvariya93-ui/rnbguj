@@ -53,7 +53,7 @@ export default async function PrintWorkOrderPage({ params }: Props) {
 
     const workOrderRaw = loaRaw ? await WorkOrder.findOne({ loaId: loaRaw._id }).lean() as any : null;
 
-    if (!workOrderRaw || !workOrderRaw.workOrderNo || !workOrderRaw.workOrderDate) {
+    if (!workOrderRaw || (!workOrderRaw.workOrderWorksheetNo && !workOrderRaw.workOrderNo) || !workOrderRaw.workOrderDate) {
         return (
             <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-8 space-y-4">
                 <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center max-w-md space-y-4">
