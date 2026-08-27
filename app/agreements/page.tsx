@@ -12,7 +12,7 @@ import DataTable from '@/components/DataTable';
 import AgreementsFilterBar from '@/components/AgreementsFilterBar';
 import { parsePagination, parseSort } from '@/lib/queryHelpers';
 import type { ListPageSearchParams, Column } from '@/lib/types';
-import { formatShortDate } from '@/lib/dateUtils';
+import { formatShortDate, parseDateStr } from '@/lib/dateUtils';
 import ApprovedWork from '@/models/ApprovedWork';
 import { auth } from '@/auth';
 import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
@@ -119,10 +119,10 @@ export default async function AgreementsListPage({ searchParams }: Props) {
     if (params.priceRange) {
         if (params.priceRange === 'gte_25l') {
             tenderQuery.contractPrice = { $gte: 2500000 };
-            filterLabels.push('Contract Price: ≥ 25 Lakhs');
+            filterLabels.push('Contract Price: ≥ 25,00,000 (Equal or more than 25 Lakhs)');
         } else if (params.priceRange === 'lt_25l') {
             tenderQuery.contractPrice = { $lt: 2500000 };
-            filterLabels.push('Contract Price: < 25 Lakhs');
+            filterLabels.push('Contract Price: < 25,00,000 (Less than 25 Lakhs)');
         }
         hasTenderFilter = true;
     }
@@ -176,14 +176,16 @@ export default async function AgreementsListPage({ searchParams }: Props) {
     if (params.fromDate || params.toDate) {
         query.agreementDate = {};
         if (params.fromDate) {
-            query.agreementDate.$gte = new Date(params.fromDate);
-            filterLabels.push(`From Date: ${params.fromDate}`);
+            const fromDateObj = parseDateStr(params.fromDate) || new Date(params.fromDate);
+            fromDateObj.setHours(0, 0, 0, 0);
+            query.agreementDate.$gte = fromDateObj;
+            filterLabels.push(`From Date: ${formatShortDate(fromDateObj)}`);
         }
         if (params.toDate) {
-            const toDateObj = new Date(params.toDate);
+            const toDateObj = parseDateStr(params.toDate) || new Date(params.toDate);
             toDateObj.setHours(23, 59, 59, 999);
             query.agreementDate.$lte = toDateObj;
-            filterLabels.push(`To Date: ${params.toDate}`);
+            filterLabels.push(`To Date: ${formatShortDate(toDateObj)}`);
         }
     }
 

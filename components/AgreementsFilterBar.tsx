@@ -120,8 +120,8 @@ export default function AgreementsFilterBar({ agencies, years }: AgreementsFilte
                         className="block w-full rounded-xl border-slate-200 bg-white text-slate-700 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs"
                     >
                         <option value="">All Prices</option>
-                        <option value="gte_25l">≥ 25 Lakhs</option>
-                        <option value="lt_25l">&lt; 25 Lakhs</option>
+                        <option value="lt_25l">&lt; 25,00,000 (Less than 25L)</option>
+                        <option value="gte_25l">≥ 25,00,000 (Equal or more than 25L)</option>
                     </select>
                 </div>
 
