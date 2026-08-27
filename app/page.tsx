@@ -243,7 +243,7 @@ export default async function Home({ searchParams }: Props) {
             item.tender_lastDateOfSubmission = tender.lastDateOfSubmission ? new Date(tender.lastDateOfSubmission).toISOString() : null;
             item.tender_tenderOpeningDate = tender.tenderOpeningDate ? new Date(tender.tenderOpeningDate).toISOString() : null;
             item.tender_tenderValidityDate = tender.tenderValidityDate ? new Date(tender.tenderValidityDate).toISOString() : null;
-            item.tender_estimatedAmount = tender.estimatedAmount || null;
+            item.tender_estimatedAmount = tender.estimatedAmount || dtp.tenderAmount || null;
             item.tender_reInvite = tender.reInvite !== undefined ? tender.reInvite : null;
             item.tender_cancelled = tender.cancelled !== undefined ? tender.cancelled : null;
             item.tender_cancellationReason = tender.cancellationReason || null;

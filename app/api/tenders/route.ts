@@ -4,6 +4,7 @@ import '@/models/Package';
 import '@/models/TechnicalSanction';
 import Tender from '@/models/Tender';
 import Approval from '@/models/Approval';
+import DTP from '@/models/DTP';
 
 export async function POST(request: Request) {
     try {
@@ -13,6 +14,13 @@ export async function POST(request: Request) {
         // Basic validation
         if (!body.packageId) {
             return NextResponse.json({ success: false, error: 'Package ID is required' }, { status: 400 });
+        }
+
+        if (body.estimatedAmount === undefined || body.estimatedAmount === null || body.estimatedAmount === '') {
+            const dtp = await DTP.findOne({ tsId: body.packageId }).lean();
+            if (dtp && dtp.tenderAmount) {
+                body.estimatedAmount = Number(dtp.tenderAmount);
+            }
         }
 
         const tender = await Tender.create(body);

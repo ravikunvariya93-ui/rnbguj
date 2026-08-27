@@ -1,6 +1,7 @@
 import dbConnect from '@/lib/db';
 import DTP from '@/models/DTP';
 import Package from '@/models/Package';
+import Tender from '@/models/Tender';
 import { NextResponse } from 'next/server';
 
 // Ensure Package model is registered for populate (DTP.tsId -> ref: 'Package')
@@ -11,6 +12,12 @@ export async function POST(req: Request) {
     try {
         const body = await req.json();
         const dtp = await DTP.create(body);
+        if (dtp.tsId && dtp.tenderAmount) {
+            await Tender.updateMany(
+                { packageId: dtp.tsId, $or: [{ estimatedAmount: { $exists: false } }, { estimatedAmount: null }] },
+                { $set: { estimatedAmount: Number(dtp.tenderAmount) } }
+            );
+        }
         return NextResponse.json({ success: true, data: dtp }, { status: 201 });
     } catch (error) {
         console.error(error);

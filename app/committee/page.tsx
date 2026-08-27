@@ -4,6 +4,7 @@ import Package from '@/models/Package';
 import ApprovedWork from '@/models/ApprovedWork';
 import Tender from '@/models/Tender';
 import LOA from '@/models/LOA';
+import DTP from '@/models/DTP';
 import Link from 'next/link';
 import { Eye, Edit2, CheckCircle2, Clock } from 'lucide-react';
 import Pagination from '@/components/Pagination';
@@ -327,7 +328,8 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         packagesRaw,
         allApprovedWorks,
         allTenders,
-        allLoas
+        allLoas,
+        allDtps
     ] = await Promise.all([
         Package.countDocuments(buildCountQuery()),
         Package.countDocuments(buildCountQuery({
@@ -352,8 +354,16 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         Package.find(query).lean(),
         ApprovedWork.find({}).select('workName subDivision workType budgetHead').lean() as Promise<any[]>,
         Tender.find({ cancelled: { $ne: true } }).select('_id packageId acceptanceLetterDate contractorName estimatedAmount contractPrice aboveBelowPercentage aboveBelowInWord bidders').lean(),
-        LOA.find({}).select('tenderId acceptanceLetterDate').lean()
+        LOA.find({}).select('tenderId acceptanceLetterDate').lean(),
+        DTP.find({}).select('tsId tenderAmount').lean()
     ]);
+
+    const dtpMap = new Map<string, any>();
+    allDtps.forEach((d: any) => {
+        if (d.tsId) {
+            dtpMap.set(d.tsId.toString(), d);
+        }
+    });
 
     const loaByTenderId = new Map<string, Date>();
     allLoas.forEach((l: any) => {
@@ -411,8 +421,9 @@ export default async function CommitteeListPage({ searchParams }: Props) {
 
         const loaInfo = loaMap.get(p._id.toString());
         const tender = tenderMap.get(p._id.toString());
+        const dtp = dtpMap.get(p._id.toString());
 
-        const tenderAmount = tender?.estimatedAmount ?? p.estimatedAmount ?? (p.works && p.works.length > 0 ? p.works.reduce((acc: number, w: any) => acc + (w.amount || 0), 0) : null);
+        const tenderAmount = dtp?.tenderAmount ?? tender?.estimatedAmount ?? p.estimatedAmount ?? (p.works && p.works.length > 0 ? p.works.reduce((acc: number, w: any) => acc + (w.amount || 0), 0) : null);
         const contractorName = tender?.contractorName || '';
         const contractPrice = tender?.contractPrice ?? null;
         const aboveBelowPercentage = tender?.aboveBelowPercentage ?? (tender?.bidders && tender.bidders[0]?.percentage != null ? tender.bidders[0].percentage : null);

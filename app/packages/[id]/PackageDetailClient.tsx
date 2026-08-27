@@ -835,6 +835,10 @@ export default function PackageDetailClient({
                 body: JSON.stringify(data),
             });
             if (!res.ok) throw new Error("Failed to save DTP details.");
+            const resJson = await res.json();
+            if (resJson.data) {
+                setDtp(resJson.data);
+            }
             showToast('success', 'DTP details saved!');
             setEditingSection(null);
             router.refresh();
@@ -1118,7 +1122,12 @@ export default function PackageDetailClient({
         e.preventDefault();
         setLoading(true);
         try {
-            const data = { ...tenderForm, packageId: packageId, packageName: pkg.packageName };
+            const data = { 
+                ...tenderForm, 
+                packageId: packageId, 
+                packageName: pkg.packageName,
+                estimatedAmount: tenderForm.estimatedAmount || dtp?.tenderAmount || undefined,
+            };
             if (data.tenderCreationDate) {
                 const parsed = parseDateStr(data.tenderCreationDate);
                 if (parsed) data.tenderCreationDate = parsed.toISOString();
@@ -1139,6 +1148,10 @@ export default function PackageDetailClient({
                 body: JSON.stringify(data),
             });
             if (!res.ok) throw new Error("Failed to save Tender details.");
+            const resJson = await res.json();
+            if (resJson.data) {
+                setTender(resJson.data);
+            }
             showToast('success', 'Tender details saved!');
             setEditingSection(null);
             router.refresh();
@@ -2583,6 +2596,12 @@ export default function PackageDetailClient({
                                                     </td>
                                                 </tr>
                                                 <tr>
+                                                    <td className="excel-label">Tender Amount (₹)</td>
+                                                    <td className="excel-value font-mono font-bold text-emerald-800" colSpan={3}>
+                                                        {dtp?.tenderAmount ? `₹${Number(dtp.tenderAmount).toLocaleString('en-IN')}` : <span className="text-amber-600 font-normal italic">DTP Tender Amount not set</span>}
+                                                    </td>
+                                                </tr>
+                                                <tr>
                                                     <td className="excel-label">Above / Below (Word)</td>
                                                     <td className="excel-value">
                                                         <select name="aboveBelowInWord" value={tenderForm.aboveBelowInWord} onChange={handleTenderFieldChange} className="excel-cell-select">
@@ -2687,12 +2706,20 @@ export default function PackageDetailClient({
                                                 <td className="excel-value">{displayTender.contractorName || '-'}</td>
                                             </tr>
                                             <tr>
+                                                <td className="excel-label">Tender Amount</td>
+                                                <td className="excel-value font-mono font-bold text-emerald-800">
+                                                    ₹{(displayTender.estimatedAmount || dtp?.tenderAmount) ? Number(displayTender.estimatedAmount || dtp?.tenderAmount).toLocaleString('en-IN') : '-'}
+                                                </td>
                                                 <td className="excel-label">Above / Below %</td>
                                                 <td className="excel-value font-mono">
-                                                    {displayTender.aboveBelowPercentage !== undefined ? `${displayTender.aboveBelowPercentage}% ${displayTender.aboveBelowInWord || ''}` : '-'}
+                                                    {displayTender.aboveBelowPercentage !== undefined && displayTender.aboveBelowPercentage !== null && displayTender.aboveBelowPercentage !== ''
+                                                        ? `${displayTender.aboveBelowPercentage}% ${displayTender.aboveBelowInWord || ''}` 
+                                                        : (displayTender.aboveBelowInWord || '-')}
                                                 </td>
+                                            </tr>
+                                            <tr>
                                                 <td className="excel-label">Final Contract Price</td>
-                                                <td className="excel-value text-emerald-800 font-bold font-mono">₹{displayTender.contractPrice ? displayTender.contractPrice.toLocaleString('en-IN') : '-'}</td>
+                                                <td className="excel-value text-emerald-800 font-bold font-mono" colSpan={3}>₹{displayTender.contractPrice ? Number(displayTender.contractPrice).toLocaleString('en-IN') : '-'}</td>
                                             </tr>
                                             <tr>
                                                 <td className="excel-label">Remarks</td>

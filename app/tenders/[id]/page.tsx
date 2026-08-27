@@ -1,5 +1,6 @@
 import dbConnect from '@/lib/db';
 import Tender from '@/models/Tender';
+import DTP from '@/models/DTP';
 import Link from 'next/link';
 import { ArrowLeft, Edit2 } from 'lucide-react';
 import { notFound } from 'next/navigation';
@@ -7,11 +8,14 @@ import { notFound } from 'next/navigation';
 export default async function TenderDetailPage({ params }: { params: Promise<{ id: string }> }) {
     await dbConnect();
     const { id } = await params;
-    const tender = await Tender.findById(id).lean();
+    const tender = await Tender.findById(id).lean() as any;
 
     if (!tender) {
         notFound();
     }
+
+    const dtp = tender.packageId ? await DTP.findOne({ tsId: tender.packageId }).lean() as any : null;
+    const estAmt = tender.estimatedAmount || dtp?.tenderAmount;
 
     const sections = [
         {
@@ -40,7 +44,7 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
         {
             title: 'Contract & Pricing',
             fields: [
-                { label: 'Estimated Amount', value: tender.estimatedAmount ? `₹${tender.estimatedAmount.toLocaleString('en-IN')}` : '-' },
+                { label: 'Estimated Amount', value: estAmt ? `₹${estAmt.toLocaleString('en-IN')}` : '-' },
                 { label: 'Contractor Name', value: tender.contractorName },
                 { label: 'Contract Price', value: tender.contractPrice ? `₹${tender.contractPrice.toLocaleString('en-IN')}` : '-' },
                 { label: 'Above/Below (%)', value: tender.aboveBelowPercentage ? `${tender.aboveBelowPercentage}%` : '-' },
