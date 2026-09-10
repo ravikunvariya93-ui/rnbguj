@@ -885,7 +885,7 @@ export default function BillForm({
                     </div>
                 </div>
             )}
-            <form onSubmit={handleSubmit} className="space-y-6 bg-emerald-50/30 rounded-2xl transition-all duration-300">
+            <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') e.preventDefault(); }} className="space-y-6 bg-emerald-50/30 rounded-2xl transition-all duration-300">
             
             {/* General Information Section */}
             <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
