@@ -691,7 +691,7 @@ export default function DeductionPrintClient({
                                 <span className="font-bold">Received Rs.</span>
                             </td>
                             <td colSpan={2}></td>
-                            <td colSpan={3} className="text-right text-xs italic border-r border-black pr-2">
+                            <td colSpan={3} className="text-right text-xs italic border-r border-black pr-2 opacity-40">
                                 (Dated Initial of the Disbursing officer )
                             </td>
                         </tr>
@@ -702,7 +702,7 @@ export default function DeductionPrintClient({
                                 on account of work.
                             </td>
                             <td colSpan={2}></td>
-                            <td colSpan={3} className="text-right text-xs italic border-r border-black pr-2">
+                            <td colSpan={3} className="text-right text-xs italic border-r border-black pr-2 opacity-40">
                                 as per above memorandum
                             </td>
                         </tr>
@@ -713,7 +713,7 @@ export default function DeductionPrintClient({
                                 dated &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;20
                             </td>
                             <td colSpan={3}></td>
-                            <td colSpan={2} rowSpan={2} className="border-r border-black text-center align-middle pr-2">
+                            <td colSpan={2} rowSpan={2} className="border-r border-black text-center align-middle pr-2 opacity-40">
                                 <div className="inline-block border border-dashed border-slate-600 bg-slate-50 text-center font-bold text-[10px] uppercase tracking-widest px-4 py-1.5">
                                     Stamp
                                 </div>
@@ -729,7 +729,7 @@ export default function DeductionPrintClient({
                         </tr>
                         <tr>
                             <td colSpan={2} className="border-l border-black"></td>
-                            <td colSpan={4} className="font-bold text-right text-xs border-r border-black pr-3 pb-1">
+                            <td colSpan={4} className="font-bold text-right text-xs border-r border-black pr-3 pb-1 opacity-40">
                                 Full Signature of the Contractor
                             </td>
                         </tr>
@@ -739,7 +739,7 @@ export default function DeductionPrintClient({
                             <td colSpan={3} className="border-l border-black pl-2 pt-1 text-xs">
                                 paid by me ! &nbsp;vide Cheque No. ____________________
                             </td>
-                            <td colSpan={3} className="border-r border-black text-right pr-3 pt-1 text-xs">
+                            <td colSpan={3} className="border-r border-black text-right pr-3 pt-1 text-xs opacity-40">
                                 dated ____________
                             </td>
                         </tr>
@@ -747,36 +747,36 @@ export default function DeductionPrintClient({
                         {/* Row 46: Cashier */}
                         <tr>
                             <td colSpan={3} className="border-l border-black"></td>
-                            <td colSpan={3} className="font-bold text-center border-r border-black text-xs py-0.5">Cashier</td>
+                            <td colSpan={3} className="font-bold text-center border-r border-black text-xs py-0.5 opacity-40">Cashier</td>
                         </tr>
 
                         {/* Row 47: Dated initials */}
                         <tr>
-                            <td colSpan={6} className="text-xs italic border-x border-black pl-2 pb-0.5">
+                            <td colSpan={6} className="text-xs italic border-x border-black pl-2 pb-0.5 opacity-40">
                                 (Dated intitials of person actually making the payments )
                             </td>
                         </tr>
 
                         {/* Row 48: IV - REMARKS */}
                         <tr className="bg-slate-100 font-bold border-y border-black">
-                            <td colSpan={6} className="uppercase tracking-wider text-center py-0.5 text-xs">
+                            <td colSpan={6} className="uppercase tracking-wider text-center py-0.5 text-xs opacity-40">
                                 IV &nbsp;- &nbsp;REMARKS
                             </td>
                         </tr>
 
                         {/* Rows 49-51: Remarks text */}
                         <tr>
-                            <td colSpan={6} className="text-xs border-x border-black pl-3 pt-0.5">
+                            <td colSpan={6} className="text-xs border-x border-black pl-3 pt-0.5 opacity-40">
                                 ( This space is reserved for any remarks the Disbursing officer or Executive Engineer
                             </td>
                         </tr>
                         <tr>
-                            <td colSpan={6} className="text-xs border-x border-black pl-3">
+                            <td colSpan={6} className="text-xs border-x border-black pl-3 opacity-40">
                                 &nbsp;may wish to record in respect of the execution of the work check of measurement of the Contractor&apos;s
                             </td>
                         </tr>
                         <tr>
-                            <td colSpan={6} className="text-xs border-x border-black pl-3 pb-0.5">
+                            <td colSpan={6} className="text-xs border-x border-black pl-3 pb-0.5 opacity-40">
                                 account Checked.)
                             </td>
                         </tr>
@@ -787,7 +787,7 @@ export default function DeductionPrintClient({
                                 Clerk
                             </td>
                             <td colSpan={2} className="border-b border-black"></td>
-                            <td colSpan={2} className="font-bold text-center border-r border-b border-black pt-2 pb-1 text-xs">
+                            <td colSpan={2} className="font-bold text-center border-r border-b border-black pt-2 pb-1 text-xs opacity-40">
                                 Accountant
                             </td>
                         </tr>
