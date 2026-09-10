@@ -72,59 +72,108 @@ function parseBoqUniversal(pdfData: any): any[] {
 
     if (styleBVotes >= 3 && styleBVotes >= styleAVotes) {
         // STYLE B (e.g. 39-page bridge/culvert tender BOQ with layout: ItemNo | Description | Qty | Unit | Rate | Amount)
+        const headerRe = /^1\s+2\s+3\s+4\s+5\s+6\s*7?$/;
+        const descHeaderRe = /Description\s+of\s+Item|BILL OF QUANTITIES|Item\s+No|Item\s+Rates/i;
+        const pageRe = /Page\s+\d+\s*\//;
         for (const p of pagesData) {
             if (/Name of Party/i.test(p.pageStr) || /Opening Committee/i.test(p.pageStr)) continue;
 
+            // Pass 1: identify all data lines on this page
+            const dataLineInfos: { lIdx: number; first: any; qtyText: any; rateText: any; amtText: any; unitText: any }[] = [];
             for (let lIdx = 0; lIdx < p.lines.length; lIdx++) {
                 const line = p.lines[lIdx];
                 const lineStr = line.texts.map((t: any) => t.text).join(' ');
-                if (/^1\s+2\s+3\s+4\s+5\s+6$/.test(lineStr.trim())) continue;
-                if (/Description\s+of\s+Item/i.test(lineStr)) continue;
+                if (headerRe.test(lineStr.trim())) continue;
+                if (descHeaderRe.test(lineStr)) continue;
 
-                const first = line.texts[0];
-                if (!first || first.x > 7.0 || !/^\d{1,3}$/.test(first.text)) continue;
+                const qtyText = line.texts.find((t: any) => t.x >= 19.0 && t.x <= 25.0 && isNum(t.text));
+                const amtText = line.texts.find((t: any) => t.x >= 30.5 && isNum(t.text));
+                if (!qtyText || !amtText) continue;
+
+                // Find item number: first digit text at x <= 7.0 on this line
+                let first = line.texts.find((t: any) => t.x <= 7.0 && /^\d{1,3}$/.test(t.text));
+
+                // If not found on this line, check nearby lines above (digit may be on separate y-line)
+                if (!first) {
+                    for (let lookBack = 1; lookBack <= 5 && lIdx - lookBack >= 0; lookBack++) {
+                        const prevLine = p.lines[lIdx - lookBack];
+                        const prevDigit = prevLine.texts.find((t: any) => t.x <= 7.0 && /^\d{1,3}$/.test(t.text));
+                        if (prevDigit) {
+                            const yDiff = Math.abs(line.y - prevLine.y);
+                            if (yDiff < 2.0) {
+                                first = prevDigit;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (!first) continue;
                 const itemNum = parseInt(first.text, 10);
                 if (itemNum < 1 || itemNum > 999) continue;
 
-                const qtyText = line.texts.find((t: any) => t.x >= 19.0 && t.x <= 25.0 && isNum(t.text));
-                const unitText = line.texts.find((t: any) => t.x >= 23.8 && t.x <= 27.5 && /^[A-Za-z.()]+$/i.test(t.text) && !/^(Total|Page|Rupees|Rates)/i.test(t.text));
+                // Avoid duplicates: check if this item number was already added for a nearby line
+                const isDuplicate = dataLineInfos.some(d => d.first.text === first.text && Math.abs(d.lIdx - lIdx) < 10);
+                if (isDuplicate) continue;
+
+                const unitText = line.texts.find((t: any) => t.x >= 21.5 && t.x <= 24.5 && /^[A-Za-z.()]+$/i.test(t.text) && !/^(Total|Page|Rupees|Rates)/i.test(t.text));
                 const rateText = line.texts.find((t: any) => t.x >= 26.5 && t.x <= 31.5 && isNum(t.text));
-                const amtText = line.texts.find((t: any) => t.x >= 30.5 && isNum(t.text));
 
-                if (qtyText && amtText) {
-                    const descParts: string[] = [];
-                    line.texts.filter((t: any) => t.x > first.x && t.x < qtyText.x && t !== first).forEach((t: any) => descParts.push(t.text));
+                dataLineInfos.push({ lIdx, first, qtyText, rateText, amtText, unitText });
+            }
 
-                    let nextL = lIdx + 1;
-                    while (nextL < p.lines.length) {
-                        const nextLine = p.lines[nextL];
-                        const nextLineStr = nextLine.texts.map((t: any) => t.text).join(' ');
-                        if (/^1\s+2\s+3\s+4\s+5\s+6$/.test(nextLineStr.trim())) break;
+            // Pass 2: for each data line, collect description from lines before and after
+            for (let d = 0; d < dataLineInfos.length; d++) {
+                const { lIdx, first, qtyText, rateText, amtText, unitText } = dataLineInfos[d];
+                const prevDataLIdx = d > 0 ? dataLineInfos[d - 1].lIdx : -1;
+                const nextDataLIdx = d < dataLineInfos.length - 1 ? dataLineInfos[d + 1].lIdx : p.lines.length;
 
-                        const nextFirst = nextLine.texts[0];
-                        if (nextFirst && nextFirst.x <= 7.0 && /^\d{1,3}$/.test(nextFirst.text)) break;
-                        if (nextFirst && /^(Total|Rupees|Page\s*\d|\*Estimated|Signature)/i.test(nextFirst.text)) break;
+                const descParts: string[] = [];
 
-                        nextLine.texts.filter((t: any) => t.x >= 4.0 && t.x < 21.0).forEach((t: any) => descParts.push(t.text));
-                        nextL++;
-                    }
+                // Collect description from lines BETWEEN previous data line and current
+                for (let k = prevDataLIdx + 1; k < lIdx; k++) {
+                    const descLine = p.lines[k];
+                    const descLineStr = descLine.texts.map((t: any) => t.text).join(' ');
+                    if (headerRe.test(descLineStr.trim())) continue;
+                    if (descHeaderRe.test(descLineStr)) continue;
+                    if (/Name of Party|Opening Committee/i.test(descLineStr)) continue;
+                    if (/Name of work|Item Description Quantities|Item\s+No\s|In Figure|In Words|Page\s+\d+\s*\//i.test(descLineStr)) continue;
 
-                    const q = parseVal(qtyText.text);
-                    const a = parseVal(amtText.text);
-                    const r = rateText ? parseVal(rateText.text) : (q > 0 ? parseFloat((a / q).toFixed(2)) : 0);
-
-                    items.push({
-                        itemNo: first.text,
-                        description: descParts.join(' ').replace(/\s+/g, ' ').trim(),
-                        quantity: q,
-                        unit: unitText ? unitText.text : 'Nos',
-                        rate: r,
-                        amount: a,
-                        itemType: 'Standard'
-                    });
-
-                    lIdx = nextL - 1;
+                    descLine.texts
+                        .filter((t: any) => t.x >= 3.0 && t.x < qtyText.x && !/Name of work|Item Description|In Figure|In Words|Page\s+\d/i.test(t.text))
+                        .forEach((t: any) => descParts.push(t.text));
                 }
+
+                // Collect description text on the current data line itself
+                p.lines[lIdx].texts
+                    .filter((t: any) => t.x > first.x && t.x < qtyText.x && t !== first)
+                    .forEach((t: any) => descParts.push(t.text));
+
+                // Collect continuation description from lines after data line until next data line
+                for (let k = lIdx + 1; k < nextDataLIdx; k++) {
+                    const nextLine = p.lines[k];
+                    const nextLineStr = nextLine.texts.map((t: any) => t.text).join(' ');
+                    if (pageRe.test(nextLineStr)) break;
+                    if (/Page\s+\d+\s*\//.test(nextLineStr)) break;
+
+                    nextLine.texts
+                        .filter((t: any) => t.x >= 3.0 && t.x < qtyText.x)
+                        .forEach((t: any) => descParts.push(t.text));
+                }
+
+                const q = parseVal(qtyText.text);
+                const a = parseVal(amtText.text);
+                const r = rateText ? parseVal(rateText.text) : (q > 0 ? parseFloat((a / q).toFixed(2)) : 0);
+
+                items.push({
+                    itemNo: first.text,
+                    description: descParts.join(' ').replace(/\s+/g, ' ').trim(),
+                    quantity: q,
+                    unit: unitText ? unitText.text : 'Nos',
+                    rate: r,
+                    amount: a,
+                    itemType: 'Standard'
+                });
             }
         }
     } else if (styleAVotes >= 3) {
