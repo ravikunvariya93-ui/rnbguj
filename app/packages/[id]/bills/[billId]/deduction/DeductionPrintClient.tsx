@@ -520,59 +520,59 @@ export default function DeductionPrintClient({
                         {/* Row 13: Figures for / (a) From previous Bill */}
                         <tr>
                             <td className={TD}>Figures for</td>
-                            <td rowSpan={4} className="border border-black bg-slate-50/40"></td>
-                            <td colSpan={3} className={TD}>(a) From previous Bill as per last Running Account Bill</td>
-                            <td className={`${TD} text-center font-bold text-xs`}>Rs.</td>
+                            <td rowSpan={4} className="border border-black bg-slate-50/40 opacity-40"></td>
+                            <td colSpan={3} className={`${TD} opacity-40`}>(a) From previous Bill as per last Running Account Bill</td>
+                            <td className={`${TD} text-center font-bold text-xs opacity-40`}>Rs.</td>
                         </tr>
 
                         {/* Row 14: works Abstract */}
                         <tr>
                             <td rowSpan={2} className={`${TD} font-semibold align-middle text-center`}>works Abstract</td>
-                            <td colSpan={3} className="border border-black"></td>
-                            <td className="border border-black"></td>
+                            <td colSpan={3} className="border border-black opacity-40"></td>
+                            <td className="border border-black opacity-40"></td>
                         </tr>
 
                         {/* Row 15: (b) From this Bill */}
                         <tr>
-                            <td colSpan={3} className={TD}>(b) From this Bill</td>
-                            <td className={TD}></td>
+                            <td colSpan={3} className={`${TD} opacity-40`}>(b) From this Bill</td>
+                            <td className={`${TD} opacity-40`}></td>
                         </tr>
 
                         {/* Row 16: Deduction */}
                         <tr className="bg-slate-100 font-bold">
                             <td className={TD_BOLD}>Deduction</td>
-                            <td colSpan={4} className="border border-black"></td>
+                            <td colSpan={4} className="border border-black opacity-40"></td>
                         </tr>
 
                         {/* Row 17: Income Tax / 3. Balance */}
                         <tr>
                             <td className={TD_NUM}>{itAmount > 0 ? `- ${fmtNum(itAmount)}` : '-'}</td>
                             <td className={TD}>Income Tax</td>
-                            <td colSpan={2} className={TD}>3. Balnce i.e. &quot;up-to date&quot; Payment</td>
-                            <td className={TD}></td>
-                            <td className={TD}></td>
+                            <td colSpan={2} className={`${TD} opacity-40`}>3. Balnce i.e. &quot;up-to date&quot; Payment</td>
+                            <td className={`${TD} opacity-40`}></td>
+                            <td className={`${TD} opacity-40`}></td>
                         </tr>
 
                         {/* Row 18: G.S.T. */}
                         <tr>
                             <td className={TD_NUM}>{gstTdsAmount > 0 ? `- ${fmtNum(gstTdsAmount)}` : '-'}</td>
                             <td className={TD}>G.S.T.</td>
-                            <td colSpan={4} className="border border-black"></td>
+                            <td colSpan={4} className="border border-black opacity-40"></td>
                         </tr>
 
                         {/* Row 19: Labour Cess / 4. Total amount of payments already made */}
                         <tr>
                             <td className={TD_NUM}>{lcAmount > 0 ? `- ${fmtNum(lcAmount)}` : '-'}</td>
                             <td className={TD}>Labour Cess</td>
-                            <td colSpan={3} className={TD}>4. Total amount of payments already made as entry</td>
-                            <td className={TD}></td>
+                            <td colSpan={3} className={`${TD} opacity-40`}>4. Total amount of payments already made as entry</td>
+                            <td className={`${TD} opacity-40`}></td>
                         </tr>
 
                         {/* Row 20: Security Deposit */}
                         <tr>
                             <td className={TD_NUM}>{sdAmount > 0 ? `- ${fmtNum(sdAmount)}` : '-'}</td>
                             <td className={TD}>Security Deposit</td>
-                            <td colSpan={4} className={`${TD} pl-4 text-xs italic`}>
+                            <td colSpan={4} className={`${TD} pl-4 text-xs italic opacity-40`}>
                                 (K) of last Running Account Bill forwarded with
                             </td>
                         </tr>
@@ -581,7 +581,7 @@ export default function DeductionPrintClient({
                         <tr>
                             <td className={TD_NUM}>{fmdAmount > 0 ? `- ${fmtNum(fmdAmount)}` : '-'}</td>
                             <td className={TD}>F.M.D.</td>
-                            <td colSpan={4} className={`${TD} pl-6 text-xs italic`}>
+                            <td colSpan={4} className={`${TD} pl-6 text-xs italic opacity-40`}>
                                 accounts for
                             </td>
                         </tr>
@@ -590,80 +590,80 @@ export default function DeductionPrintClient({
                         <tr>
                             <td className={TD_NUM}>{asphaltDeposit > 0 ? `- ${fmtNum(asphaltDeposit)}` : '-'}</td>
                             <td className={TD}>Asphalt Deposit</td>
-                            <td colSpan={3} className={TD_BOLD}>5. Payment now to be made as detailed belaw :-</td>
-                            <td className={`${TD} text-center font-bold text-xs`}>Rs.</td>
+                            <td colSpan={3} className={`${TD_BOLD} opacity-40`}>5. Payment now to be made as detailed belaw :-</td>
+                            <td className={`${TD} text-center font-bold text-xs opacity-40`}>Rs.</td>
                         </tr>
 
                         {/* Row 23: Core Sample De. */}
                         <tr>
                             <td className={TD_NUM}>{coreSampleDeposit > 0 ? `- ${fmtNum(coreSampleDeposit)}` : '-'}</td>
                             <td className={TD}>Core Sample De.</td>
-                            <td className={TD}></td>
-                            <td colSpan={2} className={TD}>By recovery of ammount, creditable be</td>
-                            <td className="border border-black"></td>
+                            <td className={`${TD} opacity-40`}></td>
+                            <td colSpan={2} className={`${TD} opacity-40`}>By recovery of ammount, creditable be</td>
+                            <td className="border border-black opacity-40"></td>
                         </tr>
 
                         {/* Row 24: T.P.I. / (a) this work */}
                         <tr>
                             <td className={TD_NUM}>{tpiAmount > 0 ? `- ${fmtNum(tpiAmount)}` : '-'}</td>
                             <td className={TD}>T.P.I.</td>
-                            <td className={`${TD} font-semibold text-center`}>(a)</td>
-                            <td className={TD}>this work : value to stock supplied as</td>
-                            <td className={`${TD} text-center text-xs`}>(a)</td>
-                            <td className={TD_NUM}>{recoveryThisWork > 0 ? fmtNum(recoveryThisWork) : '-'}</td>
+                            <td className={`${TD} font-semibold text-center opacity-40`}>(a)</td>
+                            <td className={`${TD} opacity-40`}>this work : value to stock supplied as</td>
+                            <td className={`${TD} text-center text-xs opacity-40`}>(a)</td>
+                            <td className={`${TD_NUM} opacity-40`}>{recoveryThisWork > 0 ? fmtNum(recoveryThisWork) : '-'}</td>
                         </tr>
 
                         {/* Row 25: E.S.M.P. */}
                         <tr>
                             <td className={TD_NUM}>{esmpAmount > 0 ? `- ${fmtNum(esmpAmount)}` : '-'}</td>
                             <td className={TD}>E.S.M.P.</td>
-                            <td className={TD}></td>
-                            <td colSpan={2} className={TD}>detailed in the ledger in</td>
-                            <td className="border border-black"></td>
+                            <td className={`${TD} opacity-40`}></td>
+                            <td colSpan={2} className={`${TD} opacity-40`}>detailed in the ledger in</td>
+                            <td className="border border-black opacity-40"></td>
                         </tr>
 
                         {/* Row 26: T.L.D. / Total 2(b) + 5(c) G */}
                         <tr>
                             <td className={TD_NUM}>{tldAmount > 0 ? `- ${fmtNum(tldAmount)}` : '-'}</td>
                             <td className={TD}>T.L.D.</td>
-                            <td colSpan={3} className={TD_BOLD}>Total 2 (b) + 5 ( c ) G</td>
-                            <td className={TD}></td>
+                            <td colSpan={3} className={`${TD_BOLD} opacity-40`}>Total 2 (b) + 5 ( c ) G</td>
+                            <td className={`${TD} opacity-40`}></td>
                         </tr>
 
                         {/* Row 27: Other Deposit */}
                         <tr>
                             <td className={TD_NUM}>{otherDeposit + otherDeposit2 > 0 ? `- ${fmtNum(otherDeposit + otherDeposit2)}` : '-'}</td>
                             <td className={TD}>Other Deposit</td>
-                            <td className={TD}></td>
-                            <td colSpan={2} className={TD}>By  recovery  of  ammount, creditable</td>
-                            <td className="border border-black"></td>
+                            <td className={`${TD} opacity-40`}></td>
+                            <td colSpan={2} className={`${TD} opacity-40`}>By  recovery  of  ammount, creditable</td>
+                            <td className="border border-black opacity-40"></td>
                         </tr>
 
                         {/* Row 28: (b) other work */}
                         <tr>
                             <td colSpan={2} className="border border-black"></td>
-                            <td className={`${TD} font-semibold text-center`}>(b)</td>
-                            <td className={TD}>other work or head of Account</td>
-                            <td className={`${TD} text-center text-xs`}>(b)</td>
-                            <td className={TD_NUM}>{recoveryOtherWork > 0 ? fmtNum(recoveryOtherWork) : '-'}</td>
+                            <td className={`${TD} font-semibold text-center opacity-40`}>(b)</td>
+                            <td className={`${TD} opacity-40`}>other work or head of Account</td>
+                            <td className={`${TD} text-center text-xs opacity-40`}>(b)</td>
+                            <td className={`${TD_NUM} opacity-40`}>{recoveryOtherWork > 0 ? fmtNum(recoveryOtherWork) : '-'}</td>
                         </tr>
 
                         {/* Row 29: Total Deduction */}
                         <tr className="bg-slate-50 font-bold">
                             <td className={`${TD_NUM} font-bold`}>- {fmtNum(totalDeduction)}</td>
                             <td className={TD_BOLD}>Total Deduction</td>
-                            <td className={TD}></td>
-                            <td colSpan={2} className={TD}>detailed in the ledger in</td>
-                            <td className="border border-black"></td>
+                            <td className={`${TD} opacity-40`}></td>
+                            <td colSpan={2} className={`${TD} opacity-40`}>detailed in the ledger in</td>
+                            <td className="border border-black opacity-40"></td>
                         </tr>
 
                         {/* Row 30: Cheque Amt. / (c) By Cheque */}
                         <tr className="bg-slate-100 font-bold">
                             <td className={`${TD_NUM} font-bold text-sm`}>{fmtNum(chequeAmount)}</td>
                             <td className={TD_BOLD}>Cheque Amt.</td>
-                            <td className={`${TD} font-semibold text-center`}>( c )</td>
-                            <td colSpan={2} className={TD}>By Cheque / Total 5[b] x [c] H</td>
-                            <td className={TD}></td>
+                            <td className={`${TD} font-semibold text-center opacity-40`}>( c )</td>
+                            <td colSpan={2} className={`${TD} opacity-40`}>By Cheque / Total 5[b] x [c] H</td>
+                            <td className={`${TD} opacity-40`}></td>
                         </tr>
 
                         {/* Row 31: Blank Spacer */}
