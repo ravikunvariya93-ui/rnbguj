@@ -261,11 +261,11 @@ export default function DeductionPrintClient({
             ['બિલ મુજબ થયેલ કામની કુલ રકમ', '', '', '', '', fmtNum(uptoDateGross)],
             ['અગાઉ રનીંગ બિલેથી ચુકવેલ બીલની રકમ', '', '', '', '', fmtNum(previouslyPaidAmount)],
             ['આ બીલેથી ચુકવવાની રકમ', '', '', '', '', fmtNum(netPayableAmount)],
-            ['Amount of Dismantle Credit', '', '', '', '', fmtNum(dismantleCredit)],
-            ['એકસેસ/ એક્સ્ટ્રા આઇટમની રકમ', '', '', '', '', fmtNum(excessExtraAmount)],
-            ['પ્રાઇસ એડજસ્ટમેન્ટ/ સ્ટાર રેઇટ ની રકમ', '', '', '', '', fmtNum(priceAdjustment)],
-            ['વહીવટી મંજુરીની મર્યાદા બહારની રકમ', '', '', '', '', fmtNum(adminApprovalAmount)],
-            ['વીથહેલ્ડ ડીપોઝીટ', '', '', '', '', fmtNum(withheldAmount)],
+            ...(dismantleCredit > 0 ? [['Amount of Dismantle Credit', '', '', '', '', fmtNum(dismantleCredit)]] : []),
+            ...(excessExtraAmount > 0 ? [['એકસેસ/ એક્સ્ટ્રા આઇટમની રકમ', '', '', '', '', fmtNum(excessExtraAmount)]] : []),
+            ...(priceAdjustment !== 0 ? [['પ્રાઇસ એડજસ્ટમેન્ટ/ સ્ટાર રેઇટ ની રકમ', '', '', '', '', fmtNum(priceAdjustment)]] : []),
+            ...(adminApprovalAmount > 0 ? [['વહીવટી મંજુરીની મર્યાદા બહારની રકમ', '', '', '', '', fmtNum(adminApprovalAmount)]] : []),
+            ...(withheldAmount > 0 ? [['વીથહેલ્ડ ડીપોઝીટ', '', '', '', '', fmtNum(withheldAmount)]] : []),
             ['નેટ ચુકવવાપાત્ર રકમ:', '', '', '', '', fmtNum(netPayableAmount)],
             ['Figures for', '', '(a) From previous Bill as per last Running Account Bill', '', '', 'Rs.'],
             ['works Abstract', '', '', '', '', ''],
@@ -472,34 +472,44 @@ export default function DeductionPrintClient({
                         </tr>
 
                         {/* Row 7: Amount of Dismantle Credit */}
+                        {dismantleCredit > 0 && (
                         <tr>
                             <td colSpan={4} className={TD}>Amount of Dismantle Credit</td>
                             <td colSpan={2} className={TD_NUM}>{fmtNum(dismantleCredit)}</td>
                         </tr>
+                        )}
 
                         {/* Row 8: Excess / Extra Items */}
+                        {excessExtraAmount > 0 && (
                         <tr>
                             <td colSpan={4} className={TD}>એકસેસ/ એક્સ્ટ્રા આઇટમની રકમ</td>
                             <td colSpan={2} className={TD_NUM}>{fmtNum(excessExtraAmount)}</td>
                         </tr>
+                        )}
 
                         {/* Row 9: Price Adjustment */}
+                        {priceAdjustment !== 0 && (
                         <tr>
                             <td colSpan={4} className={TD}>પ્રાઇસ એડજસ્ટમેન્ટ/ સ્ટાર રેઇટ ની રકમ</td>
                             <td colSpan={2} className={TD_NUM}>{fmtNum(priceAdjustment)}</td>
                         </tr>
+                        )}
 
                         {/* Row 10: Administrative Approval */}
+                        {adminApprovalAmount > 0 && (
                         <tr>
                             <td colSpan={4} className={TD}>વહીવટી મંજુરીની મર્યાદા બહારની રકમ</td>
                             <td colSpan={2} className={TD_NUM}>{fmtNum(adminApprovalAmount)}</td>
                         </tr>
+                        )}
 
                         {/* Row 11: Withheld Deposit */}
+                        {withheldAmount > 0 && (
                         <tr>
                             <td colSpan={4} className={TD}>વીથહેલ્ડ ડીપોઝીટ</td>
                             <td colSpan={2} className={TD_NUM}>{fmtNum(withheldAmount)}</td>
                         </tr>
+                        )}
 
                         {/* Row 12: Net Payable Amount */}
                         <tr className="bg-slate-50 font-bold">
