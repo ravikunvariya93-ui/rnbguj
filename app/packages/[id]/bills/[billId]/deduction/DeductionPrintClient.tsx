@@ -266,7 +266,7 @@ export default function DeductionPrintClient({
             ['પ્રાઇસ એડજસ્ટમેન્ટ/ સ્ટાર રેઇટ ની રકમ', '', '', '', '', fmtNum(priceAdjustment)],
             ['વહીવટી મંજુરીની મર્યાદા બહારની રકમ', '', '', '', '', fmtNum(adminApprovalAmount)],
             ['વીથહેલ્ડ ડીપોઝીટ', '', '', '', '', fmtNum(withheldAmount)],
-            ['Net Payable Amount:', '', '', '', '', fmtNum(netPayableAmount)],
+            ['નેટ ચુકવવાપાત્ર રકમ:', '', '', '', '', fmtNum(netPayableAmount)],
             ['Figures for', '', '(a) From previous Bill as per last Running Account Bill', '', '', 'Rs.'],
             ['works Abstract', '', '', '', '', ''],
             ['', '', '(b) From this Bill', '', '', ''],
@@ -503,7 +503,7 @@ export default function DeductionPrintClient({
 
                         {/* Row 12: Net Payable Amount */}
                         <tr className="bg-slate-50 font-bold">
-                            <td colSpan={4} className={TD_BOLD}>Net Payable Amount:</td>
+                            <td colSpan={4} className={TD_BOLD}>નેટ ચુકવવાપાત્ર રકમ:</td>
                             <td colSpan={2} className={`${TD_NUM} font-bold underline`}>{fmtNum(netPayableAmount)}</td>
                         </tr>
 
