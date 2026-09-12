@@ -491,7 +491,9 @@ export default function PackageDetailClient({
                 aboveBelowInWord: tender?.aboveBelowInWord === 'Equals' ? 'At Par' : (tender?.aboveBelowInWord || 'Below'),
                 remarks: tender?.remarks || '',
             });
-            const matchAgency = agencies.find(a => a.name === (tender?.contractorName || ''));
+            const matchAgency = tender?.contractorId
+                ? agencies.find(a => a._id === String(tender.contractorId))
+                : agencies.find(a => a.name === (tender?.contractorName || ''));
             setSelectedAgencyId(matchAgency?._id || null);
         } else if (section === 'boq') {
             setBoqForm({
@@ -1130,6 +1132,7 @@ export default function PackageDetailClient({
                 packageId: packageId, 
                 packageName: pkg.packageName,
                 estimatedAmount: tenderForm.estimatedAmount || dtp?.tenderAmount || undefined,
+                contractorId: selectedAgencyId || undefined,
             };
             if (data.tenderCreationDate) {
                 const parsed = parseDateStr(data.tenderCreationDate);

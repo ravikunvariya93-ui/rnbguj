@@ -31,6 +31,7 @@ export interface ITender extends Document {
     cancelled: boolean;
     cancellationReason: string;
     contractorName: string;
+    contractorId: mongoose.Schema.Types.ObjectId;
     contractPrice: number;
     aboveBelowPercentage: number;
     aboveBelowInWord: string;
@@ -97,7 +98,8 @@ const TenderSchema: Schema = new Schema({
     aboveBelowInWord: { type: String, enum: ['Above', 'Below', 'At Par', 'Equals'], default: 'Below' },
     bidders: [{
         rank: { type: String },
-        contractorName: { type: String },
+    contractorName: { type: String },
+    contractorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Agency' },
         aboveBelow: { type: String },
         percentage: { type: Number },
         totalAmount: { type: Number },

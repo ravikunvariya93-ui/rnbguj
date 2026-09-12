@@ -89,7 +89,10 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                 }
                 if (agencyData.success) {
                     setAgencies(agencyData.data);
-                    if (initialData.contractorName) {
+                    if (initialData.contractorId) {
+                        const match = agencyData.data.find((a: any) => a._id === String(initialData.contractorId));
+                        setSelectedAgencyId(match?._id || null);
+                    } else if (initialData.contractorName) {
                         const match = agencyData.data.find((a: any) => a.name === initialData.contractorName);
                         setSelectedAgencyId(match?._id || null);
                     }
@@ -377,7 +380,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
         setLoading(true);
 
         try {
-            const submissionData = { ...formData };
+            const submissionData = { ...formData, contractorId: selectedAgencyId || undefined };
             if (tenderAmount !== '') {
                 submissionData.estimatedAmount = Number(tenderAmount);
             }
