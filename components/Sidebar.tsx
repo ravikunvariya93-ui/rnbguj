@@ -31,6 +31,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         { name: 'Agreement',       href: '/agreements',        icon: ClipboardList, roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...AUDITOR_ROLES] },
         { name: 'Bill',            href: '/bills',             icon: FileText,      roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', ...AUDITOR_ROLES] },
         { name: 'Excess Proposal', href: '/excess-proposals',  icon: TrendingUp,    roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...AUDITOR_ROLES] },
+        { name: 'Contractor List', href: '/contractors',       icon: User,          roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...AUDITOR_ROLES] },
         { name: 'User Management', href: '/admin/users',       icon: Users,         roles: ['ADMIN'] },
     ];
 

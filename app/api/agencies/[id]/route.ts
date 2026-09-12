@@ -27,6 +27,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         }
         return NextResponse.json({ success: true, data: agency });
     } catch (error: any) {
+        if (error.code === 11000) {
+            return NextResponse.json({ success: false, error: 'A contractor with this name already exists.' }, { status: 409 });
+        }
         return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
 }

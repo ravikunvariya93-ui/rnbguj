@@ -12,7 +12,7 @@ export interface IAgency extends Document {
 }
 
 const AgencySchema: Schema = new Schema({
-    name: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
     proprietorName: { type: String },
     address: { type: String },
     mobileNo: { type: String },

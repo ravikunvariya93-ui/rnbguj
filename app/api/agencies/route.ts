@@ -19,6 +19,9 @@ export async function POST(request: Request) {
         const agency = await Agency.create(body);
         return NextResponse.json({ success: true, data: agency }, { status: 201 });
     } catch (error: any) {
+        if (error.code === 11000) {
+            return NextResponse.json({ success: false, error: 'A contractor with this name already exists.' }, { status: 409 });
+        }
         return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
 }
