@@ -30,7 +30,11 @@ export default async function PrintAdditionalSDPage({ params }: Props) {
 
     const loaRaw = tenderRaw ? await LOA.findOne({ tenderId: tenderRaw._id }).lean() as any : null;
     const workOrderRaw = loaRaw ? await WorkOrder.findOne({ loaId: loaRaw._id }).lean() as any : null;
-    const agencyRaw = tenderRaw ? await Agency.findOne({ name: tenderRaw.contractorName }).lean() as any : null;
+    const agencyRaw = tenderRaw ? (
+        tenderRaw.contractorId
+            ? await Agency.findById(tenderRaw.contractorId).lean() as any
+            : await Agency.findOne({ name: tenderRaw.contractorName }).lean() as any
+    ) : null;
 
     // Fetch existing DepositRefund record for this package
     const depositRefundRaw = await DepositRefund.findOne({ packageId: pkgRaw._id, refundType: 'Additional SD' }).lean() as any;

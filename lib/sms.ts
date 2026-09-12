@@ -93,7 +93,9 @@ export async function checkAndSendWorkOrderSMS(workOrderId: string): Promise<boo
         // 4. Fetch the Package and Agency (Contractor) details
         const [pkg, agency] = await Promise.all([
             Package.findById(tender.packageId),
-            Agency.findOne({ name: tender.contractorName })
+            tender.contractorId
+                ? Agency.findById(tender.contractorId)
+                : Agency.findOne({ name: tender.contractorName })
         ]);
 
         if (!agency) {

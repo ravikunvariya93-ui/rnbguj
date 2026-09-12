@@ -89,7 +89,9 @@ export default async function PrintLOAPage({ params }: Props) {
     const workOrderRaw = await WorkOrder.findOne({ loaId: loaRaw._id }).lean() as any;
 
     // Fetch Agency (Contractor) details for address and mobile number
-    const agencyRaw = await Agency.findOne({ name: tenderRaw.contractorName }).lean() as any;
+    const agencyRaw = tenderRaw.contractorId
+        ? await Agency.findById(tenderRaw.contractorId).lean() as any
+        : await Agency.findOne({ name: tenderRaw.contractorName }).lean() as any;
 
     // Fetch DTP details for tenderAmount
     const dtpRaw = await DTP.findOne({ tsId: pkgRaw._id }).lean() as any;

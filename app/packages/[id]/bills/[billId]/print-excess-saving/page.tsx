@@ -55,7 +55,9 @@ export default async function PrintExcessSavingPage({ params }: Props) {
 
     let agencyRaw = null;
     if (tenderRaw?.contractorName) {
-        agencyRaw = await Agency.findOne({ name: tenderRaw.contractorName }).lean() as any;
+        agencyRaw = tenderRaw.contractorId
+            ? await Agency.findById(tenderRaw.contractorId).lean() as any
+            : await Agency.findOne({ name: tenderRaw.contractorName }).lean() as any;
     }
 
     const packageData = serialize(pkgRaw);

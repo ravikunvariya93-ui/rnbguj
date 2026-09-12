@@ -82,7 +82,9 @@ export default async function PrintAgreementPage({ params }: Props) {
     }
 
     // Fetch Agency (Contractor) details for address
-    const agencyRaw = await Agency.findOne({ name: tenderRaw.contractorName }).lean() as any;
+    const agencyRaw = tenderRaw.contractorId
+        ? await Agency.findById(tenderRaw.contractorId).lean() as any
+        : await Agency.findOne({ name: tenderRaw.contractorName }).lean() as any;
 
     // Fetch DTP details for tenderAmount (if needed)
     const dtpRaw = await DTP.findOne({ tsId: pkgRaw._id }).lean() as any;

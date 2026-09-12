@@ -78,7 +78,9 @@ export default async function PackageBillChecklistPage({
     const contractorName = tender?.contractorName || '-';
     let contractorGstNo = '';
     if (tender?.contractorName) {
-        const agency = await Agency.findOne({ name: tender.contractorName }).lean();
+        const agency = tender.contractorId
+            ? await Agency.findById(tender.contractorId).lean()
+            : await Agency.findOne({ name: tender.contractorName }).lean();
         contractorGstNo = agency?.gstNo || '';
     }
     const contractorDisplay = contractorName !== '-' && contractorGstNo 
