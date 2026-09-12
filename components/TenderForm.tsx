@@ -43,6 +43,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
     });
     const [contractorError, setContractorError] = useState('');
     const [contractorSaving, setContractorSaving] = useState(false);
+    const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null);
 
     const [formData, setFormData] = useState({
         ...initialData,
@@ -88,6 +89,10 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                 }
                 if (agencyData.success) {
                     setAgencies(agencyData.data);
+                    if (initialData.contractorName) {
+                        const match = agencyData.data.find((a: any) => a.name === initialData.contractorName);
+                        setSelectedAgencyId(match?._id || null);
+                    }
                 }
                 if (tenderData.success) {
                     const ids = tenderData.data.map((t: any) => t.packageId?._id || t.packageId);
@@ -227,6 +232,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
 
     const handleAgencySelect = (id: string) => {
         const selectedAgency = agencies.find(a => a._id === id);
+        setSelectedAgencyId(id || null);
         if (selectedAgency) {
             setFormData((prev: any) => ({
                 ...prev,
@@ -258,6 +264,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
             if (data.success) {
                 const createdAgency = data.data;
                 setAgencies((prev) => [...prev, createdAgency].sort((a, b) => a.name.localeCompare(b.name)));
+                setSelectedAgencyId(createdAgency._id);
                 setFormData((prev: any) => ({
                     ...prev,
                     contractorName: createdAgency.name,
@@ -592,7 +599,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                     <SearchableSelect
                         placeholder="Search for agency/contractor..."
                         options={agencies}
-                        value={agencies.find(a => a.name === formData.contractorName)?._id || ''}
+                        value={selectedAgencyId || ''}
                         onChange={handleAgencySelect}
                         displayField="name"
                         helperField="address"

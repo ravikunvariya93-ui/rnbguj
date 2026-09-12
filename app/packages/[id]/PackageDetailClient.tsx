@@ -210,6 +210,7 @@ export default function PackageDetailClient({
     });
     const [editingContractorId, setEditingContractorId] = useState<string | null>(null);
     const [contractorSaving, setContractorSaving] = useState(false);
+    const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null);
 
 
     // Package Edit Works States
@@ -490,6 +491,8 @@ export default function PackageDetailClient({
                 aboveBelowInWord: tender?.aboveBelowInWord === 'Equals' ? 'At Par' : (tender?.aboveBelowInWord || 'Below'),
                 remarks: tender?.remarks || '',
             });
+            const matchAgency = agencies.find(a => a.name === (tender?.contractorName || ''));
+            setSelectedAgencyId(matchAgency?._id || null);
         } else if (section === 'boq') {
             setBoqForm({
                 items: boq?.items ? JSON.parse(JSON.stringify(boq.items)) : [],
@@ -1307,7 +1310,7 @@ export default function PackageDetailClient({
     };
 
     const handleOpenEditContractor = () => {
-        const selected = agencies.find(a => a.name === tenderForm.contractorName);
+        const selected = selectedAgencyId ? agencies.find(a => a._id === selectedAgencyId) : null;
         if (!selected) return;
         setNewContractor({
             name: selected.name || '',
@@ -1347,10 +1350,12 @@ export default function PackageDetailClient({
                 if (isEditing) {
                     setAgencies(prev => prev.map(a => a._id === editingContractorId ? data.data : a).sort((a,b) => a.name.localeCompare(b.name)));
                     setTenderForm((prev: any) => ({ ...prev, contractorName: data.data.name }));
+                    setSelectedAgencyId(data.data._id);
                     showToast('success', 'Contractor/Agency updated successfully.');
                 } else {
                     setAgencies(prev => [...prev, data.data].sort((a,b) => a.name.localeCompare(b.name)));
                     setTenderForm((prev: any) => ({ ...prev, contractorName: data.data.name }));
+                    setSelectedAgencyId(data.data._id);
                     showToast('success', 'Contractor/Agency added successfully.');
                 }
                 setNewContractor({ name: '', proprietorName: '', address: '', mobileNo: '', agencyType: '', gstNo: '' });
@@ -2565,9 +2570,10 @@ export default function PackageDetailClient({
                                                                 <SearchableSelect
                                                                     placeholder="Search contractor..."
                                                                     options={agencies}
-                                                                    value={agencies.find(a => a.name === tenderForm.contractorName)?._id || ''}
+                                                                    value={selectedAgencyId || ''}
                                                                     onChange={(id) => {
                                                                         const selected = agencies.find(a => a._id === id);
+                                                                        setSelectedAgencyId(id);
                                                                         setTenderForm((prev: any) => ({ ...prev, contractorName: selected ? selected.name : '' }));
                                                                     }}
                                                                     displayField="name"
@@ -2583,7 +2589,7 @@ export default function PackageDetailClient({
                                                             </div>
                                                         </div>
                                                         {tenderForm.contractorName && (() => {
-                                                            const sel = agencies.find(a => a.name === tenderForm.contractorName);
+                                                            const sel = selectedAgencyId ? agencies.find(a => a._id === selectedAgencyId) : null;
                                                             if (!sel) return null;
                                                             return (
                                                                 <div className="mt-1 px-2 py-1 bg-amber-100/50 border border-amber-200 rounded text-[11px] text-slate-700 flex flex-wrap gap-x-4 gap-y-0.5 font-normal">
