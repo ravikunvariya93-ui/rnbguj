@@ -3697,6 +3697,10 @@ export default function PackageDetailClient({
                                     initialWorks={pkg?.works}
                                     contractPrice={tender?.contractPrice || tender?.estimatedAmount}
                                     submittedSD={workOrder?.securityDepositAmount || tender?.securityDepositAmount}
+                                    sanctionedWorksTotal={(pkg?.works || []).reduce((s: number, w: any) => {
+                                        const live = findApprovedWork(w.workName)?.jobNumberAmount;
+                                        return s + (live != null ? Number(live) * 100000 : (Number(w.amount) || 0));
+                                    }, 0)}
                                     workType={pkg?.workType}
                                     budgetHead={pkg?.budgetHead}
                                     stipulatedCompletionDate={workOrder?.stipulatedCompletionDate}

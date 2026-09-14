@@ -3,6 +3,8 @@ import Bill from '@/models/Bill';
 import WorkOrder from '@/models/WorkOrder';
 import LOA from '@/models/LOA';
 import Tender from '@/models/Tender';
+import Package from '@/models/Package';
+import ApprovedWork from '@/models/ApprovedWork';
 import BillForm from '@/components/BillForm';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
@@ -12,6 +14,8 @@ import { notFound } from 'next/navigation';
 void WorkOrder;
 void LOA;
 void Tender;
+void Package;
+void ApprovedWork;
 
 interface Props {
     params: Promise<{ id: string; billId: string }>;
@@ -37,6 +41,19 @@ export default async function EditPackageBillPage({ params }: Props) {
 
     const serializedBill = JSON.parse(JSON.stringify(bill));
 
+    // Live AA sanctioned total: sum of assigned works' Job Number Amount (Lakh × 100000)
+    const pkgDoc = await Package.findById(packageId).lean() as any;
+    const pkgWorks = pkgDoc?.works || [];
+    const liveAWs = pkgWorks.length > 0
+        ? await ApprovedWork.find({ workName: { $in: pkgWorks.map((w: any) => w.workName) } }).lean() as any[]
+        : [];
+    const norm = (s: any) => String(s || '').trim().toLowerCase();
+    const liveMap = new Map(liveAWs.map((aw: any) => [norm(aw.workName), Number(aw.jobNumberAmount) || 0]));
+    const sanctionedWorksTotal = pkgWorks.reduce((s: number, w: any) => {
+        const live = liveMap.get(norm(w.workName));
+        return s + (live ? live * 100000 : (Number(w.amount) || 0));
+    }, 0);
+
     return (
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="mb-6">
@@ -53,7 +70,7 @@ export default async function EditPackageBillPage({ params }: Props) {
                 <p className="mt-1 text-xs text-slate-500">Update the financial or temporal details of this bill record.</p>
             </div>
 
-            <BillForm initialData={serializedBill} isEditing={true} redirectTo={`/packages/${packageId}`} />
+            <BillForm initialData={serializedBill} isEditing={true} redirectTo={`/packages/${packageId}`} sanctionedWorksTotal={sanctionedWorksTotal} />
         </div>
     );
 }

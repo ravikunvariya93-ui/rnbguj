@@ -206,9 +206,14 @@ export default function DeductionPrintClient({
     const adminApprovalAmount = Number(bill?.adminApprovalAmount || 0);
     const withheldAmount = Number(bill?.withheldDeposit || 0);
 
-    // Previous Bills
-    const prevBills = allBills.filter((b: any) => (b.runningBillNumber || 0) < billNum);
-    const prevGross = prevBills.reduce((acc: number, b: any) => acc + (Number(b.grossAmount) || 0), 0);
+    // Previous Bills — gross is cumulative up-to-date, so Previously Paid
+    // = last previous bill's gross (NOT the sum of all previous grosses).
+    const prevBills = allBills
+        .filter((b: any) => (b.runningBillNumber || 0) < billNum)
+        .sort((a: any, b: any) => (a.runningBillNumber || 0) - (b.runningBillNumber || 0));
+    const prevGross = prevBills.length > 0
+        ? (Number(prevBills[prevBills.length - 1].grossAmount) || 0)
+        : 0;
     const prevWithheld = prevBills.reduce((acc: number, b: any) => acc + (Number(b.withheldDeposit) || 0), 0);
     const uptoDateGross = grossBillAmount;
 
@@ -271,19 +276,19 @@ export default function DeductionPrintClient({
             ['works Abstract', '', '', '', '', ''],
             ['', '', '(b) From this Bill', '', '', ''],
             ['Deduction', '', '', '', '', ''],
-            [itAmount > 0 ? `- ${fmtNum(itAmount)}` : '', 'Income Tax', '3. Balnce i.e. "up-to date" Payment', '', '', ''],
-            [gstTdsAmount > 0 ? `- ${fmtNum(gstTdsAmount)}` : '', 'G.S.T.', '', '', '', ''],
-            [lcAmount > 0 ? `- ${fmtNum(lcAmount)}` : '', 'Labour Cess', '4. Total amount of payments already made as entry', '', '', ''],
-            [sdAmount > 0 ? `- ${fmtNum(sdAmount)}` : '', 'Security Deposit', '      (K) of last Running Account Bill forwarded with', '', '', ''],
-            [fmdAmount > 0 ? `- ${fmtNum(fmdAmount)}` : '', 'F.M.D.', '       accounts for', '', '', ''],
-            [asphaltDeposit > 0 ? `- ${fmtNum(asphaltDeposit)}` : '', 'Asphalt Deposit', '5. Payment now to be made as detailed belaw :-', '', '', 'Rs.'],
-            [coreSampleDeposit > 0 ? `- ${fmtNum(coreSampleDeposit)}` : '', 'Core Sample De.', '', 'By recovery of ammount, creditable be ', '', ''],
-            [tpiAmount > 0 ? `- ${fmtNum(tpiAmount)}` : '', 'T.P.I. ', '(a) ', 'this work : value to stock supplied as', ' (a) ', recoveryThisWork > 0 ? fmtNum(recoveryThisWork) : ''],
-            [esmpAmount > 0 ? `- ${fmtNum(esmpAmount)}` : '', 'E.S.M.P.', '', 'detailed in the ledger in', '', ''],
-            [tldAmount > 0 ? `- ${fmtNum(tldAmount)}` : '', 'T.L.D.', 'Total 2 (b) + 5 ( c ) G', '', '', ''],
-            [otherDeposit + otherDeposit2 > 0 ? `- ${fmtNum(otherDeposit + otherDeposit2)}` : '', 'Other Deposit', '', 'By  recovery  of  ammount, creditable ', '', ''],
+            [itAmount > 0 ? `${fmtNum(itAmount)}` : '', 'Income Tax', '3. Balnce i.e. "up-to date" Payment', '', '', ''],
+            [gstTdsAmount > 0 ? `${fmtNum(gstTdsAmount)}` : '', 'G.S.T.', '', '', '', ''],
+            [lcAmount > 0 ? `${fmtNum(lcAmount)}` : '', 'Labour Cess', '4. Total amount of payments already made as entry', '', '', ''],
+            [sdAmount > 0 ? `${fmtNum(sdAmount)}` : '', 'Security Deposit', '      (K) of last Running Account Bill forwarded with', '', '', ''],
+            [fmdAmount > 0 ? `${fmtNum(fmdAmount)}` : '', 'F.M.D.', '       accounts for', '', '', ''],
+            [asphaltDeposit > 0 ? `${fmtNum(asphaltDeposit)}` : '', 'Asphalt Deposit', '5. Payment now to be made as detailed belaw :-', '', '', 'Rs.'],
+            [coreSampleDeposit > 0 ? `${fmtNum(coreSampleDeposit)}` : '', 'Core Sample De.', '', 'By recovery of ammount, creditable be ', '', ''],
+            [tpiAmount > 0 ? `${fmtNum(tpiAmount)}` : '', 'T.P.I. ', '(a) ', 'this work : value to stock supplied as', ' (a) ', recoveryThisWork > 0 ? fmtNum(recoveryThisWork) : ''],
+            [esmpAmount > 0 ? `${fmtNum(esmpAmount)}` : '', 'E.S.M.P.', '', 'detailed in the ledger in', '', ''],
+            [tldAmount > 0 ? `${fmtNum(tldAmount)}` : '', 'T.L.D.', 'Total 2 (b) + 5 ( c ) G', '', '', ''],
+            [otherDeposit + otherDeposit2 > 0 ? `${fmtNum(otherDeposit + otherDeposit2)}` : '', 'Other Deposit', '', 'By  recovery  of  ammount, creditable ', '', ''],
             ['', '', '(b) ', 'other   work  or   head   of   Account', ' (b) ', recoveryOtherWork > 0 ? fmtNum(recoveryOtherWork) : ''],
-            ['- ' + fmtNum(totalDeduction), 'Total Deduction', '', 'detailed in the ledger in', '', ''],
+            [fmtNum(totalDeduction), 'Total Deduction', '', 'detailed in the ledger in', '', ''],
             [fmtNum(chequeAmount), 'Cheque Amt.', '( c ) ', 'By Cheque / Total 5[b] x [c] H', '', ''],
             ['', '', '', '', '', ''],
             ['Pay Rs.', numToGujaratiWords(chequeAmount), '', '', '', 'By Cheque'],
@@ -546,7 +551,7 @@ export default function DeductionPrintClient({
 
                         {/* Row 17: Income Tax / 3. Balance */}
                         <tr>
-                            <td className={TD_NUM}>{itAmount > 0 ? `- ${fmtNum(itAmount)}` : '-'}</td>
+                            <td className={TD_NUM}>{itAmount > 0 ? `${fmtNum(itAmount)}` : '-'}</td>
                             <td className={TD}>Income Tax</td>
                             <td colSpan={2} className={`${TD} opacity-40`}>3. Balnce i.e. &quot;up-to date&quot; Payment</td>
                             <td className={`${TD} opacity-40`}></td>
@@ -555,14 +560,14 @@ export default function DeductionPrintClient({
 
                         {/* Row 18: G.S.T. */}
                         <tr>
-                            <td className={TD_NUM}>{gstTdsAmount > 0 ? `- ${fmtNum(gstTdsAmount)}` : '-'}</td>
+                            <td className={TD_NUM}>{gstTdsAmount > 0 ? `${fmtNum(gstTdsAmount)}` : '-'}</td>
                             <td className={TD}>G.S.T.</td>
                             <td colSpan={4} className="border border-black opacity-40"></td>
                         </tr>
 
                         {/* Row 19: Labour Cess / 4. Total amount of payments already made */}
                         <tr>
-                            <td className={TD_NUM}>{lcAmount > 0 ? `- ${fmtNum(lcAmount)}` : '-'}</td>
+                            <td className={TD_NUM}>{lcAmount > 0 ? `${fmtNum(lcAmount)}` : '-'}</td>
                             <td className={TD}>Labour Cess</td>
                             <td colSpan={3} className={`${TD} opacity-40`}>4. Total amount of payments already made as entry</td>
                             <td className={`${TD} opacity-40`}></td>
@@ -570,7 +575,7 @@ export default function DeductionPrintClient({
 
                         {/* Row 20: Security Deposit */}
                         <tr>
-                            <td className={TD_NUM}>{sdAmount > 0 ? `- ${fmtNum(sdAmount)}` : '-'}</td>
+                            <td className={TD_NUM}>{sdAmount > 0 ? `${fmtNum(sdAmount)}` : '-'}</td>
                             <td className={TD}>Security Deposit</td>
                             <td colSpan={4} className={`${TD} pl-4 text-xs italic opacity-40`}>
                                 (K) of last Running Account Bill forwarded with
@@ -579,7 +584,7 @@ export default function DeductionPrintClient({
 
                         {/* Row 21: F.M.D. */}
                         <tr>
-                            <td className={TD_NUM}>{fmdAmount > 0 ? `- ${fmtNum(fmdAmount)}` : '-'}</td>
+                            <td className={TD_NUM}>{fmdAmount > 0 ? `${fmtNum(fmdAmount)}` : '-'}</td>
                             <td className={TD}>F.M.D.</td>
                             <td colSpan={4} className={`${TD} pl-6 text-xs italic opacity-40`}>
                                 accounts for
@@ -588,7 +593,7 @@ export default function DeductionPrintClient({
 
                         {/* Row 22: Asphalt Deposit / 5. Payment now to be made */}
                         <tr>
-                            <td className={TD_NUM}>{asphaltDeposit > 0 ? `- ${fmtNum(asphaltDeposit)}` : '-'}</td>
+                            <td className={TD_NUM}>{asphaltDeposit > 0 ? `${fmtNum(asphaltDeposit)}` : '-'}</td>
                             <td className={TD}>Asphalt Deposit</td>
                             <td colSpan={3} className={`${TD_BOLD} opacity-40`}>5. Payment now to be made as detailed belaw :-</td>
                             <td className={`${TD} text-center font-bold text-xs opacity-40`}>Rs.</td>
@@ -596,7 +601,7 @@ export default function DeductionPrintClient({
 
                         {/* Row 23: Core Sample De. */}
                         <tr>
-                            <td className={TD_NUM}>{coreSampleDeposit > 0 ? `- ${fmtNum(coreSampleDeposit)}` : '-'}</td>
+                            <td className={TD_NUM}>{coreSampleDeposit > 0 ? `${fmtNum(coreSampleDeposit)}` : '-'}</td>
                             <td className={TD}>Core Sample De.</td>
                             <td className={`${TD} opacity-40`}></td>
                             <td colSpan={2} className={`${TD} opacity-40`}>By recovery of ammount, creditable be</td>
@@ -605,7 +610,7 @@ export default function DeductionPrintClient({
 
                         {/* Row 24: T.P.I. / (a) this work */}
                         <tr>
-                            <td className={TD_NUM}>{tpiAmount > 0 ? `- ${fmtNum(tpiAmount)}` : '-'}</td>
+                            <td className={TD_NUM}>{tpiAmount > 0 ? `${fmtNum(tpiAmount)}` : '-'}</td>
                             <td className={TD}>T.P.I.</td>
                             <td className={`${TD} font-semibold text-center opacity-40`}>(a)</td>
                             <td className={`${TD} opacity-40`}>this work : value to stock supplied as</td>
@@ -615,7 +620,7 @@ export default function DeductionPrintClient({
 
                         {/* Row 25: E.S.M.P. */}
                         <tr>
-                            <td className={TD_NUM}>{esmpAmount > 0 ? `- ${fmtNum(esmpAmount)}` : '-'}</td>
+                            <td className={TD_NUM}>{esmpAmount > 0 ? `${fmtNum(esmpAmount)}` : '-'}</td>
                             <td className={TD}>E.S.M.P.</td>
                             <td className={`${TD} opacity-40`}></td>
                             <td colSpan={2} className={`${TD} opacity-40`}>detailed in the ledger in</td>
@@ -624,7 +629,7 @@ export default function DeductionPrintClient({
 
                         {/* Row 26: T.L.D. / Total 2(b) + 5(c) G */}
                         <tr>
-                            <td className={TD_NUM}>{tldAmount > 0 ? `- ${fmtNum(tldAmount)}` : '-'}</td>
+                            <td className={TD_NUM}>{tldAmount > 0 ? `${fmtNum(tldAmount)}` : '-'}</td>
                             <td className={TD}>T.L.D.</td>
                             <td colSpan={3} className={`${TD_BOLD} opacity-40`}>Total 2 (b) + 5 ( c ) G</td>
                             <td className={`${TD} opacity-40`}></td>
@@ -632,7 +637,7 @@ export default function DeductionPrintClient({
 
                         {/* Row 27: Other Deposit */}
                         <tr>
-                            <td className={TD_NUM}>{otherDeposit + otherDeposit2 > 0 ? `- ${fmtNum(otherDeposit + otherDeposit2)}` : '-'}</td>
+                            <td className={TD_NUM}>{otherDeposit + otherDeposit2 > 0 ? `${fmtNum(otherDeposit + otherDeposit2)}` : '-'}</td>
                             <td className={TD}>Other Deposit</td>
                             <td className={`${TD} opacity-40`}></td>
                             <td colSpan={2} className={`${TD} opacity-40`}>By  recovery  of  ammount, creditable</td>
@@ -650,7 +655,7 @@ export default function DeductionPrintClient({
 
                         {/* Row 29: Total Deduction */}
                         <tr className="bg-slate-50 font-bold">
-                            <td className={`${TD_NUM} font-bold`}>- {fmtNum(totalDeduction)}</td>
+                            <td className={`${TD_NUM} font-bold`}>{fmtNum(totalDeduction)}</td>
                             <td className={TD_BOLD}>Total Deduction</td>
                             <td className={`${TD} opacity-40`}></td>
                             <td colSpan={2} className={`${TD} opacity-40`}>detailed in the ledger in</td>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-    Save, RefreshCw, Plus, Trash2, X, Loader2, ChevronDown, ChevronUp, 
+    Save, RefreshCw, Plus, Trash2, Loader2, ChevronDown, ChevronUp, 
     Receipt, Layers, TrendingUp, FileText, Calendar, Download 
 } from 'lucide-react';
 import Link from 'next/link';
@@ -22,6 +22,7 @@ interface IBillItem {
     previousPaidAmount: number;
     toBePaidAmount: number;
     itemType?: 'Standard' | 'Extra';
+    considerForAsphalt?: boolean;
 }
 
 interface BillFormData {
@@ -77,6 +78,9 @@ interface BillFormProps {
     initialWorks?: any[];
     contractPrice?: number;
     submittedSD?: number;
+    // Live Administrative Approval sanctioned total in rupees (sum of assigned
+    // works' Job Number Amount × 100000). Takes precedence over snapshots.
+    sanctionedWorksTotal?: number;
     workType?: string;
     budgetHead?: string;
     stipulatedCompletionDate?: string | Date;
@@ -144,6 +148,7 @@ export default function BillForm({
     initialWorks = [],
     contractPrice,
     submittedSD,
+    sanctionedWorksTotal,
     workType = '',
     budgetHead = '',
     stipulatedCompletionDate,
@@ -168,6 +173,7 @@ export default function BillForm({
     const [abstractFetched, setAbstractFetched] = useState(false);
     const [previousSDTotal, setPreviousSDTotal] = useState<number>(0);
     const [previousTLDTotal, setPreviousTLDTotal] = useState<number>(0);
+    const [previousAsphaltTotal, setPreviousAsphaltTotal] = useState<number>(0);
     const [tableRawInputs, setTableRawInputs] = useState<Record<string, string>>({});
     const [isAbstractExpanded, setIsAbstractExpanded] = useState<boolean>(false);
     const [isExcessSavingExpanded, setIsExcessSavingExpanded] = useState<boolean>(false);
@@ -339,10 +345,12 @@ export default function BillForm({
                     });
                     const sum = prevBills.reduce((s: number, b: any) => s + (b.securityDeposit || 0), 0);
                     const sumTLD = prevBills.reduce((s: number, b: any) => s + (b.timeLimitDeposit || 0), 0);
+                    const sumAsphalt = prevBills.reduce((s: number, b: any) => s + (b.asphaltDeposit || 0), 0);
                     setPreviousSDTotal(sum);
                     setPreviousTLDTotal(sumTLD);
+                    setPreviousAsphaltTotal(sumAsphalt);
                     setFormData((prev: any) => {
-                        return recalculateAuditMemoInternal(prev, undefined, sum, sumTLD);
+                        return recalculateAuditMemoInternal(prev, undefined, sum, sumTLD, sumAsphalt);
                     });
                 }
             } catch (err) {
@@ -391,7 +399,21 @@ export default function BillForm({
         };
     };
 
-    const recalculateAuditMemoInternal = (nextData: any, updatedFields?: Partial<typeof formData>, prevSD?: number, prevTLD?: number) => {
+    // ── Administrative Approval (AA) sanctioned total ──────────────────────
+    // Live prop value first (sum of assigned works' Job Number Amount in
+    // rupees); falls back to package works snapshots, then the selected Work
+    // Order's package works.
+    const getSanctionedWorksTotal = (workOrderId?: string): number => {
+        if (sanctionedWorksTotal != null && sanctionedWorksTotal > 0) return sanctionedWorksTotal;
+        const sumAmounts = (works: any[]) =>
+            (works || []).reduce((s: number, w: any) => s + (Number(w?.amount) || 0), 0);
+        const fromProps = sumAmounts(initialWorks as any[]);
+        if (fromProps > 0) return fromProps;
+        const selectedWorkOrder = workOrders.find((wo: any) => wo._id === (workOrderId || formData.workOrderId));
+        return sumAmounts(selectedWorkOrder?.loaId?.tenderId?.packageId?.works || []);
+    };
+
+    const recalculateAuditMemoInternal = (nextData: any, updatedFields?: Partial<typeof formData>, prevSD?: number, prevTLD?: number, prevAsphalt?: number) => {
         const gross = parseFloat(nextData.grossAmount) || 0;
         const prevPaid = parseFloat(nextData.auditMemoPreviouslyPaid) || 0;
         const dismantle = parseFloat(nextData.dismantleCredit) || 0;
@@ -399,7 +421,17 @@ export default function BillForm({
         const priceAdj = parseFloat(nextData.priceAdjustment) || 0;
         const priceAdjType = nextData.priceAdjustmentType || 'Payable';
         const priceAdjSign = priceAdjType === 'Deductible' ? -1 : 1;
-        const adminAppr = parseFloat(nextData.adminApprovalAmount) || 0;
+        const manualDeductionFields = new Set(updatedFields ? Object.keys(updatedFields) : []);
+        // Administrative Approval = IF((Gross - sanctioned works total) < 0, 0, Gross - sanctioned works total).
+        // Manual entry (if just typed) always wins; when no sanctioned total is
+        // known the stored/manual value is kept as before.
+        const sanctionedTotal = getSanctionedWorksTotal(nextData.workOrderId);
+        const autoAdminAppr = sanctionedTotal > 0
+            ? parseFloat(Math.max(0, gross - sanctionedTotal).toFixed(2))
+            : (parseFloat(nextData.adminApprovalAmount) || 0);
+        const adminAppr = manualDeductionFields.has('adminApprovalAmount')
+            ? (parseFloat(nextData.adminApprovalAmount) || 0)
+            : autoAdminAppr;
         const withheld = parseFloat(nextData.withheldDeposit) || 0;
 
         const netPay = parseFloat((gross - prevPaid - dismantle - excessExtra + (priceAdjSign * priceAdj) - adminAppr - withheld).toFixed(2));
@@ -407,8 +439,22 @@ export default function BillForm({
 
         const autoDeductions = getDeductionsForNetPayable(netPay, Number(nextData.runningBillNumber), undefined, undefined, undefined, undefined, prevSD);
 
-        const manualDeductionFields = new Set(updatedFields ? Object.keys(updatedFields) : []);
         const currentPrevTLD = prevTLD !== undefined ? prevTLD : previousTLDTotal;
+
+        // ── Asphalt Deposit: 2% of flagged items' upto-date total (rounded up
+        // to ₹100), minus asphalt already deducted in previous bills ──────────
+        const flaggedAsphaltBase = (nextData.items || []).reduce(
+            (s: number, it: any) => s + (it?.considerForAsphalt ? (Number(it.uptoDateAmount) || 0) : 0), 0);
+        const currentPrevAsphalt = prevAsphalt !== undefined ? prevAsphalt : previousAsphaltTotal;
+        const autoAsphalt = flaggedAsphaltBase > 0
+            ? Math.max(0, Math.ceil((flaggedAsphaltBase * 0.02) / 100) * 100 - currentPrevAsphalt)
+            : (parseFloat(nextData.asphaltDeposit) || 0);
+        // No Asphalt Deposit deduction on Final Bill.
+        const asphaltVal = nextData.billType === 'Final'
+            ? 0
+            : (manualDeductionFields.has('asphaltDeposit')
+                ? (parseFloat(nextData.asphaltDeposit) || 0)
+                : autoAsphalt);
 
         // ── When editing a saved bill, never auto-recalculate deductions ────────
         // Always use whatever is stored (or what the user just typed). Only recompute totals.
@@ -423,7 +469,7 @@ export default function BillForm({
             const storedTPI   = parseFloat(nextData.tpi)                    || 0;
             const storedESMP  = parseFloat(nextData.esmp)                   || 0;
             const storedTLD   = parseFloat(nextData.timeLimitDeposit)       || 0;
-            const storedAsph  = parseFloat(nextData.asphaltDeposit)         || 0;
+            const storedAsph  = manualDeductionFields.has('asphaltDeposit') ? (parseFloat(nextData.asphaltDeposit) || 0) : asphaltVal;
             const storedCore  = parseFloat(nextData.coreSampleDeposit)      || 0;
             const storedTest  = parseFloat(nextData.testingCharges)         || 0;
             const storedOther = parseFloat(nextData.otherDeposit)           || 0;
@@ -435,6 +481,8 @@ export default function BillForm({
             return {
                 ...nextData,
                 gst: (manualDeductionFields.has('incomeTax') && !manualDeductionFields.has('gst')) ? nextData.incomeTax : nextData.gst,
+                adminApprovalAmount: manualDeductionFields.has('adminApprovalAmount') ? nextData.adminApprovalAmount : adminAppr,
+                asphaltDeposit: storedAsph,
                 netPayableAmount: netPay,
                 totalDeduction:   editTotalDed,
                 netPaidAmount:    editNetPaid,
@@ -509,7 +557,7 @@ export default function BillForm({
                 : calculatedTLD);
         const tldNum = parseFloat(tldRaw) || 0;
 
-        const asphalt = parseFloat(nextData.asphaltDeposit) || 0;
+        const asphalt = asphaltVal;
         const core = parseFloat(nextData.coreSampleDeposit) || 0;
         const testing = parseFloat(nextData.testingCharges) || 0;
         const otherDep = parseFloat(nextData.otherDeposit) || 0;
@@ -528,12 +576,13 @@ export default function BillForm({
             freeMaintenanceDeposit:manualDeductionFields.has('freeMaintenanceDeposit')? nextData.freeMaintenanceDeposit: fmd,
             tpi:                   manualDeductionFields.has('tpi')                   ? nextData.tpi                   : tpiVal,
             esmp:                  manualDeductionFields.has('esmp')                  ? nextData.esmp                  : esmpVal,
-            asphaltDeposit:        manualDeductionFields.has('asphaltDeposit')        ? nextData.asphaltDeposit        : nextData.asphaltDeposit,
+            asphaltDeposit:        manualDeductionFields.has('asphaltDeposit')        ? nextData.asphaltDeposit        : asphalt,
             coreSampleDeposit:     manualDeductionFields.has('coreSampleDeposit')     ? nextData.coreSampleDeposit     : nextData.coreSampleDeposit,
             testingCharges:        manualDeductionFields.has('testingCharges')        ? nextData.testingCharges        : nextData.testingCharges,
             otherDeposit:          manualDeductionFields.has('otherDeposit')          ? nextData.otherDeposit          : nextData.otherDeposit,
             otherDeposit2:         manualDeductionFields.has('otherDeposit2')         ? nextData.otherDeposit2         : nextData.otherDeposit2,
             timeLimitDeposit: tldRaw,
+            adminApprovalAmount: manualDeductionFields.has('adminApprovalAmount') ? nextData.adminApprovalAmount : adminAppr,
             netPayableAmount: netPay,
             totalDeduction: totalDed,
             netPaidAmount: netPaid
@@ -657,6 +706,13 @@ export default function BillForm({
         calculateTotals(newItems);
     };
 
+    const handleAsphaltFlagChange = (index: number, checked: boolean) => {
+        const newItems = [...formData.items];
+        newItems[index] = { ...newItems[index], considerForAsphalt: checked };
+        setFormData((prev: any) => ({ ...prev, items: newItems }));
+        calculateTotals(newItems);
+    };
+
     const getNextExtraItemNo = (items: IBillItem[]) => {
         const extraItems = items.filter((i: any) => i.itemType === 'Extra');
         const nums = extraItems
@@ -685,15 +741,10 @@ export default function BillForm({
             uptoDateAmount: 0,
             previousPaidAmount: 0,
             toBePaidAmount: 0,
-            itemType: 'Extra'
+            itemType: 'Extra',
+            considerForAsphalt: false
         };
         const nextItems = [...formData.items, newItem];
-        setFormData((prev: any) => ({ ...prev, items: nextItems }));
-        calculateTotals(nextItems);
-    };
-
-    const handleRemoveExtraItem = (index: number) => {
-        const nextItems = formData.items.filter((_: any, i: number) => i !== index);
         setFormData((prev: any) => ({ ...prev, items: nextItems }));
         calculateTotals(nextItems);
     };
@@ -1156,7 +1207,7 @@ export default function BillForm({
                                 <th scope="col" className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-right text-xs font-bold text-emerald-950">Upto Date Amt</th>
                                 <th scope="col" className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-right text-xs font-bold text-emerald-950">Prev Paid Amt</th>
                                 <th scope="col" className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-right text-xs font-bold text-emerald-950">To Be Paid</th>
-                                <th scope="col" className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-center text-xs font-bold text-emerald-950 w-12">Actions</th>
+                                <th scope="col" className="border border-emerald-300 px-3 py-2 bg-emerald-100/90 text-center text-xs font-bold text-emerald-950 min-w-[110px]">Consider for Asphalt Deposit?</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -1290,6 +1341,17 @@ export default function BillForm({
                                                     setTableRawInputs(prev => ({ ...prev, [`${index}-partRate`]: val }));
                                                     handleItemChange(index, 'partRate', val);
                                                 }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        const nextInput = document.querySelector(`input[data-partrate-index="${index + 1}"]`) as HTMLInputElement;
+                                                        if (nextInput) {
+                                                            nextInput.focus();
+                                                            nextInput.select();
+                                                        }
+                                                    }
+                                                }}
+                                                data-partrate-index={index}
                                                 className="block w-full sm:text-sm border-emerald-200 rounded-lg p-1.5 border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono"
                                             />
                                         </td>
@@ -1315,19 +1377,15 @@ export default function BillForm({
                                         <td className="border border-slate-200 px-3 py-2 text-sm font-bold text-emerald-800 font-mono text-right bg-emerald-100/50">
                                             {item.toBePaidAmount.toFixed(2)}
                                         </td>
-                                        
-                                        {/* Actions Column */}
-                                        <td className="border border-slate-200 px-3 py-2 text-center">
-                                            {item.itemType === 'Extra' && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleRemoveExtraItem(index)}
-                                                    className="text-rose-500 hover:text-rose-700 transition-colors p-1"
-                                                    title="Remove Extra Item"
-                                                >
-                                                    <X className="w-4 h-4" />
-                                                </button>
-                                            )}
+
+                                        <td className="border border-slate-200 px-3 py-2 text-center bg-orange-50/40">
+                                            <input
+                                                type="checkbox"
+                                                checked={!!item.considerForAsphalt}
+                                                onChange={(e) => handleAsphaltFlagChange(index, e.target.checked)}
+                                                className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-emerald-300 rounded cursor-pointer"
+                                                title="Consider this item for Asphalt Deposit (2% of upto-date amount)"
+                                            />
                                         </td>
                                     </tr>
                                 ))
@@ -1911,6 +1969,15 @@ export default function BillForm({
                                                 className="excel-cell-input text-right font-mono"
                                                 placeholder="0.00"
                                             />
+                                            {(() => {
+                                                const sanctioned = getSanctionedWorksTotal(formData.workOrderId);
+                                                if (!sanctioned) return null;
+                                                return (
+                                                    <div className="text-[10px] text-slate-500 font-mono text-right mt-0.5">
+                                                        Auto = max(0, Gross − ₹{Math.round(sanctioned).toLocaleString('en-IN')})
+                                                    </div>
+                                                );
+                                            })()}
                                         </td>
                                     </tr>
                                     <tr>
@@ -2087,9 +2154,25 @@ export default function BillForm({
                                                 onChange={(e) => recalculateAuditMemo({ asphaltDeposit: e.target.value })}
                                                 onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
                                                 onWheel={(e) => (e.target as HTMLInputElement).blur()}
-                                                className="excel-cell-input text-right font-mono"
+                                                className="excel-cell-input text-right font-mono disabled:bg-slate-100 disabled:text-slate-400"
                                                 placeholder="0"
+                                                disabled={formData.billType === 'Final'}
+                                                title={formData.billType === 'Final' ? 'No Asphalt Deposit on Final Bill' : undefined}
                                             />
+                                            {formData.billType === 'Final' ? (
+                                                <div className="text-[10px] text-slate-500 font-mono text-right mt-0.5">
+                                                    Not applicable for Final Bill
+                                                </div>
+                                            ) : (() => {
+                                                const flagged = (formData.items || []).reduce(
+                                                    (s: number, it: any) => s + (it?.considerForAsphalt ? (Number(it.uptoDateAmount) || 0) : 0), 0);
+                                                if (!flagged) return null;
+                                                return (
+                                                    <div className="text-[10px] text-slate-500 font-mono text-right mt-0.5">
+                                                        Auto = ⌈2% of ₹{Math.round(flagged).toLocaleString('en-IN')}⌉ − prev ₹{Math.round(previousAsphaltTotal).toLocaleString('en-IN')}
+                                                    </div>
+                                                );
+                                            })()}
                                         </td>
                                     </tr>
                                     <tr>

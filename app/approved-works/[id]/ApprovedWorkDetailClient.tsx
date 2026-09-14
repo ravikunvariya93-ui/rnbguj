@@ -2459,6 +2459,13 @@ export default function ApprovedWorkDetailClient({
                                     initialWorks={pkg?.works || (work ? [work] : [])}
                                     contractPrice={tender?.contractPrice || tender?.estimatedAmount}
                                     submittedSD={workOrder?.securityDepositAmount || tender?.securityDepositAmount}
+                                    sanctionedWorksTotal={(() => {
+                                        const ws = pkg?.works?.length ? pkg.works : (work ? [work] : []);
+                                        return ws.reduce((s: number, w: any) => {
+                                            if (w.jobNumberAmount != null) return s + Number(w.jobNumberAmount) * 100000;
+                                            return s + (Number(w.amount) || 0);
+                                        }, 0);
+                                    })()}
                                     workType={work?.workType || pkg?.workType}
                                     budgetHead={work?.budgetHead || pkg?.budgetHead}
                                     onCancel={() => { setIsBillModalOpen(false); setEditingBill(null); }}

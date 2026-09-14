@@ -12,6 +12,7 @@ export interface IBillItem {
     previousPaidAmount: number;
     toBePaidAmount: number;
     itemType?: 'Standard' | 'Extra';
+    considerForAsphalt?: boolean;
 }
 
 export interface IBillWork {
@@ -82,7 +83,8 @@ const BillItemSchema = new Schema({
     uptoDateAmount: { type: Number, required: true },
     previousPaidAmount: { type: Number, default: 0 },
     toBePaidAmount: { type: Number, required: true },
-    itemType: { type: String, enum: ['Standard', 'Extra'], default: 'Standard' }
+    itemType: { type: String, enum: ['Standard', 'Extra'], default: 'Standard' },
+    considerForAsphalt: { type: Boolean, default: false }
 });
 
 const BillWorkSchema = new Schema({

@@ -39,15 +39,11 @@ export async function GET(request: Request) {
         }
 
         // 3. Find previous bills for this WorkOrder to calculate previousPaidAmount
-        const previousBills = await Bill.find({ workOrderId: workOrderId as any });
+        const previousBills = await Bill.find({ workOrderId: workOrderId as any }).sort({ runningBillNumber: 1 });
         
         const previousPaidMap: Record<string, number> = {};
-        let totalPreviouslyPaid = 0;
         
         for (const bill of previousBills) {
-            // Sum grossAmount (or netPayableAmount) from each previous bill for the Audit Memo field
-            totalPreviouslyPaid += bill.grossAmount || bill.netPayableAmount || 0;
-
             if (bill.items && bill.items.length > 0) {
                 for (const item of bill.items) {
                     if (!previousPaidMap[item.itemNo]) {
@@ -57,6 +53,13 @@ export async function GET(request: Request) {
                 }
             }
         }
+
+        // Gross is cumulative up-to-date, so Previously Paid = last bill's gross
+        // (NOT the sum of all previous gross amounts).
+        const lastBill = previousBills.length > 0 ? previousBills[previousBills.length - 1] : null;
+        const totalPreviouslyPaid = lastBill
+            ? (lastBill.grossAmount ?? lastBill.netPayableAmount ?? 0)
+            : 0;
 
         // 4. Construct the abstract template based on BOQ items
         const abstractItems = boq.items.map((boqItem: any) => {
@@ -72,7 +75,8 @@ export async function GET(request: Request) {
                 uptoDateAmount: 0,
                 previousPaidAmount: prevPaid,
                 toBePaidAmount: 0,
-                itemType: boqItem.itemType || 'Standard'
+                itemType: boqItem.itemType || 'Standard',
+                considerForAsphalt: false
             };
         });
 
