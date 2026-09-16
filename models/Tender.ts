@@ -93,6 +93,7 @@ const TenderSchema: Schema = new Schema({
     cancelled: { type: Boolean, default: false },
     cancellationReason: { type: String },
     contractorName: { type: String },
+    contractorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Agency' },
     contractPrice: { type: Number },
     aboveBelowPercentage: { type: Number },
     aboveBelowInWord: { type: String, enum: ['Above', 'Below', 'At Par', 'Equals'], default: 'Below' },

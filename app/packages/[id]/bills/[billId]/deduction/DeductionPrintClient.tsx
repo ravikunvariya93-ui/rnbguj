@@ -25,12 +25,12 @@ function formatDateDMY(d: Date | string | null | undefined): string {
     return `${dd}/${mm}/${yyyy}`;
 }
 
-function fmtNum(n: number | null | undefined, decimals = 2): string {
-    if (n == null || isNaN(n)) return '0.00';
+function fmtNum(n: number | null | undefined, decimals = 0): string {
+    if (n == null || isNaN(n)) return '0/-';
     return Number(n).toLocaleString('en-IN', {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals
-    });
+    }) + '/-';
 }
 
 const gujNumbers: { [key: number]: string } = {
@@ -203,6 +203,8 @@ export default function DeductionPrintClient({
     const auditMemoPreviouslyPaid = Number(bill?.auditMemoPreviouslyPaid || 0);
     const excessExtraAmount = Number(bill?.excessExtraAmount || 0);
     const priceAdjustment = Number(bill?.priceAdjustment || 0);
+    const priceAdjustmentType = bill?.priceAdjustmentType || 'Payable';
+    const priceAdjustmentSign = priceAdjustmentType === 'Deductible' ? '-' : '+';
     const adminApprovalAmount = Number(bill?.adminApprovalAmount || 0);
     const withheldAmount = Number(bill?.withheldDeposit || 0);
 
@@ -217,10 +219,14 @@ export default function DeductionPrintClient({
     const prevWithheld = prevBills.reduce((acc: number, b: any) => acc + (Number(b.withheldDeposit) || 0), 0);
     const uptoDateGross = grossBillAmount;
 
-    // Net Payable Passing Amount
-    const netPayableAmount = bill?.netPayableAmount != null && Number(bill.netPayableAmount) > 0
-        ? Number(bill.netPayableAmount)
-        : (grossBillAmount - dismantleCredit - auditMemoPreviouslyPaid);
+    // Previously Paid Amount
+    const previouslyPaidAmount = auditMemoPreviouslyPaid > 0 ? auditMemoPreviouslyPaid : prevGross;
+
+    // આ બીલેથી ચુકવવાની રકમ = Gross - Previously Paid
+    const billPayableAmount = uptoDateGross - previouslyPaidAmount;
+
+    // નેટ ચુકવવાપાત્ર રકમ = stored Net Payable Amount
+    const netPayableAmount = Number(bill?.netPayableAmount || 0);
     const passingBaseAmount = netPayableAmount > 0 ? netPayableAmount : grossBillAmount;
 
     // Deductions
@@ -248,7 +254,6 @@ export default function DeductionPrintClient({
     const chequeAmount = passingBaseAmount - totalDeduction;
 
     // Memorandum Items
-    const previouslyPaidAmount = auditMemoPreviouslyPaid > 0 ? auditMemoPreviouslyPaid : prevGross;
     const recoveryThisWork = dismantleCredit;
     const recoveryOtherWork = 0;
 
@@ -265,13 +270,13 @@ export default function DeductionPrintClient({
             ['Bill No.:', billLabel, '', 'III Memorandum Of Payments', '', ''],
             ['બિલ મુજબ થયેલ કામની કુલ રકમ', '', '', '', '', fmtNum(uptoDateGross)],
             ['અગાઉ રનીંગ બિલેથી ચુકવેલ બીલની રકમ', '', '', '', '', fmtNum(previouslyPaidAmount)],
-            ['આ બીલેથી ચુકવવાની રકમ', '', '', '', '', fmtNum(netPayableAmount)],
+            ['આ બીલેથી ચુકવવાની રકમ', '', '', '', '', fmtNum(billPayableAmount, 0)],
             ...(dismantleCredit > 0 ? [['Amount of Dismantle Credit', '', '', '', '', fmtNum(dismantleCredit)]] : []),
             ...(excessExtraAmount > 0 ? [['એકસેસ/ એક્સ્ટ્રા આઇટમની રકમ', '', '', '', '', fmtNum(excessExtraAmount)]] : []),
-            ...(priceAdjustment !== 0 ? [['પ્રાઇસ એડજસ્ટમેન્ટ/ સ્ટાર રેઇટ ની રકમ', '', '', '', '', fmtNum(priceAdjustment)]] : []),
+            ...(priceAdjustment !== 0 ? [['પ્રાઇસ એડજસ્ટમેન્ટ/ સ્ટાર રેઇટ ની રકમ', '', '', '', '', `${priceAdjustmentSign}${fmtNum(priceAdjustment)}`]] : []),
             ...(adminApprovalAmount > 0 ? [['વહીવટી મંજુરીની મર્યાદા બહારની રકમ', '', '', '', '', fmtNum(adminApprovalAmount)]] : []),
             ...(withheldAmount > 0 ? [['વીથહેલ્ડ ડીપોઝીટ', '', '', '', '', fmtNum(withheldAmount)]] : []),
-            ['નેટ ચુકવવાપાત્ર રકમ:', '', '', '', '', fmtNum(netPayableAmount)],
+            ['નેટ ચુકવવાપાત્ર રકમ:', '', '', '', '', fmtNum(netPayableAmount, 0)],
             ['Figures for', '', '(a) From previous Bill as per last Running Account Bill', '', '', 'Rs.'],
             ['works Abstract', '', '', '', '', ''],
             ['', '', '(b) From this Bill', '', '', ''],
@@ -473,7 +478,7 @@ export default function DeductionPrintClient({
                         {/* Row 6B: This Bill Gross Payable Amount */}
                         <tr>
                             <td colSpan={4} className={TD}>આ બીલેથી ચુકવવાની રકમ</td>
-                            <td colSpan={2} className={TD_NUM}>{fmtNum(netPayableAmount)}</td>
+                            <td colSpan={2} className={TD_NUM}>{fmtNum(billPayableAmount, 0)}</td>
                         </tr>
 
                         {/* Row 7: Amount of Dismantle Credit */}
@@ -496,7 +501,7 @@ export default function DeductionPrintClient({
                         {priceAdjustment !== 0 && (
                         <tr>
                             <td colSpan={4} className={TD}>પ્રાઇસ એડજસ્ટમેન્ટ/ સ્ટાર રેઇટ ની રકમ</td>
-                            <td colSpan={2} className={TD_NUM}>{fmtNum(priceAdjustment)}</td>
+                            <td colSpan={2} className={TD_NUM}>{priceAdjustmentSign}{fmtNum(priceAdjustment)}</td>
                         </tr>
                         )}
 
@@ -519,7 +524,7 @@ export default function DeductionPrintClient({
                         {/* Row 12: Net Payable Amount */}
                         <tr className="bg-slate-50 font-bold">
                             <td colSpan={4} className={TD_BOLD}>નેટ ચુકવવાપાત્ર રકમ:</td>
-                            <td colSpan={2} className={`${TD_NUM} font-bold underline`}>{fmtNum(netPayableAmount)}</td>
+                            <td colSpan={2} className={`${TD_NUM} font-bold underline`}>{fmtNum(netPayableAmount, 0)}</td>
                         </tr>
 
                         {/* Row 13: Figures for / (a) From previous Bill */}

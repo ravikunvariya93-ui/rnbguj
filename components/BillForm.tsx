@@ -413,7 +413,7 @@ export default function BillForm({
         return sumAmounts(selectedWorkOrder?.loaId?.tenderId?.packageId?.works || []);
     };
 
-    const recalculateAuditMemoInternal = (nextData: any, updatedFields?: Partial<typeof formData>, prevSD?: number, prevTLD?: number, prevAsphalt?: number) => {
+    const recalculateAuditMemoInternal = (nextData: any, updatedFields?: Partial<typeof formData>, prevSD?: number, prevTLD?: number, prevAsphalt?: number, forceRecalculate?: boolean) => {
         const gross = parseFloat(nextData.grossAmount) || 0;
         const prevPaid = parseFloat(nextData.auditMemoPreviouslyPaid) || 0;
         const dismantle = parseFloat(nextData.dismantleCredit) || 0;
@@ -458,18 +458,29 @@ export default function BillForm({
 
         // ── When editing a saved bill, never auto-recalculate deductions ────────
         // Always use whatever is stored (or what the user just typed). Only recompute totals.
+        // Exception: when forceRecalculate is true (Re-Calculate button), auto-calculate the statutory deductions.
         if (isEditing) {
-            const storedIT    = parseFloat(nextData.incomeTax)              || 0;
-            const storedGST   = (manualDeductionFields.has('incomeTax') && !manualDeductionFields.has('gst'))
-                ? storedIT
-                : (parseFloat(nextData.gst) || 0);
-            const storedCess  = parseFloat(nextData.labourCess)             || 0;
-            const storedSD    = parseFloat(nextData.securityDeposit)        || 0;
-            const storedFMD   = parseFloat(nextData.freeMaintenanceDeposit) || 0;
+            let storedIT, storedGST, storedCess, storedSD, storedFMD, storedAsph;
+            if (forceRecalculate) {
+                storedIT   = autoDeductions.incomeTax;
+                storedGST  = autoDeductions.gst;
+                storedCess = autoDeductions.labourCess;
+                storedSD   = autoDeductions.securityDeposit;
+                storedFMD  = autoDeductions.freeMaintenanceDeposit;
+                storedAsph = asphaltVal;
+            } else {
+                storedIT   = parseFloat(nextData.incomeTax)              || 0;
+                storedGST  = (manualDeductionFields.has('incomeTax') && !manualDeductionFields.has('gst'))
+                    ? storedIT
+                    : (parseFloat(nextData.gst) || 0);
+                storedCess = parseFloat(nextData.labourCess)             || 0;
+                storedSD   = parseFloat(nextData.securityDeposit)        || 0;
+                storedFMD  = parseFloat(nextData.freeMaintenanceDeposit) || 0;
+                storedAsph = manualDeductionFields.has('asphaltDeposit') ? (parseFloat(nextData.asphaltDeposit) || 0) : asphaltVal;
+            }
             const storedTPI   = parseFloat(nextData.tpi)                    || 0;
             const storedESMP  = parseFloat(nextData.esmp)                   || 0;
             const storedTLD   = parseFloat(nextData.timeLimitDeposit)       || 0;
-            const storedAsph  = manualDeductionFields.has('asphaltDeposit') ? (parseFloat(nextData.asphaltDeposit) || 0) : asphaltVal;
             const storedCore  = parseFloat(nextData.coreSampleDeposit)      || 0;
             const storedTest  = parseFloat(nextData.testingCharges)         || 0;
             const storedOther = parseFloat(nextData.otherDeposit)           || 0;
@@ -480,7 +491,11 @@ export default function BillForm({
 
             return {
                 ...nextData,
-                gst: (manualDeductionFields.has('incomeTax') && !manualDeductionFields.has('gst')) ? nextData.incomeTax : nextData.gst,
+                incomeTax:  forceRecalculate ? storedIT   : nextData.incomeTax,
+                gst:        forceRecalculate ? storedGST  : ((manualDeductionFields.has('incomeTax') && !manualDeductionFields.has('gst')) ? nextData.incomeTax : nextData.gst),
+                labourCess: forceRecalculate ? storedCess : nextData.labourCess,
+                securityDeposit:       forceRecalculate ? storedSD  : nextData.securityDeposit,
+                freeMaintenanceDeposit:forceRecalculate ? storedFMD : nextData.freeMaintenanceDeposit,
                 adminApprovalAmount: manualDeductionFields.has('adminApprovalAmount') ? nextData.adminApprovalAmount : adminAppr,
                 asphaltDeposit: storedAsph,
                 netPayableAmount: netPay,
@@ -491,7 +506,7 @@ export default function BillForm({
 
         // ── New bill: auto-calculate deductions ──────────────────────────────
         let it, gstDeduction, cessVal, sd, fmd, tpiVal, esmpVal;
-        const deductionChanged = oldNetPay !== netPay;
+        const deductionChanged = forceRecalculate || oldNetPay !== netPay;
         it = manualDeductionFields.has('incomeTax') ? (parseFloat(nextData.incomeTax) || 0)
             : (deductionChanged ? autoDeductions.incomeTax : (nextData.incomeTax !== undefined ? (parseFloat(nextData.incomeTax) || 0) : autoDeductions.incomeTax));
         gstDeduction = manualDeductionFields.has('gst') ? (parseFloat(nextData.gst) || 0)
@@ -816,10 +831,10 @@ export default function BillForm({
         });
     };
 
-    const recalculateAuditMemo = (updatedFields: Partial<typeof formData>) => {
+    const recalculateAuditMemo = (updatedFields: Partial<typeof formData>, forceRecalculate?: boolean) => {
         setFormData((prev: any) => {
             const nextData = { ...prev, ...updatedFields };
-            return recalculateAuditMemoInternal(nextData, updatedFields);
+            return recalculateAuditMemoInternal(nextData, updatedFields, undefined, undefined, undefined, forceRecalculate);
         });
     };
 
@@ -2173,6 +2188,17 @@ export default function BillForm({
                                                     </div>
                                                 );
                                             })()}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td colSpan={2} className="border border-emerald-300 px-3 py-1.5">
+                                            <button
+                                                type="button"
+                                                onClick={() => recalculateAuditMemo({}, true)}
+                                                className="w-full px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs font-bold rounded border border-emerald-300 transition-colors cursor-pointer"
+                                            >
+                                                Re-Calculate
+                                            </button>
                                         </td>
                                     </tr>
                                     <tr>
