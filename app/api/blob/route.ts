@@ -1,16 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { get } from '@vercel/blob';
-
-const BLOB_URL_PATTERN = /\.(public|private)\.blob\.vercel-storage\.com\//;
+import { auth } from '@/auth';
 
 export async function GET(req: NextRequest) {
     try {
+        const session = await auth();
+        if (!session?.user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
         const url = req.nextUrl.searchParams.get('url');
         if (!url) {
             return NextResponse.json({ error: 'Missing url parameter' }, { status: 400 });
         }
 
-        if (!BLOB_URL_PATTERN.test(url)) {
+        let parsed: URL;
+        try {
+            parsed = new URL(url);
+        } catch {
+            return NextResponse.json({ error: 'Invalid blob url' }, { status: 400 });
+        }
+        if (parsed.protocol !== 'https:' || !parsed.hostname.endsWith('.blob.vercel-storage.com')) {
             return NextResponse.json({ error: 'Invalid blob url' }, { status: 400 });
         }
 
@@ -30,6 +39,6 @@ export async function GET(req: NextRequest) {
         });
     } catch (error: any) {
         console.error('Failed to fetch blob:', error);
-        return NextResponse.json({ error: error.message || 'Failed to fetch file' }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to fetch file' }, { status: 500 });
     }
 }

@@ -9,6 +9,12 @@ import {
 import Link from 'next/link';
 import SearchableSelect from './SearchableSelect';
 import { downloadPraisaWorkOrderExcel, downloadPraisaExcessWorkOrderExcel } from '@/lib/exportPraisaWorkOrder';
+import {
+    calculateBillTotals,
+    calculateSecurityDeposit,
+    getDeductionsForNetPayable as getSharedDeductions,
+} from '@/lib/billing/calculations';
+import { parseDateStr as parseSharedDateStr, formatDateForInput as formatSharedDateForInput } from '@/lib/dateUtils';
 
 interface IBillItem {
     itemNo: string;
@@ -89,46 +95,14 @@ interface BillFormProps {
     onCancel?: () => void;
 }
 
-export function calculateSecurityDeposit(netPayVal: number, contractPriceVal: number = 0, previousDeducted: number = 0): number {
-    const netPay = Math.max(netPayVal || 0, 0);
-    const sdBase = netPay > 0 ? Math.ceil((netPay * 0.06) / 100) * 100 : 0;
-    
-    const contractPrice = Math.max(contractPriceVal || 0, 0);
-    if (contractPrice > 0) {
-        const sdMax = Math.ceil((contractPrice * 0.05) / 100) * 100;
-        const remainingMax = Math.max(0, sdMax - previousDeducted);
-        return Math.min(sdBase, remainingMax);
-    }
-    
-    return sdBase;
-}
+export { calculateSecurityDeposit };
 
 function parseDateStr(dateStr: string): Date | null {
-    if (!dateStr) return null;
-    const clean = String(dateStr).trim();
-    const parts = clean.split(/[\/\-\.]/);
-    if (parts.length === 3) {
-        let year = parts[2];
-        if (year.length === 2) year = '20' + year;
-        const iso = `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-        const d = new Date(iso);
-        return isNaN(d.getTime()) ? null : d;
-    }
-    const d = new Date(clean);
-    return isNaN(d.getTime()) ? null : d;
+    return parseSharedDateStr(dateStr);
 }
 
 function formatDateForInput(dateString: string): string {
-    if (!dateString) return '';
-    try {
-        const dateObj = new Date(dateString);
-        if (isNaN(dateObj.getTime())) return '';
-        const day = String(dateObj.getDate()).padStart(2, '0');
-        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-        return `${day}/${month}/${dateObj.getFullYear()}`;
-    } catch {
-        return '';
-    }
+    return formatSharedDateForInput(dateString);
 }
 
 function getTodayDateFormatted(): string {
@@ -361,42 +335,23 @@ export default function BillForm({
     }, [formData.workOrderId, formData.runningBillNumber, initialData?._id]);
 
     const getDeductionsForNetPayable = (
-        netPayVal: number, 
-        runningBillNo: number, 
-        cPrice?: number, 
-        sSD?: number, 
-        wType?: string, 
+        netPayVal: number,
+        runningBillNo: number,
+        cPrice?: number,
+        sSD?: number,
+        wType?: string,
         bHead?: string,
         prevSD?: number
     ) => {
-        const netPay = Math.max(netPayVal, 0);
-        const incomeTax = netPay > 0 ? Math.ceil((netPay * 0.02) / 10) * 10 : 0;
-        const gst = incomeTax; // GST equal to Income Tax (IT)
-        const labourCess = netPay > 0 ? Math.ceil((netPay * 0.01) / 10) * 10 : 0;
-
-        const cp = cPrice !== undefined ? cPrice : contractPriceState;
-        const securityDeposit = calculateSecurityDeposit(netPay, cp, prevSD !== undefined ? prevSD : previousSDTotal);
-
-        const currentWType = wType || workTypeState || '';
-        const isBuilding = String(currentWType).toLowerCase().includes('building');
-        const freeMaintenanceDeposit = isBuilding ? 0 : (netPay > 0 ? Math.ceil((netPay * 0.05) / 100) * 100 : 0);
-
-        const currentBHead = String(bHead || budgetHeadState || '').trim().toLowerCase();
-        const isMMGSY = currentBHead.includes('5054 mmgsy normal') || currentBHead.includes('5054 mmgsy scsp') || currentBHead.includes('mmgsy');
-
-        const tpi = isMMGSY ? (netPay > 10000000 ? 100000 : 50000) : 0;
-        const billNoStr = String(runningBillNo || '').trim().toLowerCase();
-        const isFirstBill = Number(runningBillNo) === 1 || billNoStr === '1' || billNoStr.includes('1st') || billNoStr.includes('first');
-        const esmp = (isMMGSY && isFirstBill) ? 20000 : 0;
-        return {
-            incomeTax,
-            gst,
-            labourCess,
-            securityDeposit,
-            freeMaintenanceDeposit,
-            tpi,
-            esmp
-        };
+        // Thin wrapper around the shared pure function so UI state (contract
+        // price, work type, previous SD) stays in one place: lib/billing.
+        void sSD;
+        return getSharedDeductions(netPayVal, runningBillNo, {
+            contractPrice: cPrice !== undefined ? cPrice : contractPriceState,
+            workType: wType || workTypeState || '',
+            budgetHead: bHead || budgetHeadState || '',
+            previousSDTotal: prevSD !== undefined ? prevSD : previousSDTotal,
+        });
     };
 
     // ── Administrative Approval (AA) sanctioned total ──────────────────────
@@ -811,22 +766,15 @@ export default function BillForm({
     };
 
     const calculateTotals = (items: IBillItem[], pct?: number, dir?: string, cess?: boolean) => {
-        const actualPct = pct !== undefined ? pct : tenderPercentage;
-        const actualDir = dir !== undefined ? dir : tenderDirection;
-        const isCess = cess !== undefined ? cess : formData.labourCessApplicable;
-
-        const totalUptoDate = items.reduce((sum, item) => sum + (item.uptoDateAmount || 0), 0);
-        const adjAmount = totalUptoDate * (actualPct / 100);
-        const netAmount = actualDir === 'Below' ? totalUptoDate - adjAmount : totalUptoDate + adjAmount;
-        
-        const gstBase = isCess ? netAmount * 0.99 : netAmount;
-        const gst18 = gstBase * 0.18;
-        
-        const netPayable = netAmount + gst18;
-        const grossVal = Math.floor(netPayable);
+        const { gross } = calculateBillTotals(
+            items,
+            pct !== undefined ? pct : tenderPercentage,
+            dir !== undefined ? dir : tenderDirection,
+            cess !== undefined ? cess : formData.labourCessApplicable,
+        );
 
         setFormData((prev: any) => {
-            const nextData = { ...prev, grossAmount: grossVal };
+            const nextData = { ...prev, grossAmount: gross };
             return recalculateAuditMemoInternal(nextData);
         });
     };

@@ -1,60 +1,25 @@
-import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db';
 import '@/models/Package';
 import '@/models/TechnicalSanction';
 import Tender from '@/models/Tender';
-import Approval from '@/models/Approval';
-import DTP from '@/models/DTP';
+import { withApi } from '@/lib/api/handler';
+import { created, paginated, badRequest } from '@/lib/api/response';
+import { getPagination, isObjectId } from '@/lib/api/validation';
+import { createTender } from '@/lib/services/tenderService';
 
-export async function POST(request: Request) {
-    try {
-        await dbConnect();
-        const body = await request.json();
+export const POST = withApi(async (_ctx, request: Request) => {
+    const body = await request.json();
 
-        // Basic validation
-        if (!body.packageId) {
-            return NextResponse.json({ success: false, error: 'Package ID is required' }, { status: 400 });
-        }
-
-        if (body.estimatedAmount === undefined || body.estimatedAmount === null || body.estimatedAmount === '') {
-            const dtp = await DTP.findOne({ tsId: body.packageId }).lean();
-            if (dtp && dtp.tenderAmount) {
-                body.estimatedAmount = Number(dtp.tenderAmount);
-            }
-        }
-
-        const tender = await Tender.create(body);
-
-        // Auto-mark Tender Approval as Not Required if tender amount is less than 5,000,000
-        const tenderAmt = tender.estimatedAmount !== undefined && tender.estimatedAmount !== null 
-            ? Number(tender.estimatedAmount) 
-            : Number(tender.contractPrice || 0);
-        if (tenderAmt > 0 && tenderAmt < 5000000) {
-            await Approval.findOneAndUpdate(
-                { tenderId: tender._id } as any,
-                { $set: { notRequired: true } },
-                { upsert: true, new: true }
-            );
-        }
-
-        return NextResponse.json({ success: true, data: tender }, { status: 201 });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    if (!body.packageId || !isObjectId(String(body.packageId))) {
+        return badRequest('Valid Package ID is required');
     }
-}
+    const tender = await createTender(body);
+    return created(tender);
+});
 
-export async function GET(request: Request) {
-    try {
-        await dbConnect();
-        
+export const GET = withApi(async (_ctx, request: Request) => {
         const { searchParams } = new URL(request.url);
         const includeId = searchParams.get('includeId');
-        const pageStr = searchParams.get('page');
-        const limitStr = searchParams.get('limit');
-        
-        const page = pageStr ? parseInt(pageStr, 10) : 1;
-        const limit = limitStr ? parseInt(limitStr, 10) : 100;
-        const skip = (page - 1) * limit;
+        const { page, limit, skip } = getPagination(request.url);
 
         const total = await Tender.countDocuments({});
 
@@ -91,7 +56,7 @@ export async function GET(request: Request) {
         const filteredTenders = Array.from(packageMap.values());
 
         // If includeId is specified and not present in the filtered list, append it
-        if (includeId) {
+        if (includeId && isObjectId(includeId)) {
             const isAlreadyIncluded = filteredTenders.some(t => t._id.toString() === includeId);
             if (!isAlreadyIncluded) {
                 const extraTender = await Tender.findById(includeId).populate('packageId');
@@ -101,12 +66,5 @@ export async function GET(request: Request) {
             }
         }
 
-        return NextResponse.json({ 
-            success: true, 
-            data: filteredTenders,
-            pagination: { total, page, limit, totalPages: Math.ceil(total / limit) }
-        });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-    }
-}
+        return paginated(filteredTenders, total, page, limit);
+});

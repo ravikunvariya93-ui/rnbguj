@@ -2,45 +2,42 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Bill from '@/models/Bill';
 import WorkOrder from '@/models/WorkOrder';
-import LOA from '@/models/LOA';
-import Tender from '@/models/Tender';
 import Package from '@/models/Package';
 import { auth } from '@/auth';
 import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
+import { getAuditorWorkOrderIds } from '@/lib/services/billAccess';
+import { getPagination, isObjectId, sanitizeUpdate } from '@/lib/api/validation';
 
 // Ensure models are registered for populate
 void WorkOrder;
-void LOA;
-void Tender;
 void Package;
 
 export async function GET(request: Request) {
     try {
         await dbConnect();
         const session = await auth();
+        if (!session?.user) {
+            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+        }
         const userRole = (session?.user as any)?.role;
         const auditorSubDivision = getAuditorSubDivision(userRole);
         const isAuditor = isAuditorRole(userRole);
 
         const { searchParams } = new URL(request.url);
-        const page = parseInt(searchParams.get('page') || '1', 10);
-        const limit = parseInt(searchParams.get('limit') || '100', 10);
+        const { page, limit, skip } = getPagination(request.url);
         const workOrderId = searchParams.get('workOrderId');
-        const skip = (page - 1) * limit;
+        if (workOrderId && !isObjectId(workOrderId)) {
+            return NextResponse.json({ success: false, error: 'Invalid workOrderId' }, { status: 400 });
+        }
 
         const query: any = {};
         if (workOrderId) {
             query.workOrderId = workOrderId;
         }
 
-        // Enforce auditor subDivision restriction via Package.subDivision chain
+        // Enforce auditor subDivision restriction via shared service
         if (isAuditor && auditorSubDivision) {
-            const packageIds = (await Package.find({
-                subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') }
-            }).distinct('_id')) as any[];
-            const tenderIds = (await Tender.find({ packageId: { $in: packageIds } }).distinct('_id')) as any[];
-            const loaIds = (await LOA.find({ tenderId: { $in: tenderIds } }).distinct('_id')) as any[];
-            const workOrderIds = (await WorkOrder.find({ loaId: { $in: loaIds } }).distinct('_id')) as any[];
+            const workOrderIds = await getAuditorWorkOrderIds(auditorSubDivision);
 
             // Intersect with provided workOrderId if any
             if (workOrderId) {
@@ -70,10 +67,10 @@ export async function GET(request: Request) {
         return NextResponse.json({ 
             success: true, 
             data: bills,
-            pagination: { total, page, limit, totalPages: Math.ceil(total / limit) }
+            pagination: { total, page, limit, totalPages: limit > 0 ? Math.ceil(total / limit) : 0 }
         });
     } catch (error) {
-        return NextResponse.json({ success: false, error: (error as any).message }, { status: 400 });
+        return NextResponse.json({ success: false, error: 'Failed to fetch bills' }, { status: 400 });
     }
 }
 
@@ -91,11 +88,18 @@ export async function POST(request: Request) {
 
         await dbConnect();
         const body = await request.json();
+        if (!body.workOrderId || !isObjectId(String(body.workOrderId))) {
+            return NextResponse.json({ success: false, error: 'Valid workOrderId is required' }, { status: 400 });
+        }
+        if (!body.billType || !['Running', 'Final'].includes(body.billType)) {
+            return NextResponse.json({ success: false, error: 'Valid billType is required' }, { status: 400 });
+        }
+        const clean = sanitizeUpdate(body);
 
         // If Auditor, ensure the target workOrder belongs to their sub-division
         const auditorSubDivision = getAuditorSubDivision(role);
         if (isAuditorRole(role) && auditorSubDivision) {
-            const workOrder = await WorkOrder.findById(body.workOrderId).populate({
+            const workOrder = await WorkOrder.findById(clean.workOrderId).populate({
                 path: 'loaId',
                 populate: { path: 'tenderId' }
             }).lean() as any;
@@ -109,9 +113,9 @@ export async function POST(request: Request) {
             }
         }
 
-        const bill = await Bill.create(body);
+        const bill = await Bill.create(clean);
         return NextResponse.json({ success: true, data: bill }, { status: 201 });
     } catch (error) {
-        return NextResponse.json({ success: false, error: (error as any).message }, { status: 400 });
+        return NextResponse.json({ success: false, error: 'Failed to create bill' }, { status: 400 });
     }
 }

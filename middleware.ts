@@ -8,9 +8,9 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const isAuthPage = req.nextUrl.pathname.startsWith("/login");
   const isApiAuthRoute = req.nextUrl.pathname.startsWith("/api/auth");
-  const isSeedRoute = req.nextUrl.pathname.startsWith("/api/seed-admin");
+  const isApiRoute = req.nextUrl.pathname.startsWith("/api/");
 
-  if (isApiAuthRoute || isSeedRoute) {
+  if (isApiAuthRoute) {
     return NextResponse.next();
   }
 
@@ -22,6 +22,10 @@ export default auth((req) => {
   }
 
   if (!isLoggedIn) {
+    // APIs must get JSON 401, not an HTML redirect to /login
+    if (isApiRoute) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.redirect(new URL("/login", req.nextUrl));
   }
 

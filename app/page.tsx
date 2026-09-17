@@ -10,6 +10,7 @@ import TechnicalSanction from '@/models/TechnicalSanction';
 import DTP from '@/models/DTP';
 import Pagination from '@/components/Pagination';
 import DataTable from '@/components/DataTable';
+import Badge, { toneForTenderStatus } from '@/components/ui/Badge';
 import ExportTableButton from '@/components/ExportTableButton';
 import WorkTypeFilter from '@/components/WorkTypeFilter';
 import SearchBar from '@/components/SearchBar';
@@ -81,8 +82,6 @@ export default async function Home({ searchParams }: Props) {
     }
 
     const PREDEFINED_WORK_TYPES = ['Road', 'Building', 'Structure', 'Service'];
-    const distinctWorkTypes: string[] = await ApprovedWork.distinct('workType');
-    const workTypes = Array.from(new Set([...PREDEFINED_WORK_TYPES, ...distinctWorkTypes])).filter(Boolean).sort();
 
     const approvedWorkQuery: any = {};
     if (shouldFilter) {
@@ -104,8 +103,10 @@ export default async function Home({ searchParams }: Props) {
     const needTS = loadSummary;
     const needDTPs = loadSummary;
 
-    // Fetch only needed collections
+    // Fetch only needed collections — one round of parallel queries, including
+    // the distinct() call (was a separate sequential await before).
     const [
+        distinctWorkTypes,
         allApprovedWorks,
         allPackages,
         allTS,
@@ -119,6 +120,7 @@ export default async function Home({ searchParams }: Props) {
         masterLOAs,
         masterWorkOrders
     ] = await Promise.all([
+        ApprovedWork.distinct('workType').then((r: unknown) => r as string[]),
         needApprovedWorks ? ApprovedWork.find(approvedWorkQuery).select('_id workName approvalYear workType').lean() : Promise.resolve([]),
         needPackages ? Package.find({}).select('_id packageName works.workName').lean() : Promise.resolve([]),
         needTS ? TechnicalSanction.find({}).select('workName').lean() : Promise.resolve([]),
@@ -132,6 +134,8 @@ export default async function Home({ searchParams }: Props) {
         loadMaster ? LOA.find({}).lean() : Promise.resolve([]),
         loadMaster ? WorkOrder.find({}).lean() : Promise.resolve([])
     ]);
+
+    const workTypes = Array.from(new Set([...PREDEFINED_WORK_TYPES, ...distinctWorkTypes])).filter(Boolean).sort();
 
     // Normalize strings for fuzzy matching
     const normalizeString = (str: string) => (str || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -447,16 +451,27 @@ export default async function Home({ searchParams }: Props) {
         });
         const searchPackageIds = searchPackages.map((pkg: any) => pkg._id);
 
-        // Find Tenders matching the search query in packageName OR belonging to matching packages
-        const searchTendersRaw = await Tender.find({
-            $or: [
-                { packageName: { $regex: searchQuery, $options: 'i' } },
-                { packageId: { $in: searchPackageIds } }
-            ]
-        })
-        .select('_id tenderNoticeYear noticeNo srNo packageName packageId contractorName proposalDate tenderApprovalDate acceptanceLetterDate workOrderDate cancelled cancellationReason')
-        .sort({ tenderNoticeYear: -1, noticeNo: 1, srNo: 1 })
-        .lean();
+        // Tender branch + approved-works branch run concurrently (were sequential).
+        const [searchTendersRaw, matchedApprovedWorksRaw] = await Promise.all([
+            Tender.find({
+                $or: [
+                    { packageName: { $regex: searchQuery, $options: 'i' } },
+                    { packageId: { $in: searchPackageIds } }
+                ]
+            })
+            .select('_id tenderNoticeYear noticeNo srNo packageName packageId contractorName proposalDate tenderApprovalDate acceptanceLetterDate workOrderDate cancelled cancellationReason')
+            .sort({ tenderNoticeYear: -1, noticeNo: 1, srNo: 1 })
+            .lean(),
+            ApprovedWork.find({
+                $or: [
+                    { workName: { $regex: searchQuery, $options: 'i' } },
+                    { workNameGujarati: { $regex: searchQuery, $options: 'i' } }
+                ]
+            })
+            .select('_id workName circle district subDivision taluka approvalYear jobNumberAmount workType estimateConsultant remarks')
+            .limit(100)
+            .lean(),
+        ]);
 
         const searchTenderIds = searchTendersRaw.map((t: any) => t._id);
 
@@ -530,17 +545,7 @@ export default async function Home({ searchParams }: Props) {
             };
         });
 
-        // Search Approved Works directly
-        const matchedApprovedWorksRaw = await ApprovedWork.find({
-            $or: [
-                { workName: { $regex: searchQuery, $options: 'i' } },
-                { workNameGujarati: { $regex: searchQuery, $options: 'i' } }
-            ]
-        })
-        .select('_id workName circle district subDivision taluka approvalYear jobNumberAmount workType estimateConsultant remarks')
-        .limit(100)
-        .lean();
-
+        // Search Approved Works directly (already fetched above in parallel)
         const workNameToPkgInfo = new Map<string, { _id: string, packageName: string }>();
         allPackages.forEach((pkg: any) => {
             if (pkg.works) {
@@ -625,28 +630,10 @@ export default async function Home({ searchParams }: Props) {
             label: 'Work Order Date', 
             render: (row) => <span className="text-slate-600">{formatShortDate(row.workOrderDate)}</span> 
         },
-        { 
-            key: 'status', 
-            label: 'Status', 
-            render: (row) => {
-                let badgeClass = 'bg-slate-100 text-slate-700';
-                if (row.status === 'Cancelled') {
-                    badgeClass = 'bg-red-50 text-red-700 border border-red-200';
-                } else if (row.status === 'Work Order Issued') {
-                    badgeClass = 'bg-emerald-50 text-emerald-700 border border-emerald-200';
-                } else if (row.status === 'LOA Issued') {
-                    badgeClass = 'bg-emerald-50 text-emerald-700 border border-emerald-200';
-                } else if (row.status === 'Tender Approved' || row.status === 'Approved (No Sanction Req.)') {
-                    badgeClass = 'bg-indigo-50 text-indigo-700 border border-indigo-200';
-                } else if (row.status === 'Proposal Submitted') {
-                    badgeClass = 'bg-amber-50 text-amber-700 border border-amber-200';
-                }
-                return (
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${badgeClass}`}>
-                        {row.status}
-                    </span>
-                );
-            }
+        {
+            key: 'status',
+            label: 'Status',
+            render: (row) => <Badge tone={toneForTenderStatus(row.status)}>{row.status}</Badge>,
         }
     ];
 

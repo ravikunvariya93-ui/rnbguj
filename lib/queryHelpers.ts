@@ -1,4 +1,5 @@
 import type { ListPageSearchParams } from './types';
+import { getPagination as getSharedPagination } from './api/validation';
 
 export async function buildDashboardFilter(params: ListPageSearchParams): Promise<{
     packageIds?: any[];
@@ -74,18 +75,23 @@ export function parsePagination(params: { page?: string; limit?: string }): {
     limit: number;
     skip: number;
 } {
-    const page = parseInt(params.page || '1');
-    const limit = parseInt(params.limit || '100');
-    const skip = (page - 1) * limit;
-    return { page, limit, skip };
+    // Delegate to the shared capped implementation; keep this wrapper so
+    // existing callers don't need to change.
+    const fakeUrl = `http://localhost/?page=${params.page || '1'}&limit=${params.limit || '100'}`;
+    return getSharedPagination(fakeUrl);
 }
+
+const ALLOWED_SORT_FIELDS = new Set([
+    'createdAt', 'updatedAt', 'billDate', 'grossAmount', 'netPaidAmount',
+    'name', 'workName', 'packageName', 'username', 'role',
+]);
 
 export function parseSort(
     params: { sort?: string; order?: string },
     defaultSort: Record<string, 1 | -1> = { createdAt: -1 }
 ): Record<string, 1 | -1> {
     let sortObj = defaultSort;
-    if (params.sort && params.order) {
+    if (params.sort && params.order && ALLOWED_SORT_FIELDS.has(params.sort)) {
         sortObj = { [params.sort]: params.order === 'asc' ? 1 : -1 };
     }
     return sortObj;

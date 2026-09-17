@@ -21,6 +21,14 @@ function excelDateToJSDate(serial: any): Date | undefined {
 }
 
 export async function GET() {
+    if (process.env.NODE_ENV === 'production' && process.env.ALLOW_SEED !== 'true') {
+        return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+    }
+    const { auth } = await import('@/auth');
+    const session = await auth();
+    if ((session?.user as any)?.role !== 'ADMIN') {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
     const filePath = path.join(process.cwd(), 'Tender details.xlsm');
     try {
         await dbConnect();

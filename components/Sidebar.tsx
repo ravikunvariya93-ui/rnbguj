@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
+import { memo, useMemo } from 'react';
 import { 
     Building2, FileText, Home, CheckCircle, 
     Package, Layers, X, User, LogOut, Users, ClipboardList, TrendingUp, Landmark 
@@ -16,7 +17,7 @@ interface SidebarProps {
 
 const AUDITOR_ROLES = ALL_AUDITOR_ROLES;
 
-export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+export default memo(function Sidebar({ isOpen, onClose }: SidebarProps) {
     const pathname = usePathname();
     const { data: session } = useSession();
     const user = session?.user as any;
@@ -35,8 +36,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         { name: 'User Management', href: '/admin/users',       icon: Users,         roles: ['ADMIN'] },
     ];
 
-    const filteredNavigation = navigation.filter(item => 
-        !item.roles || (user?.role && item.roles.includes(user.role))
+    const filteredNavigation = useMemo(
+        () => navigation.filter(item =>
+            !item.roles || (user?.role && item.roles.includes(user.role))
+        ),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [user?.role],
     );
 
     // Human-readable role label for sidebar footer
@@ -127,4 +132,4 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </aside>
         </>
     );
-}
+})

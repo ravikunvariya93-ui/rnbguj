@@ -1,10 +1,13 @@
-import { Loader2 } from 'lucide-react';
+import { PageSkeleton } from '@/components/ui/Skeleton';
 
 export default function Loading() {
     return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] w-full h-full gap-4">
-            <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
-            <p className="text-gray-500 font-medium animate-pulse text-lg">Loading...</p>
+        <div className="w-full space-y-6" aria-busy="true" aria-label="Loading">
+            <div className="flex flex-col gap-1">
+                <div className="h-7 w-64 animate-pulse rounded-lg bg-slate-200" />
+                <div className="h-4 w-96 max-w-full animate-pulse rounded-md bg-slate-100" />
+            </div>
+            <PageSkeleton rows={6} />
         </div>
     );
 }

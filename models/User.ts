@@ -25,7 +25,7 @@ const NameHistoryEntrySchema = new Schema<INameHistoryEntry>({
   changedBy: { type: String },
 }, { _id: false });
 
-const allRoles = ['ADMIN', 'SUPERVISOR', 'VIEWER', ...ALL_AUDITOR_ROLES];
+const allRoles = ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...ALL_AUDITOR_ROLES];
 
 const UserSchema: Schema = new Schema({
   name: {

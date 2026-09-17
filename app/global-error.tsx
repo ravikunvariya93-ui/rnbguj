@@ -24,7 +24,8 @@ export default function GlobalError({
           <div>
             <h2 className="text-lg font-bold text-slate-800">Critical Application Error</h2>
             <p className="text-xs text-slate-500 mt-1">
-              {error?.message || 'A critical error occurred.'}
+              A critical error occurred.
+              {error?.digest ? ` (Ref: ${error.digest})` : ''}
             </p>
           </div>
           <div className="pt-2 flex justify-center gap-3">

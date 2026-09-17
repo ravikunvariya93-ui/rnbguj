@@ -1,13 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc; /* slate-50: single app canvas (was white vs gray-50 vs slate-50) */
+  --foreground: #0f172a; /* slate-900 */
+  --brand: #059669; /* emerald-600: the one primary */
+  --brand-dark: #047857; /* emerald-700 hover */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-brand: var(--brand);
+  --color-brand-dark: var(--brand-dark);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -22,7 +26,26 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* NOTE: do NOT set font-family here — it would override next/font's Inter. */
+}
+
+/* Consistent keyboard focus everywhere (was: only some inputs had rings). */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Skip rendering off-screen rows until scrolled near (used by DataTable). */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 600px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Remove number input up/down spin buttons */

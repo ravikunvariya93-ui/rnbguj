@@ -1,6 +1,8 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { memo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PaginationProps {
@@ -8,8 +10,7 @@ interface PaginationProps {
     totalPages: number;
 }
 
-export default function Pagination({ currentPage, totalPages }: PaginationProps) {
-    const router = useRouter();
+function Pagination({ currentPage, totalPages }: PaginationProps) {
     const searchParams = useSearchParams();
 
     const createPageURL = (pageNumber: number | string) => {
@@ -20,41 +21,53 @@ export default function Pagination({ currentPage, totalPages }: PaginationProps)
 
     if (totalPages <= 1) return null;
 
+    const linkBase = 'relative inline-flex items-center cursor-pointer transition-colors';
+    const pageBtn = (isCurrent: boolean) =>
+        `px-3.5 py-2 text-xs font-bold border-r border-emerald-200 ${isCurrent ? 'z-10 bg-emerald-600 text-white' : 'text-emerald-950 hover:bg-emerald-100/60'}`;
+
+    const prevDisabled = currentPage <= 1;
+    const nextDisabled = currentPage >= totalPages;
+    const disabledCls = 'pointer-events-none opacity-40';
+
     return (
-        <div className="flex items-center justify-between border border-emerald-200 bg-gradient-to-r from-emerald-50/50 via-teal-50/30 to-green-50/50 px-4 py-3 sm:px-6 mt-6 rounded-2xl shadow-xs">
+        <div className="flex items-center justify-between border border-slate-200 bg-white px-4 py-3 sm:px-6 mt-6 rounded-2xl shadow-sm">
             <div className="flex flex-1 justify-between sm:hidden">
-                <button
-                    onClick={() => router.push(createPageURL(currentPage - 1))}
-                    disabled={currentPage <= 1}
-                    className="relative inline-flex items-center rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-bold text-emerald-800 hover:bg-emerald-50 disabled:opacity-40 cursor-pointer shadow-2xs"
+                <Link
+                    href={createPageURL(currentPage - 1)}
+                    prefetch
+                    aria-disabled={prevDisabled}
+                    className={`relative inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-emerald-800 hover:bg-emerald-50 ${prevDisabled ? disabledCls : ''}`}
                 >
                     Previous
-                </button>
-                <button
-                    onClick={() => router.push(createPageURL(currentPage + 1))}
-                    disabled={currentPage >= totalPages}
-                    className="relative ml-3 inline-flex items-center rounded-xl border border-emerald-300 bg-white px-4 py-2 text-sm font-bold text-emerald-800 hover:bg-emerald-50 disabled:opacity-40 cursor-pointer shadow-2xs"
+                </Link>
+                <Link
+                    href={createPageURL(currentPage + 1)}
+                    prefetch
+                    aria-disabled={nextDisabled}
+                    className={`relative ml-3 inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-emerald-800 hover:bg-emerald-50 ${nextDisabled ? disabledCls : ''}`}
                 >
                     Next
-                </button>
+                </Link>
             </div>
             <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
                 <div>
-                    <p className="text-sm text-emerald-950 font-medium">
+                    <p className="text-sm text-slate-600 font-medium">
                         Showing page <span className="font-bold text-emerald-700">{currentPage}</span> of{' '}
                         <span className="font-bold text-emerald-700">{totalPages}</span>
                     </p>
                 </div>
                 <div>
-                    <nav className="isolate inline-flex -space-x-px rounded-xl shadow-xs overflow-hidden border border-emerald-300 bg-white" aria-label="Pagination">
-                        <button
-                            onClick={() => router.push(createPageURL(currentPage - 1))}
-                            disabled={currentPage <= 1}
-                            className="relative inline-flex items-center px-3 py-2 text-emerald-600 hover:bg-emerald-50 focus:z-20 focus:outline-offset-0 disabled:opacity-40 cursor-pointer border-r border-emerald-200"
+                    <nav className="isolate inline-flex -space-x-px rounded-xl shadow-xs overflow-hidden border border-slate-200 bg-white" aria-label="Pagination">
+                        <Link
+                            href={createPageURL(currentPage - 1)}
+                            prefetch
+                            aria-disabled={prevDisabled}
+                            aria-label="Previous page"
+                            className={`${linkBase} px-3 py-2 text-emerald-600 hover:bg-emerald-50 border-r border-slate-200 ${prevDisabled ? disabledCls : ''}`}
                         >
                             <span className="sr-only">Previous</span>
                             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-                        </button>
+                        </Link>
                         
                         {(() => {
                             const getVisiblePages = (current: number, total: number) => {
@@ -69,7 +82,7 @@ export default function Pagination({ currentPage, totalPages }: PaginationProps)
                                     return (
                                         <span
                                             key={`ellipsis-${index}`}
-                                            className="relative inline-flex items-center px-3.5 py-2 text-xs font-bold text-emerald-600/70 border-r border-emerald-200"
+                                            className="relative inline-flex items-center px-3.5 py-2 text-xs font-bold text-slate-400 border-r border-slate-200"
                                         >
                                             ...
                                         </span>
@@ -78,32 +91,34 @@ export default function Pagination({ currentPage, totalPages }: PaginationProps)
 
                                 const isCurrent = page === currentPage;
                                 return (
-                                    <button
+                                    <Link
                                         key={page}
-                                        onClick={() => router.push(createPageURL(page))}
-                                        className={`relative inline-flex items-center px-3.5 py-2 text-xs font-bold border-r border-emerald-200 transition-colors cursor-pointer ${
-                                            isCurrent
-                                                ? 'z-10 bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-xs'
-                                                : 'text-emerald-950 hover:bg-emerald-100/60'
-                                        }`}
+                                        href={createPageURL(page)}
+                                        prefetch
+                                        aria-current={isCurrent ? 'page' : undefined}
+                                        className={`${linkBase} ${pageBtn(isCurrent)}`}
                                     >
                                         {page}
-                                    </button>
+                                    </Link>
                                 );
                             });
                         })()}
 
-                        <button
-                            onClick={() => router.push(createPageURL(currentPage + 1))}
-                            disabled={currentPage >= totalPages}
-                            className="relative inline-flex items-center px-3 py-2 text-emerald-600 hover:bg-emerald-50 focus:z-20 focus:outline-offset-0 disabled:opacity-40 cursor-pointer"
+                        <Link
+                            href={createPageURL(currentPage + 1)}
+                            prefetch
+                            aria-disabled={nextDisabled}
+                            aria-label="Next page"
+                            className={`${linkBase} px-3 py-2 text-emerald-600 hover:bg-emerald-50 ${nextDisabled ? disabledCls : ''}`}
                         >
                             <span className="sr-only">Next</span>
                             <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                        </button>
+                        </Link>
                     </nav>
                 </div>
             </div>
         </div>
     );
 }
+
+export default memo(Pagination);

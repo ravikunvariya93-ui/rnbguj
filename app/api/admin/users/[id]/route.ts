@@ -11,8 +11,15 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   const { id } = await params;
+  if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+    return NextResponse.json({ error: 'Invalid user id' }, { status: 400 });
+  }
   try {
     const { name, username, password, role, designation } = await req.json();
+    const VALID_ROLES = ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', 'AUDITOR_BVN', 'AUDITOR_TLJ', 'AUDITOR_MHV', 'AUDITOR_SHR', 'AUDITOR_VLB', 'AUDITOR_PLT'];
+    if (role !== undefined && !VALID_ROLES.includes(role)) {
+      return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+    }
     await dbConnect();
     
     // Check if another user already has the new username
@@ -43,12 +50,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       };
     }
 
-    const updateData: any = { role };
+    const updateData: any = {};
+    if (role !== undefined) updateData.role = role;
     if (name) updateData.name = name;
     if (username) updateData.username = username;
     if (designation !== undefined) updateData.designation = designation;
     if (password) {
-      updateData.password = bcrypt.hashSync(password, 10);
+      updateData.password = await bcrypt.hash(password, 10);
     }
 
     // Push to history if there was a change
@@ -58,7 +66,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       });
     }
 
-    const user = await User.findByIdAndUpdate(id, updateData, { new: true }).select('-password');
+    const user = await User.findByIdAndUpdate(id, updateData, { new: true, runValidators: true }).select('-password');
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }

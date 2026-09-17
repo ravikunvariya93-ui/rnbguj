@@ -1,41 +1,25 @@
-import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db';
 import Package from '@/models/Package';
 import { parseDateStr } from '@/lib/dateUtils';
+import { withApi } from '@/lib/api/handler';
+import { created, paginated, badRequest } from '@/lib/api/response';
+import { getPagination, sanitizeUpdate } from '@/lib/api/validation';
 
-export async function POST(request: Request) {
-    try {
-        await dbConnect();
-        const body = await request.json();
-        if (body.committeeDate !== undefined) {
-            body.committeeDate = body.committeeDate ? parseDateStr(body.committeeDate) : null;
-        }
-
-        const pkg = await Package.create(body);
-
-        return NextResponse.json({ success: true, data: pkg }, { status: 201 });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+export const POST = withApi(async (_ctx, request: Request) => {
+    const body = await request.json();
+    if (!body?.packageName || !String(body.packageName).trim()) {
+        return badRequest('Package name is required');
     }
-}
-
-export async function GET(request: Request) {
-    try {
-        await dbConnect();
-        const { searchParams } = new URL(request.url);
-        const page = parseInt(searchParams.get('page') || '1', 10);
-        const limit = parseInt(searchParams.get('limit') || '100', 10);
-        const skip = (page - 1) * limit;
-
-        const total = await Package.countDocuments({});
-        const packages = await Package.find({}).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
-        
-        return NextResponse.json({ 
-            success: true, 
-            data: packages,
-            pagination: { total, page, limit, totalPages: Math.ceil(total / limit) }
-        });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    const clean = sanitizeUpdate(body);
+    if (clean.committeeDate !== undefined) {
+        clean.committeeDate = clean.committeeDate ? parseDateStr(clean.committeeDate as string) : null;
     }
-}
+    const pkg = await Package.create(clean);
+    return created(pkg);
+});
+
+export const GET = withApi(async (_ctx, request: Request) => {
+    const { page, limit, skip } = getPagination(request.url);
+    const total = await Package.countDocuments({});
+    const packages = await Package.find({}).sort({ createdAt: -1 }).skip(skip).limit(limit).lean();
+    return paginated(packages, total, page, limit);
+});

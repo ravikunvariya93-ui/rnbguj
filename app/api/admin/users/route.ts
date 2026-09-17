@@ -32,13 +32,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Name, username, password and role are required' }, { status: 400 });
     }
 
+    const VALID_ROLES = ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', 'AUDITOR_BVN', 'AUDITOR_TLJ', 'AUDITOR_MHV', 'AUDITOR_SHR', 'AUDITOR_VLB', 'AUDITOR_PLT'];
+    if (!VALID_ROLES.includes(role)) {
+      return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+    }
+
     await dbConnect();
     const existingUser = await User.findOne({ username });
     if (existingUser) {
       return NextResponse.json({ error: 'Username already exists' }, { status: 400 });
     }
 
-    const hashedPassword = bcrypt.hashSync(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({
       name,
       username,

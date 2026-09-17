@@ -8,16 +8,23 @@ export function parseDateStr(dateStr: string | Date | null | undefined): Date | 
 
     const parts = clean.split(/[\/\-\.]/);
     if (parts.length === 3) {
-        // YYYY-MM-DD format
+        // YYYY-MM-DD format — construct in local time to avoid UTC-midnight off-by-one
         if (parts[0].length === 4) {
-            const d = new Date(`${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`);
+            const y = Number(parts[0]);
+            const m = Number(parts[1]);
+            const dd = Number(parts[2]);
+            if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(dd)) return null;
+            const d = new Date(y, m - 1, dd);
             return isNaN(d.getTime()) ? null : d;
         }
         // DD/MM/YYYY format
         let year = parts[2];
         if (year.length === 2) year = '20' + year;
-        const iso = `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-        const d = new Date(iso);
+        const y = Number(year);
+        const m = Number(parts[1]);
+        const dd = Number(parts[0]);
+        if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(dd)) return null;
+        const d = new Date(y, m - 1, dd);
         return isNaN(d.getTime()) ? null : d;
     }
     const d = new Date(clean);

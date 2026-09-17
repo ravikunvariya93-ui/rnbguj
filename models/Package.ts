@@ -41,6 +41,8 @@ const PackageSchema: Schema = new Schema({
 });
 
 PackageSchema.index({ createdAt: 1 });
+PackageSchema.index({ subDivision: 1, createdAt: -1 });
+PackageSchema.index({ packageName: 1 });
 
 // Avoid recompiling model in watch mode
 if (process.env.NODE_ENV !== 'production') {

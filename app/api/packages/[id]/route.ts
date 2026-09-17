@@ -1,86 +1,40 @@
-import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db';
 import Package from '@/models/Package';
-import DTP from '@/models/DTP';
-import Tender from '@/models/Tender';
-import Approval from '@/models/Approval';
-import LOA from '@/models/LOA';
-import WorkOrder from '@/models/WorkOrder';
 import { parseDateStr } from '@/lib/dateUtils';
+import { withApi } from '@/lib/api/handler';
+import { ok, badRequest, notFound } from '@/lib/api/response';
+import { isObjectId, sanitizeUpdate } from '@/lib/api/validation';
+import { deletePackageCascade } from '@/lib/services/packageService';
 
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    try {
-        await dbConnect();
-        const { id } = await params;
-        const pkg = await Package.findById(id);
+type Ctx = { params: Promise<{ id: string }> };
 
-        if (!pkg) {
-            return NextResponse.json({ success: false, error: 'Package not found' }, { status: 404 });
-        }
+export const GET = withApi(async (_ctx, _request: Request, { params }: Ctx) => {
+    const { id } = await params;
+    if (!isObjectId(id)) return badRequest('Invalid package id');
+    const pkg = await Package.findById(id);
+    if (!pkg) return notFound('Package not found');
+    return ok(pkg);
+});
 
-        return NextResponse.json({ success: true, data: pkg });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+export const PUT = withApi(async (_ctx, request: Request, { params }: Ctx) => {
+    const { id } = await params;
+    if (!isObjectId(id)) return badRequest('Invalid package id');
+    const body = await request.json();
+    const clean = sanitizeUpdate(body);
+    if (clean.committeeDate !== undefined) {
+        clean.committeeDate = clean.committeeDate ? parseDateStr(clean.committeeDate as string) : null;
     }
-}
+    const pkg = await Package.findByIdAndUpdate(id, clean, { new: true, runValidators: true });
+    if (!pkg) return notFound('Package not found');
+    return ok(pkg);
+});
 
-export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    try {
-        await dbConnect();
+export const DELETE = withApi(
+    async (_ctx, _request: Request, { params }: Ctx) => {
         const { id } = await params;
-        const body = await request.json();
-
-        delete body._id;
-        if (body.committeeDate !== undefined) {
-            body.committeeDate = body.committeeDate ? parseDateStr(body.committeeDate) : null;
-        }
-
-        const pkg = await Package.findByIdAndUpdate(id, body, {
-            new: true,
-            runValidators: true,
-        });
-
-        if (!pkg) {
-            return NextResponse.json({ success: false, error: 'Package not found' }, { status: 404 });
-        }
-
-        return NextResponse.json({ success: true, data: pkg });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 400 });
-    }
-}
-
-export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    try {
-        await dbConnect();
-        const { id } = await params;
-
-        // DEEP CASCADING DELETES
-        
-        // 1. DTP deletion
-        await DTP.deleteMany({ tsId: id as any });
-
-        // 2. Tenders & Sub-records deletion (Approval, LOA, WorkOrder)
-        const tenders = await Tender.find({ packageId: id as any });
-        for (const tender of tenders) {
-            const loas = await LOA.find({ tenderId: tender._id as any });
-            for (const loa of loas) {
-                await WorkOrder.deleteMany({ loaId: loa._id as any });
-                await LOA.findByIdAndDelete(loa._id);
-            }
-            await Approval.deleteMany({ tenderId: tender._id as any });
-            await Tender.findByIdAndDelete(tender._id);
-        }
-
-        // 3. Delete Package itself
-        const deletedPkg = await Package.findByIdAndDelete(id);
-
-        if (!deletedPkg) {
-            return NextResponse.json({ success: false, error: 'Package not found' }, { status: 404 });
-        }
-
-        return NextResponse.json({ success: true, data: {} });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 400 });
-    }
-}
+        if (!isObjectId(id)) return badRequest('Invalid package id');
+        const deletedPkg = await deletePackageCascade(id);
+        if (!deletedPkg) return notFound('Package not found');
+        return ok({});
+    },
+    { roles: ['ADMIN', 'SUPERVISOR'] },
+);

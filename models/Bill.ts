@@ -96,15 +96,15 @@ const BillWorkSchema = new Schema({
 const BillSchema: Schema = new Schema({
     workOrderId: { type: mongoose.Schema.Types.ObjectId, ref: 'WorkOrder', required: true },
     billType: { type: String, enum: ['Running', 'Final'], required: true },
-    runningBillNumber: { 
-        type: Number, 
-        min: 1, 
+    runningBillNumber: {
+        type: Number,
+        min: 1,
         max: 50,
-        required: true
+        required: function (this: any) { return this.billType === 'Running'; },
     },
     billDate: { type: Date, required: true },
-    grossAmount: { type: Number, required: true },
-    netPaidAmount: { type: Number },
+    grossAmount: { type: Number, required: true, min: 0 },
+    netPaidAmount: { type: Number, min: 0 },
     passingDate: { type: Date },
     actualCompletionDate: { type: Date },
     lastRecordEntryDate: { type: Date },
@@ -119,29 +119,29 @@ const BillSchema: Schema = new Schema({
     voucherDate: { type: Date },
 
     // Audit Memo
-    auditMemoPreviouslyPaid: { type: Number, default: 0 },
-    dismantleCredit: { type: Number, default: 0 },
-    excessExtraAmount: { type: Number, default: 0 },
-    priceAdjustment: { type: Number, default: 0 },
+    auditMemoPreviouslyPaid: { type: Number, default: 0, min: 0 },
+    dismantleCredit: { type: Number, default: 0, min: 0 },
+    excessExtraAmount: { type: Number, default: 0, min: 0 },
+    priceAdjustment: { type: Number, default: 0, min: 0 },
     priceAdjustmentType: { type: String, enum: ['Payable', 'Deductible'], default: 'Payable' },
-    adminApprovalAmount: { type: Number, default: 0 },
-    withheldDeposit: { type: Number, default: 0 },
-    netPayableAmount: { type: Number, default: 0 },
+    adminApprovalAmount: { type: Number, default: 0, min: 0 },
+    withheldDeposit: { type: Number, default: 0, min: 0 },
+    netPayableAmount: { type: Number, default: 0, min: 0 },
 
-    incomeTax: { type: Number, default: 0 },
-    gst: { type: Number, default: 0 },
-    labourCess: { type: Number, default: 0 },
-    securityDeposit: { type: Number, default: 0 },
-    freeMaintenanceDeposit: { type: Number, default: 0 },
-    asphaltDeposit: { type: Number, default: 0 },
-    coreSampleDeposit: { type: Number, default: 0 },
-    tpi: { type: Number, default: 0 },
-    esmp: { type: Number, default: 0 },
-    timeLimitDeposit: { type: Number, default: 0 },
-    testingCharges: { type: Number, default: 0 },
-    otherDeposit: { type: Number, default: 0 },
+    incomeTax: { type: Number, default: 0, min: 0 },
+    gst: { type: Number, default: 0, min: 0 },
+    labourCess: { type: Number, default: 0, min: 0 },
+    securityDeposit: { type: Number, default: 0, min: 0 },
+    freeMaintenanceDeposit: { type: Number, default: 0, min: 0 },
+    asphaltDeposit: { type: Number, default: 0, min: 0 },
+    coreSampleDeposit: { type: Number, default: 0, min: 0 },
+    tpi: { type: Number, default: 0, min: 0 },
+    esmp: { type: Number, default: 0, min: 0 },
+    timeLimitDeposit: { type: Number, default: 0, min: 0 },
+    testingCharges: { type: Number, default: 0, min: 0 },
+    otherDeposit: { type: Number, default: 0, min: 0 },
     otherDepositLabel: { type: String, default: 'Other Deposit' },
-    otherDeposit2: { type: Number, default: 0 },
+    otherDeposit2: { type: Number, default: 0, min: 0 },
     otherDeposit2Label: { type: String, default: 'Other Deposit 2' },
     totalDeduction: { type: Number, default: 0 },
 }, {
@@ -149,6 +149,7 @@ const BillSchema: Schema = new Schema({
 });
 
 BillSchema.index({ workOrderId: 1 });
+BillSchema.index({ workOrderId: 1, runningBillNumber: 1 }, { unique: true, sparse: true });
 
 if (process.env.NODE_ENV !== 'production') delete mongoose.models.Bill;
 

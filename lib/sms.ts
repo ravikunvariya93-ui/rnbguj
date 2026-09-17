@@ -105,7 +105,7 @@ export async function checkAndSendWorkOrderSMS(workOrderId: string): Promise<boo
 
         // Resolve recipients (Executive Engineer + Deputy Executive Engineer)
         const overrideMobile = process.env.SMS_RECIPIENT_OVERRIDE;
-        const eeMobile = process.env.EXECUTIVE_ENGINEER_MOBILE || '9909155370';
+        const eeMobile = process.env.EXECUTIVE_ENGINEER_MOBILE || '';
         const recipients: string[] = [];
 
         if (overrideMobile) {

@@ -1,4 +1,4 @@
-import React, { useId } from 'react';
+import React, { memo, useId, useMemo } from 'react';
 import SortableHeader from './SortableHeader';
 import ExportTableButton from './ExportTableButton';
 import PrintTableButton from './PrintTableButton';
@@ -27,9 +27,9 @@ interface DataTableProps {
   theme?: 'default' | 'emerald';
 }
 
-export default function DataTable({ columns, data, emptyMessage = 'No data available.', actions, exportFilename, theme = 'default' }: DataTableProps) {
+function DataTableInner({ columns, data, emptyMessage = 'No data available.', actions, exportFilename, theme = 'default' }: DataTableProps) {
   const tableIdBase = useId();
-  const tableId = `data-table-${tableIdBase.replace(/:/g, '')}`;
+  const tableId = useMemo(() => `data-table-${tableIdBase.replace(/:/g, '')}`, [tableIdBase]);
   const totalColumns = columns.length + (actions ? 1 : 0);
   const isEmerald = theme === 'emerald';
   const hasFooter = columns.some(col => col.footer !== undefined);
@@ -48,7 +48,7 @@ export default function DataTable({ columns, data, emptyMessage = 'No data avail
           <PrintTableButton />
         </div>
       )}
-      <div className={`overflow-x-auto border ${isEmerald ? 'border-emerald-300' : 'border-slate-300'} shadow-sm rounded-md`}>
+      <div className={`overflow-x-auto border ${isEmerald ? 'border-emerald-300' : 'border-slate-300'} shadow-sm rounded-md cv-auto`}>
         <table id={tableId} className="w-full text-left border-collapse text-xs font-medium">
         <thead>
           <tr className={`${isEmerald ? 'bg-emerald-100/80 border-b border-emerald-300' : 'bg-slate-100 border-b border-slate-300'}`}>
@@ -175,3 +175,5 @@ export default function DataTable({ columns, data, emptyMessage = 'No data avail
     </div>
   );
 }
+
+export default memo(DataTableInner);

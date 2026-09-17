@@ -126,8 +126,9 @@ function calculateAdditionalSecurity(tender: any) {
     if (belowPercentage <= 10) return 0;
 
     const contractPrice = Number(tender.contractPrice) || 0;
+    const pctFrac = belowPercentage / 100;
     const estimatedAmount = Number(tender.estimatedAmount)
-        || (contractPrice / (1 - (belowPercentage / 100)));
+        || (pctFrac < 1 ? (contractPrice / (1 - pctFrac)) : contractPrice);
 
     const difference = (estimatedAmount * 0.90) - contractPrice;
 

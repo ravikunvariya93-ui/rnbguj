@@ -149,7 +149,8 @@ const gujHundreds: { [key: number]: string } = {
 };
 
 function numToGujaratiWords(n: number): string {
-    const val = Math.floor(n);
+    if (!Number.isFinite(n) || n < 0) return 'શૂન્ય રૂપિયા પૂરા';
+    const val = Math.round(n);
     if (val === 0) return 'શૂન્ય રૂપિયા પૂરા';
 
     function convert(num: number): string {

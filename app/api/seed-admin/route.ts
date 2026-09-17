@@ -2,8 +2,13 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
+import { auth } from '@/auth';
 
 export async function GET() {
+  // Bootstrap endpoint: disabled in production unless explicitly allowed.
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_SEED !== 'true') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
   try {
     await dbConnect();
 
@@ -11,6 +16,15 @@ export async function GET() {
     const adminExists = await User.findOne({ role: 'ADMIN' });
     if (adminExists) {
       return NextResponse.json({ message: 'Admin user already exists' }, { status: 400 });
+    }
+
+    // Require auth if there are any users at all (prevents public takeover after first user)
+    const anyUser = await User.findOne({}).select('_id').lean();
+    if (anyUser) {
+      const session = await auth();
+      if ((session?.user as any)?.role !== 'ADMIN') {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
     }
 
     // Create default admin
@@ -28,9 +42,8 @@ export async function GET() {
         username: admin.username,
         role: admin.role,
       },
-      credentials: 'Username: admin, Password: admin123'
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to create admin user' }, { status: 500 });
   }
 }

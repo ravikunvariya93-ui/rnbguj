@@ -14,6 +14,7 @@ import Pagination from '@/components/Pagination';
 import ListPageLayout from '@/components/ListPageLayout';
 import DataTable from '@/components/DataTable';
 import TendersFilterBar from '@/components/TendersFilterBar';
+import TenderDateSubFilter from '@/components/TenderDateSubFilter';
 import ViewBiddersModalButton from '@/components/ViewBiddersModalButton';
 import { buildDashboardFilter, parsePagination, parseSort } from '@/lib/queryHelpers';
 import type { ListPageSearchParams, Column } from '@/lib/types';
@@ -206,6 +207,87 @@ export default async function TendersListPage({ searchParams }: Props) {
         filterLabels.push("Pending Work Order");
     }
 
+    // ── Date sub-filter (From/To) under the status tabs ────────────────────
+    // Pending rows are defined by a *missing* stage date, so the range applies
+    // to each tab's anchor date. Proposal/Approval/LOA dates may live on the
+    // Tender doc OR the related Approval/LOA doc, so those tabs match either.
+    const DATE_ANCHOR_FIELD =
+        params.filter === 'pending_proposal' ? 'tenderOpeningDate'
+        : params.filter === 'pending_approval' ? 'proposalDate'
+        : params.filter === 'pending_loa' ? 'tenderApprovalDate'
+        : params.filter === 'pending_work_order' ? 'acceptanceLetterDate'
+        : 'tenderCreationDate';
+    const DATE_ANCHOR_LABEL =
+        params.filter === 'pending_proposal' ? 'Opening Date'
+        : params.filter === 'pending_approval' ? 'Proposal Date'
+        : params.filter === 'pending_loa' ? 'Approval Date'
+        : params.filter === 'pending_work_order' ? 'LOA Date'
+        : 'Creation Date';
+
+    const isValidBound = (s?: string): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+    let fromBoundStr = isValidBound(params.fromDate) ? params.fromDate as string : '';
+    let toBoundStr = isValidBound(params.toDate) ? params.toDate as string : '';
+    // YYYY-MM-DD strings compare chronologically — swap a reversed range
+    if (fromBoundStr && toBoundStr && fromBoundStr > toBoundStr) {
+        [fromBoundStr, toBoundStr] = [toBoundStr, fromBoundStr];
+    }
+    const toDisplayDate = (s: string) => {
+        const [y, m, d] = s.split('-');
+        return `${d}/${m}/${y}`;
+    };
+
+    const dateRange: any = {};
+    if (fromBoundStr) {
+        const [y, m, d] = fromBoundStr.split('-').map(Number);
+        dateRange.$gte = new Date(y, m - 1, d);
+    }
+    if (toBoundStr) {
+        const [y, m, d] = toBoundStr.split('-').map(Number);
+        dateRange.$lte = new Date(y, m - 1, d, 23, 59, 59, 999);
+    }
+
+    if (Object.keys(dateRange).length > 0) {
+        if (params.filter === 'pending_approval') {
+            const [tIds, aIds] = await Promise.all([
+                Tender.find({ proposalDate: dateRange }).distinct('_id'),
+                Approval.find({ proposalDate: dateRange }).distinct('tenderId'),
+            ]);
+            const dateIdSet = new Set([...tIds, ...aIds].map((id: any) => id.toString()));
+            const curIn = Array.isArray((query._id as any)?.$in)
+                ? ((query._id as any).$in as any[]).map((id: any) => id.toString())
+                : null;
+            const intersected = curIn ? curIn.filter((id) => dateIdSet.has(id)) : [...dateIdSet];
+            query._id = { ...query._id, $in: intersected };
+        } else if (params.filter === 'pending_loa') {
+            const [tIds, aIds] = await Promise.all([
+                Tender.find({ tenderApprovalDate: dateRange }).distinct('_id'),
+                Approval.find({ tenderApprovalDate: dateRange }).distinct('tenderId'),
+            ]);
+            const dateIdSet = new Set([...tIds, ...aIds].map((id: any) => id.toString()));
+            const curIn = Array.isArray((query._id as any)?.$in)
+                ? ((query._id as any).$in as any[]).map((id: any) => id.toString())
+                : null;
+            const intersected = curIn ? curIn.filter((id) => dateIdSet.has(id)) : [...dateIdSet];
+            query._id = { ...query._id, $in: intersected };
+        } else if (params.filter === 'pending_work_order') {
+            const [tIds, loaTenderIds] = await Promise.all([
+                Tender.find({ acceptanceLetterDate: dateRange }).distinct('_id'),
+                LOA.find({ acceptanceLetterDate: dateRange }).distinct('tenderId'),
+            ]);
+            const dateIdSet = new Set([...tIds, ...loaTenderIds].map((id: any) => id.toString()));
+            const curIn = Array.isArray((query._id as any)?.$in)
+                ? ((query._id as any).$in as any[]).map((id: any) => id.toString())
+                : null;
+            const intersected = curIn ? curIn.filter((id) => dateIdSet.has(id)) : [...dateIdSet];
+            query._id = { ...query._id, $in: intersected };
+        } else {
+            query[DATE_ANCHOR_FIELD] = dateRange;
+        }
+        filterLabels.push(
+            `${DATE_ANCHOR_LABEL}: ${fromBoundStr ? toDisplayDate(fromBoundStr) : '…'} to ${toBoundStr ? toDisplayDate(toBoundStr) : '…'}`
+        );
+    }
+
     if (params.search) {
         query.$or = [
             { tenderId: { $regex: params.search, $options: 'i' } },
@@ -373,6 +455,16 @@ export default async function TendersListPage({ searchParams }: Props) {
             tenderApprovalDate,
             acceptanceLetterDate,
             workOrderDate,
+            // Bidders cross the server→client boundary into ViewBiddersModalButton:
+            // strip Mongoose ObjectIds (rejected by RSC serialization) down to
+            // plain JSON with only the fields the modal renders.
+            bidders: (t.bidders || []).map((b: any) => ({
+                rank: b.rank ?? '',
+                contractorName: b.contractorName ?? '',
+                aboveBelow: b.aboveBelow ?? '',
+                percentage: b.percentage ?? null,
+                totalAmount: b.totalAmount ?? null,
+            })),
         };
     });
 
@@ -528,6 +620,16 @@ export default async function TendersListPage({ searchParams }: Props) {
 
     const filterLabel = filterLabels.length > 0 ? `Filtered by: ${filterLabels.join(' | ')}` : "List of all tenders.";
 
+    // Keep the date sub-filter when switching status tabs
+    const tabHref = (filterValue: string | null) => {
+        const sp = new URLSearchParams();
+        if (filterValue) sp.set('filter', filterValue);
+        if (fromBoundStr) sp.set('fromDate', fromBoundStr);
+        if (toBoundStr) sp.set('toDate', toBoundStr);
+        const s = sp.toString();
+        return s ? `/tenders?${s}` : '/tenders';
+    };
+
     return (
         <ListPageLayout
             title="Tenders"
@@ -535,13 +637,13 @@ export default async function TendersListPage({ searchParams }: Props) {
             addHref="/tenders/new"
             addLabel="Add New Tender"
             searchPlaceholder="Search by Tender ID, Package, or Contractor..."
-            filterActive={!!params.filter || !!params.search || !!params.noticeYear || !!params.noticeNo || !!params.contractorName || !!params.trialNo || !!params.subDivision || !!params.workType || !!params.buildingType}
+            filterActive={!!params.filter || !!params.search || !!params.noticeYear || !!params.noticeNo || !!params.contractorName || !!params.trialNo || !!params.subDivision || !!params.workType || !!params.buildingType || !!fromBoundStr || !!toBoundStr}
             clearFiltersHref="/tenders"
         >
             <TendersFilterBar agencies={agencies} years={years} subDivisions={subDivisions} workTypes={workTypes} buildingTypes={buildingTypes} />
-            <div className="mb-6 flex flex-wrap items-center gap-2">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
                 <Link
-                    href="/tenders"
+                    href={tabHref(null)}
                     className={`inline-flex items-center px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                         !params.filter
                             ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-transparent shadow-sm'
@@ -551,7 +653,7 @@ export default async function TendersListPage({ searchParams }: Props) {
                     All Tenders
                 </Link>
                 <Link
-                    href="/tenders?filter=pending_proposal"
+                    href={tabHref('pending_proposal')}
                     className={`inline-flex items-center px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                         params.filter === 'pending_proposal'
                             ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-transparent shadow-sm'
@@ -561,7 +663,7 @@ export default async function TendersListPage({ searchParams }: Props) {
                     Pending Proposal
                 </Link>
                 <Link
-                    href="/tenders?filter=pending_approval"
+                    href={tabHref('pending_approval')}
                     className={`inline-flex items-center px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                         params.filter === 'pending_approval'
                             ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-transparent shadow-sm'
@@ -571,7 +673,7 @@ export default async function TendersListPage({ searchParams }: Props) {
                     Pending Approval
                 </Link>
                 <Link
-                    href="/tenders?filter=pending_loa"
+                    href={tabHref('pending_loa')}
                     className={`inline-flex items-center px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                         params.filter === 'pending_loa'
                             ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-transparent shadow-sm'
@@ -581,7 +683,7 @@ export default async function TendersListPage({ searchParams }: Props) {
                     Pending LOA
                 </Link>
                 <Link
-                    href="/tenders?filter=pending_work_order"
+                    href={tabHref('pending_work_order')}
                     className={`inline-flex items-center px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                         params.filter === 'pending_work_order'
                             ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-transparent shadow-sm'
@@ -590,6 +692,9 @@ export default async function TendersListPage({ searchParams }: Props) {
                 >
                     Pending Work Order
                 </Link>
+            </div>
+            <div className="mb-6">
+                <TenderDateSubFilter />
             </div>
             <DataTable 
                 columns={columns} 

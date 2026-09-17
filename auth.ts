@@ -20,7 +20,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         await dbConnect();
         const user = await User.findOne({ username: credentials.username });
         
-        if (user && bcrypt.compareSync(credentials.password as string, user.password as string)) {
+        if (user && user.password && (await bcrypt.compare(credentials.password as string, user.password as string))) {
           return {
             id: user._id.toString(),
             name: user.name,
