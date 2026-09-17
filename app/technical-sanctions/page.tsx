@@ -3,7 +3,7 @@ import dbConnect from '@/lib/db';
 import TechnicalSanction from '@/models/TechnicalSanction';
 import Package from '@/models/Package';
 import Link from 'next/link';
-import { Plus, Eye, Edit2 } from 'lucide-react';
+import { Eye, Edit2 } from 'lucide-react';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
 import Pagination from '@/components/Pagination';
 import ListPageLayout from '@/components/ListPageLayout';

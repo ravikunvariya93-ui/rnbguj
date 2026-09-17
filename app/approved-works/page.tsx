@@ -9,7 +9,7 @@ import Approval from '@/models/Approval';
 import LOA from '@/models/LOA';
 import WorkOrder from '@/models/WorkOrder';
 import Link from 'next/link';
-import { Plus, Eye, Edit2 } from 'lucide-react';
+import { Eye, Edit2 } from 'lucide-react';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
 import Pagination from '@/components/Pagination';
 import ListPageLayout from '@/components/ListPageLayout';
@@ -35,8 +35,8 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
     const params = await searchParams;
     const normalizeString = (str: string) => (str || '').trim().toLowerCase().replace(/\s+/g, ' ');
 
-    let query: any = {};
-    let filterLabels: string[] = [];
+    const query: any = {};
+    const filterLabels: string[] = [];
 
     const allTS = await TechnicalSanction.find({}).select('workName').lean();
     const tsCountMap: Record<string, number> = {};

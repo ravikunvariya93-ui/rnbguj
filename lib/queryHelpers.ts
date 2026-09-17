@@ -41,7 +41,7 @@ export async function buildDashboardFilter(params: ListPageSearchParams): Promis
         }
 
         const { default: Package } = await import('@/models/Package');
-        let pkgQuery: any = {};
+        const pkgQuery: any = {};
         if (params.subDivision) pkgQuery.subDivision = params.subDivision;
         if (metadataFiltersArr.length > 0) {
             const orConditions: any[] = [

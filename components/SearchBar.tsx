@@ -36,7 +36,7 @@ export default function SearchBar({ placeholder = 'Search...', targetPath }: Pro
         }, 500); // 500ms debounce to prevent excessive server requests
 
         return () => clearTimeout(timeoutId);
-    }, [searchTerm, pathname, router, searchParams]);
+    }, [searchTerm, pathname, router, searchParams, targetPath]);
 
     // Handle clear button
     const handleClear = useCallback(() => {

@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     }
 }
 
-export async function GET(request: Request) {
+export async function GET() {
     try {
         await dbConnect();
         const sanctions = await TechnicalSanction.find({}).sort({ createdAt: -1 });

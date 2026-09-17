@@ -5,7 +5,7 @@ import DTP from '@/models/DTP';
 import Tender from '@/models/Tender';
 import Link from 'next/link';
 import ApprovedWork from '@/models/ApprovedWork';
-import { Plus, Eye, Edit2 } from 'lucide-react';
+import { Eye, Edit2 } from 'lucide-react';
 import GenericDeleteButton from '@/components/GenericDeleteButton';
 import Pagination from '@/components/Pagination';
 import PackagesFilterBar from '@/components/PackagesFilterBar';
@@ -46,8 +46,8 @@ export default async function PackagesListPage({ searchParams }: Props) {
     const budgetHeads = Array.from(new Set(['Pending', ...budgetHeadsPkg, ...budgetHeadsAw])).filter(Boolean).sort() as string[];
     const consultants = dtpConsultants.filter(Boolean).sort() as string[];
 
-    let query: any = {};
-    let filterLabels: string[] = [];
+    const query: any = {};
+    const filterLabels: string[] = [];
 
     const andConditions: any[] = [];
 

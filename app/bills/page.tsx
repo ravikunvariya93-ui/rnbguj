@@ -37,7 +37,7 @@ export default async function BillsPage({ searchParams }: Props) {
     const params = await searchParams;
     
     // Build base query — auditors are limited to their subDivision
-    let query: any = {};
+    const query: any = {};
 
     // If auditor, find WorkOrder IDs that belong to their subDivision (via Package.subDivision)
     if (isAuditor && auditorSubDivision) {

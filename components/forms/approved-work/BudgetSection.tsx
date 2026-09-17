@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, X, Check, Loader2 } from 'lucide-react';
+import { X, Check } from 'lucide-react';
 
 interface BudgetSectionProps {
     formData: {
@@ -13,18 +13,19 @@ interface BudgetSectionProps {
     handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
 }
 
+// Module scope: stable identity, safe to list in effect deps.
+const DEFAULT_BUDGET_HEADS = [
+    "5054 MMGSY Normal",
+    "5054 MMGSY SCSP",
+    "Suvidhapath",
+    "BUJ"
+];
+
 export default function BudgetSection({ formData, handleChange }: BudgetSectionProps) {
     const standardYears = ['2021-22', '2022-23', '2023-24', '2024-25', '2025-26', '2026-27'];
     const isInitialCustom = formData.approvalYear && !standardYears.includes(formData.approvalYear);
     const [showCustomInput, setShowCustomInput] = useState(isInitialCustom);
-    const [isLoading, setIsLoading] = useState(false);
-
-    const DEFAULT_BUDGET_HEADS = [
-        "5054 MMGSY Normal",
-        "5054 MMGSY SCSP",
-        "Suvidhapath",
-        "BUJ"
-    ];
+    const [, setIsLoading] = useState(false);
 
     const [budgetHeadOptions, setBudgetHeadOptions] = useState(() => {
         const initialVal = formData.budgetHead ? [formData.budgetHead] : [];

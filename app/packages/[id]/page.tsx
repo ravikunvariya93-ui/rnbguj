@@ -1,6 +1,5 @@
 import dbConnect from '@/lib/db';
 import Package from '@/models/Package';
-import TechnicalSanction from '@/models/TechnicalSanction';
 import ApprovedWork from '@/models/ApprovedWork';
 import DTP from '@/models/DTP';
 import Tender from '@/models/Tender';

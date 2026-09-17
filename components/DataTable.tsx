@@ -3,7 +3,7 @@ import SortableHeader from './SortableHeader';
 import ExportTableButton from './ExportTableButton';
 import PrintTableButton from './PrintTableButton';
 
-interface Column {
+interface Column<TRow> {
   key: string;
   label: string;
   sortable?: boolean;
@@ -11,23 +11,23 @@ interface Column {
   width?: string;
   minWidth?: string;
   maxWidth?: string;
-  cellClassName?: string | ((row: any, index: number) => string);
+  cellClassName?: string | ((row: TRow, index: number) => string);
   headerClassName?: string;
   footerClassName?: string;
-  footer?: React.ReactNode | ((data: any[]) => React.ReactNode);
-  render?: (row: any, index: number) => React.ReactNode;
+  footer?: React.ReactNode | ((data: TRow[]) => React.ReactNode);
+  render?: (row: TRow, index: number) => React.ReactNode;
 }
 
-interface DataTableProps {
-  columns: Column[];
-  data: any[];
+interface DataTableProps<TRow> {
+  columns: Column<TRow>[];
+  data: TRow[];
   emptyMessage?: string;
-  actions?: (row: any, index: number) => React.ReactNode;
+  actions?: (row: TRow, index: number) => React.ReactNode;
   exportFilename?: string;
   theme?: 'default' | 'emerald';
 }
 
-function DataTableInner({ columns, data, emptyMessage = 'No data available.', actions, exportFilename, theme = 'default' }: DataTableProps) {
+function DataTableInner<TRow extends { _id?: unknown; [key: string]: unknown }>({ columns, data, emptyMessage = 'No data available.', actions, exportFilename, theme = 'default' }: DataTableProps<TRow>) {
   const tableIdBase = useId();
   const tableId = useMemo(() => `data-table-${tableIdBase.replace(/:/g, '')}`, [tableIdBase]);
   const totalColumns = columns.length + (actions ? 1 : 0);
@@ -92,14 +92,14 @@ function DataTableInner({ columns, data, emptyMessage = 'No data available.', ac
         </thead>
         <tbody className={`divide-y ${isEmerald ? 'divide-emerald-200' : 'divide-slate-200'}`}>
           {data.length > 0 ? (
-            data.map((row: any, index: number) => {
+            data.map((row, index) => {
               const rowBg = isEmerald
                 ? (index % 2 === 0 ? 'bg-emerald-50/50' : 'bg-emerald-100/40')
                 : (index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50');
               const hoverBg = isEmerald ? 'hover:bg-emerald-100/80' : 'hover:bg-emerald-50/80';
 
               return (
-                <tr key={row._id ?? index} className={`${rowBg} ${hoverBg} transition-colors`}>
+                <tr key={(row._id as string | number | undefined) ?? index} className={`${rowBg} ${hoverBg} transition-colors`}>
                   {columns.map((col, colIdx) => {
                     const isLast = !actions && colIdx === columns.length - 1;
                     const borderClass = isLast ? '' : (isEmerald ? ' border-r border-emerald-200' : ' border-r border-slate-200');
@@ -116,7 +116,7 @@ function DataTableInner({ columns, data, emptyMessage = 'No data available.', ac
 
                     const content = col.render
                       ? col.render(row, index)
-                      : (row[col.key] ?? '-');
+                      : ((row[col.key] as React.ReactNode) ?? '-');
 
                     return (
                       <td key={col.key} className={cellClass} style={colStyle}>

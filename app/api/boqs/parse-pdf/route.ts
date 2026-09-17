@@ -249,7 +249,7 @@ function parseBoqUniversal(pdfData: any): any[] {
             if (itemNum < 1 || itemNum > 999) continue;
 
             let j = i + 1;
-            let descWords: string[] = [];
+            const descWords: string[] = [];
             let numbersFound: { value: number; index: number }[] = [];
             let unitWords: string[] = [];
             const maxScan = Math.min(j + 500, tokens.length);

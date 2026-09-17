@@ -2,6 +2,7 @@
 
 import React, { useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowLeft, Printer, Download, Edit3 } from 'lucide-react';
 import { logoBase64 } from '@/lib/logoBase64';
 
@@ -195,7 +196,7 @@ export default function AdditionalSDPrintClient({
                         <tbody>
                             <tr>
                                 <td style={{ width: '75px', verticalAlign: 'middle', textAlign: 'left', paddingRight: '10px' }} rowSpan={2}>
-                                    <img src={logoBase64} alt="Emblem" style={{ width: '60px', height: 'auto', display: 'block' }} />
+                                    <Image src={logoBase64} alt="Emblem" width={60} height={60} unoptimized style={{ width: '60px', height: 'auto', display: 'block' }} />
                                 </td>
                                 <td style={{ textAlign: 'center', verticalAlign: 'middle', padding: '0 4px' }} colSpan={3}>
                                     <div style={{ fontSize: '17px', fontWeight: 'bold', lineHeight: '1.4' }}>કાર્યપાલક ઇજનેરશ્રીની કચેરી,</div>

@@ -28,8 +28,7 @@ export default function AgreementClient({
     tender,
     loa,
     workOrder,
-    agency,
-    dtp
+    agency
 }: AgreementClientProps) {
 
     const exportToDoc = () => {

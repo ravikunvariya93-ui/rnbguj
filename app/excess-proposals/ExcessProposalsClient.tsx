@@ -3,9 +3,9 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { 
-    TrendingUp, Plus, Search, FileText, Download, Eye, 
-    Edit2, Trash2, X, Upload, Loader2, Calendar, Package as PackageIcon,
-    AlertCircle, CheckCircle2, FileCheck, Check
+    TrendingUp, Plus, Search, FileText, Eye, 
+    Edit2, Trash2, X, Upload, Loader2, Package as PackageIcon,
+    AlertCircle, Check
 } from 'lucide-react';
 
 interface Proposal {

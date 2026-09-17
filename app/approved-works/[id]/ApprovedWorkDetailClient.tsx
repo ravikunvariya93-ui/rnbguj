@@ -5,9 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
     ArrowLeft, Save, Edit2, Plus, Trash2, CheckCircle2, XCircle, X, Loader2, 
-    Calendar, FileText, Settings, Award, Check, ChevronDown, ListPlus, 
-    Receipt, DollarSign, Eye, AlertCircle, FileCheck, Layers, ClipboardCheck,
-    Briefcase, FileSpreadsheet, Percent, Building2, User2, Clock, Languages
+    FileText, Settings, Award, Check, Receipt, AlertCircle, FileCheck, Layers, ClipboardCheck,
+    Briefcase, Percent, Languages
 } from 'lucide-react';
 import { parseDateStr, formatDate, formatDateForInput } from '@/lib/dateUtils';
 import { transliteratePackageNameToGujarati } from '@/lib/transliterateGujarati';
@@ -112,37 +111,6 @@ export default function ApprovedWorkDetailClient({
     // Bill modal states
     const [isBillModalOpen, setIsBillModalOpen] = useState(false);
     const [editingBill, setEditingBill] = useState<any | null>(null);
-    const [billForm, setBillForm] = useState<any>({
-        billType: 'Running',
-        runningBillNumber: '1',
-        billDate: '',
-        grossAmount: '',
-        passingDate: '',
-        remarks: '',
-        labourCessApplicable: false,
-        auditMemoPreviouslyPaid: 0,
-        dismantleCredit: 0,
-        excessExtraAmount: 0,
-        priceAdjustment: 0,
-        priceAdjustmentType: 'Payable',
-        adminApprovalAmount: 0,
-        withheldDeposit: 0,
-        netPayableAmount: 0,
-        incomeTax: 0,
-        gst: 0,
-        labourCess: 0,
-        securityDeposit: 0,
-        freeMaintenanceDeposit: 0,
-        asphaltDeposit: 0,
-        coreSampleDeposit: 0,
-        tpi: 0,
-        esmp: 0,
-        timeLimitDeposit: 0,
-        testingCharges: 0,
-        otherDeposit: 0,
-        totalDeduction: 0,
-        netPaidAmount: 0,
-    });
 
     // Sync data if props change (e.g. after refresh)
     useEffect(() => {
@@ -417,7 +385,7 @@ export default function ApprovedWorkDetailClient({
             if (prev.timeLimitStartsFrom) return prev;
             return { ...prev, timeLimitStartsFrom: calcDateStr, workDurationMonths: duration };
         });
-    }, [loa]);
+    }, [loa, woForm.workDurationMonths]);
 
     // Work Order: calculate Stipulated Completion Date
     useEffect(() => {
@@ -789,73 +757,10 @@ export default function ApprovedWorkDetailClient({
     };
 
     // BILLS SECTION LOGIC
+    // NOTE: the modal renders the shared BillForm component from editingBill,
+    // so no local bill-field state is kept here.
     const handleOpenBillModal = (existingBill: any = null) => {
         setEditingBill(existingBill);
-        if (existingBill) {
-            setBillForm({
-                billType: existingBill.billType || 'Running',
-                runningBillNumber: String(existingBill.runningBillNumber || '1'),
-                billDate: formatDateForInput(existingBill.billDate),
-                grossAmount: String(existingBill.grossAmount || ''),
-                passingDate: existingBill.passingDate ? formatDateForInput(existingBill.passingDate) : '',
-                remarks: existingBill.remarks || '',
-                labourCessApplicable: existingBill.labourCessApplicable || false,
-                auditMemoPreviouslyPaid: existingBill.auditMemoPreviouslyPaid || 0,
-                dismantleCredit: existingBill.dismantleCredit || 0,
-                excessExtraAmount: existingBill.excessExtraAmount || 0,
-                priceAdjustment: existingBill.priceAdjustment || 0,
-                priceAdjustmentType: existingBill.priceAdjustmentType || 'Payable',
-                adminApprovalAmount: existingBill.adminApprovalAmount || 0,
-                withheldDeposit: existingBill.withheldDeposit || 0,
-                netPayableAmount: existingBill.netPayableAmount || 0,
-                incomeTax: existingBill.incomeTax || 0,
-                gst: existingBill.gst || 0,
-                labourCess: existingBill.labourCess || 0,
-                securityDeposit: existingBill.securityDeposit || 0,
-                freeMaintenanceDeposit: existingBill.freeMaintenanceDeposit || 0,
-                asphaltDeposit: existingBill.asphaltDeposit || 0,
-                coreSampleDeposit: existingBill.coreSampleDeposit || 0,
-                tpi: existingBill.tpi || 0,
-                esmp: existingBill.esmp || 0,
-                timeLimitDeposit: existingBill.timeLimitDeposit || 0,
-                testingCharges: existingBill.testingCharges || 0,
-                otherDeposit: existingBill.otherDeposit || 0,
-                totalDeduction: existingBill.totalDeduction || 0,
-                netPaidAmount: existingBill.netPaidAmount || 0,
-            });
-        } else {
-            setBillForm({
-                billType: 'Running',
-                runningBillNumber: String(bills.length + 1),
-                billDate: '',
-                grossAmount: '',
-                passingDate: '',
-                remarks: '',
-                labourCessApplicable: false,
-                auditMemoPreviouslyPaid: 0,
-                dismantleCredit: 0,
-                excessExtraAmount: 0,
-                priceAdjustment: 0,
-                priceAdjustmentType: 'Payable',
-                adminApprovalAmount: 0,
-                withheldDeposit: 0,
-                netPayableAmount: 0,
-                incomeTax: 0,
-                gst: 0,
-                labourCess: 0,
-                securityDeposit: 0,
-                freeMaintenanceDeposit: 0,
-                asphaltDeposit: 0,
-                coreSampleDeposit: 0,
-                tpi: 0,
-                esmp: 0,
-                timeLimitDeposit: 0,
-                testingCharges: 0,
-                otherDeposit: 0,
-                totalDeduction: 0,
-                netPaidAmount: 0,
-            });
-        }
         setIsBillModalOpen(true);
         setTimeout(() => {
             const el = document.getElementById('approved-work-bill-form-section');
@@ -863,115 +768,6 @@ export default function ApprovedWorkDetailClient({
                 el.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }, 100);
-    };
-
-    // Calculate Audit Memo details
-    const recalculateBillDeductions = useCallback((nextForm: any) => {
-        const gross = parseFloat(nextForm.grossAmount) || 0;
-        const prevPaid = parseFloat(nextForm.auditMemoPreviouslyPaid) || 0;
-        const dismantle = parseFloat(nextForm.dismantleCredit) || 0;
-        const excessExtra = parseFloat(nextForm.excessExtraAmount) || 0;
-        const priceAdj = parseFloat(nextForm.priceAdjustment) || 0;
-        const priceAdjType = nextForm.priceAdjustmentType || 'Payable';
-        const priceAdjSign = priceAdjType === 'Deductible' ? -1 : 1;
-        const adminAppr = parseFloat(nextForm.adminApprovalAmount) || 0;
-        const withheld = parseFloat(nextForm.withheldDeposit) || 0;
-
-        const netPay = parseFloat((gross - prevPaid - dismantle - excessExtra + (priceAdjSign * priceAdj) - adminAppr - withheld).toFixed(2));
-        const netPaySafe = Math.max(netPay, 0);
-
-        // Deductions formula based on net payable
-        const it = netPaySafe > 0 ? Math.ceil((netPaySafe * 0.02) / 10) * 10 : 0;
-        const gst = it; // GST equal to Income Tax (IT)
-        const cess = netPaySafe > 0 ? Math.ceil((netPaySafe * 0.01) / 10) * 10 : 0;
-        const contractPrice = parseFloat(work?.contractPrice || pkg?.contractPrice || work?.estimatedCost || pkg?.amount) || 0;
-        const sdBase = netPaySafe > 0 ? Math.ceil((netPaySafe * 0.06) / 100) * 100 : 0;
-        const sdMax = contractPrice > 0 ? Math.ceil((contractPrice * 0.05) / 100) * 100 : 0;
-        const sd = sdMax > 0 ? Math.min(sdBase, sdMax) : sdBase;
-        const isBuilding = String(work?.workType || pkg?.workType || '').toLowerCase().includes('building');
-        const fmd = isBuilding ? 0 : (netPaySafe > 0 ? Math.ceil((netPaySafe * 0.05) / 100) * 100 : 0);
-        const currentBHead = String(work?.budgetHead || pkg?.budgetHead || '').trim().toLowerCase();
-        const isMMGSY = currentBHead.includes('5054 mmgsy normal') || currentBHead.includes('5054 mmgsy scsp') || currentBHead.includes('mmgsy');
-
-        const tpi = isMMGSY ? (netPaySafe > 10000000 ? 100000 : 50000) : 0;
-        const billNoStr = String(nextForm.runningBillNumber || '').trim().toLowerCase();
-        const isFirstBill = Number(nextForm.runningBillNumber) === 1 || billNoStr === '1' || billNoStr.includes('1st') || billNoStr.includes('first');
-        const esmp = (isMMGSY && isFirstBill) ? 20000 : 0;
-
-        const asphalt = parseFloat(nextForm.asphaltDeposit) || 0;
-        const core = parseFloat(nextForm.coreSampleDeposit) || 0;
-        const tld = parseFloat(nextForm.timeLimitDeposit) || 0;
-        const testing = parseFloat(nextForm.testingCharges) || 0;
-        const otherDep = parseFloat(nextForm.otherDeposit) || 0;
-
-        const totalDeduction = parseFloat((it + gst + cess + sd + fmd + asphalt + core + tpi + esmp + tld + testing + otherDep).toFixed(2));
-        const netPaid = parseFloat((netPay - totalDeduction).toFixed(2));
-
-        return {
-            ...nextForm,
-            netPayableAmount: netPay,
-            incomeTax: it,
-            gst: gst,
-            labourCess: cess,
-            securityDeposit: sd,
-            freeMaintenanceDeposit: fmd,
-            tpi: tpi,
-            esmp: esmp,
-            totalDeduction: totalDeduction,
-            netPaidAmount: netPaid
-        };
-    }, []);
-
-    const handleBillFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value, type } = e.target;
-        const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
-        
-        setBillForm((prev: any) => {
-            const next = { ...prev, [name]: val };
-            if (name === 'incomeTax') {
-                next.gst = val;
-            }
-            return recalculateBillDeductions(next);
-        });
-    };
-
-    const handleSaveBill = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        try {
-            const submission = { ...billForm, workOrderId: workOrder._id };
-            if (submission.billDate) {
-                const parsed = parseDateStr(submission.billDate);
-                if (parsed) submission.billDate = parsed.toISOString();
-            }
-            if (submission.passingDate) {
-                const parsed = parseDateStr(submission.passingDate);
-                if (parsed) submission.passingDate = parsed.toISOString();
-            }
-
-            const url = editingBill ? `/api/bills/${editingBill._id}` : '/api/bills';
-            const method = editingBill ? 'PUT' : 'POST';
-
-            const res = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(submission),
-            });
-
-            if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.error || 'Failed to save bill.');
-            }
-
-            showToast('success', editingBill ? 'Bill details updated successfully.' : 'Bill created successfully.');
-            setIsBillModalOpen(false);
-            setEditingBill(null);
-            router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
-        } finally {
-            setLoading(false);
-        }
     };
 
     const handleDeleteBill = async (id: string) => {
@@ -1010,7 +806,7 @@ export default function ApprovedWorkDetailClient({
 
         const percent = Math.round((score / stages.length) * 100);
         return { percent, stages };
-    }, [ts, pkg, dtp, tender, approval, loa, workOrder, bills]);
+    }, [ts, pkg, dtp, tender, approval, loa, workOrder, bills, isTenderApprovalNotRequired]);
 
     const sortedBills = useMemo(() => {
         if (!bills || !Array.isArray(bills)) return [];

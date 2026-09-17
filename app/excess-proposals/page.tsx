@@ -42,7 +42,7 @@ export default async function ExcessProposalsPage() {
     const auditorSubDivision = getAuditorSubDivision(userRole);
     const isAuditor = isAuditorRole(userRole);
 
-    let proposalQuery: any = {};
+    const proposalQuery: any = {};
     let packageQuery: any = {};
 
     if (isAuditor && auditorSubDivision) {

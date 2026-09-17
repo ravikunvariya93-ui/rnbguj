@@ -15,16 +15,6 @@ interface DeductionPrintClientProps {
     allBills?: any[];
 }
 
-function formatDateDMY(d: Date | string | null | undefined): string {
-    if (!d) return '-';
-    const date = new Date(d);
-    if (isNaN(date.getTime())) return '-';
-    const dd = String(date.getDate()).padStart(2, '0');
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const yyyy = date.getFullYear();
-    return `${dd}/${mm}/${yyyy}`;
-}
-
 function fmtNum(n: number | null | undefined, decimals = 0): string {
     if (n == null || isNaN(n)) return '0/-';
     return Number(n).toLocaleString('en-IN', {
@@ -182,8 +172,6 @@ function numToGujaratiWords(n: number): string {
 export default function DeductionPrintClient({
     packageData,
     tender,
-    loa,
-    workOrder,
     agency,
     bill,
     allBills = []
@@ -217,7 +205,6 @@ export default function DeductionPrintClient({
     const prevGross = prevBills.length > 0
         ? (Number(prevBills[prevBills.length - 1].grossAmount) || 0)
         : 0;
-    const prevWithheld = prevBills.reduce((acc: number, b: any) => acc + (Number(b.withheldDeposit) || 0), 0);
     const uptoDateGross = grossBillAmount;
 
     // Previously Paid Amount

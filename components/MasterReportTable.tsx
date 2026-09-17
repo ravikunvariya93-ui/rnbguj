@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { utils, writeFile } from 'xlsx';
-import { Download, Search, Check, RefreshCw, ChevronDown, ChevronUp, Sliders } from 'lucide-react';
+import { Download, Search, ChevronDown, ChevronUp, Sliders } from 'lucide-react';
 
 interface ColumnConfig {
     key: string;

@@ -615,7 +615,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
 
                         {/* Auto-determined Committee */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Which Committee's Approval Required?</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Which Committee&apos;s Approval Required?</label>
                             {autoCommittee ? (
                                 <div className="flex items-center gap-3">
                                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
@@ -729,7 +729,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                             <p className="text-sm text-gray-500 text-center py-4">No works added yet.</p>
                         ) : (
                             <ul className="divide-y divide-gray-200">
-                                {selectedWorks.map((work, index) => (
+                                {selectedWorks.map((work) => (
                                     <li key={work.workId || work.workName} className="py-3 flex justify-between items-center">
                                         <div>
                                             <p className="text-sm font-medium text-gray-900">{work.workName}</p>

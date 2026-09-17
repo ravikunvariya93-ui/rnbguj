@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { 
-    X, Filter, Map, User, Calendar, 
+    Filter, Map, User, Calendar, 
     Route, Construction, Briefcase, LayoutGrid,
     ChevronDown, RotateCcw, ChevronUp
 } from 'lucide-react';

@@ -8,7 +8,6 @@ import Package from '@/models/Package';
 import ApprovedWork from '@/models/ApprovedWork';
 import TechnicalSanction from '@/models/TechnicalSanction';
 import DTP from '@/models/DTP';
-import Pagination from '@/components/Pagination';
 import DataTable from '@/components/DataTable';
 import Badge, { toneForTenderStatus } from '@/components/ui/Badge';
 import ExportTableButton from '@/components/ExportTableButton';
@@ -673,7 +672,7 @@ export default async function Home({ searchParams }: Props) {
                     <div className="bg-white p-6 shadow-sm rounded-xl border border-slate-100 space-y-6">
                         <div className="border-b border-slate-100 pb-3">
                             <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">Search Results</h2>
-                            <p className="text-xs text-slate-400 font-semibold mt-0.5">Matching results for "{searchQuery}"</p>
+                            <p className="text-xs text-slate-400 font-semibold mt-0.5">Matching results for &quot;{searchQuery}&quot;</p>
                         </div>
 
                         {/* Matching Tenders & Packages Table */}

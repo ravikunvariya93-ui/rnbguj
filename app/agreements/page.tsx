@@ -56,8 +56,8 @@ export default async function AgreementsListPage({ searchParams }: Props) {
         _id: a._id.toString()
     }));
 
-    let query: any = { notRequired: { $ne: true } };
-    let filterLabels: string[] = [];
+    const query: any = { notRequired: { $ne: true } };
+    const filterLabels: string[] = [];
 
     // Search filter
     if (params.search) {
@@ -107,7 +107,7 @@ export default async function AgreementsListPage({ searchParams }: Props) {
     }
 
     // Filter by Contractor Name & Contract Price Range (requires querying Tender relationship)
-    let tenderQuery: any = {};
+    const tenderQuery: any = {};
     let hasTenderFilter = false;
 
     if (params.contractorName) {

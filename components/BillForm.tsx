@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-    Save, RefreshCw, Plus, Trash2, Loader2, ChevronDown, ChevronUp, 
-    Receipt, Layers, TrendingUp, FileText, Calendar, Download 
+    Save, RefreshCw, Plus, Loader2, ChevronDown, ChevronUp, 
+    Receipt, Layers, TrendingUp, Download 
 } from 'lucide-react';
 import Link from 'next/link';
 import SearchableSelect from './SearchableSelect';
@@ -141,7 +141,7 @@ export default function BillForm({
         initialTenderDirection === 'Equals' ? 'At Par' : (initialTenderDirection || 'Above')
     );
     const [contractPriceState, setContractPriceState] = useState<number>(contractPrice || 0);
-    const [submittedSDState, setSubmittedSDState] = useState<number>(submittedSD || 0);
+    const [, setSubmittedSDState] = useState<number>(submittedSD || 0);
     const [workTypeState, setWorkTypeState] = useState<string>(workType || '');
     const [budgetHeadState, setBudgetHeadState] = useState<string>(budgetHead || '');
     const [abstractFetched, setAbstractFetched] = useState(false);
@@ -254,6 +254,9 @@ export default function BillForm({
             setAbstractFetched(true);
             handleWorkOrderSelect(initialWorkOrderId);
         }
+        // Init-once bootstrap guarded by abstractFetched. handleWorkOrderSelect
+        // is render-scoped; listing it would re-run the effect every render.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialWorkOrderId, isEditing, abstractFetched]);
 
     useEffect(() => {
@@ -297,6 +300,10 @@ export default function BillForm({
                 }
             }
         }
+        // Syncs tender terms when the work order changes. calculateTotals is
+        // render-scoped (it closes over live deduction state); listing it
+        // would re-run this effect every render and loop on setFormData.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [formData.workOrderId, workOrders]);
 
     useEffect(() => {
@@ -332,6 +339,10 @@ export default function BillForm({
             }
         }
         fetchPreviousBills();
+        // Loads previous-bill deductions when bill identity changes.
+        // recalculateAuditMemoInternal is render-scoped; listing it would
+        // re-run (and re-setState) on every render.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [formData.workOrderId, formData.runningBillNumber, initialData?._id]);
 
     const getDeductionsForNetPayable = (
@@ -460,21 +471,20 @@ export default function BillForm({
         }
 
         // ── New bill: auto-calculate deductions ──────────────────────────────
-        let it, gstDeduction, cessVal, sd, fmd, tpiVal, esmpVal;
         const deductionChanged = forceRecalculate || oldNetPay !== netPay;
-        it = manualDeductionFields.has('incomeTax') ? (parseFloat(nextData.incomeTax) || 0)
+        const it = manualDeductionFields.has('incomeTax') ? (parseFloat(nextData.incomeTax) || 0)
             : (deductionChanged ? autoDeductions.incomeTax : (nextData.incomeTax !== undefined ? (parseFloat(nextData.incomeTax) || 0) : autoDeductions.incomeTax));
-        gstDeduction = manualDeductionFields.has('gst') ? (parseFloat(nextData.gst) || 0)
+        const gstDeduction = manualDeductionFields.has('gst') ? (parseFloat(nextData.gst) || 0)
             : (manualDeductionFields.has('incomeTax') ? it : (deductionChanged ? autoDeductions.gst : (nextData.gst !== undefined ? (parseFloat(nextData.gst) || 0) : autoDeductions.gst)));
-        cessVal = manualDeductionFields.has('labourCess') ? (parseFloat(nextData.labourCess) || 0)
+        const cessVal = manualDeductionFields.has('labourCess') ? (parseFloat(nextData.labourCess) || 0)
             : (deductionChanged ? autoDeductions.labourCess : (nextData.labourCess !== undefined ? (parseFloat(nextData.labourCess) || 0) : autoDeductions.labourCess));
-        sd = manualDeductionFields.has('securityDeposit') ? (parseFloat(nextData.securityDeposit) || 0)
+        const sd = manualDeductionFields.has('securityDeposit') ? (parseFloat(nextData.securityDeposit) || 0)
             : (deductionChanged ? autoDeductions.securityDeposit : (nextData.securityDeposit !== undefined ? (parseFloat(nextData.securityDeposit) || 0) : autoDeductions.securityDeposit));
-        fmd = manualDeductionFields.has('freeMaintenanceDeposit') ? (parseFloat(nextData.freeMaintenanceDeposit) || 0)
+        const fmd = manualDeductionFields.has('freeMaintenanceDeposit') ? (parseFloat(nextData.freeMaintenanceDeposit) || 0)
             : (deductionChanged ? autoDeductions.freeMaintenanceDeposit : (nextData.freeMaintenanceDeposit !== undefined ? (parseFloat(nextData.freeMaintenanceDeposit) || 0) : autoDeductions.freeMaintenanceDeposit));
-        tpiVal = manualDeductionFields.has('tpi') ? (parseFloat(nextData.tpi) || 0)
+        const tpiVal = manualDeductionFields.has('tpi') ? (parseFloat(nextData.tpi) || 0)
             : (deductionChanged ? autoDeductions.tpi : (nextData.tpi !== undefined ? (parseFloat(nextData.tpi) || 0) : autoDeductions.tpi));
-        esmpVal = manualDeductionFields.has('esmp') ? (parseFloat(nextData.esmp) || 0)
+        const esmpVal = manualDeductionFields.has('esmp') ? (parseFloat(nextData.esmp) || 0)
             : (deductionChanged ? autoDeductions.esmp : (nextData.esmp !== undefined ? (parseFloat(nextData.esmp) || 0) : autoDeductions.esmp));
 
         // Calculate Time Limit Deposit automatically
@@ -739,20 +749,6 @@ export default function BillForm({
         calculateTotals(newItems);
     };
 
-    const addWork = () => {
-        setFormData((prev: any) => ({
-            ...prev,
-            works: [...prev.works, { srNo: String(prev.works.length + 1), nameOfWork: '', amount: 0 }]
-        }));
-    };
-
-    const removeWork = (index: number) => {
-        setFormData((prev: any) => {
-            const newWorks = prev.works.filter((_: any, i: number) => i !== index);
-            return { ...prev, works: newWorks };
-        });
-    };
-
     const handleWorkChange = (index: number, field: string, value: string) => {
         setFormData((prev: any) => {
             const newWorks = [...prev.works];
@@ -883,9 +879,6 @@ export default function BillForm({
         packageName: wo.loaId?.tenderId?.packageName || 'Unknown Package',
         contractorName: wo.loaId?.tenderId?.contractorName || 'N/A'
     }));
-
-    const selectedWorkOrderObj = workOrders.find((wo: any) => wo._id === formData.workOrderId);
-    const packageWorks = selectedWorkOrderObj?.loaId?.tenderId?.packageId?.works || [];
 
     return (
         <>

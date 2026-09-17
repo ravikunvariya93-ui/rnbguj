@@ -10,7 +10,7 @@ import UserForm from '@/components/UserForm';
 export default function UserManagementPage() {
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [, setError] = useState('');
     const [search, setSearch] = useState('');
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any>(null);

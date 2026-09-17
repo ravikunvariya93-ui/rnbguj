@@ -390,7 +390,6 @@ export function phoneticWordToGujarati(word: string): string {
             // Check if followed by vowel/matra
             if (i < lower.length) {
                 const nextRemaining = lower.slice(i);
-                let matchedMatra = false;
                 for (const [regex, matra] of matras) {
                     const match = nextRemaining.match(regex);
                     if (match) {
@@ -405,7 +404,6 @@ export function phoneticWordToGujarati(word: string): string {
                             result += matra;
                         }
                         i += match[0].length;
-                        matchedMatra = true;
                         break;
                     }
                 }

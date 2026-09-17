@@ -11,11 +11,11 @@ import Pagination from '@/components/Pagination';
 import CommitteeFilterBar from './CommitteeFilterBar';
 import ListPageLayout from '@/components/ListPageLayout';
 import DataTable from '@/components/DataTable';
-import { parsePagination, parseSort } from '@/lib/queryHelpers';
+import { parsePagination } from '@/lib/queryHelpers';
 import type { ListPageSearchParams, Column } from '@/lib/types';
 import { auth } from '@/auth';
 import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
-import { formatShortDate, formatDate, parseDateStr } from '@/lib/dateUtils';
+import { formatDate, parseDateStr } from '@/lib/dateUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +45,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
     const workTypes = Array.from(new Set(['Pending', ...workTypesPkg, ...workTypesAw])).filter(Boolean).sort() as string[];
     const budgetHeads = Array.from(new Set(['Pending', ...budgetHeadsPkg, ...budgetHeadsAw])).filter(Boolean).sort() as string[];
 
-    let filterLabels: string[] = [];
+    const filterLabels: string[] = [];
     const baseConditions: any[] = [];
 
     if (params.committeeType) {
@@ -271,7 +271,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         filterLabels.push('Not Determined');
     }
 
-    let query: any = {};
+    const query: any = {};
     if (andConditions.length > 0) {
         query.$and = andConditions;
     }

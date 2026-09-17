@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Save, Plus, X, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -106,6 +106,9 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
             }
         };
         fetchData();
+        // Mount-once bootstrap keyed off the initial record (props are stable
+        // for the form's lifetime).
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Helper to format dates for input fields (DD/MM/YYYY)
@@ -158,7 +161,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                     setFormData((prev: any) => ({ ...prev, tenderValidityDate: `${day}/${month}/${yyyy}` }));
                 }
             }
-        } catch (e) {
+        } catch {
             // ignore
         }
     }, [formData.lastDateOfSubmission]);
@@ -206,7 +209,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
         }
     };
 
-    const fetchLatestTrial = async (packageId: string) => {
+    const fetchLatestTrial = useCallback(async (packageId: string) => {
         if (!packageId || isEditing) return;
         try {
             const res = await fetch(`/api/tenders/latest-trial/${packageId as any}`);
@@ -217,7 +220,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
         } catch (error) {
             console.error("Failed to fetch latest trial", error);
         }
-    };
+    }, [isEditing]);
 
     const handlePackageSelect = (id: string) => {
         const selectedPkg = packages.find(p => p._id === id);
@@ -319,7 +322,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
             }
             fetchLatestTrial(formData.packageId);
         }
-    }, [formData.packageId, packages, isEditing]);
+    }, [formData.packageId, formData.packageName, packages, isEditing, fetchLatestTrial]);
 
     const handleExecuteReTender = async (reason: string) => {
         if (!initialData?._id) return;

@@ -18,16 +18,6 @@ void Tender;
 void Package;
 void Agency;
 
-function ordinaleGu(n: number): string {
-    // Gujarati ordinal: ૧લ, ૨જ, ૩જ, ૪થ …
-    const guNums: Record<number, string> = { 1: '૧', 2: '૨', 3: '૩', 4: '૪', 5: '૫', 6: '૬', 7: '૭', 8: '૮', 9: '૯', 10: '૧૦' };
-    const guN = guNums[n] ?? String(n);
-    if (n === 1) return `${guN}લ`;
-    if (n === 2) return `${guN}જ`;
-    if (n === 3) return `${guN}જ`;
-    return `${guN}મ`;
-}
-
 function formatDateDMY(d: Date | null | undefined): string {
     if (!d) return '-';
     const date = new Date(d);

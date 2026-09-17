@@ -111,9 +111,6 @@ export default function WorkOrderLetterClient({
     const formattedContractorAddress = wrapAddress(rawContractorAddress);
     const mobileNo = agency?.mobileNo || '';
 
-    const workNames = packageData.works ? packageData.works.map((w: any) => w.workName) : [];
-    const workNamesList = workNames.length > 0 ? workNames.join(' and ') : packageData.packageName;
-
     const workOrderNo = workOrder.workOrderWorksheetNo || '-';
     const workOrderDateStr = formatDateToOutput(workOrder.workOrderDate);
     const timeLimitStartsStr = formatDateToOutput(workOrder.timeLimitStartsFrom);

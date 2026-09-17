@@ -39,7 +39,9 @@ export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHead
         setHasLoa(searchParams.get('hasLoa') || '');
         setLoaFromDate(searchParams.get('loaFromDate') || searchParams.get('fromDate') || '');
         setLoaToDate(searchParams.get('loaToDate') || searchParams.get('toDate') || '');
-        setSortOption(getSortKey());
+        const s = searchParams.get('sort');
+        const o = searchParams.get('order') || 'asc';
+        setSortOption(s ? `${s}_${o}` : '');
     }, [searchParams]);
 
     const handleApplyFilters = () => {

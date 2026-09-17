@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Plus, X, Check, Loader2 } from 'lucide-react';
+import { X, Check, Loader2 } from 'lucide-react';
 
 interface ClassificationSectionProps {
     formData: {
@@ -19,32 +19,43 @@ interface ClassificationSectionProps {
     handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
 }
 
+// Module scope: stable identity, safe to list in effect deps.
+const DEFAULT_NATURES = [
+    "Resurfacing",
+    "Widening & Strengthening",
+    "Maintenance",
+    "EBT",
+    "Major Bridge",
+    "Minor Bridge",
+    "CWB",
+    "CCR"
+];
+
+const DEFAULT_SCHEMES = [
+    "MMGSY",
+    "Suvidhapath",
+    "SR",
+    "BUJ",
+    "EMRI - MMGSY"
+];
+
+const DEFAULT_BUILDING_TYPES = [
+    "Residential",
+    "Non-Residential",
+    "Hospital",
+    "School",
+    "Office"
+];
+
 export default function ClassificationSection({ formData, handleChange }: ClassificationSectionProps) {
     const [isAddingNew, setIsAddingNew] = useState(false);
     const [newOptionValue, setNewOptionValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const DEFAULT_NATURES = [
-        "Resurfacing",
-        "Widening & Strengthening",
-        "Maintenance",
-        "EBT",
-        "Major Bridge",
-        "Minor Bridge",
-        "CWB",
-        "CCR"
-    ];
     const [natureOfWorkOptions, setNatureOfWorkOptions] = useState(() => {
         const initialVal = formData.natureOfWork ? [formData.natureOfWork] : [];
         return Array.from(new Set([...DEFAULT_NATURES, ...initialVal]));
     });
 
-    const DEFAULT_SCHEMES = [
-        "MMGSY",
-        "Suvidhapath",
-        "SR",
-        "BUJ",
-        "EMRI - MMGSY"
-    ];
     const [schemeOptions, setSchemeOptions] = useState(() => {
         const initialVal = formData.schemeName ? [formData.schemeName] : [];
         return Array.from(new Set([...DEFAULT_SCHEMES, ...initialVal]));
@@ -52,13 +63,6 @@ export default function ClassificationSection({ formData, handleChange }: Classi
     const [isAddingNewScheme, setIsAddingNewScheme] = useState(false);
     const [newSchemeValue, setNewSchemeValue] = useState('');
 
-    const DEFAULT_BUILDING_TYPES = [
-        "Residential",
-        "Non-Residential",
-        "Hospital",
-        "School",
-        "Office"
-    ];
     const [buildingTypeOptions, setBuildingTypeOptions] = useState(() => {
         const initialVal = formData.buildingType ? [formData.buildingType] : [];
         return Array.from(new Set([...DEFAULT_BUILDING_TYPES, ...initialVal]));

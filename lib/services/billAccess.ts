@@ -4,6 +4,10 @@ import LOA from '@/models/LOA';
 import Tender from '@/models/Tender';
 import WorkOrder from '@/models/WorkOrder';
 
+type TenderFilter = Parameters<typeof Tender.find>[0];
+type LoaFilter = Parameters<typeof LOA.find>[0];
+type WorkOrderFilter = Parameters<typeof WorkOrder.find>[0];
+
 // Keep populate targets registered for route-splitting (matches existing pattern).
 void WorkOrder;
 void LOA;
@@ -30,11 +34,20 @@ export async function auditorCanAccessBill(billId: string, auditorSubDivision: s
  * Work-order ids visible to an auditor's sub-division. Single place for the
  * Package → Tender → LOA → WorkOrder chain so list + create stay in sync.
  */
-export async function getAuditorWorkOrderIds(auditorSubDivision: string) {
-  const packageIds = (await Package.find({
+export async function getAuditorWorkOrderIds(auditorSubDivision: string): Promise<string[]> {
+  // Ids travel as strings (the driver casts at runtime). Filter objects go
+  // through FilterQuery assertions because the repo's strict Mongoose types
+  // reject cross-copy ObjectId/string inputs at compile time.
+  const packageIds: string[] = (await Package.find({
     subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') },
-  }).distinct('_id')) as any[];
-  const tenderIds = (await Tender.find({ packageId: { $in: packageIds } } as any).distinct('_id')) as any[];
-  const loaIds = (await LOA.find({ tenderId: { $in: tenderIds } } as any).distinct('_id')) as any[];
-  return (await WorkOrder.find({ loaId: { $in: loaIds } } as any).distinct('_id')) as any[];
+  }).distinct('_id')).map(String);
+  const tenderIds: string[] = (await Tender.find(
+    { packageId: { $in: packageIds } } as unknown as TenderFilter,
+  ).distinct('_id')).map(String);
+  const loaIds: string[] = (await LOA.find(
+    { tenderId: { $in: tenderIds } } as unknown as LoaFilter,
+  ).distinct('_id')).map(String);
+  return (await WorkOrder.find(
+    { loaId: { $in: loaIds } } as unknown as WorkOrderFilter,
+  ).distinct('_id')).map(String);
 }

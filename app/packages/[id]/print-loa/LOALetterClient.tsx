@@ -139,7 +139,7 @@ function calculateAdditionalSecurity(tender: any) {
     }
 }
 
-export default function LOALetterClient({ packageData, tender, loa, agency, approval, dtp, workOrder }: LOALetterClientProps) {
+export default function LOALetterClient({ packageData, tender, loa, agency }: LOALetterClientProps) {
     // Add/remove loa-printing class on body so print CSS is scoped only to this page
     useEffect(() => {
         const onBefore = () => document.body.classList.add('loa-printing');

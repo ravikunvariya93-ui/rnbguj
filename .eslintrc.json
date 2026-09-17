@@ -1,8 +1,35 @@
 {
   "extends": ["next/core-web-vitals", "next/typescript"],
+  "ignorePatterns": [
+    "next-env.d.ts",
+    "scratch/**",
+    "backups/**",
+    "check_*.js",
+    "check_id.js",
+    "clear_data.js",
+    "debug_*.js",
+    "extract_logo.js",
+    "fix_bills.js",
+    "get_id.js",
+    "inspect_bills*.js",
+    "list_ids.js",
+    "migrate_*.js",
+    "patch_*.js",
+    "print_headers.js",
+    "read_lh.js",
+    "test-*.js",
+    "test_*.js",
+    "update_letters.js",
+    "update-se.ts"
+  ],
   "rules": {
     "@typescript-eslint/no-explicit-any": "warn",
-    "@typescript-eslint/no-unused-vars": "warn",
+    "@typescript-eslint/no-unused-vars": ["warn", {
+      "argsIgnorePattern": "^_",
+      "varsIgnorePattern": "^_",
+      "destructuredArrayIgnorePattern": "^_",
+      "caughtErrors": "none"
+    }],
     "react/no-unescaped-entities": "warn"
   }
 }

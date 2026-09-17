@@ -8,7 +8,7 @@ import {
     Building2, FileText, Home, CheckCircle, 
     Package, Layers, X, User, LogOut, Users, ClipboardList, TrendingUp, Landmark 
 } from 'lucide-react';
-import { ALL_AUDITOR_ROLES, ROLE_LABELS, isAuditorRole } from '@/lib/roles';
+import { ALL_AUDITOR_ROLES, ROLE_LABELS } from '@/lib/roles';
 
 interface SidebarProps {
     isOpen?: boolean;
@@ -17,10 +17,16 @@ interface SidebarProps {
 
 const AUDITOR_ROLES = ALL_AUDITOR_ROLES;
 
+interface SessionUser {
+    role?: string;
+    name?: string;
+    username?: string;
+}
+
 export default memo(function Sidebar({ isOpen, onClose }: SidebarProps) {
     const pathname = usePathname();
     const { data: session } = useSession();
-    const user = session?.user as any;
+    const user = session?.user as SessionUser | undefined;
 
     const navigation = [
         { name: 'Dashboard',       href: '/',                  icon: Home,          roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...AUDITOR_ROLES] },

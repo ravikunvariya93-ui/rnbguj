@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Tender from '@/models/Tender';
-import { Types } from 'mongoose';
 
 export async function GET(
     request: Request,

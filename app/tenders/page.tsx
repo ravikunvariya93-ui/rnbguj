@@ -8,15 +8,13 @@ import WorkOrder from '@/models/WorkOrder';
 import Agency from '@/models/Agency';
 import ApprovedWork from '@/models/ApprovedWork';
 import Link from 'next/link';
-import { Plus, Eye, Edit2 } from 'lucide-react';
-import GenericDeleteButton from '@/components/GenericDeleteButton';
 import Pagination from '@/components/Pagination';
 import ListPageLayout from '@/components/ListPageLayout';
 import DataTable from '@/components/DataTable';
 import TendersFilterBar from '@/components/TendersFilterBar';
 import TenderDateSubFilter from '@/components/TenderDateSubFilter';
 import ViewBiddersModalButton from '@/components/ViewBiddersModalButton';
-import { buildDashboardFilter, parsePagination, parseSort } from '@/lib/queryHelpers';
+import { buildDashboardFilter, parsePagination } from '@/lib/queryHelpers';
 import type { ListPageSearchParams, Column } from '@/lib/types';
 import { formatShortDate } from '@/lib/dateUtils';
 import { auth } from '@/auth';
@@ -70,8 +68,8 @@ export default async function TendersListPage({ searchParams }: Props) {
         }
     });
     
-    let query: any = {};
-    let filterLabels: string[] = [];
+    const query: any = {};
+    const filterLabels: string[] = [];
 
     const dashboardFilter = await buildDashboardFilter(params);
     if (dashboardFilter.hasFilter && dashboardFilter.packageIds) {

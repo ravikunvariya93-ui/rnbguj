@@ -10,7 +10,7 @@ import ContractorForm from '@/components/ContractorForm';
 export default function ContractorsListPage() {
     const [contractors, setContractors] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [, setError] = useState('');
     const [search, setSearch] = useState('');
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedContractor, setSelectedContractor] = useState<any>(null);

@@ -14,7 +14,7 @@ export default async function EditApprovedWorkPage({ params }: { params: Promise
         const workDoc = await ApprovedWork.findById(id);
         if (!workDoc) return notFound();
         work = JSON.parse(JSON.stringify(workDoc)); // Serialize for client component
-    } catch (e) {
+    } catch {
         return notFound();
     }
 

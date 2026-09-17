@@ -34,7 +34,6 @@ function fmtNum(n: number | null | undefined, decimals = 2): string {
 export default function ExcessSavingPrintClient({
     packageData,
     tender,
-    loa,
     workOrder,
     agency,
     bill
