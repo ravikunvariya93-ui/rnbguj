@@ -441,6 +441,7 @@ export default function PackageDetailClient({
                 trialNo: tender?.trialNo || nextTrialNo,
                 tenderCreationDate: tender?.tenderCreationDate ? formatDateForInput(tender.tenderCreationDate) : '',
                 lastDateOfSubmission: tender?.lastDateOfSubmission ? formatDateForInput(tender.lastDateOfSubmission) : '',
+                tenderOpeningDate: tender?.tenderOpeningDate ? formatDateForInput(tender.tenderOpeningDate) : '',
                 tenderValidityDate: tender?.tenderValidityDate ? formatDateForInput(tender.tenderValidityDate) : '',
                 reInvite: tender?.reInvite || (latestTender ? true : false),
                 cancelled: tender?.cancelled || false,
@@ -1101,6 +1102,10 @@ export default function PackageDetailClient({
             if (data.lastDateOfSubmission) {
                 const parsed = parseDateStr(data.lastDateOfSubmission);
                 if (parsed) data.lastDateOfSubmission = parsed.toISOString();
+            }
+            if (data.tenderOpeningDate) {
+                const parsed = parseDateStr(data.tenderOpeningDate);
+                if (parsed) data.tenderOpeningDate = parsed.toISOString();
             }
             if (data.tenderValidityDate) {
                 const parsed = parseDateStr(data.tenderValidityDate);
@@ -2327,10 +2332,16 @@ export default function PackageDetailClient({
                                                     </td>
                                                 </tr>
                                                 <tr>
+                                                    <td className="excel-label">Tender Opening Date</td>
+                                                    <td className="excel-value">
+                                                        <input type="text" placeholder="DD/MM/YYYY" name="tenderOpeningDate" value={tenderForm.tenderOpeningDate} onChange={handleTenderFieldChange} className="excel-cell-input" />
+                                                    </td>
                                                     <td className="excel-label">Tender Validity Date</td>
                                                     <td className="excel-value bg-amber-100/40 font-mono text-slate-700 px-3 py-2 font-bold select-none">{tenderForm.tenderValidityDate || '-'}</td>
+                                                </tr>
+                                                <tr>
                                                     <td className="excel-label">Tender Cancelled</td>
-                                                    <td className="excel-value">
+                                                    <td className="excel-value" colSpan={3}>
                                                         <div className="flex items-center gap-4 px-2">
                                                             <input type="checkbox" name="cancelled" checked={tenderForm.cancelled} onChange={handleTenderFieldChange} className="w-4 h-4 text-emerald-600 border-slate-300 rounded cursor-pointer animate-none" />
                                                             {tenderForm.cancelled && (
@@ -2489,10 +2500,14 @@ export default function PackageDetailClient({
                                                 <td className="excel-value">{displayTender.lastDateOfSubmission ? new Date(displayTender.lastDateOfSubmission).toLocaleDateString('en-GB') : '-'}</td>
                                             </tr>
                                             <tr>
+                                                <td className="excel-label">Tender Opening Date</td>
+                                                <td className="excel-value">{displayTender.tenderOpeningDate ? new Date(displayTender.tenderOpeningDate).toLocaleDateString('en-GB') : '-'}</td>
                                                 <td className="excel-label">Tender Validity Date</td>
                                                 <td className="excel-value font-mono">{displayTender.tenderValidityDate ? new Date(displayTender.tenderValidityDate).toLocaleDateString('en-GB') : '-'}</td>
+                                            </tr>
+                                            <tr>
                                                 <td className="excel-label">Contractor Name</td>
-                                                <td className="excel-value">{displayTender.contractorName || '-'}</td>
+                                                <td className="excel-value" colSpan={3}>{displayTender.contractorName || '-'}</td>
                                             </tr>
                                             <tr>
                                                 <td className="excel-label">Tender Amount</td>
