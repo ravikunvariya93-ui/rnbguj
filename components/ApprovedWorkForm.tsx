@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { Save, Loader2, CheckCircle2, XCircle, X } from 'lucide-react';
 import Link from 'next/link';
 
@@ -9,6 +10,11 @@ import Link from 'next/link';
 import BasicInfoSection from './forms/approved-work/BasicInfoSection';
 import BudgetSection from './forms/approved-work/BudgetSection';
 import ClassificationSection from './forms/approved-work/ClassificationSection';
+
+const WorksMap = dynamic(() => import('./WorksMap'), {
+    ssr: false,
+    loading: () => <p className="text-sm text-slate-400 italic px-1 py-4 text-center">Loading map…</p>,
+});
 
 type ToastType = 'success' | 'error' | null;
 
@@ -251,6 +257,18 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
             <BudgetSection formData={formData} handleChange={handleChange} />
 
             <ClassificationSection formData={formData} handleChange={handleChange} />
+
+            {formData.workName.trim() !== '' && (
+                <div className="pt-2">
+                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-1">
+                        Work Location on Map
+                    </h3>
+                    <p className="text-xs text-gray-500 mb-3">
+                        Villages are located automatically. If one is wrong or missing, use Select/Change to pick it.
+                    </p>
+                    <WorksMap works={[formData.workName]} subDivision={formData.subDivision} />
+                </div>
+            )}
 
             <div className="pt-5">
                 <div className="flex justify-end">

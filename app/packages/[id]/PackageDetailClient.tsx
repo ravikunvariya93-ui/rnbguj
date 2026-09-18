@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -12,6 +13,11 @@ import {
 import { parseDateStr, formatDate, formatDateForInput, formatShortDate } from '@/lib/dateUtils';
 import SearchableSelect from '@/components/SearchableSelect';
 import BillForm from '@/components/BillForm';
+
+const WorksMap = dynamic(() => import('@/components/WorksMap'), {
+    ssr: false,
+    loading: () => <p className="text-sm text-slate-400 italic px-1 py-4 text-center">Loading map…</p>,
+});
 
 const blobViewUrl = (url?: string) =>
     url && url.startsWith('http') ? `/api/blob?url=${encodeURIComponent(url)}` : url || '#';
@@ -2064,6 +2070,22 @@ export default function PackageDetailClient({
                     </div>
                 </div>
                 
+                {/* 1B. Assigned Works Map */}
+                <div className="bg-white border-2 border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+                    <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                        <h3 className="font-bold text-slate-800">Assigned Works on Map</h3>
+                        <span className="text-[11px] font-semibold text-slate-400">
+                            {(pkg.works?.length || 0)} work{(pkg.works?.length || 0) === 1 ? '' : 's'}
+                        </span>
+                    </div>
+                    <div className="p-6">
+                        <WorksMap
+                            works={(pkg.works || []).map((w: any) => w?.workName).filter(Boolean)}
+                            subDivision={pkg.subDivision}
+                        />
+                    </div>
+                </div>
+
                 {/* ROW 1: DTP Approval Details and Tender Details Side by Side (Equal Height) */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
                     {/* 2. DTP Approval Section */}

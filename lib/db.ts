@@ -13,6 +13,7 @@ import '@/models/Package';
 import '@/models/TechnicalSanction';
 import '@/models/Tender';
 import '@/models/User';
+import '@/models/Village';
 import '@/models/WorkOrder';
 
 const getMongoUri = () => process.env.MONGODB_URI;
