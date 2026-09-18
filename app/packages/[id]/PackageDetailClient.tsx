@@ -39,7 +39,7 @@ interface PackageDetailClientProps {
     maxAgreementNos?: Record<string, number>;
 }
 
-type SectionType = 'package' | 'dtp' | 'tender' | 'boq' | 'approval' | 'loa' | 'workOrder' | 'bills' | 'depositRefund';
+type SectionType = 'package' | 'dtp' | 'tender' | 'boq' | 'approval' | 'loa' | 'loaNotice' | 'workOrder' | 'bills' | 'depositRefund';
 
 export default function PackageDetailClient({
     packageId,
@@ -176,7 +176,12 @@ export default function PackageDetailClient({
     const [tenderForm, setTenderForm] = useState<any>({});
     const [approvalForm, setApprovalForm] = useState<any>({});
     const [loaForm, setLoaForm] = useState<any>({});
+    const [noticeForm, setNoticeForm] = useState<any>({});
+    const [editingNoticeIndex, setEditingNoticeIndex] = useState<number | 'new' | null>(null);
     const [woForm, setWoForm] = useState<any>({});
+
+    const NOTICE_ORDINALS = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'];
+    const noticeOrdinal = (i: number) => NOTICE_ORDINALS[i] || `${i + 1}th`;
 
     // Helper to determine if tender approval is not required based on tender amount or contract price
     const isTenderApprovalNotRequired = useMemo(() => {
@@ -406,7 +411,7 @@ export default function PackageDetailClient({
     }, [pkgForm.works, approvedWorks, editingSection]);
 
     // Toggle Edit Modes
-    const handleStartEdit = (section: SectionType) => {
+    const handleStartEdit = (section: SectionType, noticeIndex?: number | 'new') => {
         setEditingSection(section);
         if (section === 'package') {
             fetchAvailableWorks();
@@ -536,11 +541,25 @@ export default function PackageDetailClient({
                 status: additionalSdRefund?.status || 'Pending',
                 remarks: additionalSdRefund?.remarks || '',
             });
+        } else if (section === 'loaNotice') {
+            const existingNotices = Array.isArray(loa?.notices) ? loa.notices : [];
+            if (noticeIndex === undefined || noticeIndex === 'new') {
+                setEditingNoticeIndex('new');
+                setNoticeForm({ wsNo: '', noticeDate: '' });
+            } else {
+                const n = existingNotices[noticeIndex];
+                setEditingNoticeIndex(noticeIndex);
+                setNoticeForm({
+                    wsNo: n?.wsNo || '',
+                    noticeDate: n?.noticeDate ? formatDateForInput(n.noticeDate) : '',
+                });
+            }
         }
     };
 
     const handleCancelEdit = () => {
         setEditingSection(null);
+        setEditingNoticeIndex(null);
     };
 
     const handleSaveAdditionalSdRefund = async (e: React.FormEvent) => {
@@ -598,6 +617,11 @@ export default function PackageDetailClient({
     const handleLoaFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setLoaForm((prev: any) => ({ ...prev, [name]: value }));
+    };
+
+    const handleNoticeFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setNoticeForm((prev: any) => ({ ...prev, [name]: value }));
     };
 
     const handleWoFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -1198,6 +1222,68 @@ export default function PackageDetailClient({
             setLoading(false);
         }
     };
+
+    const handleSaveNotice = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            let noticeDateIso: string | null = null;
+            if (noticeForm.noticeDate) {
+                const parsed = parseDateStr(noticeForm.noticeDate);
+                if (parsed) noticeDateIso = parsed.toISOString();
+            }
+            const updated = (Array.isArray(loa?.notices) ? loa.notices : []).map((n: any) => ({
+                ...(n?._id ? { _id: n._id } : {}),
+                wsNo: n?.wsNo || '',
+                noticeDate: n?.noticeDate ? new Date(n.noticeDate).toISOString() : null,
+            }));
+            const entry = { wsNo: noticeForm.wsNo || '', noticeDate: noticeDateIso };
+            if (editingNoticeIndex === 'new') {
+                updated.push(entry);
+            } else if (typeof editingNoticeIndex === 'number') {
+                updated[editingNoticeIndex] = { ...(updated[editingNoticeIndex] || {}), ...entry };
+            }
+            const res = await fetch(`/api/loas/${loa._id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notices: updated }),
+            });
+            if (!res.ok) throw new Error("Failed to save Notice details.");
+            showToast('success', 'Notice details saved!');
+            setEditingSection(null);
+            setEditingNoticeIndex(null);
+            router.refresh();
+        } catch (err: any) {
+            showToast('error', err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const renderNoticeForm = () => (
+        <form onSubmit={handleSaveNotice} className="space-y-4">
+            <div className="overflow-x-auto">
+                <table className="excel-table">
+                    <tbody>
+                        <tr>
+                            <td className="excel-label">Ws No.</td>
+                            <td className="excel-value w-[30%]">
+                                <input type="text" name="wsNo" value={noticeForm.wsNo || ''} onChange={handleNoticeFieldChange} className="excel-cell-input" />
+                            </td>
+                            <td className="excel-label">Notice Date</td>
+                            <td className="excel-value w-[30%]">
+                                <input type="text" placeholder="DD/MM/YYYY" name="noticeDate" value={noticeForm.noticeDate || ''} onChange={handleNoticeFieldChange} className="excel-cell-input" />
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={handleCancelEdit} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-semibold cursor-pointer">Cancel</button>
+                <button type="submit" className="px-5 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 cursor-pointer">Save Notice</button>
+            </div>
+        </form>
+    );
 
     const handleSaveWorkOrder = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -2787,6 +2873,71 @@ export default function PackageDetailClient({
                                 <div className="text-center py-6 border border-dashed border-emerald-200 rounded-2xl bg-emerald-100/40">
                                     <AlertCircle className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
                                     <p className="text-slate-500 font-semibold text-sm">LOA details are pending.</p>
+                                </div>
+                            )}
+                            {loa && (
+                                <div className="mt-4 pt-4 border-t border-emerald-200/60">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="font-bold text-slate-700 text-sm">Notice</h4>
+                                        {editingSection !== 'loaNotice' && (
+                                            <button
+                                                onClick={() => handleStartEdit('loaNotice', 'new')}
+                                                className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all cursor-pointer"
+                                            >
+                                                <Plus className="w-3.5 h-3.5" /> Add Notice
+                                            </button>
+                                        )}
+                                    </div>
+                                    {(Array.isArray(loa.notices) ? loa.notices : []).map((notice: any, idx: number) => (
+                                        <div key={notice?._id || idx} className="mb-3 border border-emerald-100 rounded-xl p-3 bg-white/60">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-xs font-bold text-slate-600">{noticeOrdinal(idx)} Notice</span>
+                                                {editingSection !== 'loaNotice' && (
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => handleStartEdit('loaNotice', idx)}
+                                                            className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200 transition-all cursor-pointer"
+                                                        >
+                                                            <Edit2 className="w-3 h-3" /> Modify
+                                                        </button>
+                                                        <Link
+                                                            href={`/packages/${packageId}/print-notice?n=${idx}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200 border border-emerald-300 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
+                                                        >
+                                                            <Printer className="w-3 h-3" /> Print Notice
+                                                        </Link>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {editingSection === 'loaNotice' && editingNoticeIndex === idx ? (
+                                                renderNoticeForm()
+                                            ) : (
+                                                <div className="overflow-x-auto">
+                                                    <table className="excel-table">
+                                                        <tbody>
+                                                            <tr>
+                                                                <td className="excel-label">Ws No.</td>
+                                                                <td className="excel-value w-[30%] font-mono">{notice?.wsNo || '-'}</td>
+                                                                <td className="excel-label">Notice Date</td>
+                                                                <td className="excel-value w-[30%]">{notice?.noticeDate ? new Date(notice.noticeDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                    {editingSection === 'loaNotice' && editingNoticeIndex === 'new' && (
+                                        <div className="mb-3 border border-dashed border-emerald-300 rounded-xl p-3 bg-emerald-50/50">
+                                            <span className="text-xs font-bold text-slate-600 block mb-2">{noticeOrdinal(Array.isArray(loa.notices) ? loa.notices.length : 0)} Notice</span>
+                                            {renderNoticeForm()}
+                                        </div>
+                                    )}
+                                    {(!Array.isArray(loa.notices) || loa.notices.length === 0) && editingSection !== 'loaNotice' && (
+                                        <p className="text-slate-400 font-semibold text-xs italic">Notice details are pending.</p>
+                                    )}
                                 </div>
                             )}
                         </div>

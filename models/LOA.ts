@@ -7,6 +7,7 @@ export interface ILOA extends Document {
     workDurationMonths: number;
     acceptanceLetterWorksheetNo: string;
     acceptanceLetterDate: Date;
+    notices?: { wsNo?: string; noticeDate?: Date }[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -18,6 +19,10 @@ const LOASchema: Schema = new Schema({
     workDurationMonths: { type: Number },
     acceptanceLetterWorksheetNo: { type: String },
     acceptanceLetterDate: { type: Date },
+    notices: [{
+        wsNo: { type: String },
+        noticeDate: { type: Date },
+    }],
 }, {
     timestamps: true,
 });
