@@ -23,7 +23,6 @@ export interface IApprovedWork extends Document {
     workType: string; // Type of Work
     parliamentaryConstituency: string;
     mpName: string;
-    workNameGujarati: string;
     natureOfWork: string;
     schemeName: string;
     buildingType?: string;
@@ -57,7 +56,6 @@ const ApprovedWorkSchema: Schema = new Schema({
     workType: { type: String },
     parliamentaryConstituency: { type: String },
     mpName: { type: String },
-    workNameGujarati: { type: String },
     natureOfWork: { type: String },
     schemeName: { type: String },
     buildingType: { type: String },

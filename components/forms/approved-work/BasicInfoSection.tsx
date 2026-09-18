@@ -3,7 +3,6 @@
 interface BasicInfoSectionProps {
     formData: {
         workName: string;
-        workNameGujarati: string;
         circle: string;
         district: string;
         subDivision: string;
@@ -32,23 +31,6 @@ export default function BasicInfoSection({ formData, handleChange }: BasicInfoSe
                         onChange={handleChange}
                         className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border"
                         placeholder="Name of work in English"
-                    />
-                </div>
-            </div>
-
-            <div className="sm:col-span-6">
-                <label htmlFor="workNameGujarati" className="block text-sm font-medium text-gray-700">
-                    Name of Work in Gujarati
-                </label>
-                <div className="mt-1">
-                    <textarea
-                        id="workNameGujarati"
-                        name="workNameGujarati"
-                        rows={3}
-                        value={formData.workNameGujarati}
-                        onChange={handleChange}
-                        className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md p-2 border"
-                        placeholder="કામનું નામ (ગુજરાતીમાં)"
                     />
                 </div>
             </div>

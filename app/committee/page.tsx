@@ -279,8 +279,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
     if (params.search) {
         const searchCond = {
             $or: [
-                { packageName: { $regex: params.search, $options: 'i' } },
-                { packageNameGujarati: { $regex: params.search, $options: 'i' } }
+                { packageName: { $regex: params.search, $options: 'i' } }
             ]
         };
         if (query.$and) {
@@ -293,8 +292,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
     const baseSearchQuery: any = {};
     if (params.search) {
         baseSearchQuery.$or = [
-            { packageName: { $regex: params.search, $options: 'i' } },
-            { packageNameGujarati: { $regex: params.search, $options: 'i' } }
+            { packageName: { $regex: params.search, $options: 'i' } }
         ];
     }
 
@@ -504,19 +502,8 @@ export default async function CommitteeListPage({ searchParams }: Props) {
             )
         },
         { 
-            key: 'packageNameGujarati', 
-            label: 'Package Name in Gujarati', 
-            sortable: true,
-            minWidth: '260px',
-            render: (row) => (
-                <Link href={`/packages/${row._id}`} className="max-w-md whitespace-normal break-words font-medium text-slate-700 hover:text-emerald-600 hover:underline">
-                    {row.packageNameGujarati || '-'}
-                </Link>
-            )
-        },
-        { 
             key: 'contractorName', 
-            label: 'Contractor Name', 
+            label: 'Contractor Name',
             sortable: true,
             minWidth: '200px',
             render: (row) => row.contractorName ? (

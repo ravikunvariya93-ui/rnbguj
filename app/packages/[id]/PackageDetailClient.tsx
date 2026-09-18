@@ -7,10 +7,9 @@ import {
     ArrowLeft, Save, Edit2, Plus, Trash2, CheckCircle2, XCircle, X, Loader2, 
     FileText, Check, ChevronDown, ChevronUp, Printer, 
     Receipt, Eye, AlertCircle, ClipboardCheck,
-    FileSpreadsheet, Upload, CreditCard, TrendingUp, Languages
+    FileSpreadsheet, Upload, CreditCard, TrendingUp
 } from 'lucide-react';
 import { parseDateStr, formatDate, formatDateForInput, formatShortDate } from '@/lib/dateUtils';
-import { transliteratePackageNameToGujarati } from '@/lib/transliterateGujarati';
 import SearchableSelect from '@/components/SearchableSelect';
 import BillForm from '@/components/BillForm';
 
@@ -407,7 +406,6 @@ export default function PackageDetailClient({
             fetchAvailableWorks();
             setPkgForm({
                 packageName: pkg.packageName || '',
-                packageNameGujarati: pkg.packageNameGujarati || '',
                 subDivision: pkg.subDivision || '',
                 workType: pkg.workType || '',
                 buildingType: pkg.buildingType || '',
@@ -1542,11 +1540,6 @@ export default function PackageDetailClient({
                         <h1 className="text-lg md:text-xl font-extrabold text-white break-words">
                             {pkg.packageName}
                         </h1>
-                        {pkg.packageNameGujarati && (
-                            <p className="text-xs md:text-sm text-emerald-100 font-medium mt-0.5 break-words">
-                                {pkg.packageNameGujarati}
-                            </p>
-                        )}
                     </div>
                 </div>
             </div>
@@ -1592,41 +1585,13 @@ export default function PackageDetailClient({
                                             <tr>
                                                 <td className="excel-label">Package Name *</td>
                                                 <td className="excel-value" colSpan={3}>
-                                                    <div className="flex items-center gap-2">
-                                                        <input 
-                                                            type="text" 
-                                                            value={pkgForm.packageName || ''} 
-                                                            onChange={(e) => setPkgForm((prev: any) => ({ ...prev, packageName: e.target.value }))} 
-                                                            required 
-                                                            className="excel-cell-input flex-grow" 
-                                                            placeholder="e.g. Resurfacing Of Ugalavan to Sarera Road (NPBT) KM.0/000 to 3/100, Ta.Jesar Dist.Bhavnagar"
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                if (pkgForm.packageName) {
-                                                                    const converted = transliteratePackageNameToGujarati(pkgForm.packageName);
-                                                                    setPkgForm((prev: any) => ({ ...prev, packageNameGujarati: converted }));
-                                                                }
-                                                            }}
-                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold whitespace-nowrap shadow-xs transition-colors cursor-pointer"
-                                                            title="Transliterate English Package Name to Gujarati script (no translation)"
-                                                        >
-                                                            <Languages className="w-3.5 h-3.5" />
-                                                            Convert to Gujarati
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td className="excel-label">Package Name in Gujarati</td>
-                                                <td className="excel-value" colSpan={3}>
                                                     <input 
                                                         type="text" 
-                                                        value={pkgForm.packageNameGujarati || ''} 
-                                                        onChange={(e) => setPkgForm((prev: any) => ({ ...prev, packageNameGujarati: e.target.value }))} 
-                                                        className="excel-cell-input font-medium" 
-                                                        placeholder="દા.ત. રીસરફેસીંગ ઓફ ઉગલવાણ ટુ સરેરા રોડ (એનપીબીટી) કિમી ૦/૦૦૦ ટુ ૩/૧૦૦, તા. જેસર, જિ. ભાવનગર"
+                                                        value={pkgForm.packageName || ''} 
+                                                        onChange={(e) => setPkgForm((prev: any) => ({ ...prev, packageName: e.target.value }))} 
+                                                        required 
+                                                        className="excel-cell-input" 
+                                                        placeholder="e.g. Resurfacing Of Ugalavan to Sarera Road (NPBT) KM.0/000 to 3/100, Ta.Jesar Dist.Bhavnagar"
                                                     />
                                                 </td>
                                             </tr>
@@ -1993,12 +1958,6 @@ export default function PackageDetailClient({
                                 <div className="overflow-x-auto">
                                     <table className="excel-table">
                                         <tbody>
-                                            {pkg.packageNameGujarati && (
-                                                <tr>
-                                                    <td className="excel-label">Package Name in Gujarati</td>
-                                                    <td className="excel-value font-medium text-slate-800" colSpan={3}>{pkg.packageNameGujarati}</td>
-                                                </tr>
-                                            )}
                                             <tr>
                                                 <td className="excel-label">Sub-Division</td>
                                                 <td className="excel-value w-[30%]">{displayedSubDivision || '-'}</td>

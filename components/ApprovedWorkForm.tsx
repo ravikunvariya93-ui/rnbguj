@@ -41,7 +41,6 @@ interface FormData {
     workType: string;
     parliamentaryConstituency: string;
     mpName: string;
-    workNameGujarati: string;
     natureOfWork: string;
     schemeName: string;
     length: string;
@@ -102,7 +101,6 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
         buildingType: '',
         parliamentaryConstituency: '',
         mpName: '',
-        workNameGujarati: '',
         natureOfWork: '',
         schemeName: '',
         length: '',

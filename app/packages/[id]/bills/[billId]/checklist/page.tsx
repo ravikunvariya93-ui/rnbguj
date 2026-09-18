@@ -5,6 +5,7 @@ import WorkOrder from '@/models/WorkOrder';
 import LOA from '@/models/LOA';
 import Tender from '@/models/Tender';
 import Package from '@/models/Package';
+import ApprovedWork from '@/models/ApprovedWork';
 import Agency from '@/models/Agency';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -29,7 +30,7 @@ function formatDateDMY(d: Date | null | undefined): string {
 
 function fmtNum(n: number | null | undefined): string {
     if (n == null) return '-';
-    return Math.round(n).toLocaleString('en-IN');
+    return n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
 export default async function PackageBillChecklistPage({ 
@@ -60,10 +61,29 @@ export default async function PackageBillChecklistPage({
     const tender = loa?.tenderId as any;
     const pkg = tender?.packageId as any;
 
-    const workName = pkg?.packageNameGujarati || tender?.packageName || pkg?.packageName || '-';
+    const workName = tender?.packageName || pkg?.packageName || '-';
     const yojanaName = pkg?.budgetHead || '-';
-    const saiddhantikAmount = pkg?.estimatedAmount ?? null;
-    const adminApprovalAmount = tender?.estimatedAmount ?? null;
+    // Saiddhantik & vahivati approval amounts = total of Job Number Amount (Lakh)
+    // of the works included in the package, converted to rupees.
+    const includedWorkNames: string[] = Array.isArray(pkg?.works)
+        ? pkg.works.map((w: any) => w?.workName).filter(Boolean)
+        : [];
+    let approvalBaseTotal: number | null = null;
+    if (includedWorkNames.length > 0) {
+        const approvedWorks = await ApprovedWork.find({ workName: { $in: includedWorkNames } })
+            .select('workName jobNumberAmount')
+            .lean();
+        const amountByName = new Map<string, number>();
+        for (const aw of approvedWorks) {
+            if (aw?.workName && !amountByName.has(aw.workName)) {
+                amountByName.set(aw.workName, Number(aw.jobNumberAmount) || 0);
+            }
+        }
+        const totalLakh = includedWorkNames.reduce((s: number, n: string) => s + (amountByName.get(n) || 0), 0);
+        approvalBaseTotal = totalLakh * 100000;
+    }
+    const saiddhantikAmount = approvalBaseTotal ?? pkg?.estimatedAmount ?? null;
+    const adminApprovalAmount = approvalBaseTotal ?? tender?.estimatedAmount ?? null;
     const workOrderAmount = tender?.contractPrice ?? null;
     const contractorName = tender?.contractorName || '-';
     let contractorGstNo = '';
@@ -258,13 +278,13 @@ export default async function PackageBillChecklistPage({
                 {/* Signature row */}
                 <div className="sign-row" style={{ marginTop: '32px', display: 'flex', justifyContent: 'space-between' }}>
                     <div className="sign-cell" style={{ textAlign: 'center', fontSize: '13px', width: '32%' }}>
-                        <div className="sign-line" style={{ borderTop: '1px solid #444', paddingTop: '4px', marginTop: '40px' }}>ઓડીટરશ્રી</div>
+                        <div className="sign-line" style={{ borderTop: '1px solid #444', paddingTop: '4px', marginTop: '40px' }}>ઓડીટર</div>
                     </div>
                     <div className="sign-cell" style={{ textAlign: 'center', fontSize: '13px', width: '32%' }}>
-                        <div className="sign-line" style={{ borderTop: '1px solid #444', paddingTop: '4px', marginTop: '40px' }}>ડી.વી.એકા.શ્રી</div>
+                        <div className="sign-line" style={{ borderTop: '1px solid #444', paddingTop: '4px', marginTop: '40px' }}>ડી.વી.એકા.</div>
                     </div>
                     <div className="sign-cell" style={{ textAlign: 'center', fontSize: '13px', width: '32%' }}>
-                        <div className="sign-line" style={{ borderTop: '1px solid #444', paddingTop: '4px', marginTop: '40px' }}>કા.ઇ.શ્રી</div>
+                        <div className="sign-line" style={{ borderTop: '1px solid #444', paddingTop: '4px', marginTop: '40px' }}>કા.ઇ.</div>
                     </div>
                 </div>
             </div>

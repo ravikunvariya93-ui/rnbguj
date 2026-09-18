@@ -240,8 +240,6 @@ export default function CommitteeFilterBar({ subDivisions, workTypes, budgetHead
                         <option value="">Default (Newest First)</option>
                         <option value="packageName_asc">Package Name (A → Z)</option>
                         <option value="packageName_desc">Package Name (Z → A)</option>
-                        <option value="packageNameGujarati_asc">Package Name (Gujarati) (A → Z)</option>
-                        <option value="packageNameGujarati_desc">Package Name (Gujarati) (Z → A)</option>
                         <option value="contractorName_asc">Contractor Name (A → Z)</option>
                         <option value="contractorName_desc">Contractor Name (Z → A)</option>
                         <option value="tenderAmount_desc">Tender Amount (High → Low)</option>

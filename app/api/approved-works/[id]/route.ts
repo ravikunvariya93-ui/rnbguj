@@ -29,6 +29,7 @@ export async function PUT(
         await dbConnect();
         const { id } = await params;
         const body = await request.json();
+        delete body?.workNameGujarati;
 
         const work = await ApprovedWork.findByIdAndUpdate(id, body, {
             new: true,

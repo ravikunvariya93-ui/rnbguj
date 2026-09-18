@@ -416,7 +416,6 @@ export default async function Home({ searchParams }: Props) {
             render: (row) => (
                 <div className="flex flex-col gap-0.5">
                     <span className="font-bold text-slate-800 break-words leading-tight">{row.workName}</span>
-                    {row.workNameGujarati && <span className="text-[11px] text-slate-500 font-medium">{row.workNameGujarati}</span>}
                 </div>
             )
         },
@@ -463,8 +462,7 @@ export default async function Home({ searchParams }: Props) {
             .lean(),
             ApprovedWork.find({
                 $or: [
-                    { workName: { $regex: searchQuery, $options: 'i' } },
-                    { workNameGujarati: { $regex: searchQuery, $options: 'i' } }
+                    { workName: { $regex: searchQuery, $options: 'i' } }
                 ]
             })
             .select('_id workName circle district subDivision taluka approvalYear jobNumberAmount workType estimateConsultant remarks')

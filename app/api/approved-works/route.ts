@@ -8,6 +8,7 @@ export async function POST(request: Request) {
         const body = await request.json();
 
         // Basic validation could go here
+        delete body?.workNameGujarati;
         const work = await ApprovedWork.create(body);
 
         return NextResponse.json({ success: true, data: work }, { status: 201 });

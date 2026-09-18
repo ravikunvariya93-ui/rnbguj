@@ -29,7 +29,6 @@ const CATEGORIES: Record<string, string> = {
 const ALL_COLUMNS: ColumnConfig[] = [
     // Approved Work
     { key: 'workName', label: 'Name of Work', category: 'aw', defaultVisible: true, minWidth: '350px' },
-    { key: 'workNameGujarati', label: 'Name of Work (Gujarati)', category: 'aw', defaultVisible: false, minWidth: '200px' },
     { key: 'circle', label: 'Circle', category: 'aw', defaultVisible: false, minWidth: '150px' },
     { key: 'district', label: 'District', category: 'aw', defaultVisible: false, minWidth: '100px' },
     { key: 'subDivision', label: 'Sub Division', category: 'aw', defaultVisible: true, minWidth: '150px' },
