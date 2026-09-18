@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { CalendarDays, Printer } from 'lucide-react';
 import { formatShortDate } from '@/lib/dateUtils';
 
@@ -115,7 +116,15 @@ export default function WeeklyWorkOrderReport({ weeks, selectedWeek, weekLabel, 
                                 return (
                                     <tr key={row._id} className={`${rowBg} hover:bg-emerald-50/80 transition-colors`}>
                                         <td className="px-3 py-2 text-slate-800 border-r border-slate-200 text-center">{idx + 1}</td>
-                                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200 font-semibold">{row.packageName}</td>
+                                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200 font-semibold">
+                                            {row.packageId ? (
+                                                <Link href={`/packages/${row.packageId}`} className="text-emerald-600 hover:underline">
+                                                    {row.packageName}
+                                                </Link>
+                                            ) : (
+                                                row.packageName
+                                            )}
+                                        </td>
                                         <td className="px-3 py-2 text-slate-800 border-r border-slate-200">{row.contractorName}</td>
                                         <td className="px-3 py-2 text-slate-600 text-center">{formatShortDate(row.workOrderDate)}</td>
                                     </tr>
