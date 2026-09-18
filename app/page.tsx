@@ -14,6 +14,7 @@ import ExportTableButton from '@/components/ExportTableButton';
 import WorkTypeFilter from '@/components/WorkTypeFilter';
 import SearchBar from '@/components/SearchBar';
 import MasterReportTable from '@/components/MasterReportTable';
+import WeeklyWorkOrderReport from '@/components/WeeklyWorkOrderReport';
 import { formatShortDate } from '@/lib/dateUtils';
 import type { Column } from '@/lib/types';
 import Link from 'next/link';
@@ -22,14 +23,54 @@ import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
+// ── Weekly Work Order Report helpers (Monday–Sunday weeks) ────────────────
+function startOfWeekMonday(d: Date): Date {
+    const copy = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const day = copy.getDay(); // 0=Sun … 6=Sat
+    const diff = (day + 6) % 7; // days since Monday
+    copy.setDate(copy.getDate() - diff);
+    return copy;
+}
+
+function toISODate(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+}
+
+function parseISODate(s: string): Date | null {
+    const parts = s.split('-');
+    if (parts.length !== 3) return null;
+    const y = Number(parts[0]);
+    const m = Number(parts[1]);
+    const dd = Number(parts[2]);
+    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(dd)) return null;
+    const d = new Date(y, m - 1, dd);
+    return isNaN(d.getTime()) ? null : d;
+}
+
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function formatWeekLabel(monday: Date): string {
+    const sunday = new Date(monday);
+    sunday.setDate(sunday.getDate() + 6);
+    const s = `${monday.getDate()} ${MONTHS_SHORT[monday.getMonth()]}`;
+    const e = `${sunday.getDate()} ${MONTHS_SHORT[sunday.getMonth()]} ${sunday.getFullYear()}`;
+    return monday.getMonth() === sunday.getMonth() && monday.getFullYear() === sunday.getFullYear()
+        ? `${monday.getDate()} – ${e}`
+        : `${s} ${monday.getFullYear()} – ${e}`;
+}
+
 interface Props {
-    searchParams: Promise<{ 
+    searchParams: Promise<{
         page?: string;
         limit?: string;
         workType?: string;
         search?: string;
         loadSummary?: string;
         loadMaster?: string;
+        woWeek?: string;
     }>;
 }
 
@@ -400,7 +441,49 @@ export default async function Home({ searchParams }: Props) {
         }
     }
 
+    // ── Weekly Work Order Report (always loaded — single-week query) ──────
+    const WEEK_COUNT = 26;
+    const thisMonday = startOfWeekMonday(new Date());
+    const weeklyWeeks = Array.from({ length: WEEK_COUNT }, (_, i) => {
+        const monday = new Date(thisMonday);
+        monday.setDate(monday.getDate() - i * 7);
+        return { value: toISODate(monday), label: formatWeekLabel(monday) };
+    });
+    const requestedMonday = params.woWeek ? parseISODate(params.woWeek) : null;
+    const selectedMonday = requestedMonday ? startOfWeekMonday(requestedMonday) : thisMonday;
+    const selectedWeekValue = toISODate(selectedMonday);
+    if (!weeklyWeeks.some((w) => w.value === selectedWeekValue)) {
+        weeklyWeeks.unshift({ value: selectedWeekValue, label: formatWeekLabel(selectedMonday) });
+    }
+    const selectedWeekLabel = formatWeekLabel(selectedMonday);
+    const weekStart = new Date(selectedMonday.getFullYear(), selectedMonday.getMonth(), selectedMonday.getDate(), 0, 0, 0, 0);
+    const weekEnd = new Date(selectedMonday.getFullYear(), selectedMonday.getMonth(), selectedMonday.getDate() + 6, 23, 59, 59, 999);
 
+    const weeklyWorkOrdersRaw = await WorkOrder.find({
+        workOrderDate: { $gte: weekStart, $lte: weekEnd },
+    })
+        .populate({
+            path: 'loaId',
+            populate: {
+                path: 'tenderId',
+                populate: { path: 'packageId' },
+            },
+        })
+        .sort({ workOrderDate: 1 })
+        .lean();
+
+    const weeklyWorkOrderRows = (weeklyWorkOrdersRaw as any[]).map((wo: any) => {
+        const loa = wo.loaId as any;
+        const tender = loa?.tenderId as any;
+        const pkg = tender?.packageId as any;
+        return {
+            _id: wo._id.toString(),
+            packageName: tender?.packageName || pkg?.packageName || '-',
+            packageId: tender?.packageId?._id?.toString() || pkg?._id?.toString() || tender?.packageId?.toString() || null,
+            contractorName: tender?.contractorName || '-',
+            workOrderDate: wo.workOrderDate ? new Date(wo.workOrderDate).toISOString() : null,
+        };
+    });
 
     const searchApprovedWorksColumns: Column[] = [
         { 
@@ -697,7 +780,15 @@ export default async function Home({ searchParams }: Props) {
                     </div>
                 )}
 
-                {/* 0. Summary Report */}
+                {/* 0. Weekly Work Order Report */}
+                <WeeklyWorkOrderReport
+                    weeks={weeklyWeeks}
+                    selectedWeek={selectedWeekValue}
+                    weekLabel={selectedWeekLabel}
+                    rows={weeklyWorkOrderRows}
+                />
+
+                {/* 1. Summary Report */}
                 <div className="bg-white p-6 shadow-sm rounded-xl border border-slate-100 space-y-4">
                     <div className="flex justify-between items-start">
                         <div className="flex flex-col gap-1">

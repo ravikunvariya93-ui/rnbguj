@@ -181,6 +181,10 @@ export default function DeductionPrintClient({
     const packageId = packageData?._id || '';
     const workName = packageData?.packageName || tender?.packageName || '-';
     const contractorName = tender?.contractorName || agency?.name || '-';
+    const contractorGstNo = agency?.gstNo || '';
+    const contractorDisplay = contractorName !== '-' && contractorGstNo
+        ? `${contractorName} (GST No: ${contractorGstNo})`
+        : contractorName;
 
     const billNum = bill?.runningBillNumber || 1;
     const billSuffix = billNum === 1 ? 'st' : billNum === 2 ? 'nd' : billNum === 3 ? 'rd' : 'th';
@@ -253,7 +257,7 @@ export default function DeductionPrintClient({
         // 6-Column structure mapping
         const sheetData: any[][] = [
             ['Name of Work:-', workName, '', '', '', ''],
-            ['Contractor:-', contractorName, '', '', '', ''],
+            ['Contractor:-', contractorDisplay, '', '', '', ''],
             ['', '', '', '', '', ''],
             ['Bill No.:', billLabel, '', 'III Memorandum Of Payments', '', ''],
             ['બિલ મુજબ થયેલ કામની કુલ રકમ', '', '', '', '', fmtNum(uptoDateGross)],
@@ -391,7 +395,7 @@ export default function DeductionPrintClient({
                         <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-blue-100 text-blue-900 border border-blue-300">
                             Bill Last Page (Full Page) &#8212; III Memorandum Of Payments
                         </span>
-                        <span className="text-xs text-slate-500 hidden md:inline">Work: {workName} &middot; Agency: {contractorName}</span>
+                        <span className="text-xs text-slate-500 hidden md:inline">Work: {workName} &middot; Agency: {contractorDisplay}</span>
                     </div>
                     <div className="flex items-center gap-3">
                         <button
@@ -436,7 +440,7 @@ export default function DeductionPrintClient({
                         {/* Row 2: Contractor */}
                         <tr>
                             <td className={TD_BOLD}>Contractor:-</td>
-                            <td colSpan={5} className={`${TD} font-semibold underline`}>{contractorName}</td>
+                            <td colSpan={5} className={`${TD} font-semibold underline`}>{contractorDisplay}</td>
                         </tr>
 
                         {/* Row 3: Blank Spacer */}
