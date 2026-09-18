@@ -25,10 +25,21 @@ interface Props {
     rows: WeeklyWORow[];
 }
 
+function parseMondayISO(iso: string): Date {
+    const parts = iso.split('-').map(Number);
+    return new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
+}
+
 export default function WeeklyWorkOrderReport({ weeks, selectedWeek, weekLabel, rows }: Props) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
+
+    // Explicit from–to range for print, e.g. "From Date 14/09/2026 to 20/09/2026"
+    const rangeStart = parseMondayISO(selectedWeek);
+    const rangeEnd = new Date(rangeStart);
+    rangeEnd.setDate(rangeEnd.getDate() + 6);
+    const weekRangeText = `From Date ${formatShortDate(rangeStart)} to ${formatShortDate(rangeEnd)}`;
 
     const handleWeekChange = (value: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -49,11 +60,12 @@ export default function WeeklyWorkOrderReport({ weeks, selectedWeek, weekLabel, 
                 </tr>`
             )
             .join('');
-        printWindow.document.write(`<html><head><title>Weekly Work Order Report - ${escapeHtml(weekLabel)}</title>
+        printWindow.document.write(`<html><head><title>Weekly Work Order Report - ${escapeHtml(weekRangeText)}</title>
             <style>body{font-family:Arial,sans-serif;padding:16px;}h2{text-align:center;margin-bottom:4px;}p{text-align:center;margin-top:0;color:#444;}table{border-collapse:collapse;width:100%;margin-top:12px;}th{border:1px solid #222;padding:4px 8px;background:#f0f0f0;}</style>
             </head><body>
-            <h2>Weekly Work Order Report</h2>
-            <p>Week: ${escapeHtml(weekLabel)}</p>
+            <h2 style="margin-bottom:0;">Panchayat Road and Building Division, Bhavnagar</h2>
+            <h3 style="text-align:center;margin:4px 0;">Weekly Work Order Report</h3>
+            <p>${escapeHtml(weekRangeText)}</p>
             <table><thead><tr><th>Sr. No.</th><th>Package Name</th><th>Contractor Name</th><th>Work Order Date</th></tr></thead>
             <tbody>${tableRows || '<tr><td colspan="4" style="border:1px solid #222;padding:8px;text-align:center;">No work orders issued in this week.</td></tr>'}</tbody></table>
             <script>window.onload=function(){window.print();};</script>
