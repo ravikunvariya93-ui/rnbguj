@@ -10,6 +10,7 @@ import Pagination from '@/components/Pagination';
 import ListPageLayout from '@/components/ListPageLayout';
 import DataTable from '@/components/DataTable';
 import AgreementsFilterBar from '@/components/AgreementsFilterBar';
+import FileEditButton from './FileEditButton';
 import { parsePagination, parseSort } from '@/lib/queryHelpers';
 import type { ListPageSearchParams, Column } from '@/lib/types';
 import { formatShortDate, parseDateStr } from '@/lib/dateUtils';
@@ -298,6 +299,20 @@ export default async function AgreementsListPage({ searchParams }: Props) {
                 data={workOrders} 
                 emptyMessage="No agreements found matching the criteria."
                 exportFilename="Agreements_Register.xlsx"
+                actions={(row: any) => {
+                    const tender = row.loaId?.tenderId;
+                    const pkg = tender?.packageId;
+                    return (
+                        <FileEditButton
+                            id={row._id}
+                            agreementNo={row.agreementNo}
+                            agreementYear={row.agreementYear}
+                            packageName={pkg?.packageName || tender?.packageName || ''}
+                            fileSentOnDateISO={row.fileSentOnDate ? new Date(row.fileSentOnDate).toISOString() : null}
+                            potakaNo={row.potakaNo || ''}
+                        />
+                    );
+                }}
             />
             <Suspense fallback={<div className="h-10 w-full bg-gray-50 animate-pulse mt-4 rounded-md" />}>
                 <Pagination currentPage={page} totalPages={totalPages} />
