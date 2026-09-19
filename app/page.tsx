@@ -15,7 +15,7 @@ import WorkTypeFilter from '@/components/WorkTypeFilter';
 import SearchBar from '@/components/SearchBar';
 import MasterReportTable from '@/components/MasterReportTable';
 import WeeklyWorkOrderReport from '@/components/WeeklyWorkOrderReport';
-import { formatShortDate } from '@/lib/dateUtils';
+import { formatShortDate, getISTCalendar, istMidnightUTC } from '@/lib/dateUtils';
 import type { Column } from '@/lib/types';
 import Link from 'next/link';
 import { auth } from '@/auth';
@@ -442,8 +442,12 @@ export default async function Home({ searchParams }: Props) {
     }
 
     // ── Weekly Work Order Report (always loaded — single-week query) ──────
+    // All week math is done on the IST calendar: "today" is the IST date, and
+    // the Mongo range covers Monday 00:00 IST → Sunday 23:59:59.999 IST, so a
+    // UTC server never drops Monday work orders (stored as Sun 18:30Z).
     const WEEK_COUNT = 26;
-    const thisMonday = startOfWeekMonday(new Date());
+    const istToday = getISTCalendar();
+    const thisMonday = startOfWeekMonday(new Date(istToday.year, istToday.month - 1, istToday.day));
     const weeklyWeeks = Array.from({ length: WEEK_COUNT }, (_, i) => {
         const monday = new Date(thisMonday);
         monday.setDate(monday.getDate() - i * 7);
@@ -456,8 +460,11 @@ export default async function Home({ searchParams }: Props) {
         weeklyWeeks.unshift({ value: selectedWeekValue, label: formatWeekLabel(selectedMonday) });
     }
     const selectedWeekLabel = formatWeekLabel(selectedMonday);
-    const weekStart = new Date(selectedMonday.getFullYear(), selectedMonday.getMonth(), selectedMonday.getDate(), 0, 0, 0, 0);
-    const weekEnd = new Date(selectedMonday.getFullYear(), selectedMonday.getMonth(), selectedMonday.getDate() + 6, 23, 59, 59, 999);
+    const selY = selectedMonday.getFullYear();
+    const selM = selectedMonday.getMonth() + 1;
+    const selD = selectedMonday.getDate();
+    const weekStart = istMidnightUTC(selY, selM, selD);
+    const weekEnd = new Date(istMidnightUTC(selY, selM, selD + 7).getTime() - 1);
 
     const weeklyWorkOrdersRaw = await WorkOrder.find({
         workOrderDate: { $gte: weekStart, $lte: weekEnd },

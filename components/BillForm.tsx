@@ -14,7 +14,7 @@ import {
     calculateSecurityDeposit,
     getDeductionsForNetPayable as getSharedDeductions,
 } from '@/lib/billing/calculations';
-import { parseDateStr as parseSharedDateStr, formatDateForInput as formatSharedDateForInput } from '@/lib/dateUtils';
+import { parseDateStr as parseSharedDateStr, formatDateForInput as formatSharedDateForInput, todayISTFormatted } from '@/lib/dateUtils';
 
 interface IBillItem {
     itemNo: string;
@@ -106,11 +106,7 @@ function formatDateForInput(dateString: string): string {
 }
 
 function getTodayDateFormatted(): string {
-    const today = new Date();
-    const day = String(today.getDate()).padStart(2, '0');
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const year = today.getFullYear();
-    return `${day}/${month}/${year}`;
+    return todayISTFormatted();
 }
 
 export default function BillForm({ 

@@ -1047,7 +1047,7 @@ export default function ApprovedWorkDetailClient({
                                             <td className="excel-label">WMS Item Code</td>
                                             <td className="excel-value font-mono">{work.wmsItemCode || '-'}</td>
                                             <td className="excel-label">Approval Year / Date</td>
-                                            <td className="excel-value">{work.approvalYear || '-'} &nbsp;|&nbsp; {work.jobNumberApprovalDate ? new Date(work.jobNumberApprovalDate).toLocaleDateString('en-GB') : '-'}</td>
+                                            <td className="excel-value">{work.approvalYear || '-'} &nbsp;|&nbsp; {work.jobNumberApprovalDate ? new Date(work.jobNumberApprovalDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                         </tr>
                                         <tr>
                                             <td className="excel-label">Estimate Consultant</td>
@@ -1158,7 +1158,7 @@ export default function ApprovedWorkDetailClient({
                                             <td className="excel-label">T.S. Authority</td>
                                             <td className="excel-value w-[30%]">{ts.tsAuthority || '-'}</td>
                                             <td className="excel-label">T.S. Number / Date</td>
-                                            <td className="excel-value w-[30%]">{ts.tsNumber || '-'} &nbsp;|&nbsp; {ts.tsDate ? new Date(ts.tsDate).toLocaleDateString('en-GB') : '-'}</td>
+                                            <td className="excel-value w-[30%]">{ts.tsNumber || '-'} &nbsp;|&nbsp; {ts.tsDate ? new Date(ts.tsDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                         </tr>
                                         <tr>
                                             <td className="excel-label">T.S. Amount</td>
@@ -1393,13 +1393,13 @@ export default function ApprovedWorkDetailClient({
                                     <tbody>
                                         <tr>
                                             <td className="excel-label">Sending Details</td>
-                                            <td className="excel-value w-[30%]">WS No: {dtp.dtpSendingNo || '-'} &nbsp;|&nbsp; Date: {dtp.dtpSendingDate ? new Date(dtp.dtpSendingDate).toLocaleDateString('en-GB') : '-'}</td>
+                                            <td className="excel-value w-[30%]">WS No: {dtp.dtpSendingNo || '-'} &nbsp;|&nbsp; Date: {dtp.dtpSendingDate ? new Date(dtp.dtpSendingDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                             <td className="excel-label">Approving Authority</td>
                                             <td className="excel-value w-[30%]">{dtp.dtpApprovingAuthority || '-'}</td>
                                         </tr>
                                         <tr>
                                             <td className="excel-label">Approval Details</td>
-                                            <td className="excel-value font-mono">No: {dtp.dtpApprovalNo || '-'} &nbsp;|&nbsp; Date: {dtp.dtpApprovalDate ? new Date(dtp.dtpApprovalDate).toLocaleDateString('en-GB') : '-'}</td>
+                                            <td className="excel-value font-mono">No: {dtp.dtpApprovalNo || '-'} &nbsp;|&nbsp; Date: {dtp.dtpApprovalDate ? new Date(dtp.dtpApprovalDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                             <td className="excel-label">Tender Amount</td>
                                             <td className="excel-value font-bold font-mono text-emerald-700">₹{dtp.tenderAmount ? dtp.tenderAmount.toLocaleString('en-IN') : '-'}</td>
                                         </tr>
@@ -1717,7 +1717,7 @@ export default function ApprovedWorkDetailClient({
                                         <tbody>
                                             <tr>
                                                 <td className="excel-label">Proposal Date</td>
-                                                <td className="excel-value w-[30%]">{approval.proposalDate ? new Date(approval.proposalDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                <td className="excel-value w-[30%]">{approval.proposalDate ? new Date(approval.proposalDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                                 <td className="excel-label">Approval Office</td>
                                                 <td className="excel-value w-[30%]">{approval.tenderApprovalOffice || '-'}</td>
                                             </tr>
@@ -1725,7 +1725,7 @@ export default function ApprovedWorkDetailClient({
                                                 <td className="excel-label">Approval Number</td>
                                                 <td className="excel-value">{approval.tenderApprovalNo || '-'}</td>
                                                 <td className="excel-label">Approval Date</td>
-                                                <td className="excel-value">{approval.tenderApprovalDate ? new Date(approval.tenderApprovalDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                <td className="excel-value">{approval.tenderApprovalDate ? new Date(approval.tenderApprovalDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -1821,7 +1821,7 @@ export default function ApprovedWorkDetailClient({
                                             <td className="excel-label">Acceptance Letter WS No.</td>
                                             <td className="excel-value w-[30%] font-mono">{loa.acceptanceLetterWorksheetNo || '-'}</td>
                                             <td className="excel-label">Acceptance Letter Date</td>
-                                            <td className="excel-value w-[30%]">{loa.acceptanceLetterDate ? new Date(loa.acceptanceLetterDate).toLocaleDateString('en-GB') : '-'}</td>
+                                            <td className="excel-value w-[30%]">{loa.acceptanceLetterDate ? new Date(loa.acceptanceLetterDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                         </tr>
                                         <tr>
                                             <td className="excel-label">Duration of Work</td>
@@ -2068,13 +2068,13 @@ export default function ApprovedWorkDetailClient({
                                             <td className="excel-label">Agreement Year</td>
                                             <td className="excel-value w-[30%]">{workOrder.agreementYear || '-'}</td>
                                             <td className="excel-label">Agreement Details</td>
-                                            <td className="excel-value w-[30%]">No: {workOrder.agreementNo || '-'} &nbsp;|&nbsp; Date: {workOrder.agreementDate ? new Date(workOrder.agreementDate).toLocaleDateString('en-GB') : '-'}</td>
+                                            <td className="excel-value w-[30%]">No: {workOrder.agreementNo || '-'} &nbsp;|&nbsp; Date: {workOrder.agreementDate ? new Date(workOrder.agreementDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                         </tr>
                                         <tr>
                                             <td className="excel-label">Work Order Details</td>
-                                            <td className="excel-value font-mono">WS No: {workOrder.workOrderWorksheetNo || '-'} &nbsp;|&nbsp; Date: {workOrder.workOrderDate ? new Date(workOrder.workOrderDate).toLocaleDateString('en-GB') : '-'}</td>
+                                            <td className="excel-value font-mono">WS No: {workOrder.workOrderWorksheetNo || '-'} &nbsp;|&nbsp; Date: {workOrder.workOrderDate ? new Date(workOrder.workOrderDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                             <td className="excel-label">Completion Target</td>
-                                            <td className="excel-value">{workOrder.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate).toLocaleDateString('en-GB') : '-'}</td>
+                                            <td className="excel-value">{workOrder.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                         </tr>
                                         <tr className="bg-[#107c41]/10">
                                             <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Security Deposits</th>
@@ -2159,7 +2159,7 @@ export default function ApprovedWorkDetailClient({
                                                     </span>
                                                 </td>
                                                 <td className="border border-slate-200 px-4 py-1.5 text-center font-semibold">
-                                                    {bill.billDate ? new Date(bill.billDate).toLocaleDateString('en-GB') : '-'}
+                                                    {bill.billDate ? new Date(bill.billDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}
                                                 </td>
                                                 <td className="border border-slate-200 px-4 py-1.5 text-right font-mono font-bold text-slate-800">₹{bill.grossAmount?.toLocaleString('en-IN')}</td>
                                                 <td className="border border-slate-200 px-4 py-1.5 text-right font-mono font-semibold text-rose-600">₹{bill.totalDeduction?.toLocaleString('en-IN') || 0}</td>

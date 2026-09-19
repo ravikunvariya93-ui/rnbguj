@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Save, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect } from 'react';
+import { formatDateForInput } from '@/lib/dateUtils';
 
 interface TechnicalSanctionFormProps {
     initialData?: any;
@@ -59,13 +60,8 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
             const newData: any = {};
             
             if (initialData.tsDate) {
-                const dateObj = new Date(initialData.tsDate);
-                if (!isNaN(dateObj.getTime())) {
-                    const day = String(dateObj.getDate()).padStart(2, '0');
-                    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                    const year = dateObj.getFullYear();
-                    newData.tsDate = `${day}/${month}/${year}`;
-                }
+                const formatted = formatDateForInput(initialData.tsDate);
+                if (formatted) newData.tsDate = formatted;
             }
 
 

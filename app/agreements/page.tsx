@@ -266,6 +266,17 @@ export default async function AgreementsListPage({ searchParams }: Props) {
             label: 'Time Limit Starts From',
             sortable: true,
             render: (row) => <span className="text-slate-600">{formatShortDate(row.timeLimitStartsFrom)}</span>
+        },
+        {
+            key: 'fileSentOnDate',
+            label: 'File Sent On Date',
+            sortable: true,
+            render: (row) => <span className="text-slate-600">{formatShortDate(row.fileSentOnDate)}</span>
+        },
+        {
+            key: 'potakaNo',
+            label: 'Potaka No.',
+            sortable: true,
         }
     ];
 

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, Printer, Download, Edit3 } from 'lucide-react';
 import { logoBase64 } from '@/lib/logoBase64';
+import { formatDate, getISTYear } from '@/lib/dateUtils';
 
 interface AdditionalSDPrintClientProps {
     packageData: any;
@@ -45,28 +46,18 @@ function toGujaratiDigits(str: string | number): string {
 }
 
 function formatDateToOutput(dateInput?: string | Date | null, useGujaratiDigits = true): string {
-    if (!dateInput) return '-';
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return '-';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    const formatted = `${day}/${month}/${year}`;
+    const formatted = formatDate(dateInput ?? undefined);
+    if (formatted === '-') return '-';
     return useGujaratiDigits ? toGujaratiDigits(formatted) : formatted;
 }
 
 function getYearFromDate(dateInput?: string | Date | null, useGujaratiDigits = true): string {
-    if (!dateInput) {
-        const yr = new Date().getFullYear().toString();
-        return useGujaratiDigits ? toGujaratiDigits(yr) : yr;
-    }
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) {
-        const yr = new Date().getFullYear().toString();
-        return useGujaratiDigits ? toGujaratiDigits(yr) : yr;
-    }
-    const yr = d.getFullYear().toString();
-    return useGujaratiDigits ? toGujaratiDigits(yr) : yr;
+    const nowYear = String(getISTYear(new Date()));
+    const raw = !dateInput ? nowYear : (() => {
+        const y = getISTYear(dateInput);
+        return typeof y === 'number' ? y.toString() : nowYear;
+    })();
+    return useGujaratiDigits ? toGujaratiDigits(raw) : raw;
 }
 
 export default function AdditionalSDPrintClient({

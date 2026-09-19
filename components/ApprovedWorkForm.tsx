@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Save, Loader2, CheckCircle2, XCircle, X } from 'lucide-react';
 import Link from 'next/link';
+import { formatDateForInput } from '@/lib/dateUtils';
 
 // Sub-components for token efficiency
 import BasicInfoSection from './forms/approved-work/BasicInfoSection';
@@ -116,22 +117,15 @@ export default function ApprovedWorkForm({ initialData = {}, isEditing = false }
         ...initialData
     });
 
-    // Format initial date to DD/MM/YYYY if coming from DB (ISO String)
+    // Format initial date to DD/MM/YYYY (IST) if coming from DB (ISO String)
     useEffect(() => {
         if (initialData.jobNumberApprovalDate) {
-            try {
-                const dateObj = new Date(initialData.jobNumberApprovalDate);
-                if (!isNaN(dateObj.getTime())) {
-                    const day = String(dateObj.getDate()).padStart(2, '0');
-                    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                    const year = dateObj.getFullYear();
-                    setFormData((prev) => ({
-                        ...prev,
-                        jobNumberApprovalDate: `${day}/${month}/${year}`,
-                    }));
-                }
-            } catch (e) {
-                console.error("Error formatting initial date", e);
+            const formatted = formatDateForInput(initialData.jobNumberApprovalDate);
+            if (formatted) {
+                setFormData((prev) => ({
+                    ...prev,
+                    jobNumberApprovalDate: formatted,
+                }));
             }
         }
     }, [initialData.jobNumberApprovalDate]);

@@ -347,7 +347,7 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
             key: 'jobNumberApprovalDate', 
             label: 'Approval Date', 
             sortable: true,
-            render: (row) => row.jobNumberApprovalDate ? new Date(row.jobNumberApprovalDate).toLocaleDateString('en-GB') : '-'
+            render: (row) => row.jobNumberApprovalDate ? new Date(row.jobNumberApprovalDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'
         },
         { 
             key: 'workType', 

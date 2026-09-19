@@ -146,7 +146,7 @@ export default function UserManagementPage() {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2 text-gray-500 text-sm">
                                                 <Calendar className="h-4 w-4" />
-                                                {new Date(user.createdAt).toLocaleDateString()}
+                                                {new Date(user.createdAt).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' })}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">

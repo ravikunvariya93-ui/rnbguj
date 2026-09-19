@@ -283,7 +283,7 @@ export default function ExcessProposalsClient({ initialProposals, packages }: Pr
                                                 {idx + 1}
                                             </td>
                                             <td className="px-4 py-3 text-slate-600">
-                                                {p.proposalDate ? new Date(p.proposalDate).toLocaleDateString('en-GB') : '-'}
+                                                {p.proposalDate ? new Date(p.proposalDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}
                                             </td>
                                             <td className="px-4 py-3 font-semibold text-slate-800 max-w-xs">
                                                 {pkgId ? (

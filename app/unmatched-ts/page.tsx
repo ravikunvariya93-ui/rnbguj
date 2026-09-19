@@ -87,7 +87,7 @@ export default async function UnmatchedTSPage({ searchParams }: Props) {
         { 
             key: 'tsDate', 
             label: 'T.S. Date', 
-            render: (row) => row.tsDate ? new Date(row.tsDate).toLocaleDateString('en-GB') : '-'
+            render: (row) => row.tsDate ? new Date(row.tsDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'
         }
     ];
 

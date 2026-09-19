@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import PrintButton from './PrintButton';
+import { formatDateDMYIST as formatDateDMY } from '@/lib/dateUtils';
 
 // Ensure models are registered
 void WorkOrder;
@@ -19,14 +20,8 @@ void Tender;
 void Package;
 void Agency;
 
-function formatDateDMY(d: Date | null | undefined): string {
-    if (!d) return '-';
-    const date = new Date(d);
-    const dd = String(date.getDate()).padStart(2, '0');
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const yyyy = date.getFullYear();
-    return `${dd}-${mm}-${yyyy}`;
-}
+// Dates are stored as UTC instants of IST midnights; formatDateDMYIST renders
+// them explicitly in Asia/Kolkata so server (UTC) output matches the package page.
 
 function fmtNum(n: number | null | undefined): string {
     if (n == null) return '-';

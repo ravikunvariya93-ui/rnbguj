@@ -6,17 +6,7 @@ import LOA from '@/models/LOA';
 import Tender from '@/models/Tender';
 import Package from '@/models/Package';
 import Agency from '@/models/Agency';
-
-/**
- * Utility to format Date to DD-MM-YYYY
- */
-function formatDate(date: Date | string): string {
-    const d = new Date(date);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}-${month}-${year}`;
-}
+import { formatDateDMYIST as formatDate } from './dateUtils';
 
 /**
  * Core function to check if a Work Order has the required details and send an SMS notification

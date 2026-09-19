@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ArrowLeft, Printer, Download, Edit3 } from 'lucide-react';
 import { useEffect } from 'react';
+import { formatDateDMYIST } from '@/lib/dateUtils';
 
 interface AgreementClientProps {
     packageData: any;
@@ -15,12 +16,8 @@ interface AgreementClientProps {
 
 function formatDateToAgreement(dateInput?: string) {
     if (!dateInput) return '(write Agreement Date)';
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return '(write Agreement Date)';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}-${month}-${year}`;
+    const out = formatDateDMYIST(dateInput);
+    return out === '-' ? '(write Agreement Date)' : out;
 }
 
 export default function AgreementClient({

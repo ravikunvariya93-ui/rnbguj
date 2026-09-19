@@ -287,7 +287,7 @@ export default function ProfilePage() {
                     </div>
                     <span className="text-xs text-gray-400 whitespace-nowrap">
                       {new Date(entry.changedAt).toLocaleDateString('en-GB', {
-                        day: '2-digit', month: 'short', year: 'numeric'
+                        day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata'
                       })}
                     </span>
                   </div>

@@ -35,10 +35,10 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
         {
             title: 'Timeline & Validity',
             fields: [
-                { label: 'Creation Date', value: tender.tenderCreationDate ? new Date(tender.tenderCreationDate).toLocaleDateString('en-GB') : '-' },
-                { label: 'Last Submission Date', value: tender.lastDateOfSubmission ? new Date(tender.lastDateOfSubmission).toLocaleDateString('en-GB') : '-' },
-                { label: 'Opening Date', value: tender.tenderOpeningDate ? new Date(tender.tenderOpeningDate).toLocaleDateString('en-GB') : '-' },
-                { label: 'Validity Date', value: tender.tenderValidityDate ? new Date(tender.tenderValidityDate).toLocaleDateString('en-GB') : '-' },
+                { label: 'Creation Date', value: tender.tenderCreationDate ? new Date(tender.tenderCreationDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-' },
+                { label: 'Last Submission Date', value: tender.lastDateOfSubmission ? new Date(tender.lastDateOfSubmission).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-' },
+                { label: 'Opening Date', value: tender.tenderOpeningDate ? new Date(tender.tenderOpeningDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-' },
+                { label: 'Validity Date', value: tender.tenderValidityDate ? new Date(tender.tenderValidityDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-' },
             ]
         },
         {
@@ -54,10 +54,10 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
         {
             title: 'Approval Details',
             fields: [
-                { label: 'Proposal Date', value: tender.proposalDate ? new Date(tender.proposalDate).toLocaleDateString('en-GB') : '-' },
+                { label: 'Proposal Date', value: tender.proposalDate ? new Date(tender.proposalDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-' },
                 { label: 'Approval Office', value: tender.tenderApprovalOffice },
                 { label: 'Approval No.', value: tender.tenderApprovalNo },
-                { label: 'Approval Date', value: tender.tenderApprovalDate ? new Date(tender.tenderApprovalDate).toLocaleDateString('en-GB') : '-' },
+                { label: 'Approval Date', value: tender.tenderApprovalDate ? new Date(tender.tenderApprovalDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-' },
                 { label: 'Duration (Months)', value: tender.workDurationMonths },
             ]
         },
@@ -65,10 +65,10 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ i
             title: 'Acceptance & Agreement',
             fields: [
                 { label: 'LOA Worksheet No.', value: tender.acceptanceLetterWorksheetNo },
-                { label: 'LOA Date', value: tender.acceptanceLetterDate ? new Date(tender.acceptanceLetterDate).toLocaleDateString('en-GB') : '-' },
+                { label: 'LOA Date', value: tender.acceptanceLetterDate ? new Date(tender.acceptanceLetterDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-' },
                 { label: 'Agreement Year', value: tender.agreementYear },
                 { label: 'Agreement No.', value: tender.agreementNo },
-                { label: 'Agreement Date', value: tender.agreementDate ? new Date(tender.agreementDate).toLocaleDateString('en-GB') : '-' },
+                { label: 'Agreement Date', value: tender.agreementDate ? new Date(tender.agreementDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-' },
             ]
         }
     ];

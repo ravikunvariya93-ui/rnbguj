@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ArrowLeft, Printer, Download, Edit3 } from 'lucide-react';
 import { useEffect } from 'react';
+import { formatDate, getISTYear } from '@/lib/dateUtils';
 
 interface WorkOrderLetterClientProps {
     packageData: any;
@@ -16,20 +17,11 @@ interface WorkOrderLetterClientProps {
 }
 
 function formatDateToOutput(dateInput?: string) {
-    if (!dateInput) return '-';
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return '-';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
+    return formatDate(dateInput);
 }
 
 function getYearFromDate(dateInput?: string) {
-    if (!dateInput) return '-';
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return '-';
-    return d.getFullYear();
+    return getISTYear(dateInput);
 }
 
 function wrapAddress(address: string) {

@@ -20,6 +20,8 @@ export interface IWorkOrder extends Document {
     timeLimitStartsFrom: Date;
     workDurationMonths: number;
     stipulatedCompletionDate: Date;
+    fileSentOnDate: Date;
+    potakaNo: string;
     notRequired?: boolean;
     smsSent?: boolean;
     createdAt: Date;
@@ -48,6 +50,8 @@ const WorkOrderSchema: Schema = new Schema({
     timeLimitStartsFrom: { type: Date },
     workDurationMonths: { type: Number },
     stipulatedCompletionDate: { type: Date },
+    fileSentOnDate: { type: Date },
+    potakaNo: { type: String },
 }, {
     timestamps: true,
 });

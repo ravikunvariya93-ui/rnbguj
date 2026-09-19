@@ -11,6 +11,7 @@ interface TenderFormProps {
 }
 
 import SearchableSelect from './SearchableSelect';
+import { formatDateForInput as formatSharedDateForInput, formatDate as formatSharedDate } from '@/lib/dateUtils';
 
 export default function TenderForm({ initialData = {}, isEditing = false }: TenderFormProps) {
     return (
@@ -111,19 +112,9 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Helper to format dates for input fields (DD/MM/YYYY)
+    // Helper to format dates for input fields (DD/MM/YYYY, IST)
     const formatDateForInput = (dateString: string) => {
-        if (!dateString) return '';
-        try {
-            const dateObj = new Date(dateString);
-            if (isNaN(dateObj.getTime())) return '';
-            const day = String(dateObj.getDate()).padStart(2, '0');
-            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-            const year = dateObj.getFullYear();
-            return `${day}/${month}/${year}`;
-        } catch {
-            return '';
-        }
+        return formatSharedDateForInput(dateString);
     };
 
     // Initialize dates if editing (converting string/date to YYYY-MM-DD)
@@ -154,11 +145,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                 if (!isNaN(dateObj.getTime())) {
                     dateObj.setDate(dateObj.getDate() + 120);
 
-                    const day = String(dateObj.getDate()).padStart(2, '0');
-                    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                    const yyyy = dateObj.getFullYear();
-
-                    setFormData((prev: any) => ({ ...prev, tenderValidityDate: `${day}/${month}/${yyyy}` }));
+                    setFormData((prev: any) => ({ ...prev, tenderValidityDate: formatSharedDate(dateObj) }));
                 }
             }
         } catch {

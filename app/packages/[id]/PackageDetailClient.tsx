@@ -13,6 +13,7 @@ import {
 import { parseDateStr, formatDate, formatDateForInput, formatShortDate } from '@/lib/dateUtils';
 import SearchableSelect from '@/components/SearchableSelect';
 import BillForm from '@/components/BillForm';
+import ProgressSection from '@/components/ProgressSection';
 
 const WorksMap = dynamic(() => import('@/components/WorksMap'), {
     ssr: false,
@@ -517,6 +518,8 @@ export default function PackageDetailClient({
                 timeLimitStartsFrom: workOrder?.timeLimitStartsFrom ? formatDateForInput(workOrder.timeLimitStartsFrom) : '',
                 workDurationMonths: workOrder?.workDurationMonths || loa?.workDurationMonths || '',
                 stipulatedCompletionDate: workOrder?.stipulatedCompletionDate ? formatDateForInput(workOrder.stipulatedCompletionDate) : '',
+                fileSentOnDate: workOrder?.fileSentOnDate ? formatDateForInput(workOrder.fileSentOnDate) : '',
+                potakaNo: workOrder?.potakaNo || '',
             });
         } else if (section === 'depositRefund') {
             const finalBill = bills?.find((b: any) => b.billType === 'Final' || b.actualCompletionDate);
@@ -1318,6 +1321,10 @@ export default function PackageDetailClient({
             if (data.stipulatedCompletionDate) {
                 const parsed = parseDateStr(data.stipulatedCompletionDate);
                 if (parsed) data.stipulatedCompletionDate = parsed.toISOString();
+            }
+            if (data.fileSentOnDate) {
+                const parsed = parseDateStr(data.fileSentOnDate);
+                if (parsed) data.fileSentOnDate = parsed.toISOString();
             }
             const url = workOrder ? `/api/work-orders/${workOrder._id}` : `/api/work-orders`;
             const method = workOrder ? 'PUT' : 'POST';
@@ -2255,7 +2262,7 @@ export default function PackageDetailClient({
                                                     <td className="excel-label">WS No. of Sending DTP for Approval</td>
                                                     <td className="excel-value w-[30%] font-mono">{dtp.dtpSendingNo || '-'}</td>
                                                     <td className="excel-label">DTP Sending Date</td>
-                                                    <td className="excel-value w-[30%]">{dtp.dtpSendingDate ? new Date(dtp.dtpSendingDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                    <td className="excel-value w-[30%]">{dtp.dtpSendingDate ? new Date(dtp.dtpSendingDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                                 </tr>
                                                 <tr>
                                                     <td className="excel-label">Tender Amount</td>
@@ -2267,7 +2274,7 @@ export default function PackageDetailClient({
                                                     <td className="excel-label">DTP Approval No.</td>
                                                     <td className="excel-value font-mono">{dtp.dtpApprovalNo || '-'}</td>
                                                     <td className="excel-label">DTP Approval Date</td>
-                                                    <td className="excel-value">{dtp.dtpApprovalDate ? new Date(dtp.dtpApprovalDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                    <td className="excel-value">{dtp.dtpApprovalDate ? new Date(dtp.dtpApprovalDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                                 </tr>
                                                 <tr>
                                                     <td className="excel-label">Remarks</td>
@@ -2562,15 +2569,15 @@ export default function PackageDetailClient({
                                             </tr>
                                             <tr>
                                                 <td className="excel-label">Creation Date</td>
-                                                <td className="excel-value">{displayTender.tenderCreationDate ? new Date(displayTender.tenderCreationDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                <td className="excel-value">{displayTender.tenderCreationDate ? new Date(displayTender.tenderCreationDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                                 <td className="excel-label">Last Submission Date</td>
-                                                <td className="excel-value">{displayTender.lastDateOfSubmission ? new Date(displayTender.lastDateOfSubmission).toLocaleDateString('en-GB') : '-'}</td>
+                                                <td className="excel-value">{displayTender.lastDateOfSubmission ? new Date(displayTender.lastDateOfSubmission).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                             </tr>
                                             <tr>
                                                 <td className="excel-label">Tender Opening Date</td>
-                                                <td className="excel-value">{displayTender.tenderOpeningDate ? new Date(displayTender.tenderOpeningDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                <td className="excel-value">{displayTender.tenderOpeningDate ? new Date(displayTender.tenderOpeningDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                                 <td className="excel-label">Tender Validity Date</td>
-                                                <td className="excel-value font-mono">{displayTender.tenderValidityDate ? new Date(displayTender.tenderValidityDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                <td className="excel-value font-mono">{displayTender.tenderValidityDate ? new Date(displayTender.tenderValidityDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                             </tr>
                                             <tr>
                                                 <td className="excel-label">Contractor Name</td>
@@ -2763,7 +2770,7 @@ export default function PackageDetailClient({
                                                 <tbody>
                                                     <tr>
                                                         <td className="excel-label">Proposal Date</td>
-                                                        <td className="excel-value w-[30%]">{approval.proposalDate ? new Date(approval.proposalDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                        <td className="excel-value w-[30%]">{approval.proposalDate ? new Date(approval.proposalDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                                         <td className="excel-label">Approval Office</td>
                                                         <td className="excel-value w-[30%]">{approval.tenderApprovalOffice || '-'}</td>
                                                     </tr>
@@ -2771,7 +2778,7 @@ export default function PackageDetailClient({
                                                         <td className="excel-label">Approval Number</td>
                                                         <td className="excel-value">{approval.tenderApprovalNo || '-'}</td>
                                                         <td className="excel-label">Approval Date</td>
-                                                        <td className="excel-value">{approval.tenderApprovalDate ? new Date(approval.tenderApprovalDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                        <td className="excel-value">{approval.tenderApprovalDate ? new Date(approval.tenderApprovalDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                                     </tr>
                                                 </tbody>
                                             </table>
@@ -2848,7 +2855,7 @@ export default function PackageDetailClient({
                                                     <td className="excel-label">Acceptance Letter WS No.</td>
                                                     <td className="excel-value w-[30%] font-mono">{loa.acceptanceLetterWorksheetNo || '-'}</td>
                                                     <td className="excel-label">Acceptance Letter Date</td>
-                                                    <td className="excel-value w-[30%]">{loa.acceptanceLetterDate ? new Date(loa.acceptanceLetterDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                    <td className="excel-value w-[30%]">{loa.acceptanceLetterDate ? new Date(loa.acceptanceLetterDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                                 </tr>
                                                 <tr>
                                                     <td className="excel-label">Duration of Work</td>
@@ -2921,7 +2928,7 @@ export default function PackageDetailClient({
                                                                 <td className="excel-label">Ws No.</td>
                                                                 <td className="excel-value w-[30%] font-mono">{notice?.wsNo || '-'}</td>
                                                                 <td className="excel-label">Notice Date</td>
-                                                                <td className="excel-value w-[30%]">{notice?.noticeDate ? new Date(notice.noticeDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                                <td className="excel-value w-[30%]">{notice?.noticeDate ? new Date(notice.noticeDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                                             </tr>
                                                         </tbody>
                                                     </table>
@@ -3133,6 +3140,20 @@ export default function PackageDetailClient({
                                                             {woForm.stipulatedCompletionDate || '-'}
                                                         </td>
                                                     </tr>
+
+                                                    <tr className="bg-emerald-100/90">
+                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-emerald-950 bg-emerald-100/90 border-b border-emerald-200 text-left uppercase tracking-wider">File</th>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">File Sent On Date</td>
+                                                        <td className="excel-value">
+                                                            <input type="text" placeholder="DD/MM/YYYY" name="fileSentOnDate" value={woForm.fileSentOnDate} onChange={handleWoFieldChange} className="excel-cell-input" />
+                                                        </td>
+                                                        <td className="excel-label">Potaka No.</td>
+                                                        <td className="excel-value">
+                                                            <input type="text" name="potakaNo" value={woForm.potakaNo} onChange={handleWoFieldChange} className="excel-cell-input" />
+                                                        </td>
+                                                    </tr>
                                                 </>
                                             )}
                                         </tbody>
@@ -3161,13 +3182,13 @@ export default function PackageDetailClient({
                                                         <td className="excel-label">Agreement Year</td>
                                                         <td className="excel-value w-[30%]">{workOrder.agreementYear || '-'}</td>
                                                         <td className="excel-label">Agreement Details</td>
-                                                        <td className="excel-value w-[30%]">No: {workOrder.agreementNo || '-'} &nbsp;|&nbsp; Date: {workOrder.agreementDate ? new Date(workOrder.agreementDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                        <td className="excel-value w-[30%]">No: {workOrder.agreementNo || '-'} &nbsp;|&nbsp; Date: {workOrder.agreementDate ? new Date(workOrder.agreementDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                                     </tr>
                                                     <tr>
                                                         <td className="excel-label">Work Order Details</td>
-                                                        <td className="excel-value font-mono">WS No: {workOrder.workOrderWorksheetNo || '-'} &nbsp;|&nbsp; Date: {workOrder.workOrderDate ? new Date(workOrder.workOrderDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                        <td className="excel-value font-mono">WS No: {workOrder.workOrderWorksheetNo || '-'} &nbsp;|&nbsp; Date: {workOrder.workOrderDate ? new Date(workOrder.workOrderDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                                         <td className="excel-label">Completion Target</td>
-                                                        <td className="excel-value">{workOrder.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate).toLocaleDateString('en-GB') : '-'}</td>
+                                                        <td className="excel-value">{workOrder.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                                     </tr>
                                                     <tr className="bg-emerald-100/90">
                                                         <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-emerald-950 bg-emerald-100/90 border-b border-emerald-200 text-left uppercase tracking-wider">Security Deposits</th>
@@ -3186,6 +3207,15 @@ export default function PackageDetailClient({
                                                             </td>
                                                         </tr>
                                                     )}
+                                                    <tr className="bg-emerald-100/90">
+                                                        <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-emerald-950 bg-emerald-100/90 border-b border-emerald-200 text-left uppercase tracking-wider">File</th>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">File Sent On Date</td>
+                                                        <td className="excel-value w-[30%]">{workOrder.fileSentOnDate ? new Date(workOrder.fileSentOnDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
+                                                        <td className="excel-label">Potaka No.</td>
+                                                        <td className="excel-value w-[30%] font-mono">{workOrder.potakaNo || '-'}</td>
+                                                    </tr>
                                                 </tbody>
                                             </table>
                                         </div>
@@ -3216,6 +3246,22 @@ export default function PackageDetailClient({
                                 <p className="text-slate-500 font-semibold text-sm">Work Order details are pending.</p>
                             </div>
                         )}
+                    </div>
+                </div>
+
+                {/* 6B. Progress & Site Diary (after Work Order) */}
+                <div className="bg-white border-2 border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+                    <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                        <h3 className="font-bold text-slate-800">Progress & Site Diary</h3>
+                        <span className="text-[11px] font-semibold text-slate-400">AAE / DEE site entries with photos</span>
+                    </div>
+                    <div className="p-6">
+                        <ProgressSection
+                            packageId={packageId}
+                            works={(pkg.works || []).map((w: any) => w?.workName).filter(Boolean)}
+                            stipulatedCompletionDate={workOrder?.stipulatedCompletionDate}
+                            actualCompletionDate={bills?.find((b: any) => b.billType === 'Final' || b.actualCompletionDate)?.actualCompletionDate}
+                        />
                     </div>
                 </div>
 
@@ -3526,7 +3572,7 @@ export default function PackageDetailClient({
                                                     </span>
                                                 </td>
                                                 <td className="border border-slate-200 px-4 py-1.5 text-center font-semibold">
-                                                    {bill.billDate ? new Date(bill.billDate).toLocaleDateString('en-GB') : '-'}
+                                                    {bill.billDate ? new Date(bill.billDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}
                                                 </td>
                                                 <td className="border border-slate-200 px-4 py-1.5 text-center font-semibold">
                                                     {(() => {
@@ -3688,7 +3734,7 @@ export default function PackageDetailClient({
                                                 <td className="px-4 py-2.5 text-slate-500 font-mono font-bold">{idx + 1}</td>
                                                 <td className="px-4 py-2.5 font-mono font-bold text-slate-900">{p.proposalNo || '-'}</td>
                                                 <td className="px-4 py-2.5 text-slate-600">
-                                                    {p.proposalDate ? new Date(p.proposalDate).toLocaleDateString('en-GB') : '-'}
+                                                    {p.proposalDate ? new Date(p.proposalDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}
                                                 </td>
                                                 <td className="px-4 py-2.5 text-center">
                                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
@@ -3961,8 +4007,8 @@ export default function PackageDetailClient({
                                                         <td className="excel-label">FDR Issue Date</td>
                                                         <td className="excel-value">
                                                             {additionalSdRefund?.fdrDate
-                                                                ? new Date(additionalSdRefund.fdrDate).toLocaleDateString('en-GB')
-                                                                : (workOrder?.additionalSecurityDepositDate ? new Date(workOrder.additionalSecurityDepositDate).toLocaleDateString('en-GB') : '-')}
+                                                                ? new Date(additionalSdRefund.fdrDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' })
+                                                                : (workOrder?.additionalSecurityDepositDate ? new Date(workOrder.additionalSecurityDepositDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-')}
                                                         </td>
                                                         <td className="excel-label">Additional SD Amount</td>
                                                         <td className="excel-value font-mono font-bold text-emerald-900">
@@ -3973,26 +4019,26 @@ export default function PackageDetailClient({
                                                         <td className="excel-label">Work Order Start Date</td>
                                                         <td className="excel-value">
                                                             {workOrder?.timeLimitStartsFrom
-                                                                ? new Date(workOrder.timeLimitStartsFrom).toLocaleDateString('en-GB')
-                                                                : (workOrder?.workOrderDate ? new Date(workOrder.workOrderDate).toLocaleDateString('en-GB') : '-')}
+                                                                ? new Date(workOrder.timeLimitStartsFrom).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' })
+                                                                : (workOrder?.workOrderDate ? new Date(workOrder.workOrderDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-')}
                                                         </td>
                                                         <td className="excel-label">Stipulated Completion Date</td>
                                                         <td className="excel-value">
-                                                            {workOrder?.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate).toLocaleDateString('en-GB') : '-'}
+                                                            {workOrder?.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}
                                                         </td>
                                                     </tr>
                                                     <tr>
                                                         <td className="excel-label">Actual Completion Date</td>
                                                         <td className="excel-value font-semibold text-slate-800">
                                                             {additionalSdRefund?.actualCompletionDate
-                                                                ? new Date(additionalSdRefund.actualCompletionDate).toLocaleDateString('en-GB')
+                                                                ? new Date(additionalSdRefund.actualCompletionDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' })
                                                                 : (bills?.find((b: any) => b.billType === 'Final' || b.actualCompletionDate)?.actualCompletionDate
-                                                                    ? new Date(bills.find((b: any) => b.billType === 'Final' || b.actualCompletionDate).actualCompletionDate).toLocaleDateString('en-GB')
+                                                                    ? new Date(bills.find((b: any) => b.billType === 'Final' || b.actualCompletionDate).actualCompletionDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' })
                                                                     : 'Not Recorded')}
                                                         </td>
                                                         <td className="excel-label">Refund Order No & Date</td>
                                                         <td className="excel-value font-mono">
-                                                            {additionalSdRefund?.orderNo ? `No: ${additionalSdRefund.orderNo}` : '-'} &nbsp;|&nbsp; {additionalSdRefund?.orderDate ? new Date(additionalSdRefund.orderDate).toLocaleDateString('en-GB') : '-'}
+                                                            {additionalSdRefund?.orderNo ? `No: ${additionalSdRefund.orderNo}` : '-'} &nbsp;|&nbsp; {additionalSdRefund?.orderDate ? new Date(additionalSdRefund.orderDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}
                                                         </td>
                                                     </tr>
                                                     {additionalSdRefund?.applicationRef && (

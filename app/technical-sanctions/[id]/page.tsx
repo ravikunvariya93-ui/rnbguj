@@ -25,7 +25,7 @@ export default async function TechnicalSanctionDetailPage({ params }: { params: 
             title: 'Technical Sanction (TS) Details',
             fields: [
                 { label: 'TS Number', value: sanction.tsNumber },
-                { label: 'TS Date', value: sanction.tsDate ? new Date(sanction.tsDate).toLocaleDateString('en-GB') : '-' },
+                { label: 'TS Date', value: sanction.tsDate ? new Date(sanction.tsDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-' },
                 { label: 'TS Amount in Lacs', value: sanction.tsAmount ? `₹${sanction.tsAmount.toLocaleString('en-IN')}` : '-' },
             ]
         }

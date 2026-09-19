@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ArrowLeft, Printer, Download, Edit3 } from 'lucide-react';
 import { useEffect } from 'react';
+import { formatDate, getISTYear } from '@/lib/dateUtils';
 
 interface DTPOrderLetterClientProps {
     packageData: any;
@@ -10,20 +11,13 @@ interface DTPOrderLetterClientProps {
 }
 
 function formatDateToOutput(dateInput?: string) {
-    if (!dateInput) return '-';
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return '-';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
+    return formatDate(dateInput);
 }
 
 function getYearFromDate(dateInput?: string) {
-    if (!dateInput) return new Date().getFullYear().toString();
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return new Date().getFullYear().toString();
-    return d.getFullYear().toString();
+    if (!dateInput) return String(getISTYear(new Date()));
+    const y = getISTYear(dateInput);
+    return typeof y === 'number' ? y.toString() : String(getISTYear(new Date()));
 }
 
 function numberToIndianWords(num: number): string {

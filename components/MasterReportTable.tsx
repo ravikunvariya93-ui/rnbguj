@@ -276,7 +276,7 @@ export default function MasterReportTable({ data }: MasterReportTableProps) {
         if (val === null || val === undefined || val === '') return '-';
         if (col.isDate) {
             try {
-                return new Date(val).toLocaleDateString('en-GB');
+                return new Date(val).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' });
             } catch {
                 return String(val);
             }

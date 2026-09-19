@@ -154,7 +154,7 @@ export default async function BillsPage({ searchParams }: Props) {
             key: 'billdate', 
             label: 'Bill Date', 
             sortable: true,
-            render: (row) => row.billDate ? new Date(row.billDate).toLocaleDateString('en-GB') : '-'
+            render: (row) => row.billDate ? new Date(row.billDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'
         }
     ];
 

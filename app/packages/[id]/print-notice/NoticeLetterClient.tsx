@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Printer, Download, Edit3 } from 'lucide-react';
+import { formatDate, formatDateDMYIST, getISTYear } from '@/lib/dateUtils';
 
 interface NoticeLetterClientProps {
     packageData: any;
@@ -20,28 +21,15 @@ function toGujaratiDigits(str: string | number): string {
 }
 
 function formatDateDash(dateInput?: string) {
-    if (!dateInput) return '-';
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return '-';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    return `${day}-${month}-${d.getFullYear()}`;
+    return formatDateDMYIST(dateInput);
 }
 
 function formatDateSlash(dateInput?: string) {
-    if (!dateInput) return '-';
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return '-';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    return `${day}/${month}/${d.getFullYear()}`;
+    return formatDate(dateInput);
 }
 
 function getYearFromDate(dateInput?: string) {
-    if (!dateInput) return '-';
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return '-';
-    return d.getFullYear();
+    return getISTYear(dateInput);
 }
 
 const NOTICE_ORDINALS = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'];
