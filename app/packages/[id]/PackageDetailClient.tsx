@@ -13,7 +13,6 @@ import {
 import { parseDateStr, formatDate, formatDateForInput, formatShortDate } from '@/lib/dateUtils';
 import SearchableSelect from '@/components/SearchableSelect';
 import BillForm from '@/components/BillForm';
-import ProgressSection from '@/components/ProgressSection';
 
 const WorksMap = dynamic(() => import('@/components/WorksMap'), {
     ssr: false,
@@ -3246,22 +3245,6 @@ export default function PackageDetailClient({
                                 <p className="text-slate-500 font-semibold text-sm">Work Order details are pending.</p>
                             </div>
                         )}
-                    </div>
-                </div>
-
-                {/* 6B. Progress & Site Diary (after Work Order) */}
-                <div className="bg-white border-2 border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-                        <h3 className="font-bold text-slate-800">Progress & Site Diary</h3>
-                        <span className="text-[11px] font-semibold text-slate-400">AAE / DEE site entries with photos</span>
-                    </div>
-                    <div className="p-6">
-                        <ProgressSection
-                            packageId={packageId}
-                            works={(pkg.works || []).map((w: any) => w?.workName).filter(Boolean)}
-                            stipulatedCompletionDate={workOrder?.stipulatedCompletionDate}
-                            actualCompletionDate={bills?.find((b: any) => b.billType === 'Final' || b.actualCompletionDate)?.actualCompletionDate}
-                        />
                     </div>
                 </div>
 
