@@ -19,7 +19,7 @@ export async function GET(request: Request) {
         if (!session?.user) {
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
-        const userRole = (session?.user as any)?.role;
+        const userRole = (session?.user as { role?: string } | undefined)?.role;
         const auditorSubDivision = getAuditorSubDivision(userRole);
         const isAuditor = isAuditorRole(userRole);
 
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ success: false, error: 'Invalid workOrderId' }, { status: 400 });
         }
 
-        const query: any = {};
+        const query: { workOrderId?: string | { $in: string[] } } = {};
         if (workOrderId) {
             query.workOrderId = workOrderId;
         }
@@ -41,8 +41,7 @@ export async function GET(request: Request) {
 
             // Intersect with provided workOrderId if any
             if (workOrderId) {
-                const allowed = workOrderIds.map((id: any) => id.toString());
-                if (!allowed.includes(workOrderId)) {
+                if (!workOrderIds.includes(workOrderId)) {
                     return NextResponse.json({ success: true, data: [], pagination: { total: 0, page, limit, totalPages: 0 } });
                 }
             } else {
@@ -50,8 +49,8 @@ export async function GET(request: Request) {
             }
         }
 
-        const total = await Bill.countDocuments(query);
-        const bills = await Bill.find(query)
+        const total = await Bill.countDocuments(query as unknown as Parameters<typeof Bill.countDocuments>[0]);
+        const bills = await Bill.find(query as unknown as Parameters<typeof Bill.find>[0])
             .populate({
                 path: 'workOrderId',
                 populate: {
@@ -80,7 +79,7 @@ export async function POST(request: Request) {
         if (!session?.user) {
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
-        const role = (session.user as any)?.role;
+        const role = (session.user as { role?: string } | undefined)?.role;
         // Tender Clerks cannot create bills
         if (role === 'TENDERCLERK') {
             return NextResponse.json({ success: false, error: 'Tender Clerks do not have permission to create bills' }, { status: 403 });
@@ -102,10 +101,14 @@ export async function POST(request: Request) {
             const workOrder = await WorkOrder.findById(clean.workOrderId).populate({
                 path: 'loaId',
                 populate: { path: 'tenderId' }
-            }).lean() as any;
+            }).lean() as unknown as {
+                loaId?: { tenderId?: { packageId?: unknown } };
+            } | null;
             const packageId = workOrder?.loaId?.tenderId?.packageId;
             if (packageId) {
-                const pkg = await Package.findById(packageId).select('subDivision').lean() as any;
+                const pkg = await Package.findById(packageId).select('subDivision').lean() as unknown as {
+                    subDivision?: string;
+                } | null;
                 const pkgSubDiv: string = pkg?.subDivision || '';
                 if (pkgSubDiv.toLowerCase() !== auditorSubDivision.toLowerCase()) {
                     return NextResponse.json({ success: false, error: 'Cannot create bill for another sub-division' }, { status: 403 });

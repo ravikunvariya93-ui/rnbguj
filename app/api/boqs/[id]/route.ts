@@ -19,8 +19,8 @@ export async function GET(
         });
         if (!boq) return NextResponse.json({ success: false, error: 'BOQ not found' }, { status: 404 });
         return NextResponse.json({ success: true, data: boq });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
     }
 }
 
@@ -35,8 +35,8 @@ export async function PUT(
         const boq = await BOQ.findByIdAndUpdate(id, body, { new: true, runValidators: true });
         if (!boq) return NextResponse.json({ success: false, error: 'BOQ not found' }, { status: 404 });
         return NextResponse.json({ success: true, data: boq });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    } catch (error: unknown) {
+        return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 400 });
     }
 }
 
@@ -50,7 +50,7 @@ export async function DELETE(
         const boq = await BOQ.findByIdAndDelete(id);
         if (!boq) return NextResponse.json({ success: false, error: 'BOQ not found' }, { status: 404 });
         return NextResponse.json({ success: true, data: { message: 'BOQ deleted' } });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
     }
 }

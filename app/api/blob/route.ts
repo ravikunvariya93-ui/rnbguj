@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
                 'Cache-Control': 'public, max-age=3600',
             },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Failed to fetch blob:', error);
         return NextResponse.json({ error: 'Failed to fetch file' }, { status: 500 });
     }
