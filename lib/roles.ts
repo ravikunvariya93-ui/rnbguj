@@ -5,6 +5,8 @@ export const ROLES = {
   SUPERVISOR: 'SUPERVISOR',
   VIEWER: 'VIEWER',
   TENDERCLERK: 'TENDERCLERK', // Full access except Bills
+  AAE: 'AAE', // Additional Assistant Engineer (field)
+  DEE: 'DEE', // Deputy Executive Engineer (field)
   AUDITOR_BVN: 'AUDITOR_BVN', // Bhavnagar sub-division
   AUDITOR_TLJ: 'AUDITOR_TLJ', // Talaja sub-division
   AUDITOR_MHV: 'AUDITOR_MHV', // Mahuva sub-division
@@ -33,6 +35,8 @@ export const ROLE_LABELS: Record<string, string> = {
   [ROLES.SUPERVISOR]: 'Supervisor',
   [ROLES.VIEWER]: 'Viewer',
   [ROLES.TENDERCLERK]: 'Tender Clerk',
+  [ROLES.AAE]: 'Additional Assistant Engineer (AAE)',
+  [ROLES.DEE]: 'Deputy Executive Engineer (DEE)',
   [ROLES.AUDITOR_BVN]: 'Auditor – Bhavnagar',
   [ROLES.AUDITOR_TLJ]: 'Auditor – Talaja',
   [ROLES.AUDITOR_MHV]: 'Auditor – Mahuva',
@@ -47,6 +51,8 @@ export const ALL_ROLES: { value: string; label: string }[] = [
   { value: ROLES.SUPERVISOR,  label: ROLE_LABELS[ROLES.SUPERVISOR] },
   { value: ROLES.VIEWER,      label: ROLE_LABELS[ROLES.VIEWER] },
   { value: ROLES.TENDERCLERK, label: ROLE_LABELS[ROLES.TENDERCLERK] },
+  { value: ROLES.AAE,           label: ROLE_LABELS[ROLES.AAE] },
+  { value: ROLES.DEE,           label: ROLE_LABELS[ROLES.DEE] },
   { value: ROLES.AUDITOR_BVN, label: ROLE_LABELS[ROLES.AUDITOR_BVN] },
   { value: ROLES.AUDITOR_TLJ, label: ROLE_LABELS[ROLES.AUDITOR_TLJ] },
   { value: ROLES.AUDITOR_MHV, label: ROLE_LABELS[ROLES.AUDITOR_MHV] },
@@ -70,6 +76,12 @@ export function getAuditorSubDivision(role?: string | null): string | null {
 
 /** Roles that have full access to everything (non-auditor) */
 export const FULL_ACCESS_ROLES = [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.VIEWER];
+
+/** Roles allowed to add site-progress entries (officers + office) */
+export const PROGRESS_WRITE_ROLES: string[] = [ROLES.ADMIN, ROLES.SUPERVISOR, ROLES.TENDERCLERK, ROLES.AAE, ROLES.DEE];
+
+/** Roles allowed to delete site-progress entries */
+export const PROGRESS_DELETE_ROLES: string[] = [ROLES.ADMIN, ROLES.SUPERVISOR];
 
 /** All auditor role strings */
 export const ALL_AUDITOR_ROLES = Object.keys(AUDITOR_ROLE_SUBDIVISION_MAP);

@@ -17,6 +17,9 @@ interface SidebarProps {
 
 const AUDITOR_ROLES = ALL_AUDITOR_ROLES;
 
+// Field officers (AAE/DEE) get the same pages as the tender clerk.
+const FIELD_OFFICER_ROLES = ['AAE', 'DEE'];
+
 interface SessionUser {
     role?: string;
     name?: string;
@@ -43,9 +46,20 @@ export default memo(function Sidebar({ isOpen, onClose }: SidebarProps) {
     ];
 
     const filteredNavigation = useMemo(
-        () => navigation.filter(item =>
-            !item.roles || (user?.role && item.roles.includes(user.role))
-        ),
+        () =>
+            navigation.filter((item) => {
+                if (!item.roles) return true;
+                if (user?.role && item.roles.includes(user.role)) return true;
+                // Field officers see whatever the tender clerk sees.
+                if (
+                    user?.role &&
+                    FIELD_OFFICER_ROLES.includes(user.role) &&
+                    item.roles.includes('TENDERCLERK')
+                ) {
+                    return true;
+                }
+                return false;
+            }),
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [user?.role],
     );

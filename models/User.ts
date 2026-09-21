@@ -12,7 +12,7 @@ export interface IUser extends Document {
   name: string;
   username: string;
   password?: string;
-  role: 'ADMIN' | 'SUPERVISOR' | 'VIEWER' | 'TENDERCLERK' | 'AUDITOR_BVN' | 'AUDITOR_TLJ' | 'AUDITOR_MHV' | 'AUDITOR_SHR' | 'AUDITOR_VLB' | 'AUDITOR_PLT';
+  role: 'ADMIN' | 'SUPERVISOR' | 'VIEWER' | 'TENDERCLERK' | 'AAE' | 'DEE' | 'AUDITOR_BVN' | 'AUDITOR_TLJ' | 'AUDITOR_MHV' | 'AUDITOR_SHR' | 'AUDITOR_VLB' | 'AUDITOR_PLT';
   designation?: string;
   nameHistory: INameHistoryEntry[];
   createdAt: Date;
@@ -25,7 +25,7 @@ const NameHistoryEntrySchema = new Schema<INameHistoryEntry>({
   changedBy: { type: String },
 }, { _id: false });
 
-const allRoles = ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...ALL_AUDITOR_ROLES];
+const allRoles = ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', 'AAE', 'DEE', ...ALL_AUDITOR_ROLES];
 
 const UserSchema: Schema = new Schema({
   name: {

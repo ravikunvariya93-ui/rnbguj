@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CalendarDays, Printer } from 'lucide-react';
+import ExportTableButton from './ExportTableButton';
 import { formatShortDate } from '@/lib/dateUtils';
 
 export interface WeeklyWOWeek {
@@ -119,6 +120,7 @@ export default function WeeklyWorkOrderReport({ weeks, selectedWeek, weekLabel, 
                         <Printer className="w-3.5 h-3.5" />
                         <span>Print</span>
                     </button>
+                    <ExportTableButton tableId="weekly-wo-table" filename={`Weekly_Work_Order_Report_${selectedWeek}.xlsx`} />
                 </div>
             </div>
 

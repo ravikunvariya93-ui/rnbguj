@@ -10,6 +10,7 @@ import '@/models/Bill';
 import '@/models/DTP';
 import '@/models/LOA';
 import '@/models/Package';
+import '@/models/ProgressEntry';
 import '@/models/TechnicalSanction';
 import '@/models/Tender';
 import '@/models/User';

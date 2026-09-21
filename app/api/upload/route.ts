@@ -3,7 +3,7 @@ import { put } from '@vercel/blob';
 import path from 'path';
 import { auth } from '@/auth';
 
-const ALLOWED_FOLDERS = new Set(['excess-proposals', 'bills', 'tenders', 'packages']);
+const ALLOWED_FOLDERS = new Set(['excess-proposals', 'bills', 'tenders', 'packages', 'progress']);
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
