@@ -479,18 +479,45 @@ export default async function Home({ searchParams }: Props) {
         .sort({ workOrderDate: 1 })
         .lean();
 
-    const weeklyWorkOrderRows = (weeklyWorkOrdersRaw as any[]).map((wo: any) => {
-        const loa = wo.loaId as any;
-        const tender = loa?.tenderId as any;
-        const pkg = tender?.packageId as any;
-        return {
-            _id: wo._id.toString(),
-            packageName: tender?.packageName || pkg?.packageName || '-',
-            packageId: tender?.packageId?._id?.toString() || pkg?._id?.toString() || tender?.packageId?.toString() || null,
-            contractorName: tender?.contractorName || '-',
-            workOrderDate: wo.workOrderDate ? new Date(wo.workOrderDate).toISOString() : null,
-        };
-    });
+    const weeklyWorkOrderRows = await (async () => {
+        const raw = weeklyWorkOrdersRaw as any[];
+        const pkgIdStrs = raw
+            .map((wo: any) => {
+                const loa = wo.loaId as any;
+                const tender = loa?.tenderId as any;
+                const pkg = tender?.packageId as any;
+                return tender?.packageId?._id?.toString() || pkg?._id?.toString() || tender?.packageId?.toString() || null;
+            })
+            .filter(Boolean) as string[];
+        let dtpMap = new Map<string, number>();
+        if (pkgIdStrs.length > 0) {
+            try {
+                const dtps = await DTP.find({ tsId: { $in: pkgIdStrs } } as any).select('tsId tenderAmount').lean() as any[];
+                dtps.forEach((d: any) => {
+                    if (d.tsId && d.tenderAmount != null) dtpMap.set(d.tsId.toString(), Number(d.tenderAmount));
+                });
+            } catch { /* non-fatal — fall back to tender/package amounts */ }
+        }
+        return raw.map((wo: any) => {
+            const loa = wo.loaId as any;
+            const tender = loa?.tenderId as any;
+            const pkg = tender?.packageId as any;
+            const pkgIdStr = tender?.packageId?._id?.toString() || pkg?._id?.toString() || tender?.packageId?.toString() || null;
+            const worksSum = pkg?.works && pkg.works.length > 0
+                ? pkg.works.reduce((acc: number, w: any) => acc + (Number(w.amount) || 0), 0)
+                : null;
+            const fromMap = pkgIdStr ? dtpMap.get(pkgIdStr) : undefined;
+            const tenderAmount = fromMap ?? tender?.estimatedAmount ?? (worksSum ? Number(worksSum) : null);
+            return {
+                _id: wo._id.toString(),
+                packageName: tender?.packageName || pkg?.packageName || '-',
+                packageId: pkgIdStr,
+                contractorName: tender?.contractorName || '-',
+                tenderAmount: tenderAmount != null ? Number(tenderAmount) : null,
+                workOrderDate: wo.workOrderDate ? new Date(wo.workOrderDate).toISOString() : null,
+            };
+        });
+    })();
 
     const searchApprovedWorksColumns: Column[] = [
         { 

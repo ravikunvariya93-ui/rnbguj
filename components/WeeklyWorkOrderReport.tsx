@@ -15,6 +15,7 @@ export interface WeeklyWORow {
     packageName: string;
     packageId: string | null;
     contractorName: string;
+    tenderAmount: number | null;
     workOrderDate: string | null;
 }
 
@@ -41,6 +42,8 @@ export default function WeeklyWorkOrderReport({ weeks, selectedWeek, weekLabel, 
     rangeEnd.setDate(rangeEnd.getDate() + 6);
     const weekRangeText = `From Date ${formatShortDate(rangeStart)} to ${formatShortDate(rangeEnd)}`;
 
+    const totalTenderAmount = rows.reduce((sum, r) => sum + (r.tenderAmount != null ? Number(r.tenderAmount) : 0), 0);
+
     const handleWeekChange = (value: string) => {
         const params = new URLSearchParams(searchParams.toString());
         params.set('woWeek', value);
@@ -56,18 +59,26 @@ export default function WeeklyWorkOrderReport({ weeks, selectedWeek, weekLabel, 
                     <td style="border:1px solid #222;padding:4px 8px;text-align:center;">${idx + 1}</td>
                     <td style="border:1px solid #222;padding:4px 8px;">${escapeHtml(row.packageName)}</td>
                     <td style="border:1px solid #222;padding:4px 8px;">${escapeHtml(row.contractorName)}</td>
+                    <td style="border:1px solid #222;padding:4px 8px;text-align:right;">${row.tenderAmount != null ? '₹' + Number(row.tenderAmount).toLocaleString('en-IN') : '-'}</td>
                     <td style="border:1px solid #222;padding:4px 8px;text-align:center;">${escapeHtml(formatShortDate(row.workOrderDate))}</td>
                 </tr>`
             )
             .join('');
+        const totalRow = rows.length > 0
+            ? `<tr>
+                    <td colspan="3" style="border:1px solid #222;padding:4px 8px;text-align:right;font-weight:bold;background:#f0f0f0;">Total</td>
+                    <td style="border:1px solid #222;padding:4px 8px;text-align:right;font-weight:bold;background:#f0f0f0;">₹${totalTenderAmount.toLocaleString('en-IN')}</td>
+                    <td style="border:1px solid #222;padding:4px 8px;background:#f0f0f0;"></td>
+                </tr>`
+            : '';
         printWindow.document.write(`<html><head><title>Weekly Work Order Report - ${escapeHtml(weekRangeText)}</title>
             <style>body{font-family:Arial,sans-serif;padding:16px;}h2{text-align:center;margin-bottom:4px;}p{text-align:center;margin-top:0;color:#444;}table{border-collapse:collapse;width:100%;margin-top:12px;}th{border:1px solid #222;padding:4px 8px;background:#f0f0f0;}</style>
             </head><body>
             <h2 style="margin-bottom:0;">Panchayat Road and Building Division, Bhavnagar</h2>
             <h3 style="text-align:center;margin:4px 0;">Weekly Work Order Report</h3>
             <p>${escapeHtml(weekRangeText)}</p>
-            <table><thead><tr><th>Sr. No.</th><th>Package Name</th><th>Contractor Name</th><th>Work Order Date</th></tr></thead>
-            <tbody>${tableRows || '<tr><td colspan="4" style="border:1px solid #222;padding:8px;text-align:center;">No work orders issued in this week.</td></tr>'}</tbody></table>
+            <table><thead><tr><th>Sr. No.</th><th>Package Name</th><th>Contractor Name</th><th>Tender Amount</th><th>Work Order Date</th></tr></thead>
+            <tbody>${tableRows ? tableRows + totalRow : '<tr><td colspan="5" style="border:1px solid #222;padding:8px;text-align:center;">No work orders issued in this week.</td></tr>'}</tbody></table>
             <script>window.onload=function(){window.print();};</script>
             </body></html>`);
         printWindow.document.close();
@@ -118,6 +129,7 @@ export default function WeeklyWorkOrderReport({ weeks, selectedWeek, weekLabel, 
                             <th className="px-3 py-2.5 font-bold text-slate-700 border-r border-slate-300 text-center w-16">Sr. No.</th>
                             <th className="px-3 py-2.5 font-bold text-slate-700 border-r border-slate-300">Package Name</th>
                             <th className="px-3 py-2.5 font-bold text-slate-700 border-r border-slate-300">Contractor Name</th>
+                            <th className="px-3 py-2.5 font-bold text-slate-700 border-r border-slate-300 text-right">Tender Amount</th>
                             <th className="px-3 py-2.5 font-bold text-slate-700 text-center w-40">Work Order Date</th>
                         </tr>
                     </thead>
@@ -138,18 +150,32 @@ export default function WeeklyWorkOrderReport({ weeks, selectedWeek, weekLabel, 
                                             )}
                                         </td>
                                         <td className="px-3 py-2 text-slate-800 border-r border-slate-200">{row.contractorName}</td>
+                                        <td className="px-3 py-2 text-slate-800 border-r border-slate-200 text-right font-mono font-semibold">{row.tenderAmount != null ? `₹${Number(row.tenderAmount).toLocaleString('en-IN')}` : '-'}</td>
                                         <td className="px-3 py-2 text-slate-600 text-center">{formatShortDate(row.workOrderDate)}</td>
                                     </tr>
                                 );
                             })
                         ) : (
                             <tr>
-                                <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
+                                <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
                                     No work orders issued in this week.
                                 </td>
                             </tr>
                         )}
                     </tbody>
+                    {rows.length > 0 && (
+                        <tfoot>
+                            <tr className="bg-slate-100 border-t-2 border-slate-300">
+                                <td colSpan={3} className="px-3 py-2.5 text-right font-bold text-slate-800 border-r border-slate-200">
+                                    Total
+                                </td>
+                                <td className="px-3 py-2.5 text-right font-mono font-bold text-slate-900 border-r border-slate-200">
+                                    ₹{totalTenderAmount.toLocaleString('en-IN')}
+                                </td>
+                                <td className="px-3 py-2.5"></td>
+                            </tr>
+                        </tfoot>
+                    )}
                 </table>
             </div>
         </div>
