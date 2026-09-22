@@ -72,6 +72,7 @@ interface Props {
         loadSummary?: string;
         loadMaster?: string;
         woWeek?: string;
+        woWeeks?: string;
     }>;
 }
 
@@ -209,6 +210,8 @@ export default async function Home({ searchParams }: Props) {
         if (params.search) newParams.set('search', params.search);
         if (params.loadSummary === 'true') newParams.set('loadSummary', 'true');
         if (params.loadMaster === 'true') newParams.set('loadMaster', 'true');
+        if (params.woWeek) newParams.set('woWeek', params.woWeek);
+        if (params.woWeeks) newParams.set('woWeeks', params.woWeeks);
         
         Object.entries(overrides).forEach(([key, val]) => {
             if (val === null) {
@@ -574,17 +577,50 @@ export default async function Home({ searchParams }: Props) {
         return { value: toISODate(monday), label: formatWeekLabel(monday) };
     });
     const requestedMonday = params.woWeek ? parseISODate(params.woWeek) : null;
-    const selectedMonday = requestedMonday ? startOfWeekMonday(requestedMonday) : thisMonday;
-    const selectedWeekValue = toISODate(selectedMonday);
-    if (!weeklyWeeks.some((w) => w.value === selectedWeekValue)) {
-        weeklyWeeks.unshift({ value: selectedWeekValue, label: formatWeekLabel(selectedMonday) });
+    // Multi-week selection: `?woWeeks=YYYY-MM-DD,YYYY-MM-DD` (legacy single `?woWeek=` still works).
+    const selectedMondayKeys: string[] = [];
+    const rawWeekTokens = [
+        ...(params.woWeeks ? params.woWeeks.split(',') : []),
+        ...(params.woWeek ? [params.woWeek] : []),
+    ];
+    for (const tok of rawWeekTokens) {
+        const d = parseISODate(tok.trim());
+        if (!d) continue;
+        const key = toISODate(startOfWeekMonday(d));
+        if (!selectedMondayKeys.includes(key)) selectedMondayKeys.push(key);
     }
-    const selectedWeekLabel = formatWeekLabel(selectedMonday);
-    const selY = selectedMonday.getFullYear();
-    const selM = selectedMonday.getMonth() + 1;
-    const selD = selectedMonday.getDate();
-    const weekStart = istMidnightUTC(selY, selM, selD);
-    const weekEnd = new Date(istMidnightUTC(selY, selM, selD + 7).getTime() - 1);
+    if (requestedMonday && !selectedMondayKeys.includes(toISODate(startOfWeekMonday(requestedMonday)))) {
+        selectedMondayKeys.push(toISODate(startOfWeekMonday(requestedMonday)));
+    }
+    selectedMondayKeys.sort().reverse(); // recent week first
+    if (selectedMondayKeys.length === 0) selectedMondayKeys.push(toISODate(thisMonday));
+    const cappedMondayKeys = selectedMondayKeys.slice(0, WEEK_COUNT);
+    for (const key of cappedMondayKeys) {
+        if (!weeklyWeeks.some((w) => w.value === key)) {
+            const d = parseISODate(key);
+            if (d) weeklyWeeks.unshift({ value: key, label: formatWeekLabel(startOfWeekMonday(d)) });
+        }
+    }
+    const mondayDateFromKey = (key: string): Date => {
+        const [y, m, dd] = key.split('-').map(Number);
+        return new Date(y, (m || 1) - 1, dd || 1);
+    };
+    const selectedWeekLabel = cappedMondayKeys.map((k) => formatWeekLabel(mondayDateFromKey(k))).join('; ');
+    const earliestKey = cappedMondayKeys[cappedMondayKeys.length - 1];
+    const latestKey = cappedMondayKeys[0];
+    const [ey, em, ed] = earliestKey.split('-').map(Number);
+    const [ly, lm, ld] = latestKey.split('-').map(Number);
+    const weekStart = istMidnightUTC(ey, em, ed);
+    const weekEnd = new Date(istMidnightUTC(ly, lm, ld + 7).getTime() - 1);
+    const selectedWeekSet = new Set(cappedMondayKeys);
+    // IST-Monday key of a stored instant (server TZ must not shift the Indian calendar date).
+    const mondayKeyOfInstant = (v: unknown): string | null => {
+        if (!v) return null;
+        const d = new Date(v as string | number | Date);
+        if (isNaN(d.getTime())) return null;
+        const c = getISTCalendar(d);
+        return toISODate(startOfWeekMonday(new Date(c.year, c.month - 1, c.day)));
+    };
 
     const weeklyWorkOrdersRaw = await WorkOrder.find({
         workOrderDate: { $gte: weekStart, $lte: weekEnd },
@@ -641,6 +677,10 @@ export default async function Home({ searchParams }: Props) {
                 tenderAmount: tenderAmount != null ? Number(tenderAmount) : null,
                 workOrderDate: wo.workOrderDate ? new Date(wo.workOrderDate as string | number | Date).toISOString() : null,
             };
+        }).filter((row) => {
+            // Union range query may cover gap weeks — keep only selected weeks.
+            const key = mondayKeyOfInstant(row.workOrderDate);
+            return key != null && selectedWeekSet.has(key);
         });
     })();
 
@@ -942,7 +982,7 @@ export default async function Home({ searchParams }: Props) {
                 {/* 0. Weekly Work Order Report */}
                 <WeeklyWorkOrderReport
                     weeks={weeklyWeeks}
-                    selectedWeek={selectedWeekValue}
+                    selectedWeeks={cappedMondayKeys}
                     weekLabel={selectedWeekLabel}
                     rows={weeklyWorkOrderRows}
                 />
@@ -950,7 +990,7 @@ export default async function Home({ searchParams }: Props) {
                 {/* 0b. Weekly Work Order Report with Job No Amount */}
                 <WeeklyWorkOrderJobNoReport
                     weeks={weeklyWeeks}
-                    selectedWeek={selectedWeekValue}
+                    selectedWeeks={cappedMondayKeys}
                     weekLabel={selectedWeekLabel}
                     rows={weeklyWorkOrderRows}
                 />

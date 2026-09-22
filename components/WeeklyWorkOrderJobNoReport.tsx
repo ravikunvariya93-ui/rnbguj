@@ -1,9 +1,9 @@
 'use client';
 
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { CalendarDays, Printer } from 'lucide-react';
+import { Printer } from 'lucide-react';
 import ExportTableButton from './ExportTableButton';
+import WeekMultiSelect from './WeekMultiSelect';
 import { formatShortDate } from '@/lib/dateUtils';
 
 export interface WeeklyWOWeek {
@@ -21,7 +21,7 @@ export interface WeeklyWORow {
 
 interface Props {
     weeks: WeeklyWOWeek[];
-    selectedWeek: string;
+    selectedWeeks: string[];
     weekLabel: string;
     rows: WeeklyWORow[];
 }
@@ -38,26 +38,23 @@ function parseMondayISO(iso: string): Date {
     return new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
 }
 
-export default function WeeklyWorkOrderJobNoReport({ weeks, selectedWeek, weekLabel, rows }: Props) {
-    const router = useRouter();
-    const pathname = usePathname();
-    const searchParams = useSearchParams();
-
-    const rangeStart = parseMondayISO(selectedWeek);
-    const rangeEnd = new Date(rangeStart);
-    rangeEnd.setDate(rangeEnd.getDate() + 6);
-    const weekRangeText = `From Date ${formatShortDate(rangeStart)} to ${formatShortDate(rangeEnd)}`;
+export default function WeeklyWorkOrderJobNoReport({ weeks, selectedWeeks, weekLabel, rows }: Props) {
+    // Explicit from–to range(s) for print, e.g. "From Date 14/09/2026 to 20/09/2026"
+    const weekRanges = selectedWeeks.map((iso) => {
+        const s = parseMondayISO(iso);
+        const e = new Date(s);
+        e.setDate(e.getDate() + 6);
+        return `${formatShortDate(s)} to ${formatShortDate(e)}`;
+    });
+    const weekRangeText = weekRanges.length > 1 ? weekRanges.join('; ') : `From Date ${weekRanges[0] ?? '-'}`;
 
     const totalJobNoAmount = rows.reduce((sum, r) => {
         const v = jobNoAmountLac(r.tenderAmount);
         return sum + (v != null ? v : 0);
     }, 0);
 
-    const handleWeekChange = (value: string) => {
-        const params = new URLSearchParams(searchParams.toString());
-        params.set('woWeek', value);
-        router.push(pathname + '?' + params.toString());
-    };
+    const ascWeeks = [...selectedWeeks].sort();
+    const fileTag = ascWeeks.length > 1 ? `${ascWeeks[0]}_to_${ascWeeks[ascWeeks.length - 1]}` : (ascWeeks[0] ?? 'week');
 
     const handlePrint = () => {
         const printWindow = window.open('', '_blank', 'width=900,height=700');
@@ -99,26 +96,11 @@ export default function WeeklyWorkOrderJobNoReport({ weeks, selectedWeek, weekLa
                 <div className="flex flex-col gap-1">
                     <h2 className="text-lg font-bold text-slate-800 tracking-tight">Weekly Work Order Report with Job No Amount</h2>
                     <p className="text-xs text-slate-500 font-medium">
-                        Job No. Amount = Tender Amount + 18% of Tender Amount (ceiling in lac) — week of {weekLabel} — {rows.length} record{rows.length === 1 ? '' : 's'}
+                        Job No. Amount = Tender Amount + 18% of Tender Amount (ceiling in lac) — week{selectedWeeks.length === 1 ? '' : 's'} of {weekLabel} — {rows.length} record{rows.length === 1 ? '' : 's'}
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">
-                        <CalendarDays className="w-3.5 h-3.5 text-emerald-500" />
-                        <span>Week</span>
-                    </span>
-                    <select
-                        value={selectedWeek}
-                        onChange={(e) => handleWeekChange(e.target.value)}
-                        className="text-xs font-bold rounded-lg px-3 py-1.5 border bg-slate-50 border-slate-200 text-slate-700 hover:bg-white hover:border-slate-300 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/30 max-w-[260px]"
-                        title="Select week"
-                    >
-                        {weeks.map((w) => (
-                            <option key={w.value} value={w.value}>
-                                {w.label}
-                            </option>
-                        ))}
-                    </select>
+                    <WeekMultiSelect weeks={weeks} selectedWeeks={selectedWeeks} />
                     <button
                         type="button"
                         onClick={handlePrint}
@@ -128,7 +110,7 @@ export default function WeeklyWorkOrderJobNoReport({ weeks, selectedWeek, weekLa
                         <Printer className="w-3.5 h-3.5" />
                         <span>Print</span>
                     </button>
-                    <ExportTableButton tableId="weekly-wo-jobno-table" filename={`Weekly_Work_Order_Report_Job_No_Amount_${selectedWeek}.xlsx`} />
+                    <ExportTableButton tableId="weekly-wo-jobno-table" filename={`Weekly_Work_Order_Report_Job_No_Amount_${fileTag}.xlsx`} />
                 </div>
             </div>
 
