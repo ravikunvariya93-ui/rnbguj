@@ -40,7 +40,7 @@ export default async function PrintNoticePage({ params, searchParams }: Props) {
     const pkgRaw = await Package.findById(id).lean() as unknown as IdLean | null;
     if (!pkgRaw) notFound();
 
-    const tenderRaw = await Tender.findOne({ packageId: pkgRaw._id, cancelled: { $ne: true } })
+    const tenderRaw = await Tender.findOne({ packageId: pkgRaw._id, cancelled: { $ne: true } } as unknown as QueryFilter<ITender>)
         .sort({ trialNo: -1 }).lean() as unknown as TenderLean | null;
 
     if (!tenderRaw) {

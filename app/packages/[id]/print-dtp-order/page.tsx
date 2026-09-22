@@ -24,7 +24,7 @@ export default async function PrintDTPOrderPage({ params }: Props) {
     if (!pkgRaw) notFound();
 
     // Fetch DTP details
-    const dtpRaw = await DTP.findOne({ tsId: pkgRaw._id }).lean() as unknown as IdLean | null;
+    const dtpRaw = await DTP.findOne({ tsId: pkgRaw._id } as unknown as Parameters<typeof DTP.findOne>[0]).lean() as unknown as IdLean | null;
 
     if (!dtpRaw) {
         return (

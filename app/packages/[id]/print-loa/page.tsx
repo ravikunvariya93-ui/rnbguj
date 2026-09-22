@@ -8,6 +8,7 @@ import Approval from '@/models/Approval';
 import DTP from '@/models/DTP';
 import type { QueryFilter } from 'mongoose';
 import type { ITender } from '@/models/Tender';
+import type { IApproval } from '@/models/Approval';
 import type { IWorkOrder } from '@/models/WorkOrder';
 import type { IDTP } from '@/models/DTP';
 import { notFound } from 'next/navigation';
@@ -77,7 +78,7 @@ export default async function PrintLOAPage({ params }: Props) {
     // Fetch related LOA and Approval
     const [loaRaw, approvalRaw] = await Promise.all([
         LOA.findOne({ tenderId: tenderRaw._id }).lean() as unknown as Promise<LOALean | null>,
-        Approval.findOne({ tenderId: tenderRaw._id }).lean() as unknown as Promise<ApprovalLean | null>
+        Approval.findOne({ tenderId: tenderRaw._id } as unknown as QueryFilter<IApproval>).lean() as unknown as Promise<ApprovalLean | null>
     ]);
 
     if (!approvalRaw) {

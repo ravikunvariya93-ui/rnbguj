@@ -302,7 +302,7 @@ export default async function Home({ searchParams }: Props) {
     let serializedMasterWorks: MasterRow[] = [];
     if (loadMaster) {
         const tsMap = new Map<string, Record<string, unknown>>();
-        masterTS.forEach((ts: Record<string, unknown>) => {
+        (masterTS as unknown as Record<string, unknown>[]).forEach((ts: Record<string, unknown>) => {
             if (ts.workName) {
                 const key = normalizeString(ts.workName as string);
                 tsMap.set(key, ts);
@@ -310,7 +310,7 @@ export default async function Home({ searchParams }: Props) {
         });
 
         const workToPkgMap = new Map<string, Record<string, unknown>>();
-        masterPackages.forEach((pkg: Record<string, unknown>) => {
+        (masterPackages as unknown as Record<string, unknown>[]).forEach((pkg: Record<string, unknown>) => {
             const works = pkg.works as PkgWorkEntry[] | undefined;
             if (works) {
                 works.forEach((w: PkgWorkEntry) => {
@@ -322,41 +322,41 @@ export default async function Home({ searchParams }: Props) {
         });
 
         const dtpMap = new Map<string, Record<string, unknown>>();
-        masterDTPs.forEach((dtp: Record<string, unknown>) => {
+        (masterDTPs as unknown as Record<string, unknown>[]).forEach((dtp: Record<string, unknown>) => {
             if (dtp.tsId) {
                 dtpMap.set(String(dtp.tsId), dtp);
             }
         });
 
         const tenderMap = new Map<string, Record<string, unknown>>();
-        masterTenders.forEach((tender: Record<string, unknown>) => {
+        (masterTenders as unknown as Record<string, unknown>[]).forEach((tender: Record<string, unknown>) => {
             if (tender.packageId) {
                 tenderMap.set(String(tender.packageId), tender);
             }
         });
 
         const approvalMap = new Map<string, Record<string, unknown>>();
-        masterApprovals.forEach((app: Record<string, unknown>) => {
+        (masterApprovals as unknown as Record<string, unknown>[]).forEach((app: Record<string, unknown>) => {
             if (app.tenderId) {
                 approvalMap.set(String(app.tenderId), app);
             }
         });
 
         const loaMap = new Map<string, Record<string, unknown>>();
-        masterLOAs.forEach((loa: Record<string, unknown>) => {
+        (masterLOAs as unknown as Record<string, unknown>[]).forEach((loa: Record<string, unknown>) => {
             if (loa.tenderId) {
                 loaMap.set(String(loa.tenderId), loa);
             }
         });
 
         const woMap = new Map<string, Record<string, unknown>>();
-        masterWorkOrders.forEach((wo: Record<string, unknown>) => {
+        (masterWorkOrders as unknown as Record<string, unknown>[]).forEach((wo: Record<string, unknown>) => {
             if (wo.loaId) {
                 woMap.set(String(wo.loaId), wo);
             }
         });
 
-        serializedMasterWorks = masterWorks.map((w: MasterWorkDoc & Record<string, unknown>) => {
+        serializedMasterWorks = (masterWorks as unknown as (MasterWorkDoc & Record<string, unknown>)[]).map((w: MasterWorkDoc & Record<string, unknown>) => {
             const normalizedName = normalizeString(w.workName);
             const ts = tsMap.get(normalizedName) || {};
             const pkg = workToPkgMap.get(normalizedName) || {};
@@ -484,13 +484,13 @@ export default async function Home({ searchParams }: Props) {
     let summaryData: SummaryRow[] = [];
     if (loadSummary) {
         const tsCountMap: Record<string, number> = {};
-        allTS.forEach((ts: TsNameDoc) => {
+        (allTS as unknown as TsNameDoc[]).forEach((ts: TsNameDoc) => {
             const name = normalizeString(ts.workName);
             tsCountMap[name] = (tsCountMap[name] || 0) + 1;
         });
 
         const pendingTSIds = new Set<string>();
-        allApprovedWorks.forEach((w: WorkNameDoc) => {
+        (allApprovedWorks as unknown as WorkNameDoc[]).forEach((w: WorkNameDoc) => {
             const safeName = normalizeString(w.workName);
             if (tsCountMap[safeName] > 0) {
                 tsCountMap[safeName]--;
@@ -500,7 +500,7 @@ export default async function Home({ searchParams }: Props) {
         });
 
         const workNameToPkg = new Map<string, PkgDoc>();
-        allPackages.forEach((pkg: PkgDoc) => {
+        (allPackages as unknown as PkgDoc[]).forEach((pkg: PkgDoc) => {
             if (pkg.works) {
                 pkg.works.forEach((pw: PkgWorkEntry) => {
                     if (pw.workName) {
@@ -511,7 +511,7 @@ export default async function Home({ searchParams }: Props) {
         });
 
         const pkgIdToDTP = new Map<string, DtpDoc>();
-        allDTPs.forEach((d: DtpDoc) => {
+        (allDTPs as unknown as DtpDoc[]).forEach((d: DtpDoc) => {
             if (d.tsId) {
                 pkgIdToDTP.set(String(d.tsId), d);
             }
@@ -519,7 +519,7 @@ export default async function Home({ searchParams }: Props) {
 
         const summaryMap: Record<string, SummaryRow> = {};
 
-        allApprovedWorks.forEach((work: WorkNameDoc) => {
+        (allApprovedWorks as unknown as WorkNameDoc[]).forEach((work: WorkNameDoc) => {
             const year = (work.approvalYear as string) || 'Unspecified';
             if (!summaryMap[year]) {
                 summaryMap[year] = { year, total: 0, tsPrepared: 0, tsPending: 0, dtpPrepared: 0, dtpPending: 0 };
@@ -684,12 +684,12 @@ export default async function Home({ searchParams }: Props) {
     let searchApprovedWorksData: MasterRow[] = [];
     if (searchQuery) {
         // Find packages whose packageName matches OR which contain a work matching the search query
-        const searchPackages = allPackages.filter((pkg: PkgDoc) => {
+        const searchPackages = (allPackages as unknown as PkgDoc[]).filter((pkg: PkgDoc) => {
             const pkgNameMatch = pkg.packageName?.toLowerCase().includes(searchQuery.toLowerCase());
             const workNameMatch = pkg.works?.some((w: PkgWorkEntry) => w.workName?.toLowerCase().includes(searchQuery.toLowerCase()));
             return pkgNameMatch || workNameMatch;
         });
-        const searchPackageIds = searchPackages.map((pkg: PkgDoc) => pkg._id);
+        const searchPackageIds = (searchPackages as unknown as PkgDoc[]).map((pkg: PkgDoc) => pkg._id);
 
         // Tender branch + approved-works branch run concurrently (were sequential).
         const [searchTendersRaw, matchedApprovedWorksRaw] = await Promise.all([
@@ -698,7 +698,7 @@ export default async function Home({ searchParams }: Props) {
                     { packageName: { $regex: searchQuery, $options: 'i' } },
                     { packageId: { $in: searchPackageIds } }
                 ]
-            })
+            } as unknown as Parameters<typeof Tender.find>[0])
             .select('_id tenderNoticeYear noticeNo srNo packageName packageId contractorName proposalDate tenderApprovalDate acceptanceLetterDate workOrderDate cancelled cancellationReason')
             .sort({ tenderNoticeYear: -1, noticeNo: 1, srNo: 1 })
             .lean(),
@@ -712,23 +712,23 @@ export default async function Home({ searchParams }: Props) {
             .lean(),
         ]);
 
-        const searchTenderIds = searchTendersRaw.map((t: SearchTenderDoc) => t._id);
+        const searchTenderIds = (searchTendersRaw as unknown as SearchTenderDoc[]).map((t: SearchTenderDoc) => t._id);
 
         // Fetch related records for matched search tenders
         const [searchApprovals, searchLOAs] = await Promise.all([
-            Approval.find({ tenderId: { $in: searchTenderIds } }).select('tenderId notRequired proposalDate tenderApprovalDate').lean() as unknown as ApprovalDoc[],
+            Approval.find({ tenderId: { $in: searchTenderIds } } as unknown as Parameters<typeof Approval.find>[0]).select('tenderId notRequired proposalDate tenderApprovalDate').lean() as unknown as ApprovalDoc[],
             LOA.find({ tenderId: { $in: searchTenderIds } }).select('_id tenderId acceptanceLetterDate').lean() as unknown as LoaDoc[]
         ]);
 
         const searchLoaIds = searchLOAs.map((l: LoaDoc) => l._id);
-        const searchWorkOrders = await WorkOrder.find({ loaId: { $in: searchLoaIds } }).select('loaId workOrderDate').lean() as unknown as WorkOrderDoc[];
+        const searchWorkOrders = await WorkOrder.find({ loaId: { $in: searchLoaIds } } as unknown as Parameters<typeof WorkOrder.find>[0]).select('loaId workOrderDate').lean() as unknown as WorkOrderDoc[];
 
         const searchApprovalMap = new Map(searchApprovals.map((a: ApprovalDoc) => [String(a.tenderId), a]));
         const searchLoaMap = new Map(searchLOAs.map((l: LoaDoc) => [String(l.tenderId), l]));
         const searchWorkOrderMap = new Map(searchWorkOrders.map((wo: WorkOrderDoc) => [String(wo.loaId), wo]));
-        const searchPackageMap = new Map(allPackages.map((p: PkgDoc) => [p._id.toString(), p]));
+        const searchPackageMap = new Map((allPackages as unknown as PkgDoc[]).map((p: PkgDoc) => [p._id.toString(), p]));
 
-        searchResultsData = searchTendersRaw.map((tender: SearchTenderDoc & Record<string, unknown>) => {
+        searchResultsData = (searchTendersRaw as unknown as (SearchTenderDoc & Record<string, unknown>)[]).map((tender: SearchTenderDoc & Record<string, unknown>) => {
             const tIdStr = tender._id.toString();
             const approval = searchApprovalMap.get(tIdStr);
             const loa = searchLoaMap.get(tIdStr);
@@ -786,7 +786,7 @@ export default async function Home({ searchParams }: Props) {
 
         // Search Approved Works directly (already fetched above in parallel)
         const workNameToPkgInfo = new Map<string, { _id: string, packageName: string }>();
-        allPackages.forEach((pkg: PkgDoc) => {
+        (allPackages as unknown as PkgDoc[]).forEach((pkg: PkgDoc) => {
             if (pkg.works) {
                 pkg.works.forEach((pw: PkgWorkEntry) => {
                     if (pw.workName) {
@@ -799,7 +799,7 @@ export default async function Home({ searchParams }: Props) {
             }
         });
 
-        searchApprovedWorksData = matchedApprovedWorksRaw.map((w: SearchApprovedWorkDoc & Record<string, unknown>) => {
+        searchApprovedWorksData = (matchedApprovedWorksRaw as unknown as (SearchApprovedWorkDoc & Record<string, unknown>)[]).map((w: SearchApprovedWorkDoc & Record<string, unknown>) => {
             const pkgInfo = workNameToPkgInfo.get(normalizeString(w.workName));
             return {
                 ...w,
@@ -1082,7 +1082,7 @@ export default async function Home({ searchParams }: Props) {
                     </div>
 
                     {loadMaster ? (
-                        <MasterReportTable data={serializedMasterWorks} />
+                        <MasterReportTable data={serializedMasterWorks as unknown as React.ComponentProps<typeof MasterReportTable>['data']} />
                     ) : (
                         <div className="flex flex-col items-center justify-center py-10 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 space-y-3">
                             <p className="text-xs font-semibold text-slate-500">Master Report data is not loaded.</p>

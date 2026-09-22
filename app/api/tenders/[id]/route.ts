@@ -45,13 +45,13 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         if (tenderAmt > 0) {
             if (tenderAmt < 5000000) {
                 await Approval.findOneAndUpdate(
-                    { tenderId: tender._id },
+                    { tenderId: tender._id } as unknown as Parameters<typeof Approval.findOneAndUpdate>[0],
                     { $set: { notRequired: true } },
                     { upsert: true, new: true }
                 );
             } else {
                 await Approval.findOneAndUpdate(
-                    { tenderId: tender._id },
+                    { tenderId: tender._id } as unknown as Parameters<typeof Approval.findOneAndUpdate>[0],
                     { $set: { notRequired: false } }
                 );
             }
@@ -78,7 +78,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
         }
 
         // 2. Delete associated Approvals
-        await Approval.deleteMany({ tenderId: id });
+        await Approval.deleteMany({ tenderId: id } as unknown as Parameters<typeof Approval.deleteMany>[0]);
 
         // 3. Delete the Tender itself
         const deletedTender = await Tender.findByIdAndDelete(id);

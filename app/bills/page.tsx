@@ -74,7 +74,7 @@ export default async function BillsPage({ searchParams }: Props) {
         const packageIds = await Package.find({
             subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') }
         }).distinct('_id');
-        const tenderIds = await Tender.find({ packageId: { $in: packageIds } }).distinct('_id');
+        const tenderIds = await Tender.find({ packageId: { $in: packageIds } } as unknown as Parameters<typeof Tender.find>[0]).distinct('_id');
         const loaIds = await LOA.find({ tenderId: { $in: tenderIds } }).distinct('_id');
         const workOrderIds = await WorkOrder.find({ loaId: { $in: loaIds } }).distinct('_id');
         query.workOrderId = { $in: workOrderIds };
@@ -188,7 +188,7 @@ export default async function BillsPage({ searchParams }: Props) {
         }
     ];
 
-    const renderActions = (row) => {
+    const renderActions = (row: { _id?: unknown; [key: string]: unknown }) => {
         const tender = getTender(row.workOrderId);
         const packageId = tender?.packageId;
         const viewHref = packageId ? `/packages/${packageId}/bills/${row._id}/deduction` : `/bills`;

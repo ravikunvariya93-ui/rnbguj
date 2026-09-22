@@ -88,7 +88,7 @@ export default async function DeductionPage({ params }: Props) {
     }
 
     // Also fetch all previous bills for this workOrder to accurately show "Since Previous Bill"
-    const allBillsRaw = await Bill.find({ workOrderId: workOrderRaw?._id as string }).sort({ runningBillNumber: 1 }).lean() as unknown as BillLean[];
+    const allBillsRaw = await Bill.find({ workOrderId: workOrderRaw?._id as string } as unknown as Parameters<typeof Bill.find>[0]).sort({ runningBillNumber: 1 }).lean() as unknown as BillLean[];
 
     const packageData = serialize(pkgRaw);
     const tender = serialize(tenderRaw);

@@ -488,7 +488,7 @@ export default async function TendersListPage({ searchParams }: Props) {
     const tenderIds = tendersRaw.map((t) => t._id.toString());
 
     const [approvals, loas] = await Promise.all([
-        Approval.find({ tenderId: { $in: tenderIds } }).select('tenderId notRequired proposalDate tenderApprovalDate').lean(),
+        Approval.find({ tenderId: { $in: tenderIds } } as unknown as Parameters<typeof Approval.find>[0]).select('tenderId notRequired proposalDate tenderApprovalDate').lean(),
         LOA.find({ tenderId: { $in: tenderIds } }).select('_id tenderId acceptanceLetterDate').lean()
     ]);
 

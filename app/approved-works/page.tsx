@@ -425,7 +425,7 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
         }
     ];
 
-    const renderActions = (row) => (
+    const renderActions = (row: { _id?: unknown; [key: string]: unknown }) => (
         <div className="flex items-center justify-end space-x-3">
             <Link href={`/approved-works/${String(row._id)}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
                 <Eye className="w-5 h-5" />

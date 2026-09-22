@@ -65,6 +65,8 @@ function serialize<T>(obj: T): T {
     );
 }
 
+type DetailProps = Parameters<typeof ApprovedWorkDetailClient>[0];
+
 export default async function ApprovedWorkDetailPage({ params }: { params: Promise<{ id: string }> }) {
     await dbConnect();
     const { id } = await params;
@@ -129,14 +131,14 @@ export default async function ApprovedWorkDetailPage({ params }: { params: Promi
         <ApprovedWorkDetailClient
             workId={id}
             work={serialize(work)}
-            ts={ts ? serialize(ts) : null}
-            pkg={pkg ? serialize(pkg) : null}
-            dtp={dtp ? serialize(dtp) : null}
-            tender={tender ? serialize(tender) : null}
-            approval={approval ? serialize(approval) : null}
-            loa={loa ? serialize(loa) : null}
-            workOrder={workOrder ? serialize(workOrder) : null}
-            bills={serialize(bills)}
+            ts={(ts ? serialize(ts) : null) as unknown as DetailProps['ts']}
+            pkg={(pkg ? serialize(pkg) : null) as unknown as DetailProps['pkg']}
+            dtp={(dtp ? serialize(dtp) : null) as unknown as DetailProps['dtp']}
+            tender={(tender ? serialize(tender) : null) as unknown as DetailProps['tender']}
+            approval={(approval ? serialize(approval) : null) as unknown as DetailProps['approval']}
+            loa={(loa ? serialize(loa) : null) as unknown as DetailProps['loa']}
+            workOrder={(workOrder ? serialize(workOrder) : null) as unknown as DetailProps['workOrder']}
+            bills={serialize(bills) as unknown as DetailProps['bills']}
             maxAgreementNos={maxAgreementNos}
         />
     );

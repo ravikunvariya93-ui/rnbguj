@@ -481,7 +481,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         const tender = tenderMap.get(p._id.toString());
         const dtp = dtpMap.get(p._id.toString());
 
-        const tenderAmount = dtp?.tenderAmount ?? tender?.estimatedAmount ?? p.estimatedAmount ?? (p.works && p.works.length > 0 ? p.works.reduce((acc: number, w: PkgWorkEntry) => acc + (w.amount || 0), 0) : null);
+        const tenderAmount = dtp?.tenderAmount ?? tender?.estimatedAmount ?? (p as unknown as PkgLean).estimatedAmount ?? (p.works && p.works.length > 0 ? p.works.reduce((acc: number, w: PkgWorkEntry) => acc + (w.amount || 0), 0) : null);
         const contractorName = tender?.contractorName || '';
         const contractPrice = tender?.contractPrice ?? null;
         const aboveBelowPercentage = tender?.aboveBelowPercentage ?? (tender?.bidders && tender.bidders[0]?.percentage != null ? tender.bidders[0].percentage : null);
@@ -636,7 +636,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         }
     ];
 
-    const renderActions = (row) => (
+    const renderActions = (row: { _id?: unknown; [key: string]: unknown }) => (
         <div className="flex items-center justify-end space-x-3">
             <Link href={`/packages/${String(row._id)}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Package Details">
                 <Eye className="w-5 h-5" />

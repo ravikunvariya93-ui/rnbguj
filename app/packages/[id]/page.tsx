@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { ArrowLeft, ShieldAlert } from 'lucide-react';
 import { auth } from '@/auth';
 import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
+import type { ComponentProps } from 'react';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +45,7 @@ interface WorkOrderBrief {
     agreementNo?: string;
     [key: string]: unknown;
 }
+type DetailProps = ComponentProps<typeof PackageDetailClient>;
 
 function serialize<T>(obj: T): T {
     if (obj === null || obj === undefined) return obj;
@@ -76,7 +78,7 @@ function serialize<T>(obj: T): T {
         return res;
     };
 
-    return clean(sanitized);
+    return clean(sanitized) as T;
 }
 
 export default async function PackageDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -94,7 +96,7 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
     // Auditor access check: verify package belongs to auditor's sub-division
     if (isAuditor && auditorSubDivision) {
         const worksInAuditorSubDiv = await ApprovedWork.find({ subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } }).select('workName').lean();
-        const workNames = new Set(worksInAuditorSubDiv.map((aw: WorkNameDoc) => (aw.workName || '').toLowerCase().trim()));
+        const workNames = new Set(worksInAuditorSubDiv.map((aw) => (aw.workName || '').toLowerCase().trim()));
         const pkgSubDiv = (pkg.subDivision || '').toLowerCase().trim();
         const hasMatchingWork = (pkg.works || []).some((w: WorkNameDoc) => workNames.has((w.workName || '').toLowerCase().trim()));
         const isAllowed = pkgSubDiv === auditorSubDivision.toLowerCase().trim() || hasMatchingWork;
@@ -173,18 +175,18 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
     return (
         <PackageDetailClient
             packageId={id}
-            pkg={serialize(pkg)}
+            pkg={serialize(pkg) as unknown as DetailProps['pkg']}
             approvedWorks={serialize(approvedWorks)}
-            dtp={dtp ? serialize(dtp) : null}
-            tender={tender ? serialize(tender) : null}
-            tenders={serialize(tenders)}
-            boq={boq ? serialize(boq) : null}
-            approval={approval ? serialize(approval) : null}
-            loa={loa ? serialize(loa) : null}
-            workOrder={workOrder ? serialize(workOrder) : null}
-            bills={serialize(bills)}
-            excessProposals={serialize(excessProposals)}
-            depositRefunds={serialize(depositRefunds)}
+            dtp={(dtp ? serialize(dtp) : null) as unknown as DetailProps['dtp']}
+            tender={(tender ? serialize(tender) : null) as unknown as DetailProps['tender']}
+            tenders={serialize(tenders) as unknown as DetailProps['tenders']}
+            boq={(boq ? serialize(boq) : null) as unknown as DetailProps['boq']}
+            approval={(approval ? serialize(approval) : null) as unknown as DetailProps['approval']}
+            loa={(loa ? serialize(loa) : null) as unknown as DetailProps['loa']}
+            workOrder={(workOrder ? serialize(workOrder) : null) as unknown as DetailProps['workOrder']}
+            bills={serialize(bills) as unknown as DetailProps['bills']}
+            excessProposals={serialize(excessProposals) as unknown as DetailProps['excessProposals']}
+            depositRefunds={serialize(depositRefunds) as unknown as DetailProps['depositRefunds']}
             maxAgreementNos={maxAgreementNos}
         />
     );

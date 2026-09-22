@@ -91,7 +91,8 @@ export default async function AgreementsListPage({ searchParams }: Props) {
 
     const agencies = rawAgencies.map((a: AgencyLean) => ({
         ...a,
-        _id: a._id.toString()
+        _id: a._id.toString(),
+        name: a.name as string
     }));
 
     const query: Record<string, unknown> = { notRequired: { $ne: true } };
@@ -123,7 +124,7 @@ export default async function AgreementsListPage({ searchParams }: Props) {
                 { packageName: { $regex: cleanSearch, $options: 'i' } },
                 { packageId: { $in: matchingPkgs } }
             ]
-        }).distinct('_id') as unknown[];
+        } as unknown as Parameters<typeof Tender.find>[0]).distinct('_id') as unknown[];
 
         // 4. Matches in LOA (referencing matching Tenders)
         const matchingLoas = await LOA.find({
@@ -133,7 +134,7 @@ export default async function AgreementsListPage({ searchParams }: Props) {
         // 5. Indirect matches in WorkOrder referencing matching LOAs
         const indirectWoMatches = await WorkOrder.find({
             loaId: { $in: matchingLoas }
-        }).distinct('_id') as unknown[];
+        } as unknown as Parameters<typeof WorkOrder.find>[0]).distinct('_id') as unknown[];
 
         // Combine direct and indirect matches
         const allMatchingWoIds = Array.from(new Set([
@@ -168,7 +169,7 @@ export default async function AgreementsListPage({ searchParams }: Props) {
     if (hasTenderFilter) {
         const matchingTenders = await Tender.find(tenderQuery as unknown as Parameters<typeof Tender.find>[0]).distinct('_id') as unknown[];
         const matchingLoas = await LOA.find({ tenderId: { $in: matchingTenders } }).distinct('_id') as unknown[];
-        const matchingWoIds = await WorkOrder.find({ loaId: { $in: matchingLoas } }).distinct('_id') as unknown[];
+        const matchingWoIds = await WorkOrder.find({ loaId: { $in: matchingLoas } } as unknown as Parameters<typeof WorkOrder.find>[0]).distinct('_id') as unknown[];
         const matchingWoIdsStr = matchingWoIds.map(toIdStr);
 
         if (query._id) {
@@ -181,7 +182,7 @@ export default async function AgreementsListPage({ searchParams }: Props) {
     }
 
     if (isAuditor && auditorSubDivision) {
-        const worksInAuditorSubDiv = await ApprovedWork.find({ subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } }).select('workName').lean();
+        const worksInAuditorSubDiv = await ApprovedWork.find({ subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } }).select('workName').lean() as unknown as WorkNameDoc[];
         const workNames = worksInAuditorSubDiv.map((aw: WorkNameDoc) => aw.workName).filter(Boolean);
         const matchingPkgs = await Package.find({
             $or: [
@@ -189,9 +190,9 @@ export default async function AgreementsListPage({ searchParams }: Props) {
                 { 'works.workName': { $in: workNames } }
             ]
         }).distinct('_id') as unknown[];
-        const matchingTenders = await Tender.find({ packageId: { $in: matchingPkgs } }).distinct('_id') as unknown[];
+        const matchingTenders = await Tender.find({ packageId: { $in: matchingPkgs } } as unknown as Parameters<typeof Tender.find>[0]).distinct('_id') as unknown[];
         const matchingLoas = await LOA.find({ tenderId: { $in: matchingTenders } }).distinct('_id') as unknown[];
-        const matchingWoIds = await WorkOrder.find({ loaId: { $in: matchingLoas } }).distinct('_id') as unknown[];
+        const matchingWoIds = await WorkOrder.find({ loaId: { $in: matchingLoas } } as unknown as Parameters<typeof WorkOrder.find>[0]).distinct('_id') as unknown[];
         const matchingWoIdsStr = matchingWoIds.map(toIdStr);
 
         if (query._id) {
@@ -337,17 +338,18 @@ export default async function AgreementsListPage({ searchParams }: Props) {
                 data={workOrders} 
                 emptyMessage="No agreements found matching the criteria."
                 exportFilename="Agreements_Register.xlsx"
-                actions={(row: AgreementRow) => {
-                    const tender = row.loaId?.tenderId;
+                actions={(row: { [key: string]: unknown; _id?: unknown }, _index: number) => {
+                    const agreement = row as unknown as AgreementRow;
+                    const tender = agreement.loaId?.tenderId;
                     const pkg = tender?.packageId;
                     return (
                         <FileEditButton
-                            id={row._id}
-                            agreementNo={row.agreementNo}
-                            agreementYear={row.agreementYear}
+                            id={agreement._id}
+                            agreementNo={agreement.agreementNo}
+                            agreementYear={agreement.agreementYear}
                             packageName={pkg?.packageName || tender?.packageName || ''}
-                            fileSentOnDateISO={row.fileSentOnDate ? new Date(row.fileSentOnDate).toISOString() : null}
-                            potakaNo={row.potakaNo || ''}
+                            fileSentOnDateISO={agreement.fileSentOnDate ? new Date(agreement.fileSentOnDate).toISOString() : null}
+                            potakaNo={agreement.potakaNo || ''}
                         />
                     );
                 }}
