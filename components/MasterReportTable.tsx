@@ -156,8 +156,16 @@ const ALL_COLUMNS: ColumnConfig[] = [
     { key: 'wo_stipulatedCompletionDate', label: 'WO Completion Date', category: 'wo', defaultVisible: false, isDate: true, minWidth: '150px' }
 ];
 
+interface MasterReportRow {
+    _id?: string;
+    workName?: string;
+    tender_contractorName?: string;
+    pkg_packageName?: string;
+    [key: string]: string | number | boolean | null | undefined;
+}
+
 interface MasterReportTableProps {
-    data: any[];
+    data: MasterReportRow[];
 }
 
 export default function MasterReportTable({ data }: MasterReportTableProps) {
@@ -272,11 +280,11 @@ export default function MasterReportTable({ data }: MasterReportTableProps) {
     };
 
     // Helper to format values
-    const formatValue = (col: ColumnConfig, val: any) => {
+    const formatValue = (col: ColumnConfig, val: unknown) => {
         if (val === null || val === undefined || val === '') return '-';
         if (col.isDate) {
             try {
-                return new Date(val).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' });
+                return new Date(val as string | number | Date).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' });
             } catch {
                 return String(val);
             }

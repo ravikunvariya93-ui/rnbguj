@@ -13,9 +13,9 @@ export const GET = withApi(async (_ctx, request: Request) => {
         return badRequest('Valid packageId is required');
     }
     const { page, limit, skip } = getPagination(request.url);
-    const filter = { packageId: packageId as any };
-    const total = await ProgressEntry.countDocuments(filter);
-    const entries = await ProgressEntry.find(filter).sort({ date: -1, createdAt: -1 }).skip(skip).limit(limit).lean();
+    const filter = { packageId: packageId };
+    const total = await ProgressEntry.countDocuments(filter as unknown as Parameters<typeof ProgressEntry.countDocuments>[0]);
+    const entries = await ProgressEntry.find(filter as unknown as Parameters<typeof ProgressEntry.find>[0]).sort({ date: -1, createdAt: -1 }).skip(skip).limit(limit).lean();
     return paginated(entries, total, page, limit);
 });
 
@@ -34,9 +34,9 @@ export const POST = withApi(
         }
         const photos = Array.isArray(body?.photos)
             ? body.photos
-                  .filter((p: any) => p && typeof p.url === 'string' && p.url)
+                  .filter((p: { url?: unknown }) => p && typeof p.url === 'string' && p.url)
                   .slice(0, 20)
-                  .map((p: any) => ({
+                  .map((p: { url: string; fileName?: string; lat?: string | number; lng?: string | number; takenAt?: string }) => ({
                       url: String(p.url),
                       fileName: String(p.fileName || ''),
                       lat: Number.isFinite(Number(p.lat)) ? Number(p.lat) : undefined,
@@ -45,7 +45,7 @@ export const POST = withApi(
                   }))
             : [];
         const entry = await ProgressEntry.create({
-            packageId: packageId as any,
+            packageId: packageId,
             workName,
             date: new Date(body.date),
             physicalPercent: percent,
@@ -53,10 +53,10 @@ export const POST = withApi(
             chainageTo: String(body?.chainageTo || ''),
             remarks: String(body?.remarks || ''),
             authorName: String(body?.authorName || ctx.session?.user?.name || '').trim(),
-            authorRole: String(body?.authorRole || (ctx.session?.user as any)?.role || ''),
-            createdBy: (ctx.session?.user as any)?.id,
+            authorRole: String(body?.authorRole || ctx.session?.user?.role || ''),
+            createdBy: ctx.session?.user?.id,
             photos,
-        });
+        } as unknown as Parameters<typeof ProgressEntry.create>[0]);
         return created(entry);
     },
     { roles: PROGRESS_WRITE_ROLES }

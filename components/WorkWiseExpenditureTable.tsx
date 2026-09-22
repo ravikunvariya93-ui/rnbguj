@@ -3,9 +3,20 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, LayoutList } from 'lucide-react';
 
+interface WorkExpenditure {
+    srNo?: string | number;
+    nameOfWork?: string;
+    amount?: number | null;
+}
+
+interface WorkWiseTender {
+    aboveBelowPercentage?: number | string;
+    aboveBelowInWord?: string;
+}
+
 interface WorkWiseExpenditureTableProps {
-    works: any[];
-    tender?: any;
+    works: WorkExpenditure[];
+    tender?: WorkWiseTender;
     labourCessApplicable?: boolean;
     initialExpanded?: boolean;
 }
@@ -20,11 +31,11 @@ export default function WorkWiseExpenditureTable({
 
     if (!works || works.length === 0) return null;
 
-    const pct = tender?.aboveBelowPercentage || 0;
+    const pct = Number(tender?.aboveBelowPercentage || 0);
     const dir = tender?.aboveBelowInWord || 'Above';
     const isCess = labourCessApplicable;
 
-    const totalAmount = works.reduce((s: number, w: any) => s + (w.amount || 0), 0);
+    const totalAmount = works.reduce((s: number, w: WorkExpenditure) => s + (w.amount || 0), 0);
     const pctMultiplier = pct / 100;
     const adjAmount = totalAmount * pctMultiplier;
     const netAmount = dir === 'Below' ? totalAmount - adjAmount : totalAmount + adjAmount;
@@ -74,7 +85,7 @@ export default function WorkWiseExpenditureTable({
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-emerald-200/60 bg-white">
-                            {works.map((work: any, index: number) => (
+                            {works.map((work: WorkExpenditure, index: number) => (
                                 <tr key={index} className="hover:bg-emerald-50/50 transition-colors">
                                     <td className="border border-slate-200 px-3 py-2 text-xs font-mono font-bold text-slate-700 whitespace-nowrap">{work.srNo}</td>
                                     <td className="border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700">{work.nameOfWork}</td>

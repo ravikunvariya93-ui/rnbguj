@@ -21,6 +21,56 @@ import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
+type LeanId = { toString(): string };
+interface WorkDoc {
+    _id: LeanId;
+    workName?: string;
+    [key: string]: unknown;
+}
+interface PkgWorkEntry {
+    workName?: string;
+    [key: string]: unknown;
+}
+interface PkgLean {
+    _id: LeanId;
+    packageName?: string;
+    works?: PkgWorkEntry[];
+    [key: string]: unknown;
+}
+interface TenderLean {
+    _id: LeanId;
+    packageId?: LeanId | string | null;
+    proposalDate?: unknown;
+    tenderApprovalDate?: unknown;
+    estimatedAmount?: number;
+    contractPrice?: number;
+    [key: string]: unknown;
+}
+interface ApprovalLean {
+    _id?: LeanId;
+    tenderId?: LeanId | null;
+    proposalDate?: unknown;
+    tenderApprovalDate?: unknown;
+    notRequired?: boolean;
+    [key: string]: unknown;
+}
+interface LoaLean {
+    _id: LeanId;
+    tenderId?: LeanId | string | null;
+    [key: string]: unknown;
+}
+interface WorkOrderLean {
+    _id?: LeanId;
+    loaId?: LeanId | string | null;
+    [key: string]: unknown;
+}
+interface SerializedWorkRow {
+    _id: string;
+    workName?: string;
+    [key: string]: unknown;
+}
+type MongoFilter = Record<string, unknown>;
+
 interface Props {
     searchParams: Promise<ListPageSearchParams>;
 }
@@ -28,14 +78,14 @@ interface Props {
 export default async function ApprovedWorksListPage({ searchParams }: Props) {
     await dbConnect();
     const session = await auth();
-    const userRole = (session?.user as any)?.role;
+    const userRole = (session?.user as { role?: string } | undefined)?.role;
     const auditorSubDivision = getAuditorSubDivision(userRole);
     const isAuditor = isAuditorRole(userRole);
 
     const params = await searchParams;
-    const normalizeString = (str: string) => (str || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const normalizeString = (str: string | null | undefined) => (str || '').trim().toLowerCase().replace(/\s+/g, ' ');
 
-    const query: any = {};
+    const query: MongoFilter = {};
     const filterLabels: string[] = [];
 
     const allTS = await TechnicalSanction.find({}).select('workName').lean();
@@ -108,7 +158,7 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
         ]
     });
 
-    const andConditions: any[] = [];
+    const andConditions: MongoFilter[] = [];
 
     Object.entries(filterFields).forEach(([field, config]) => {
         if (config.val) {
@@ -160,7 +210,7 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
     const workNameToPkgInfo = new Map<string, { _id: string, packageName: string }>();
     allPackages.forEach(pkg => {
         if (pkg.works) {
-            pkg.works.forEach((w: any) => {
+            pkg.works.forEach((w) => {
                 if (w.workName) {
                     workNameToPkgInfo.set(normalizeString(w.workName), {
                         _id: pkg._id.toString(),
@@ -171,7 +221,7 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
         }
     });
 
-    let finalWorks: any[] = [];
+    let finalWorks: WorkDoc[] = [];
     let totalItems = 0;
 
     if (params.filter && params.filter !== 'none') {
@@ -184,7 +234,7 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
         const dtpPkgIds = new Set(allDTPs.map(d => d.tsId?.toString()));
         const approvedDtpPkgIds = new Set(allDTPs.filter(d => Boolean(d.dtpApprovalDate || (d.tenderAmount !== undefined && d.tenderAmount !== null))).map(d => d.tsId?.toString()));
         const tenderPkgIds = new Set(allTenders.map(t => t.packageId?.toString()));
-        const approvalByTenderId = new Map<string, any>();
+        const approvalByTenderId = new Map<string, (typeof allApprovals)[number]>();
         allApprovals.forEach(a => {
             if (a.tenderId) {
                 const tIdStr = a.tenderId.toString();
@@ -200,7 +250,7 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
         const workNameToPkgId = new Map<string, string>();
         allPackages.forEach(pkg => {
             if (pkg.works) {
-                pkg.works.forEach((w: any) => {
+                pkg.works.forEach((w) => {
                     if (w.workName) workNameToPkgId.set(normalizeString(w.workName), pkg._id.toString());
                 });
             }
@@ -209,7 +259,7 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
         const tenderByPkgId = new Map(allTenders.map(t => [t.packageId?.toString(), t]));
         const loaByTenderId = new Map(allLOAs.map(l => [l.tenderId?.toString(), l]));
 
-        const allPotentialWorks = await ApprovedWork.find(query).sort(sortObj).lean();
+        const allPotentialWorks = await ApprovedWork.find(query as unknown as Parameters<typeof ApprovedWork.find>[0]).sort(sortObj).lean() as unknown as WorkDoc[];
         const filtered = allPotentialWorks.filter(w => {
             const safeName = normalizeString(w.workName as string);
             const pkgId = workNameToPkgId.get(safeName);
@@ -285,17 +335,17 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
         totalItems = filtered.length;
         finalWorks = filtered.slice(skip, skip + limit);
     } else {
-        totalItems = await ApprovedWork.countDocuments(query);
-        finalWorks = await ApprovedWork.find(query)
+        totalItems = await ApprovedWork.countDocuments(query as unknown as Parameters<typeof ApprovedWork.countDocuments>[0]);
+        finalWorks = await ApprovedWork.find(query as unknown as Parameters<typeof ApprovedWork.find>[0])
             .sort(sortObj)
             .skip(skip)
             .limit(limit)
-            .lean();
+            .lean() as unknown as WorkDoc[];
     }
 
     const totalPages = Math.ceil(totalItems / limit);
 
-    const serializedWorks = finalWorks.map((w: any) => {
+    const serializedWorks = finalWorks.map((w) => {
         const pkgInfo = workNameToPkgInfo.get(normalizeString(w.workName));
         return {
             ...w,
@@ -375,17 +425,17 @@ export default async function ApprovedWorksListPage({ searchParams }: Props) {
         }
     ];
 
-    const renderActions = (row: any) => (
+    const renderActions = (row) => (
         <div className="flex items-center justify-end space-x-3">
-            <Link href={`/approved-works/${row._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
+            <Link href={`/approved-works/${String(row._id)}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
                 <Eye className="w-5 h-5" />
             </Link>
-            <Link href={`/approved-works/${row._id}/edit`} className="text-emerald-600 hover:text-emerald-900 p-1" title="Edit Item">
+            <Link href={`/approved-works/${String(row._id)}/edit`} className="text-emerald-600 hover:text-emerald-900 p-1" title="Edit Item">
                 <Edit2 className="w-5 h-5" />
             </Link>
             <GenericDeleteButton 
-                itemId={row._id} 
-                itemName={row.workName} 
+                itemId={String(row._id)} 
+                itemName={String(row.workName ?? '')} 
                 apiPath="/api/approved-works" 
             />
         </div>

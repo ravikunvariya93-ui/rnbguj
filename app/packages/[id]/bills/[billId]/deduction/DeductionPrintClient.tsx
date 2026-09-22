@@ -5,14 +5,43 @@ import Link from 'next/link';
 import { ArrowLeft, Printer, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
+interface DeductionBill {
+    _id?: string;
+    runningBillNumber?: number;
+    billType?: string;
+    grossAmount?: number | string;
+    dismantleCredit?: number | string;
+    auditMemoPreviouslyPaid?: number | string;
+    excessExtraAmount?: number | string;
+    priceAdjustment?: number | string;
+    priceAdjustmentType?: string;
+    adminApprovalAmount?: number | string;
+    withheldDeposit?: number | string;
+    netPayableAmount?: number | string;
+    incomeTax?: number | string;
+    gst?: number | string;
+    labourCess?: number | string;
+    securityDeposit?: number | string;
+    freeMaintenanceDeposit?: number | string;
+    asphaltDeposit?: number | string;
+    coreSampleDeposit?: number | string;
+    tpi?: number | string;
+    esmp?: number | string;
+    timeLimitDeposit?: number | string;
+    testingCharges?: number | string;
+    otherDeposit?: number | string;
+    otherDeposit2?: number | string;
+    totalDeduction?: number | string;
+}
+
 interface DeductionPrintClientProps {
-    packageData: any;
-    tender: any;
-    loa: any;
-    workOrder: any;
-    agency: any;
-    bill: any;
-    allBills?: any[];
+    packageData: { _id?: string; packageName?: string } | null;
+    tender: { _id?: string; packageName?: string; contractorName?: string } | null;
+    loa: unknown;
+    workOrder: unknown;
+    agency: { _id?: string; name?: string; gstNo?: string } | null;
+    bill: DeductionBill | null;
+    allBills?: DeductionBill[];
 }
 
 function fmtNum(n: number | null | undefined, decimals = 0): string {
@@ -204,8 +233,8 @@ export default function DeductionPrintClient({
     // Previous Bills — gross is cumulative up-to-date, so Previously Paid
     // = last previous bill's gross (NOT the sum of all previous grosses).
     const prevBills = allBills
-        .filter((b: any) => (b.runningBillNumber || 0) < billNum)
-        .sort((a: any, b: any) => (a.runningBillNumber || 0) - (b.runningBillNumber || 0));
+        .filter((b: DeductionBill) => (b.runningBillNumber || 0) < billNum)
+        .sort((a: DeductionBill, b: DeductionBill) => (a.runningBillNumber || 0) - (b.runningBillNumber || 0));
     const prevGross = prevBills.length > 0
         ? (Number(prevBills[prevBills.length - 1].grossAmount) || 0)
         : 0;
@@ -255,7 +284,7 @@ export default function DeductionPrintClient({
         const wb = XLSX.utils.book_new();
 
         // 6-Column structure mapping
-        const sheetData: any[][] = [
+        const sheetData: string[][] = [
             ['Name of Work:-', workName, '', '', '', ''],
             ['Contractor:-', contractorDisplay, '', '', '', ''],
             ['', '', '', '', '', ''],

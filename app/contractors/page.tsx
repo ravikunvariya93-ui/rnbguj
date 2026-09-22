@@ -7,13 +7,23 @@ import {
 } from 'lucide-react';
 import ContractorForm from '@/components/ContractorForm';
 
+interface ManagedContractor {
+    _id: string;
+    name: string;
+    proprietorName?: string;
+    address?: string;
+    mobileNo?: string;
+    agencyType?: string;
+    gstNo?: string;
+}
+
 export default function ContractorsListPage() {
-    const [contractors, setContractors] = useState<any[]>([]);
+    const [contractors, setContractors] = useState<ManagedContractor[]>([]);
     const [loading, setLoading] = useState(true);
     const [, setError] = useState('');
     const [search, setSearch] = useState('');
     const [isFormOpen, setIsFormOpen] = useState(false);
-    const [selectedContractor, setSelectedContractor] = useState<any>(null);
+    const [selectedContractor, setSelectedContractor] = useState<ManagedContractor | null>(null);
 
     const fetchContractors = async () => {
         setLoading(true);
@@ -22,8 +32,8 @@ export default function ContractorsListPage() {
             if (!res.ok) throw new Error('Failed to fetch contractors');
             const data = await res.json();
             setContractors(data.data || []);
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to fetch contractors');
         } finally {
             setLoading(false);
         }
@@ -43,8 +53,8 @@ export default function ContractorsListPage() {
                 throw new Error(data.error || 'Failed to delete contractor');
             }
             fetchContractors();
-        } catch (err: any) {
-            alert(err.message);
+        } catch (err: unknown) {
+            alert(err instanceof Error && err.message ? err.message : 'Failed to delete contractor');
         }
     };
 
@@ -185,7 +195,7 @@ export default function ContractorsListPage() {
 
             {isFormOpen && (
                 <ContractorForm
-                    contractor={selectedContractor}
+                    contractor={selectedContractor ?? undefined}
                     onClose={() => setIsFormOpen(false)}
                     onSave={fetchContractors}
                 />

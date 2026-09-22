@@ -22,6 +22,80 @@ import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
+type LeanId = { toString(): string };
+interface AgencyLean {
+    _id: LeanId;
+    name?: string;
+    mobileNo?: string;
+    [key: string]: unknown;
+}
+interface ApprovedWorkLean {
+    workName?: string;
+    workType?: string;
+    [key: string]: unknown;
+}
+interface BidderLean {
+    rank?: string;
+    contractorName?: string;
+    aboveBelow?: string;
+    percentage?: number | null;
+    totalAmount?: number | null;
+    [key: string]: unknown;
+}
+interface PkgWorksEntry {
+    workName?: string;
+    [key: string]: unknown;
+}
+interface PkgRef {
+    _id?: LeanId;
+    works?: PkgWorksEntry[];
+    workType?: string;
+    [key: string]: unknown;
+}
+interface TenderLean {
+    _id: LeanId;
+    packageId?: PkgRef | string | null;
+    bidders?: BidderLean[];
+    contractorName?: string;
+    contractorMobile?: string;
+    estimatedAmount?: number;
+    contractPrice?: number;
+    proposalDate?: unknown;
+    tenderApprovalDate?: unknown;
+    acceptanceLetterDate?: unknown;
+    workOrderDate?: unknown;
+    [key: string]: unknown;
+}
+interface ApprovalLean {
+    _id?: LeanId;
+    tenderId?: LeanId | null;
+    notRequired?: boolean;
+    proposalDate?: unknown;
+    tenderApprovalDate?: unknown;
+    [key: string]: unknown;
+}
+interface LoaLean {
+    _id: LeanId;
+    tenderId?: LeanId | null;
+    acceptanceLetterDate?: unknown;
+    [key: string]: unknown;
+}
+interface WorkOrderLean {
+    _id?: LeanId;
+    loaId?: LeanId | null;
+    workOrderDate?: unknown;
+    [key: string]: unknown;
+}
+interface TenderRow {
+    _id: string;
+    workType?: unknown;
+    contractorMobile?: unknown;
+    noOfRoads?: unknown;
+    [key: string]: unknown;
+}
+type MongoFilter = Record<string, unknown>;
+const toIdStr = (id: unknown): string => String(id);
+
 interface Props {
     searchParams: Promise<ListPageSearchParams>;
 }
@@ -29,7 +103,7 @@ interface Props {
 export default async function TendersListPage({ searchParams }: Props) {
     await dbConnect();
     const session = await auth();
-    const userRole = (session?.user as any)?.role;
+    const userRole = (session?.user as { role?: string } | undefined)?.role;
     const auditorSubDivision = getAuditorSubDivision(userRole);
     const isAuditor = isAuditorRole(userRole);
 
@@ -37,20 +111,20 @@ export default async function TendersListPage({ searchParams }: Props) {
 
     // Fetch agencies, years, sub-divisions, work types, approved works, and building types for inference
     const [rawAgencies, years, rawSubDivisions, rawWorkTypesAw, rawWorkTypesPkg, allApprovedWorks, rawBuildingTypesAw, rawBuildingTypesPkg] = await Promise.all([
-        Agency.find({}).select('name mobileNo').sort({ name: 1 }).lean() as Promise<any[]>,
+        Agency.find({}).select('name mobileNo').sort({ name: 1 }).lean(),
         Tender.distinct('tenderNoticeYear') as Promise<string[]>,
         Package.distinct('subDivision') as Promise<string[]>,
         ApprovedWork.distinct('workType') as Promise<string[]>,
         Package.distinct('workType') as Promise<string[]>,
-        ApprovedWork.find({}).select('workName workType buildingType').lean() as Promise<any[]>,
+        ApprovedWork.find({}).select('workName workType buildingType').lean(),
         ApprovedWork.distinct('buildingType') as Promise<string[]>,
         Package.distinct('buildingType') as Promise<string[]>
     ]);
-    const agencies = rawAgencies.map((a: any) => ({
+    const agencies = rawAgencies.map((a) => ({
         ...a,
         _id: a._id.toString()
     }));
-    const agencyMobileMap = new Map(rawAgencies.map((a: any) => [a.name, a.mobileNo]));
+    const agencyMobileMap = new Map(rawAgencies.map((a) => [a.name, a.mobileNo]));
     const subDivisions = rawSubDivisions.filter(Boolean).sort();
     const PREDEFINED_WORK_TYPES = ['Road', 'Building', 'Structure', 'Other'];
     const workTypes = Array.from(new Set([...PREDEFINED_WORK_TYPES, ...rawWorkTypesAw, ...rawWorkTypesPkg]))
@@ -60,15 +134,15 @@ export default async function TendersListPage({ searchParams }: Props) {
         .filter(Boolean)
         .sort() as string[];
 
-    const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const normalize = (s: string | null | undefined) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
     const workTypeMap = new Map<string, string>();
-    allApprovedWorks.forEach((aw: any) => {
+    allApprovedWorks.forEach((aw) => {
         if (aw.workName) {
             workTypeMap.set(normalize(aw.workName), aw.workType || '');
         }
     });
     
-    const query: any = {};
+    const query: MongoFilter = {};
     const filterLabels: string[] = [];
 
     const dashboardFilter = await buildDashboardFilter(params);
@@ -85,11 +159,11 @@ export default async function TendersListPage({ searchParams }: Props) {
             ]
         }).distinct('tenderId');
         query.proposalDate = null;
-        query._id = { ...query._id, $nin: approvalsWithProposal.map((id: any) => id.toString()) };
+        query._id = { ...((query._id ?? {}) as Record<string, unknown>), $nin: approvalsWithProposal.map(toIdStr) };
         query.cancelled = { $ne: true };
         // Exclude tenders that do not require approval (tender amount < 5,000,000)
         query.$and = [
-            ...(query.$and || []),
+            ...(Array.isArray(query.$and) ? (query.$and as MongoFilter[]) : []),
             {
                 $or: [
                     { estimatedAmount: { $gte: 5000000 } },
@@ -112,8 +186,8 @@ export default async function TendersListPage({ searchParams }: Props) {
         }).distinct('tenderId');
         const tendersWithProposalDate = await Tender.find({ proposalDate: { $ne: null } }).distinct('_id');
         const allTendersWithProposal = Array.from(new Set([
-            ...tendersWithProposalDate.map((id: any) => id.toString()),
-            ...approvalsWithProposal.map((id: any) => id.toString())
+            ...tendersWithProposalDate.map(toIdStr),
+            ...approvalsWithProposal.map(toIdStr)
         ]));
         const approvalsWithApproval = await Approval.find({
             $or: [
@@ -123,14 +197,14 @@ export default async function TendersListPage({ searchParams }: Props) {
         }).distinct('tenderId');
         query.tenderApprovalDate = null;
         query._id = { 
-            ...query._id, 
+            ...((query._id ?? {}) as Record<string, unknown>), 
             $in: allTendersWithProposal, 
-            $nin: approvalsWithApproval.map((id: any) => id.toString()) 
+            $nin: approvalsWithApproval.map(toIdStr) 
         };
         query.cancelled = { $ne: true };
         // Exclude tenders that do not require approval (tender amount < 5,000,000)
         query.$and = [
-            ...(query.$and || []),
+            ...(Array.isArray(query.$and) ? (query.$and as MongoFilter[]) : []),
             {
                 $or: [
                     { estimatedAmount: { $gte: 5000000 } },
@@ -165,18 +239,18 @@ export default async function TendersListPage({ searchParams }: Props) {
         }).distinct('_id');
         
         const tendersApproved = Array.from(new Set([
-            ...tendersWithApprovalDate.map((id: any) => id.toString()),
-            ...approvalsWithApproval.map((id: any) => id.toString()),
-            ...lowPriceTenders.map((id: any) => id.toString())
+            ...tendersWithApprovalDate.map(toIdStr),
+            ...approvalsWithApproval.map(toIdStr),
+            ...lowPriceTenders.map(toIdStr)
         ]));
         const tendersWithLoaDocs = await LOA.find().distinct('tenderId');
         const tendersWithLoaDate = await Tender.find({ acceptanceLetterDate: { $ne: null } }).distinct('_id');
         const tendersWithLoaAll = Array.from(new Set([
-            ...tendersWithLoaDocs.map((id: any) => id.toString()),
-            ...tendersWithLoaDate.map((id: any) => id.toString())
+            ...tendersWithLoaDocs.map(toIdStr),
+            ...tendersWithLoaDate.map(toIdStr)
         ]));
         query._id = { 
-            ...query._id, 
+            ...((query._id ?? {}) as Record<string, unknown>), 
             $in: tendersApproved, 
             $nin: tendersWithLoaAll 
         };
@@ -186,18 +260,18 @@ export default async function TendersListPage({ searchParams }: Props) {
         const tendersWithLoaDocs = await LOA.find().distinct('tenderId');
         const tendersWithLoaDate = await Tender.find({ acceptanceLetterDate: { $ne: null } }).distinct('_id');
         const tendersWithLoaAll = Array.from(new Set([
-            ...tendersWithLoaDocs.map((id: any) => id.toString()),
-            ...tendersWithLoaDate.map((id: any) => id.toString())
+            ...tendersWithLoaDocs.map(toIdStr),
+            ...tendersWithLoaDate.map(toIdStr)
         ]));
         const loaWithWorkOrder = await WorkOrder.find().distinct('loaId');
         const tendersWithWorkOrderDocs = await LOA.find({ _id: { $in: loaWithWorkOrder } }).distinct('tenderId');
         const tendersWithWorkOrderDate = await Tender.find({ workOrderDate: { $ne: null } }).distinct('_id');
         const tendersWithWorkOrderAll = Array.from(new Set([
-            ...tendersWithWorkOrderDocs.map((id: any) => id.toString()),
-            ...tendersWithWorkOrderDate.map((id: any) => id.toString())
+            ...tendersWithWorkOrderDocs.map(toIdStr),
+            ...tendersWithWorkOrderDate.map(toIdStr)
         ]));
         query._id = { 
-            ...query._id, 
+            ...((query._id ?? {}) as Record<string, unknown>), 
             $in: tendersWithLoaAll, 
             $nin: tendersWithWorkOrderAll 
         };
@@ -234,7 +308,7 @@ export default async function TendersListPage({ searchParams }: Props) {
         return `${d}/${m}/${y}`;
     };
 
-    const dateRange: any = {};
+    const dateRange: { $gte?: Date; $lte?: Date } = {};
     if (fromBoundStr) {
         const [y, m, d] = fromBoundStr.split('-').map(Number);
         dateRange.$gte = new Date(y, m - 1, d);
@@ -250,34 +324,37 @@ export default async function TendersListPage({ searchParams }: Props) {
                 Tender.find({ proposalDate: dateRange }).distinct('_id'),
                 Approval.find({ proposalDate: dateRange }).distinct('tenderId'),
             ]);
-            const dateIdSet = new Set([...tIds, ...aIds].map((id: any) => id.toString()));
-            const curIn = Array.isArray((query._id as any)?.$in)
-                ? ((query._id as any).$in as any[]).map((id: any) => id.toString())
+            const dateIdSet = new Set([...tIds, ...aIds].map(toIdStr));
+            const queryIdFilter = query._id as { $in?: unknown } | undefined;
+            const curIn = Array.isArray(queryIdFilter?.$in)
+                ? ((queryIdFilter.$in as unknown[]).map(toIdStr))
                 : null;
             const intersected = curIn ? curIn.filter((id) => dateIdSet.has(id)) : [...dateIdSet];
-            query._id = { ...query._id, $in: intersected };
+            query._id = { ...((query._id ?? {}) as Record<string, unknown>), $in: intersected };
         } else if (params.filter === 'pending_loa') {
             const [tIds, aIds] = await Promise.all([
                 Tender.find({ tenderApprovalDate: dateRange }).distinct('_id'),
                 Approval.find({ tenderApprovalDate: dateRange }).distinct('tenderId'),
             ]);
-            const dateIdSet = new Set([...tIds, ...aIds].map((id: any) => id.toString()));
-            const curIn = Array.isArray((query._id as any)?.$in)
-                ? ((query._id as any).$in as any[]).map((id: any) => id.toString())
+            const dateIdSet = new Set([...tIds, ...aIds].map(toIdStr));
+            const queryIdFilter = query._id as { $in?: unknown } | undefined;
+            const curIn = Array.isArray(queryIdFilter?.$in)
+                ? ((queryIdFilter.$in as unknown[]).map(toIdStr))
                 : null;
             const intersected = curIn ? curIn.filter((id) => dateIdSet.has(id)) : [...dateIdSet];
-            query._id = { ...query._id, $in: intersected };
+            query._id = { ...((query._id ?? {}) as Record<string, unknown>), $in: intersected };
         } else if (params.filter === 'pending_work_order') {
             const [tIds, loaTenderIds] = await Promise.all([
                 Tender.find({ acceptanceLetterDate: dateRange }).distinct('_id'),
                 LOA.find({ acceptanceLetterDate: dateRange }).distinct('tenderId'),
             ]);
-            const dateIdSet = new Set([...tIds, ...loaTenderIds].map((id: any) => id.toString()));
-            const curIn = Array.isArray((query._id as any)?.$in)
-                ? ((query._id as any).$in as any[]).map((id: any) => id.toString())
+            const dateIdSet = new Set([...tIds, ...loaTenderIds].map(toIdStr));
+            const queryIdFilter = query._id as { $in?: unknown } | undefined;
+            const curIn = Array.isArray(queryIdFilter?.$in)
+                ? ((queryIdFilter.$in as unknown[]).map(toIdStr))
                 : null;
             const intersected = curIn ? curIn.filter((id) => dateIdSet.has(id)) : [...dateIdSet];
-            query._id = { ...query._id, $in: intersected };
+            query._id = { ...((query._id ?? {}) as Record<string, unknown>), $in: intersected };
         } else {
             query[DATE_ANCHOR_FIELD] = dateRange;
         }
@@ -294,11 +371,11 @@ export default async function TendersListPage({ searchParams }: Props) {
         ];
     }
 
-    const packageFilters: any[] = [];
+    const packageFilters: MongoFilter[] = [];
 
     if (isAuditor && auditorSubDivision) {
         const worksInAuditorSubDiv = await ApprovedWork.find({ subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } }).select('workName').lean();
-        const workNames = worksInAuditorSubDiv.map((aw: any) => aw.workName).filter(Boolean);
+        const workNames = worksInAuditorSubDiv.map((aw) => aw.workName).filter(Boolean);
         packageFilters.push({
             $or: [
                 { subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } },
@@ -312,7 +389,7 @@ export default async function TendersListPage({ searchParams }: Props) {
 
     if (params.subDivision) {
         const worksInSubDiv = await ApprovedWork.find({ subDivision: params.subDivision }).select('workName').lean();
-        const workNames = worksInSubDiv.map((aw: any) => aw.workName).filter(Boolean);
+        const workNames = worksInSubDiv.map((aw) => aw.workName).filter(Boolean);
         packageFilters.push({
             $or: [
                 { subDivision: params.subDivision },
@@ -326,7 +403,7 @@ export default async function TendersListPage({ searchParams }: Props) {
         const selectedWorkTypes = params.workType.split(',').filter(Boolean);
         if (selectedWorkTypes.length > 0) {
             const worksInWorkType = await ApprovedWork.find({ workType: { $in: selectedWorkTypes } }).select('workName').lean();
-            const workNames = worksInWorkType.map((aw: any) => aw.workName).filter(Boolean);
+            const workNames = worksInWorkType.map((aw) => aw.workName).filter(Boolean);
             packageFilters.push({
                 $or: [
                     { workType: { $in: selectedWorkTypes } },
@@ -341,7 +418,7 @@ export default async function TendersListPage({ searchParams }: Props) {
         const selectedBuildingTypes = params.buildingType.split(',').filter(Boolean);
         if (selectedBuildingTypes.length > 0) {
             const worksInBuildingType = await ApprovedWork.find({ buildingType: { $in: selectedBuildingTypes } }).select('workName').lean();
-            const workNames = worksInBuildingType.map((aw: any) => aw.workName).filter(Boolean);
+            const workNames = worksInBuildingType.map((aw) => aw.workName).filter(Boolean);
             packageFilters.push({
                 $or: [
                     { buildingType: { $in: selectedBuildingTypes } },
@@ -354,9 +431,10 @@ export default async function TendersListPage({ searchParams }: Props) {
 
     if (packageFilters.length > 0) {
         const matchingPackages = await Package.find({ $and: packageFilters }).distinct('_id');
-        const matchingPkgIdStrs = matchingPackages.map((id: any) => id.toString());
-        if (query.packageId && query.packageId.$in) {
-            const existingSet = new Set((query.packageId.$in as any[]).map((id: any) => id.toString()));
+        const matchingPkgIdStrs = matchingPackages.map(toIdStr);
+        const pkgFilter = query.packageId as { $in?: unknown } | undefined;
+        if (query.packageId && Array.isArray(pkgFilter?.$in)) {
+            const existingSet = new Set(((pkgFilter.$in as unknown[]).map(toIdStr)));
             const intersected = matchingPkgIdStrs.filter(idStr => existingSet.has(idStr));
             query.packageId = { $in: intersected };
         } else {
@@ -382,7 +460,7 @@ export default async function TendersListPage({ searchParams }: Props) {
     }
 
     const { page, limit, skip } = parsePagination(params);
-    let sortObj: any = {};
+    const sortObj: Record<string, 1 | -1> = {};
     if (params.sort && params.order && params.sort !== 'workType' && params.sort !== 'contractorMobile' && params.sort !== 'noOfRoads') {
         const orderVal = params.order === 'asc' ? 1 : -1;
         const dbSortField = params.sort === 'tenderSrNo' ? 'srNo' : params.sort;
@@ -391,13 +469,15 @@ export default async function TendersListPage({ searchParams }: Props) {
         if (dbSortField !== 'noticeNo') sortObj.noticeNo = 1;
         if (dbSortField !== 'srNo') sortObj.srNo = 1;
     } else {
-        sortObj = { tenderNoticeYear: -1, noticeNo: 1, srNo: 1 };
+        sortObj.tenderNoticeYear = -1;
+        sortObj.noticeNo = 1;
+        sortObj.srNo = 1;
     }
 
-    const totalItems = await Tender.countDocuments(query);
+    const totalItems = await Tender.countDocuments(query as unknown as Parameters<typeof Tender.countDocuments>[0]);
     const totalPages = Math.ceil(totalItems / limit);
 
-    const tendersRaw = await Tender.find(query)
+    const tendersRaw = await Tender.find(query as unknown as Parameters<typeof Tender.find>[0])
         .populate({ path: 'packageId', select: 'works.workName workType', model: Package })
         .collation({ locale: "en_US", numericOrdering: true })
         .sort(sortObj)
@@ -405,33 +485,33 @@ export default async function TendersListPage({ searchParams }: Props) {
         .limit(limit)
         .lean();
 
-    const tenderIds = tendersRaw.map((t: any) => t._id);
+    const tenderIds = tendersRaw.map((t) => t._id.toString());
 
     const [approvals, loas] = await Promise.all([
         Approval.find({ tenderId: { $in: tenderIds } }).select('tenderId notRequired proposalDate tenderApprovalDate').lean(),
         LOA.find({ tenderId: { $in: tenderIds } }).select('_id tenderId acceptanceLetterDate').lean()
     ]);
 
-    const loaIds = loas.map((l: any) => l._id);
+    const loaIds = loas.map((l) => l._id.toString());
     const workOrders = await WorkOrder.find({ loaId: { $in: loaIds } }).select('loaId workOrderDate').lean();
 
-    const approvalMap = new Map(approvals.map((a: any) => [a.tenderId?.toString(), a]));
-    const loaMap = new Map(loas.map((l: any) => [l.tenderId?.toString(), l]));
-    const workOrderMap = new Map(workOrders.map((wo: any) => [wo.loaId?.toString(), wo]));
+    const approvalMap = new Map(approvals.map((a) => [a.tenderId?.toString(), a]));
+    const loaMap = new Map(loas.map((l) => [l.tenderId?.toString(), l]));
+    const workOrderMap = new Map(workOrders.map((wo) => [wo.loaId?.toString(), wo]));
 
-    const tenders = tendersRaw.map((t: any) => {
+    const tenders: TenderRow[] = tendersRaw.map((t) => {
         const tIdStr = t._id.toString();
         const approval = approvalMap.get(tIdStr);
         const loa = loaMap.get(tIdStr);
         const workOrder = loa ? workOrderMap.get(loa._id.toString()) : null;
 
-        const pkg = t.packageId;
+        const pkg = (t.packageId ?? null) as unknown as PkgRef | null;
         const noOfRoads = pkg?.works && Array.isArray(pkg.works) && pkg.works.length > 0 ? pkg.works.length : 1;
         const firstWorkName = pkg?.works && pkg.works[0]?.workName;
         const normalizedKey = firstWorkName ? normalize(firstWorkName) : '';
         const inferredWorkType = normalizedKey ? workTypeMap.get(normalizedKey) : '';
         const workType = pkg?.workType || inferredWorkType || '-';
-        const contractorMobile = (t.contractorName && agencyMobileMap.get(t.contractorName)) || (t as any).contractorMobile || '-';
+        const contractorMobile = (t.contractorName && agencyMobileMap.get(t.contractorName)) || (t as unknown as { contractorMobile?: string }).contractorMobile || '-';
 
         const isApprovalNotRequired = approval?.notRequired === true || (
             (t.estimatedAmount !== undefined && t.estimatedAmount !== null)
@@ -456,7 +536,7 @@ export default async function TendersListPage({ searchParams }: Props) {
             // Bidders cross the server→client boundary into ViewBiddersModalButton:
             // strip Mongoose ObjectIds (rejected by RSC serialization) down to
             // plain JSON with only the fields the modal renders.
-            bidders: (t.bidders || []).map((b: any) => ({
+            bidders: (t.bidders || []).map((b) => ({
                 rank: b.rank ?? '',
                 contractorName: b.contractorName ?? '',
                 aboveBelow: b.aboveBelow ?? '',
@@ -468,21 +548,21 @@ export default async function TendersListPage({ searchParams }: Props) {
 
     if (params.sort === 'workType' && params.order) {
         const orderVal = params.order === 'asc' ? 1 : -1;
-        tenders.sort((a: any, b: any) => {
+        tenders.sort((a: TenderRow, b: TenderRow) => {
             const valA = (a.workType || '').toString();
             const valB = (b.workType || '').toString();
             return valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' }) * orderVal;
         });
     } else if (params.sort === 'contractorMobile' && params.order) {
         const orderVal = params.order === 'asc' ? 1 : -1;
-        tenders.sort((a: any, b: any) => {
+        tenders.sort((a: TenderRow, b: TenderRow) => {
             const valA = (a.contractorMobile || '').toString();
             const valB = (b.contractorMobile || '').toString();
             return valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' }) * orderVal;
         });
     } else if (params.sort === 'noOfRoads' && params.order) {
         const orderVal = params.order === 'asc' ? 1 : -1;
-        tenders.sort((a: any, b: any) => {
+        tenders.sort((a: TenderRow, b: TenderRow) => {
             const valA = typeof a.noOfRoads === 'number' ? a.noOfRoads : 1;
             const valB = typeof b.noOfRoads === 'number' ? b.noOfRoads : 1;
             return (valA - valB) * orderVal;
@@ -531,8 +611,8 @@ export default async function TendersListPage({ searchParams }: Props) {
             width: '65px',
             sortable: true,
             cellClassName: 'whitespace-nowrap text-center',
-            footer: (rows: any[]) => {
-                const total = rows.reduce((sum: number, r: any) => sum + (typeof r.noOfRoads === 'number' ? r.noOfRoads : 1), 0);
+            footer: (rows: TenderRow[]) => {
+                const total = rows.reduce((sum: number, r: TenderRow) => sum + (typeof r.noOfRoads === 'number' ? r.noOfRoads : 1), 0);
                 return (
                     <span className="inline-flex items-center justify-center min-w-[24px] px-2 py-0.5 text-xs font-black rounded-md bg-emerald-600 text-white shadow-xs">
                         {total}

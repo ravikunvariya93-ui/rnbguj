@@ -19,7 +19,7 @@ export default async function EditPackagePage({ params }: { params: Promise<{ id
     }
 
     // Convert _id and nestedObjectIds to strings for serialization
-    const works = (pkg.works || []).map((w: any) => ({
+    const works = (pkg.works || []).map((w) => ({
         ...w,
         workId: w.workId ? w.workId.toString() : w.workId,
         _id: w._id ? w._id.toString() : undefined
@@ -27,8 +27,8 @@ export default async function EditPackagePage({ params }: { params: Promise<{ id
 
     const serializedPackage = {
         ...pkg,
-        _id: (pkg._id as any).toString(),
-        approvedWorkId: (pkg as any).approvedWorkId?.toString(), // Legacy field check
+        _id: pkg._id.toString(),
+        approvedWorkId: (pkg as unknown as { approvedWorkId?: { toString(): string } | string }).approvedWorkId?.toString(), // Legacy field check
         works: works
     };
 

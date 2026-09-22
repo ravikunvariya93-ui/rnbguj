@@ -63,8 +63,8 @@ export default function FileEditButton({
             if (!res.ok) throw new Error('Failed to save file details.');
             setOpen(false);
             router.refresh();
-        } catch (err: any) {
-            setError(err.message || 'Failed to save file details.');
+        } catch (err: unknown) {
+            setError(err instanceof Error && err.message ? err.message : 'Failed to save file details.');
         } finally {
             setSaving(false);
         }

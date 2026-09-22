@@ -80,8 +80,9 @@ export default function ProfilePage() {
     );
   }
 
-  const user = session.user as any;
-  const roleLabel = ROLE_LABELS[user.role] || user.role;
+  const user = session.user as { role?: string; name?: string | null; username?: string };
+  const userRole = user.role ?? '';
+  const roleLabel = ROLE_LABELS[userRole] || user.role;
   const auditorSubDivision = getAuditorSubDivision(user.role);
   const roleBadgeClass =
     user.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' :

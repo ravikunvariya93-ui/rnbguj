@@ -3,8 +3,16 @@
 import React, { useState } from 'react';
 import { Users, X } from 'lucide-react';
 
+interface Bidder {
+    rank?: string;
+    contractorName?: string;
+    aboveBelow?: string;
+    percentage?: number | string;
+    totalAmount?: number | string;
+}
+
 interface ViewBiddersModalButtonProps {
-    bidders: any[];
+    bidders: Bidder[];
     tenderId?: string;
     packageName?: string;
     contractorName?: string;
@@ -69,7 +77,7 @@ export default function ViewBiddersModalButton({
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-emerald-100">
-                                            {bidders.map((b: any, idx: number) => {
+                                            {bidders.map((b: Bidder, idx: number) => {
                                                 const isWinner = b.rank === 'L1' || (contractorName && b.contractorName === contractorName);
                                                 return (
                                                     <tr key={idx} className={`transition-colors ${isWinner ? 'bg-emerald-50/70 font-semibold' : (idx % 2 === 0 ? 'bg-white' : 'bg-emerald-50/20')} hover:bg-emerald-100/50`}>

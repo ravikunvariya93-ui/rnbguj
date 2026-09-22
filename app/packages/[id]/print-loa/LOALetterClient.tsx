@@ -5,14 +5,51 @@ import Link from 'next/link';
 import { ArrowLeft, Printer, Download, Edit3 } from 'lucide-react';
 import { formatDate, getISTYear } from '@/lib/dateUtils';
 
+interface LOAPackage {
+    _id?: string;
+    packageName?: string;
+    subDivision?: string;
+}
+
+interface LOATender {
+    tenderId?: string;
+    packageName?: string;
+    contractorName?: string;
+    contractPrice?: number;
+    estimatedAmount?: number;
+    aboveBelowPercentage?: number;
+    aboveBelowInWord?: string;
+    additionalSecurityDepositAmount?: number;
+    securityDepositAmount?: number;
+    workDurationMonths?: number;
+    tenderApprovalNo?: string;
+    tenderApprovalOffice?: string;
+    tenderApprovalDate?: string;
+    tenderCreationDate?: string;
+    taluka?: string;
+    notRequired?: boolean;
+}
+
+interface LOALetter {
+    acceptanceLetterWorksheetNo?: string;
+    acceptanceLetterDate?: string;
+    workDurationMonths?: number;
+    stampDuty?: number;
+}
+
+interface LOAAgency {
+    address?: string;
+    mobileNo?: string;
+}
+
 interface LOALetterClientProps {
-    packageData: any;
-    tender: any;
-    loa: any;
-    workOrder: any;
-    agency: any;
-    approval: any;
-    dtp: any;
+    packageData: LOAPackage;
+    tender: LOATender;
+    loa: LOALetter;
+    workOrder: Record<string, unknown> | null;
+    agency: LOAAgency | null;
+    approval: Record<string, unknown> | null;
+    dtp: Record<string, unknown> | null;
 }
 
 function numberToIndianWords(num: number): string {
@@ -108,7 +145,7 @@ function wrapAddress(address: string) {
     return lines.join('\n');
 }
 
-function calculateAdditionalSecurity(tender: any) {
+function calculateAdditionalSecurity(tender: LOATender) {
     const savedAmount = Number(tender.additionalSecurityDepositAmount) || 0;
     if (savedAmount > 0) return savedAmount;
 
@@ -157,8 +194,8 @@ export default function LOALetterClient({ packageData, tender, loa, agency }: LO
         const filename = 'LOA_Letter.doc';
         const downloadLink = document.createElement('a');
         document.body.appendChild(downloadLink);
-        if ((navigator as any).msSaveOrOpenBlob) {
-            (navigator as any).msSaveOrOpenBlob(blob, filename);
+        if ((navigator as unknown as { msSaveOrOpenBlob?: (blob: Blob, filename: string) => void }).msSaveOrOpenBlob) {
+            (navigator as unknown as { msSaveOrOpenBlob?: (blob: Blob, filename: string) => void }).msSaveOrOpenBlob?.(blob, filename);
         } else {
             downloadLink.href = url;
             downloadLink.download = filename;

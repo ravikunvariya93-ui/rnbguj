@@ -14,19 +14,19 @@ export async function GET(req: NextRequest) {
         const packageId = searchParams.get('packageId');
         const refundType = searchParams.get('refundType');
 
-        const query: any = {};
+        const query: { packageId?: string; refundType?: string } = {};
         if (packageId) query.packageId = packageId;
         if (refundType) query.refundType = refundType;
 
-        const refunds = await DepositRefund.find(query)
+        const refunds = await DepositRefund.find(query as unknown as Parameters<typeof DepositRefund.find>[0])
             .populate('packageId', 'packageName subDivision')
             .sort({ orderDate: -1, createdAt: -1 })
             .lean();
 
         return NextResponse.json({ success: true, data: refunds });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Failed to fetch deposit refunds:', error);
-        return NextResponse.json({ success: false, error: error.message || 'Failed to fetch deposit refunds' }, { status: 500 });
+        return NextResponse.json({ success: false, error: error instanceof Error && error.message ? error.message : 'Failed to fetch deposit refunds' }, { status: 500 });
     }
 }
 
@@ -39,7 +39,22 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'Package ID is required' }, { status: 400 });
         }
 
-        const refundData: any = {
+        const refundData: {
+            packageId: string;
+            workOrderId?: string;
+            refundType: string;
+            orderNo?: string;
+            orderDate?: Date;
+            applicationRef?: string;
+            applicationDate?: Date;
+            actualCompletionDate?: Date;
+            bankName?: string;
+            fdrNumber?: string;
+            fdrDate?: Date;
+            amount?: number;
+            status: string;
+            remarks?: string;
+        } = {
             packageId: body.packageId,
             workOrderId: body.workOrderId || undefined,
             refundType: body.refundType || 'Additional SD',
@@ -66,13 +81,13 @@ export async function POST(req: NextRequest) {
             if (existing) {
                 refund = await DepositRefund.findByIdAndUpdate(existing._id, refundData, { new: true, runValidators: true });
             } else {
-                refund = await DepositRefund.create(refundData);
+                refund = await DepositRefund.create(refundData as unknown as Parameters<typeof DepositRefund.create>[0]);
             }
         }
 
         return NextResponse.json({ success: true, data: refund }, { status: 201 });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Failed to save deposit refund:', error);
-        return NextResponse.json({ success: false, error: error.message || 'Failed to save deposit refund' }, { status: 500 });
+        return NextResponse.json({ success: false, error: error instanceof Error && error.message ? error.message : 'Failed to save deposit refund' }, { status: 500 });
     }
 }

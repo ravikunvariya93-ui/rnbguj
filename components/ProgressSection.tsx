@@ -57,8 +57,9 @@ export function calcDelayDays(stipulated?: string | Date | null, actual?: string
 
 export default function ProgressSection({ packageId, works, stipulatedCompletionDate, actualCompletionDate }: ProgressSectionProps) {
     const { data: session } = useSession();
-    const role = (session?.user as any)?.role as string | undefined;
-    const userName = (session?.user as any)?.name as string | undefined;
+    const sessionUser = session?.user as { role?: string; name?: string } | undefined;
+    const role = sessionUser?.role;
+    const userName = sessionUser?.name;
     const canWrite = !!role && PROGRESS_WRITE_ROLES.includes(role);
     const canDelete = !!role && PROGRESS_DELETE_ROLES.includes(role);
 
@@ -226,8 +227,8 @@ export default function ProgressSection({ packageId, works, stipulatedCompletion
             setGpsState('idle');
             setShowForm(false);
             fetchEntries();
-        } catch (err: any) {
-            setFormError(err?.message || 'Failed to save entry');
+        } catch (err: unknown) {
+            setFormError(err instanceof Error && err.message ? err.message : 'Failed to save entry');
         } finally {
             setSaving(false);
             setUploading(false);

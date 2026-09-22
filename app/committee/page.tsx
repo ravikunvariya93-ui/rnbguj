@@ -19,6 +19,66 @@ import { formatDate, parseDateStr } from '@/lib/dateUtils';
 
 export const dynamic = 'force-dynamic';
 
+type LeanId = { toString(): string };
+interface WorkNameDoc {
+    workName?: string;
+    subDivision?: string;
+    workType?: string;
+    budgetHead?: string;
+    [key: string]: unknown;
+}
+interface PkgWorkEntry {
+    workName?: string;
+    amount?: number;
+    [key: string]: unknown;
+}
+interface PkgLean {
+    _id: LeanId;
+    subDivision?: string;
+    workType?: string;
+    budgetHead?: string;
+    committee?: string;
+    committeeDate?: unknown;
+    estimatedAmount?: number;
+    works?: PkgWorkEntry[];
+    createdAt?: string | Date;
+    [key: string]: unknown;
+}
+interface BidderEntry {
+    percentage?: number;
+    aboveBelow?: string;
+    [key: string]: unknown;
+}
+interface TenderLean {
+    _id: LeanId;
+    packageId?: LeanId | string | null;
+    acceptanceLetterDate?: Date | string | null;
+    contractorName?: string;
+    estimatedAmount?: number;
+    contractPrice?: number;
+    aboveBelowPercentage?: number;
+    aboveBelowInWord?: string;
+    bidders?: BidderEntry[];
+    [key: string]: unknown;
+}
+interface LoaLean {
+    tenderId?: LeanId | null;
+    acceptanceLetterDate?: Date | null;
+    [key: string]: unknown;
+}
+interface DtpLean {
+    tsId?: LeanId | null;
+    tenderAmount?: number;
+    [key: string]: unknown;
+}
+interface ResolvedPkg {
+    _id: string;
+    createdAt?: unknown;
+    [key: string]: unknown;
+}
+type MongoFilter = Record<string, unknown>;
+const toIdStr = (id: unknown): string => String(id);
+
 interface Props {
     searchParams: Promise<ListPageSearchParams>;
 }
@@ -26,7 +86,7 @@ interface Props {
 export default async function CommitteeListPage({ searchParams }: Props) {
     await dbConnect();
     const session = await auth();
-    const userRole = (session?.user as any)?.role;
+    const userRole = (session?.user as { role?: string } | undefined)?.role;
     const auditorSubDivision = getAuditorSubDivision(userRole);
     const isAuditor = isAuditorRole(userRole);
 
@@ -46,7 +106,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
     const budgetHeads = Array.from(new Set(['Pending', ...budgetHeadsPkg, ...budgetHeadsAw])).filter(Boolean).sort() as string[];
 
     const filterLabels: string[] = [];
-    const baseConditions: any[] = [];
+    const baseConditions: MongoFilter[] = [];
 
     if (params.committeeType) {
         if (params.committeeType === 'Not Determined') {
@@ -66,7 +126,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
 
     if (params.subDivision) {
         const worksInSubDiv = await ApprovedWork.find({ subDivision: params.subDivision }).select('workName').lean();
-        const workNamesInSubDiv = worksInSubDiv.map((aw: any) => aw.workName).filter(Boolean);
+        const workNamesInSubDiv = worksInSubDiv.map((aw) => aw.workName).filter(Boolean);
         baseConditions.push({
             $or: [
                 { subDivision: params.subDivision },
@@ -80,7 +140,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         const worksWithWorkType = await ApprovedWork.find({
             workType: { $exists: true, $ne: null, $nin: ['', 'Pending'] }
         }).select('workName').lean();
-        const workNamesWithWorkType = worksWithWorkType.map((aw: any) => aw.workName).filter(Boolean);
+        const workNamesWithWorkType = worksWithWorkType.map((aw) => aw.workName).filter(Boolean);
         baseConditions.push({
             $and: [
                 {
@@ -99,7 +159,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         filterLabels.push('Work Type: Pending');
     } else if (params.workType) {
         const worksInWorkType = await ApprovedWork.find({ workType: params.workType }).select('workName').lean();
-        const workNamesInWorkType = worksInWorkType.map((aw: any) => aw.workName).filter(Boolean);
+        const workNamesInWorkType = worksInWorkType.map((aw) => aw.workName).filter(Boolean);
         baseConditions.push({
             $or: [
                 { workType: params.workType },
@@ -118,7 +178,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
                 { budgetHead: '' }
             ]
         }).select('workName').lean();
-        const workNamesInBudgetHead = worksInBudgetHead.map((aw: any) => aw.workName).filter(Boolean);
+        const workNamesInBudgetHead = worksInBudgetHead.map((aw) => aw.workName).filter(Boolean);
         baseConditions.push({
             $or: [
                 { budgetHead: 'Pending' },
@@ -131,7 +191,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         filterLabels.push('Budget Head: Pending');
     } else if (params.budgetHead) {
         const worksInBudgetHead = await ApprovedWork.find({ budgetHead: params.budgetHead }).select('workName').lean();
-        const workNamesInBudgetHead = worksInBudgetHead.map((aw: any) => aw.workName).filter(Boolean);
+        const workNamesInBudgetHead = worksInBudgetHead.map((aw) => aw.workName).filter(Boolean);
         baseConditions.push({
             $or: [
                 { budgetHead: params.budgetHead },
@@ -143,7 +203,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
 
     if (isAuditor && auditorSubDivision) {
         const worksInAuditorSubDiv = await ApprovedWork.find({ subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } }).select('workName').lean();
-        const workNamesInAuditorSubDiv = worksInAuditorSubDiv.map((aw: any) => aw.workName).filter(Boolean);
+        const workNamesInAuditorSubDiv = worksInAuditorSubDiv.map((aw) => aw.workName).filter(Boolean);
         baseConditions.push({
             $or: [
                 { subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } },
@@ -155,15 +215,15 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         }
     }
 
-    let packageIdsWithLoa: any[] = [];
+    let packageIdsWithLoa: unknown[] = [];
     let loaFetched = false;
     const getPackageIdsWithLoa = async () => {
         if (!loaFetched) {
             const tendersWithLoaDocs = await LOA.find().distinct('tenderId');
             const tendersWithLoaDate = await Tender.find({ acceptanceLetterDate: { $ne: null } }).distinct('_id');
             const tendersWithLoaAll = Array.from(new Set([
-                ...tendersWithLoaDocs.map((id: any) => id.toString()),
-                ...tendersWithLoaDate.map((id: any) => id.toString())
+                ...tendersWithLoaDocs.map(toIdStr),
+                ...tendersWithLoaDate.map(toIdStr)
             ]));
             packageIdsWithLoa = await Tender.find({
                 _id: { $in: tendersWithLoaAll },
@@ -176,7 +236,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
     };
 
     const getPackageIdsWithLoaDateRange = async (fromStr?: string, toStr?: string) => {
-        const dateQuery: any = {};
+        const dateQuery: { $gte?: Date; $lte?: Date } = {};
         if (fromStr) {
             const fromD = parseDateStr(fromStr) || new Date(fromStr);
             if (!isNaN(fromD.getTime())) {
@@ -196,8 +256,8 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         const matchingTendersWithDate = await Tender.find({ acceptanceLetterDate: dateQuery }).distinct('_id');
 
         const allMatchingTenderIds = Array.from(new Set([
-            ...matchingLoas.map((id: any) => id.toString()),
-            ...matchingTendersWithDate.map((id: any) => id.toString())
+            ...matchingLoas.map(toIdStr),
+            ...matchingTendersWithDate.map(toIdStr)
         ]));
 
         const matchingPackageIds = await Tender.find({
@@ -232,7 +292,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         filterLabels.push('LOA: Not Given');
     }
 
-    const andConditions: any[] = [...baseConditions];
+    const andConditions: MongoFilter[] = [...baseConditions];
 
     // Filter tabs
     if (params.filter === 'pending_date') {
@@ -271,41 +331,41 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         filterLabels.push('Not Determined');
     }
 
-    const query: any = {};
+    const query: MongoFilter = {};
     if (andConditions.length > 0) {
         query.$and = andConditions;
     }
 
     if (params.search) {
-        const searchCond = {
+        const searchCond: MongoFilter = {
             $or: [
                 { packageName: { $regex: params.search, $options: 'i' } }
             ]
         };
-        if (query.$and) {
-            query.$and.push(searchCond);
+        if (Array.isArray(query.$and)) {
+            (query.$and as MongoFilter[]).push(searchCond);
         } else {
             query.$and = [searchCond];
         }
     }
 
-    const baseSearchQuery: any = {};
+    const baseSearchQuery: MongoFilter = {};
     if (params.search) {
         baseSearchQuery.$or = [
             { packageName: { $regex: params.search, $options: 'i' } }
         ];
     }
 
-    const buildCountQuery = (extraCondition?: any) => {
+    const buildCountQuery = (extraCondition?: MongoFilter) => {
         const conditions = [...baseConditions];
         if (extraCondition) {
             conditions.push(extraCondition);
         }
-        const q: any = { ...baseSearchQuery };
+        const q: MongoFilter = { ...baseSearchQuery };
         if (conditions.length > 0) {
             q.$and = conditions;
         }
-        return q;
+        return q as unknown as Parameters<typeof Package.countDocuments>[0];
     };
 
     const filterLabel = filterLabels.length > 0
@@ -349,46 +409,46 @@ export default async function CommitteeListPage({ searchParams }: Props) {
                 { committee: 'Not Determined' }
             ]
         })),
-        Package.find(query).lean(),
-        ApprovedWork.find({}).select('workName subDivision workType budgetHead').lean() as Promise<any[]>,
+        Package.find(query as unknown as Parameters<typeof Package.find>[0]).lean(),
+        ApprovedWork.find({}).select('workName subDivision workType budgetHead').lean() as unknown as WorkNameDoc[],
         Tender.find({ cancelled: { $ne: true } }).select('_id packageId acceptanceLetterDate contractorName estimatedAmount contractPrice aboveBelowPercentage aboveBelowInWord bidders').lean(),
         LOA.find({}).select('tenderId acceptanceLetterDate').lean(),
         DTP.find({}).select('tsId tenderAmount').lean()
     ]);
 
-    const dtpMap = new Map<string, any>();
-    allDtps.forEach((d: any) => {
+    const dtpMap = new Map<string, (typeof allDtps)[number]>();
+    allDtps.forEach((d) => {
         if (d.tsId) {
             dtpMap.set(d.tsId.toString(), d);
         }
     });
 
     const loaByTenderId = new Map<string, Date>();
-    allLoas.forEach((l: any) => {
+    allLoas.forEach((l) => {
         if (l.tenderId && l.acceptanceLetterDate) {
             loaByTenderId.set(l.tenderId.toString(), l.acceptanceLetterDate);
         }
     });
 
     const loaMap = new Map<string, { acceptanceLetterDate?: Date }>();
-    const tenderMap = new Map<string, any>();
-    allTenders.forEach((t: any) => {
+    const tenderMap = new Map<string, (typeof allTenders)[number]>();
+    allTenders.forEach((t) => {
         if (t.packageId) {
             tenderMap.set(t.packageId.toString(), t);
             const date = loaByTenderId.get(t._id.toString()) || t.acceptanceLetterDate;
             if (date) {
-                loaMap.set(t.packageId.toString(), { acceptanceLetterDate: date });
+                loaMap.set(t.packageId.toString(), { acceptanceLetterDate: date as Date });
             } else if (loaByTenderId.has(t._id.toString())) {
                 loaMap.set(t.packageId.toString(), {});
             }
         }
     });
         
-    const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const normalize = (s: string | null | undefined) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
     const workSubDivisionMap = new Map<string, string>();
     const workTypeMap = new Map<string, string>();
     const workBudgetHeadMap = new Map<string, string>();
-    allApprovedWorks.forEach((aw: any) => {
+    allApprovedWorks.forEach((aw) => {
         if (aw.workName) {
             const key = normalize(aw.workName);
             workSubDivisionMap.set(key, aw.subDivision || '');
@@ -397,7 +457,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         }
     });
 
-    const allResolvedPackages = packagesRaw.map((p: any) => {
+    const allResolvedPackages: ResolvedPkg[] = packagesRaw.map((p) => {
         const firstWorkName = p.works && p.works[0]?.workName;
         const normalizedKey = firstWorkName ? normalize(firstWorkName) : '';
         const inferredSubDivision = normalizedKey ? workSubDivisionMap.get(normalizedKey) : '';
@@ -405,7 +465,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         
         let inferredBudgetHead = '';
         if (p.works && p.works.length > 0) {
-            const heads = p.works.map((w: any) => {
+            const heads = p.works.map((w) => {
                 const key = normalize(w.workName);
                 return workBudgetHeadMap.get(key) || '';
             }).filter(Boolean);
@@ -421,7 +481,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         const tender = tenderMap.get(p._id.toString());
         const dtp = dtpMap.get(p._id.toString());
 
-        const tenderAmount = dtp?.tenderAmount ?? tender?.estimatedAmount ?? p.estimatedAmount ?? (p.works && p.works.length > 0 ? p.works.reduce((acc: number, w: any) => acc + (w.amount || 0), 0) : null);
+        const tenderAmount = dtp?.tenderAmount ?? tender?.estimatedAmount ?? p.estimatedAmount ?? (p.works && p.works.length > 0 ? p.works.reduce((acc: number, w: PkgWorkEntry) => acc + (w.amount || 0), 0) : null);
         const contractorName = tender?.contractorName || '';
         const contractPrice = tender?.contractPrice ?? null;
         const aboveBelowPercentage = tender?.aboveBelowPercentage ?? (tender?.bidders && tender.bidders[0]?.percentage != null ? tender.bidders[0].percentage : null);
@@ -450,9 +510,9 @@ export default async function CommitteeListPage({ searchParams }: Props) {
     const sortOrder = params.order === 'desc' ? -1 : 1;
 
     if (sortField) {
-        allResolvedPackages.sort((a: any, b: any) => {
-            const valA = a[sortField];
-            const valB = b[sortField];
+        allResolvedPackages.sort((a: ResolvedPkg, b: ResolvedPkg) => {
+            const valA: unknown = a[sortField];
+            const valB: unknown = b[sortField];
 
             if (valA == null && valB == null) return 0;
             if (valA == null) return 1;
@@ -468,14 +528,14 @@ export default async function CommitteeListPage({ searchParams }: Props) {
                 return strA.localeCompare(strB) * sortOrder;
             }
 
-            if (valA < valB) return -1 * sortOrder;
-            if (valA > valB) return 1 * sortOrder;
+            if ((valA as number) < (valB as number)) return -1 * sortOrder;
+            if ((valA as number) > (valB as number)) return 1 * sortOrder;
             return 0;
         });
     } else {
-        allResolvedPackages.sort((a: any, b: any) => {
-            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        allResolvedPackages.sort((a: ResolvedPkg, b: ResolvedPkg) => {
+            const timeA = a.createdAt ? new Date(a.createdAt as string | number | Date).getTime() : 0;
+            const timeB = b.createdAt ? new Date(b.createdAt as string | number | Date).getTime() : 0;
             return timeB - timeA;
         });
     }
@@ -576,12 +636,12 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         }
     ];
 
-    const renderActions = (row: any) => (
+    const renderActions = (row) => (
         <div className="flex items-center justify-end space-x-3">
-            <Link href={`/packages/${row._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Package Details">
+            <Link href={`/packages/${String(row._id)}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Package Details">
                 <Eye className="w-5 h-5" />
             </Link>
-            <Link href={`/packages/${row._id}/edit`} className="text-emerald-600 hover:text-emerald-900 p-1" title="Edit Package">
+            <Link href={`/packages/${String(row._id)}/edit`} className="text-emerald-600 hover:text-emerald-900 p-1" title="Edit Package">
                 <Edit2 className="w-5 h-5" />
             </Link>
         </div>

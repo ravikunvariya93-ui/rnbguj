@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IApproval extends Document {
-    tenderId: any;
+    tenderId: mongoose.Schema.Types.ObjectId;
     notRequired?: boolean;
     proposalDate: Date;
     tenderApprovalOffice: string;

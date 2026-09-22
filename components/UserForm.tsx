@@ -4,8 +4,16 @@ import { useState, useEffect } from 'react';
 import { X, User, Lock, Shield, Briefcase, Loader2 } from 'lucide-react';
 import { ALL_ROLES } from '@/lib/roles';
 
+interface FormUser {
+    _id?: string;
+    name?: string;
+    username?: string;
+    role?: string;
+    designation?: string;
+}
+
 interface UserFormProps {
-    user?: any;
+    user?: FormUser;
     onClose: () => void;
     onSave: () => void;
 }
@@ -55,8 +63,8 @@ export default function UserForm({ user, onClose, onSave }: UserFormProps) {
 
             onSave();
             onClose();
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to save user');
             setLoading(false);
         }
     };

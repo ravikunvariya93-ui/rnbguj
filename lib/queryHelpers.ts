@@ -1,12 +1,17 @@
 import type { ListPageSearchParams } from './types';
 import { getPagination as getSharedPagination } from './api/validation';
+import type { QueryFilter, Types } from 'mongoose';
+import type { IApprovedWork } from '@/models/ApprovedWork';
+import type { IPackage } from '@/models/Package';
+import type { ITechnicalSanction } from '@/models/TechnicalSanction';
+import type { ITender } from '@/models/Tender';
 
 export async function buildDashboardFilter(params: ListPageSearchParams): Promise<{
-    packageIds?: any[];
-    tenderIds?: any[];
+    packageIds?: Types.ObjectId[];
+    tenderIds?: Types.ObjectId[];
     hasFilter: boolean;
 }> {
-    const metadataFiltersArr: any = [];
+    const metadataFiltersArr: Record<string, unknown>[] = [];
     if (params.estimateConsultant) metadataFiltersArr.push({ estimateConsultant: params.estimateConsultant });
     if (params.approvalYear) metadataFiltersArr.push({ approvalYear: params.approvalYear });
     if (params.roadCategory) metadataFiltersArr.push({ roadCategory: params.roadCategory });
@@ -27,24 +32,24 @@ export async function buildDashboardFilter(params: ListPageSearchParams): Promis
 
     if (metadataFiltersArr.length > 0 || params.subDivision) {
         let validWorkNames: string[] = [];
-        let tsIds: any[] = [];
+        let tsIds: Types.ObjectId[] = [];
         
         if (metadataFiltersArr.length > 0) {
             const { default: ApprovedWork } = await import('@/models/ApprovedWork');
-            const workQuery = metadataFiltersArr.length > 1 ? { $and: metadataFiltersArr } : metadataFiltersArr[0];
-            const matchingWorks = await ApprovedWork.find(workQuery).select('workName').lean();
-            validWorkNames = matchingWorks.map((w: any) => w.workName);
+            const workQuery: Record<string, unknown> = metadataFiltersArr.length > 1 ? { $and: metadataFiltersArr } : metadataFiltersArr[0];
+            const matchingWorks = await ApprovedWork.find(workQuery as unknown as QueryFilter<IApprovedWork>).select('workName').lean();
+            validWorkNames = matchingWorks.map((w) => w.workName);
             
             const { default: TechnicalSanction } = await import('@/models/TechnicalSanction');
-            const matchingTS = await TechnicalSanction.find({ workName: { $in: validWorkNames } }).select('_id').lean();
-            tsIds = matchingTS.map((ts: any) => ts._id);
+            const matchingTS = await TechnicalSanction.find({ workName: { $in: validWorkNames } } as unknown as QueryFilter<ITechnicalSanction>).select('_id').lean();
+            tsIds = matchingTS.map((ts) => ts._id);
         }
 
         const { default: Package } = await import('@/models/Package');
-        const pkgQuery: any = {};
+        const pkgQuery: Record<string, unknown> = {};
         if (params.subDivision) pkgQuery.subDivision = params.subDivision;
         if (metadataFiltersArr.length > 0) {
-            const orConditions: any[] = [
+            const orConditions: Record<string, unknown>[] = [
                 { "works.workName": { $in: validWorkNames } },
                 { "works.workId": { $in: tsIds } }
             ];
@@ -57,12 +62,12 @@ export async function buildDashboardFilter(params: ListPageSearchParams): Promis
             pkgQuery.$or = orConditions;
         }
         
-        const matchingPkgs = await Package.find(pkgQuery).select('_id').lean();
-        const packageIds = matchingPkgs.map((p: any) => p._id);
+        const matchingPkgs = await Package.find(pkgQuery as unknown as QueryFilter<IPackage>).select('_id').lean();
+        const packageIds = matchingPkgs.map((p) => p._id);
 
         const { default: Tender } = await import('@/models/Tender');
-        const matchingTenders = await Tender.find({ packageId: { $in: packageIds } }).select('_id').lean();
-        const tenderIds = matchingTenders.map((t: any) => t._id);
+        const matchingTenders = await Tender.find({ packageId: { $in: packageIds } } as unknown as QueryFilter<ITender>).select('_id').lean();
+        const tenderIds = matchingTenders.map((t) => t._id);
 
         return { packageIds, tenderIds, hasFilter: true };
     }

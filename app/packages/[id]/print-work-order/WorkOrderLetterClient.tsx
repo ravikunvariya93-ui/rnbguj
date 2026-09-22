@@ -5,15 +5,72 @@ import { ArrowLeft, Printer, Download, Edit3 } from 'lucide-react';
 import { useEffect } from 'react';
 import { formatDate, getISTYear } from '@/lib/dateUtils';
 
+interface WorkOrderPackage {
+    _id?: string;
+    packageName?: string;
+    subDivision?: string;
+}
+
+interface WorkOrderTender {
+    contractorName?: string;
+    estimatedAmount?: number;
+    contractPrice?: number;
+    aboveBelowPercentage?: number;
+    aboveBelowInWord?: string;
+    tenderApprovalOffice?: string;
+    tenderApprovalNo?: string;
+    tenderApprovalDate?: string;
+}
+
+interface WorkOrderLOA {
+    acceptanceLetterWorksheetNo?: string;
+    acceptanceLetterDate?: string;
+    workDurationMonths?: number;
+}
+
+interface WorkOrderDoc {
+    workOrderWorksheetNo?: string;
+    workOrderDate?: string;
+    timeLimitStartsFrom?: string;
+    workDurationMonths?: number;
+    securityDepositBankName?: string;
+    securityDepositType?: string;
+    securityDepositNumber?: string;
+    securityDepositAmount?: number;
+    securityDepositDate?: string;
+    additionalSecurityDepositAmount?: number;
+    additionalSecurityDepositBankName?: string;
+    additionalSecurityDepositType?: string;
+    additionalSecurityDepositNumber?: string;
+    additionalSecurityDepositDate?: string;
+    agreementNo?: string;
+    agreementYear?: string;
+}
+
+interface WorkOrderAgency {
+    address?: string;
+    mobileNo?: string;
+}
+
+interface WorkOrderApproval {
+    tenderApprovalOffice?: string;
+    tenderApprovalNo?: string;
+    tenderApprovalDate?: string;
+}
+
+interface WorkOrderDTP {
+    tenderAmount?: number;
+}
+
 interface WorkOrderLetterClientProps {
-    packageData: any;
-    tender: any;
-    loa: any;
-    workOrder: any;
-    agency: any;
+    packageData: WorkOrderPackage;
+    tender: WorkOrderTender;
+    loa: WorkOrderLOA | null;
+    workOrder: WorkOrderDoc;
+    agency: WorkOrderAgency | null;
     budgetHeads: string[];
-    approval: any;
-    dtp: any;
+    approval: WorkOrderApproval | null;
+    dtp: WorkOrderDTP | null;
 }
 
 function formatDateToOutput(dateInput?: string) {
@@ -75,8 +132,8 @@ export default function WorkOrderLetterClient({
         const filename = 'Work_Order.doc';
         const downloadLink = document.createElement('a');
         document.body.appendChild(downloadLink);
-        if ((navigator as any).msSaveOrOpenBlob) {
-            (navigator as any).msSaveOrOpenBlob(blob, filename);
+        if ((navigator as unknown as { msSaveOrOpenBlob?: (blob: Blob, filename: string) => void }).msSaveOrOpenBlob) {
+            (navigator as unknown as { msSaveOrOpenBlob?: (blob: Blob, filename: string) => void }).msSaveOrOpenBlob?.(blob, filename);
         } else {
             downloadLink.href = url;
             downloadLink.download = filename;
@@ -131,7 +188,7 @@ export default function WorkOrderLetterClient({
     const sdDate = formatDateToOutput(workOrder.securityDepositDate);
 
     // Additional Security Deposit details
-    const showASD = workOrder.additionalSecurityDepositAmount > 0;
+    const showASD = (workOrder.additionalSecurityDepositAmount ?? 0) > 0;
     const asdBank = workOrder.additionalSecurityDepositBankName || '-';
     const asdNo = `${workOrder.additionalSecurityDepositType || 'FDR'}: ${workOrder.additionalSecurityDepositNumber || '-'}`;
     const asdAmount = workOrder.additionalSecurityDepositAmount

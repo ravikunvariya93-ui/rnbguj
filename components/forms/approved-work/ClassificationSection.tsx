@@ -129,7 +129,7 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                     name: 'natureOfWork',
                     value: newOptionValue.trim()
                 }
-            } as any;
+            } as React.ChangeEvent<HTMLSelectElement>;
             handleChange(mockEvent);
             setIsAddingNew(false);
             setNewOptionValue('');
@@ -159,7 +159,7 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                     name: 'schemeName',
                     value: newSchemeValue.trim()
                 }
-            } as any;
+            } as React.ChangeEvent<HTMLSelectElement>;
             handleChange(mockEvent);
             setIsAddingNewScheme(false);
             setNewSchemeValue('');
@@ -189,7 +189,7 @@ export default function ClassificationSection({ formData, handleChange }: Classi
                     name: 'buildingType',
                     value: newBuildingTypeValue.trim()
                 }
-            } as any;
+            } as React.ChangeEvent<HTMLSelectElement>;
             handleChange(mockEvent);
             setIsAddingNewBuildingType(false);
             setNewBuildingTypeValue('');

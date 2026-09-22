@@ -6,6 +6,10 @@ import WorkOrder from '@/models/WorkOrder';
 import Agency from '@/models/Agency';
 import Approval from '@/models/Approval';
 import DTP from '@/models/DTP';
+import type { QueryFilter } from 'mongoose';
+import type { ITender } from '@/models/Tender';
+import type { IWorkOrder } from '@/models/WorkOrder';
+import type { IDTP } from '@/models/DTP';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import LOALetterClient from './LOALetterClient';
@@ -16,17 +20,43 @@ interface Props {
     params: Promise<{ id: string }>;
 }
 
+interface IdLean {
+    _id: string;
+}
+
+interface TenderLean {
+    _id: string;
+    contractorId?: string;
+    contractorName?: string;
+    tenderApprovalOffice?: string;
+    tenderApprovalNo?: string;
+    tenderApprovalDate?: string;
+}
+
+interface ApprovalLean {
+    _id: string;
+    tenderApprovalOffice?: string;
+    tenderApprovalNo?: string;
+    tenderApprovalDate?: string;
+}
+
+interface LOALean {
+    _id: string;
+    acceptanceLetterWorksheetNo?: string;
+    acceptanceLetterDate?: string;
+}
+
 export default async function PrintLOAPage({ params }: Props) {
     await dbConnect();
     const { id } = await params;
 
     // Fetch Package details
-    const pkgRaw = await Package.findById(id).lean() as any;
+    const pkgRaw = await Package.findById(id).lean() as unknown as IdLean | null;
     if (!pkgRaw) notFound();
 
     // Fetch related Tender (latest non-cancelled)
-    const tenderRaw = await Tender.findOne({ packageId: pkgRaw._id, cancelled: { $ne: true } })
-        .sort({ trialNo: -1 }).lean() as any;
+    const tenderRaw = await Tender.findOne({ packageId: pkgRaw._id, cancelled: { $ne: true } } as unknown as QueryFilter<ITender>)
+        .sort({ trialNo: -1 }).lean() as unknown as TenderLean | null;
 
     if (!tenderRaw) {
         return (
@@ -46,8 +76,8 @@ export default async function PrintLOAPage({ params }: Props) {
 
     // Fetch related LOA and Approval
     const [loaRaw, approvalRaw] = await Promise.all([
-        LOA.findOne({ tenderId: tenderRaw._id }).lean() as any,
-        Approval.findOne({ tenderId: tenderRaw._id }).lean() as any
+        LOA.findOne({ tenderId: tenderRaw._id }).lean() as unknown as Promise<LOALean | null>,
+        Approval.findOne({ tenderId: tenderRaw._id }).lean() as unknown as Promise<ApprovalLean | null>
     ]);
 
     if (!approvalRaw) {
@@ -86,15 +116,15 @@ export default async function PrintLOAPage({ params }: Props) {
     }
 
     // Fetch WorkOrder (if exists)
-    const workOrderRaw = await WorkOrder.findOne({ loaId: loaRaw._id }).lean() as any;
+    const workOrderRaw = await WorkOrder.findOne({ loaId: loaRaw._id } as unknown as QueryFilter<IWorkOrder>).lean() as unknown as IdLean | null;
 
     // Fetch Agency (Contractor) details for address and mobile number
     const agencyRaw = tenderRaw.contractorId
-        ? await Agency.findById(tenderRaw.contractorId).lean() as any
-        : await Agency.findOne({ name: tenderRaw.contractorName }).lean() as any;
+        ? await Agency.findById(tenderRaw.contractorId).lean() as unknown as IdLean | null
+        : await Agency.findOne({ name: tenderRaw.contractorName }).lean() as unknown as IdLean | null;
 
     // Fetch DTP details for tenderAmount
-    const dtpRaw = await DTP.findOne({ tsId: pkgRaw._id }).lean() as any;
+    const dtpRaw = await DTP.findOne({ tsId: pkgRaw._id } as unknown as QueryFilter<IDTP>).lean() as unknown as IdLean | null;
 
     // Serialize data to avoid passing Mongoose rich objects to Client
     const packageData = JSON.parse(JSON.stringify(pkgRaw));

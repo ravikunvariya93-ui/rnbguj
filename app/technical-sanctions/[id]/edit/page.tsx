@@ -1,6 +1,7 @@
 import dbConnect from '@/lib/db';
 import TechnicalSanction from '@/models/TechnicalSanction';
 import TechnicalSanctionForm from '@/components/TechnicalSanctionForm';
+import { formatDateForInput } from '@/lib/dateUtils';
 import { notFound } from 'next/navigation';
 
 export default async function EditTechnicalSanctionPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,10 +19,12 @@ export default async function EditTechnicalSanctionPage({ params }: { params: Pr
         notFound();
     }
 
-    // Convert _id to string for serialization
+    // Convert _id to string for serialization; pre-format the date to
+    // DD/MM/YYYY (the same format TechnicalSanctionForm normalizes to on mount).
     const serializedSanction = {
         ...sanction,
-        _id: (sanction._id as any).toString(),
+        _id: String(sanction._id),
+        tsDate: formatDateForInput(sanction.tsDate),
         // Keep raw dates if they are already strings or handle in component
     };
 

@@ -5,10 +5,89 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Save, Plus, X, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
+interface TenderInitialData {
+    _id?: string;
+    packageId?: string | { _id: string };
+    packageName?: string;
+    tenderId?: string;
+    tenderDate?: string;
+    tenderNoticeYear?: string;
+    noticeNo?: string;
+    srNo?: string;
+    trialNo?: number | string;
+    tenderCreationDate?: string;
+    lastDateOfSubmission?: string;
+    tenderOpeningDate?: string;
+    tenderValidityDate?: string;
+    reInvite?: boolean;
+    cancelled?: boolean;
+    cancellationReason?: string;
+    contractorName?: string;
+    contractorId?: string;
+    contractPrice?: string | number;
+    aboveBelowPercentage?: string | number;
+    aboveBelowInWord?: string;
+    remarks?: string;
+}
+
 interface TenderFormProps {
-    initialData?: any;
+    initialData?: TenderInitialData;
     isEditing?: boolean;
 }
+
+interface TenderPackageRef {
+    _id: string;
+    packageName: string;
+    [key: string]: string | undefined;
+}
+
+interface TenderDtpRef {
+    tsId?: string | { _id: string };
+    tenderAmount?: number | string;
+}
+
+interface TenderAgencyRef {
+    _id: string;
+    name: string;
+    address?: string;
+    [key: string]: string | undefined;
+}
+
+interface TenderRowRef {
+    packageId?: string | { _id: string };
+}
+
+interface TenderFormState {
+    packageId: string | { _id: string };
+    packageName: string;
+    tenderId: string;
+    tenderDate: string;
+    tenderNoticeYear: string;
+    noticeNo: string;
+    srNo: string;
+    trialNo: number | string;
+    tenderCreationDate: string;
+    lastDateOfSubmission: string;
+    tenderOpeningDate: string;
+    tenderValidityDate: string;
+    reInvite: boolean;
+    cancelled: boolean;
+    cancellationReason: string;
+    contractorName: string;
+    contractPrice: string | number;
+    aboveBelowPercentage: string | number;
+    aboveBelowInWord: string;
+    remarks: string;
+    estimatedAmount?: number;
+    contractorId?: string;
+}
+
+type TenderSubmission = Omit<TenderFormState, 'tenderCreationDate' | 'lastDateOfSubmission' | 'tenderOpeningDate' | 'tenderValidityDate'> & {
+    tenderCreationDate?: string;
+    lastDateOfSubmission?: string;
+    tenderOpeningDate?: string;
+    tenderValidityDate?: string;
+};
 
 import SearchableSelect from './SearchableSelect';
 import { formatDateForInput as formatSharedDateForInput, formatDate as formatSharedDate } from '@/lib/dateUtils';
@@ -27,11 +106,11 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
     const [loading, setLoading] = useState(false);
     const [isReTenderModalOpen, setIsReTenderModalOpen] = useState(false);
     const [reTenderReason, setReTenderReason] = useState('');
-    const [packages, setPackages] = useState<any[]>([]);
+    const [packages, setPackages] = useState<TenderPackageRef[]>([]);
     const [existingTenderPkgIds, setExistingTenderPkgIds] = useState<string[]>([]);
-    const [dtps, setDtps] = useState<any[]>([]);
-    const [agencies, setAgencies] = useState<any[]>([]);
-    const [tenderAmount, setTenderAmount] = useState<number | ''>('');
+    const [dtps, setDtps] = useState<TenderDtpRef[]>([]);
+    const [agencies, setAgencies] = useState<TenderAgencyRef[]>([]);
+    const [tenderAmount, setTenderAmount] = useState<number | string>('');
 
     const [isContractorModalOpen, setIsContractorModalOpen] = useState(false);
     const [newContractor, setNewContractor] = useState({
@@ -46,11 +125,11 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
     const [contractorSaving, setContractorSaving] = useState(false);
     const [selectedAgencyId, setSelectedAgencyId] = useState<string | null>(null);
 
-    const [formData, setFormData] = useState({
-        ...initialData,
+    const [formData, setFormData] = useState<TenderFormState>({
         packageId: initialData.packageId || searchParams.get('packageId') || '',
         packageName: initialData.packageName || '',
         tenderId: initialData.tenderId || '',
+        tenderDate: initialData.tenderDate || '',
         tenderNoticeYear: initialData.tenderNoticeYear || (isEditing ? '' : '2026-27'),
         noticeNo: initialData.noticeNo || '',
         srNo: initialData.srNo || '',
@@ -91,15 +170,20 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                 if (agencyData.success) {
                     setAgencies(agencyData.data);
                     if (initialData.contractorId) {
-                        const match = agencyData.data.find((a: any) => a._id === String(initialData.contractorId));
+                        const match = agencyData.data.find((a: TenderAgencyRef) => a._id === String(initialData.contractorId));
                         setSelectedAgencyId(match?._id || null);
                     } else if (initialData.contractorName) {
-                        const match = agencyData.data.find((a: any) => a.name === initialData.contractorName);
+                        const match = agencyData.data.find((a: TenderAgencyRef) => a.name === initialData.contractorName);
                         setSelectedAgencyId(match?._id || null);
                     }
                 }
                 if (tenderData.success) {
-                    const ids = tenderData.data.map((t: any) => t.packageId?._id || t.packageId);
+                    const ids: string[] = tenderData.data
+                        .map((t: TenderRowRef) => {
+                            const pid = t.packageId;
+                            return typeof pid === 'object' && pid !== null ? pid._id : pid;
+                        })
+                        .filter((id: string | undefined): id is string => typeof id === 'string');
                     setExistingTenderPkgIds(ids);
                 }
             } catch (error) {
@@ -113,14 +197,14 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
     }, []);
 
     // Helper to format dates for input fields (DD/MM/YYYY, IST)
-    const formatDateForInput = (dateString: string) => {
+    const formatDateForInput = (dateString: string | Date | null | undefined) => {
         return formatSharedDateForInput(dateString);
     };
 
     // Initialize dates if editing (converting string/date to YYYY-MM-DD)
     useEffect(() => {
         if (isEditing && initialData) {
-            setFormData((prev: any) => ({
+            setFormData((prev: TenderFormState) => ({
                 ...prev,
                 tenderCreationDate: formatDateForInput(initialData.tenderCreationDate),
                 lastDateOfSubmission: formatDateForInput(initialData.lastDateOfSubmission),
@@ -145,7 +229,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                 if (!isNaN(dateObj.getTime())) {
                     dateObj.setDate(dateObj.getDate() + 120);
 
-                    setFormData((prev: any) => ({ ...prev, tenderValidityDate: formatSharedDate(dateObj) }));
+                    setFormData((prev: TenderFormState) => ({ ...prev, tenderValidityDate: formatSharedDate(dateObj) }));
                 }
             }
         } catch {
@@ -156,7 +240,13 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
     // Set tender amount when package or dtps load
     useEffect(() => {
         if (formData.packageId && dtps.length > 0) {
-            const relatedDtp = dtps.find(d => d.tsId?._id === formData.packageId || d.tsId === formData.packageId);
+            const pkgId = formData.packageId;
+            const relatedDtp = dtps.find(d => {
+                const tsId = d.tsId;
+                const tsIdStr = typeof tsId === 'object' && tsId !== null ? tsId._id : tsId;
+                const pkgIdStr = typeof pkgId === 'object' && pkgId !== null ? pkgId._id : pkgId;
+                return tsIdStr === pkgIdStr;
+            });
             setTenderAmount(relatedDtp?.tenderAmount || '');
         } else if (!formData.packageId) {
             setTenderAmount('');
@@ -170,16 +260,16 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
         if (isNaN(base)) return;
 
         if (formData.aboveBelowInWord === 'At Par') {
-            setFormData((prev: any) => ({ ...prev, contractPrice: base.toFixed(2), aboveBelowPercentage: 0 }));
+            setFormData((prev: TenderFormState) => ({ ...prev, contractPrice: base.toFixed(2), aboveBelowPercentage: 0 }));
             return;
         }
 
         const pct = Number(formData.aboveBelowPercentage);
         if (!isNaN(pct)) {
             if (formData.aboveBelowInWord === 'Above') {
-                setFormData((prev: any) => ({ ...prev, contractPrice: (base + (base * pct / 100)).toFixed(2) }));
+                setFormData((prev: TenderFormState) => ({ ...prev, contractPrice: (base + (base * pct / 100)).toFixed(2) }));
             } else if (formData.aboveBelowInWord === 'Below') {
-                setFormData((prev: any) => ({ ...prev, contractPrice: (base - (base * pct / 100)).toFixed(2) }));
+                setFormData((prev: TenderFormState) => ({ ...prev, contractPrice: (base - (base * pct / 100)).toFixed(2) }));
             }
         }
     }, [tenderAmount, formData.aboveBelowPercentage, formData.aboveBelowInWord]);
@@ -190,19 +280,19 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
 
         if (type === 'checkbox') {
             const checked = (e.target as HTMLInputElement).checked;
-            setFormData((prev: any) => ({ ...prev, [name]: checked }));
+            setFormData((prev: TenderFormState) => ({ ...prev, [name]: checked }));
         } else {
-            setFormData((prev: any) => ({ ...prev, [name]: value }));
+            setFormData((prev: TenderFormState) => ({ ...prev, [name]: value }));
         }
     };
 
     const fetchLatestTrial = useCallback(async (packageId: string) => {
         if (!packageId || isEditing) return;
         try {
-            const res = await fetch(`/api/tenders/latest-trial/${packageId as any}`);
+            const res = await fetch(`/api/tenders/latest-trial/${packageId}`);
             const data = await res.json();
             if (data.success) {
-                setFormData((prev: any) => ({ ...prev, trialNo: data.latestTrialNo + 1 }));
+                setFormData((prev: TenderFormState) => ({ ...prev, trialNo: data.latestTrialNo + 1 }));
             }
         } catch (error) {
             console.error("Failed to fetch latest trial", error);
@@ -212,14 +302,14 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
     const handlePackageSelect = (id: string) => {
         const selectedPkg = packages.find(p => p._id === id);
         if (selectedPkg) {
-            setFormData((prev: any) => ({
+            setFormData((prev: TenderFormState) => ({
                 ...prev,
                 packageId: id,
                 packageName: selectedPkg.packageName,
             }));
             fetchLatestTrial(id);
         } else if (!id) {
-            setFormData((prev: any) => ({ ...prev, packageId: '', packageName: '' }));
+            setFormData((prev: TenderFormState) => ({ ...prev, packageId: '', packageName: '' }));
         }
     };
 
@@ -227,12 +317,12 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
         const selectedAgency = agencies.find(a => a._id === id);
         setSelectedAgencyId(id || null);
         if (selectedAgency) {
-            setFormData((prev: any) => ({
+            setFormData((prev: TenderFormState) => ({
                 ...prev,
                 contractorName: selectedAgency.name,
             }));
         } else {
-            setFormData((prev: any) => ({
+            setFormData((prev: TenderFormState) => ({
                 ...prev,
                 contractorName: '',
             }));
@@ -255,10 +345,10 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
             });
             const data = await res.json();
             if (data.success) {
-                const createdAgency = data.data;
+                const createdAgency: TenderAgencyRef = data.data;
                 setAgencies((prev) => [...prev, createdAgency].sort((a, b) => a.name.localeCompare(b.name)));
                 setSelectedAgencyId(createdAgency._id);
-                setFormData((prev: any) => ({
+                setFormData((prev: TenderFormState) => ({
                     ...prev,
                     contractorName: createdAgency.name,
                 }));
@@ -274,7 +364,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
             } else {
                 setContractorError(data.error || 'Failed to create contractor.');
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
             setContractorError('An unexpected error occurred while saving the contractor.');
         } finally {
@@ -287,7 +377,7 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
         const pkgId = searchParams.get('packageId');
         const reInvite = searchParams.get('reInvite') === 'true';
         if (pkgId) {
-            setFormData((prev: any) => {
+            setFormData((prev: TenderFormState) => {
                 if (!prev.packageId) {
                     return {
                         ...prev,
@@ -302,12 +392,14 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
 
     // Auto-fetch trial for pre-selected package
     useEffect(() => {
-        if (formData.packageId && !isEditing && packages.length > 0) {
-            const pkg = packages.find(p => p._id === formData.packageId);
+        const pkgId = formData.packageId;
+        const pkgIdStr = typeof pkgId === 'object' && pkgId !== null ? pkgId._id : pkgId;
+        if (pkgIdStr && !isEditing && packages.length > 0) {
+            const pkg = packages.find(p => p._id === pkgIdStr);
             if (pkg && !formData.packageName) {
-                setFormData((prev: any) => ({ ...prev, packageName: pkg.packageName }));
+                setFormData((prev: TenderFormState) => ({ ...prev, packageName: pkg.packageName }));
             }
-            fetchLatestTrial(formData.packageId);
+            fetchLatestTrial(pkgIdStr);
         }
     }, [formData.packageId, formData.packageName, packages, isEditing, fetchLatestTrial]);
 
@@ -354,8 +446,8 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
             setIsReTenderModalOpen(false);
             router.push(`/tenders/${createData.data._id}/edit`);
             router.refresh();
-        } catch (err: any) {
-            alert(err.message || 'Error occurred during re-tender.');
+        } catch (err: unknown) {
+            alert(err instanceof Error && err.message ? err.message : 'Error occurred during re-tender.');
         } finally {
             setLoading(false);
         }
@@ -370,13 +462,13 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
         setLoading(true);
 
         try {
-            const submissionData = { ...formData, contractorId: selectedAgencyId || undefined };
+            const submissionData: TenderSubmission = { ...formData, contractorId: selectedAgencyId || undefined };
             if (tenderAmount !== '') {
                 submissionData.estimatedAmount = Number(tenderAmount);
             }
 
             // Date Parsing Logic for Tender Dates (DD/MM/YYYY -> ISO)
-            const parseDate = (dateStr: string) => {
+            const parseDate = (dateStr: string): string | undefined => {
                 if (!dateStr) return undefined;
                 const cleanDate = String(dateStr).trim();
                 const parts = cleanDate.split(/[\/\-\.]/);
@@ -390,10 +482,10 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                 return undefined;
             };
 
-            if (submissionData.tenderCreationDate) submissionData.tenderCreationDate = parseDate(submissionData.tenderCreationDate) as any;
-            if (submissionData.lastDateOfSubmission) submissionData.lastDateOfSubmission = parseDate(submissionData.lastDateOfSubmission) as any;
-            if (submissionData.tenderOpeningDate) submissionData.tenderOpeningDate = parseDate(submissionData.tenderOpeningDate) as any;
-            if (submissionData.tenderValidityDate) submissionData.tenderValidityDate = parseDate(submissionData.tenderValidityDate) as any;
+            if (submissionData.tenderCreationDate) submissionData.tenderCreationDate = parseDate(submissionData.tenderCreationDate);
+            if (submissionData.lastDateOfSubmission) submissionData.lastDateOfSubmission = parseDate(submissionData.lastDateOfSubmission);
+            if (submissionData.tenderOpeningDate) submissionData.tenderOpeningDate = parseDate(submissionData.tenderOpeningDate);
+            if (submissionData.tenderValidityDate) submissionData.tenderValidityDate = parseDate(submissionData.tenderValidityDate);
 
             const url = isEditing ? `/api/tenders/${initialData._id}` : '/api/tenders';
             const method = isEditing ? 'PUT' : 'POST';
@@ -411,9 +503,9 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
 
             router.push('/tenders');
             router.refresh();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error(error);
-            alert(error.message || 'Error saving tender');
+            alert(error instanceof Error && error.message ? error.message : 'Error saving tender');
         } finally {
             setLoading(false);
         }
@@ -441,10 +533,12 @@ function TenderFormInner({ initialData = {}, isEditing = false }: TenderFormProp
                                 ? formData.packageId._id
                                 : formData.packageId;
                             if (p._id === currentPkgId) return true;
-                            if (isEditing && (p._id === initialData.packageId?._id || p._id === initialData.packageId)) return true;
+                            const initialPkg = initialData.packageId;
+                            const initialPkgId = typeof initialPkg === 'object' && initialPkg !== null ? initialPkg._id : undefined;
+                            if (isEditing && (p._id === initialPkgId || p._id === initialData.packageId)) return true;
                             return !existingTenderPkgIds.includes(p._id);
                         })}
-                        value={formData.packageId}
+                        value={typeof formData.packageId === 'object' && formData.packageId !== null ? formData.packageId._id : formData.packageId}
                         onChange={handlePackageSelect}
                         placeholder="Search by package name..."
                     />

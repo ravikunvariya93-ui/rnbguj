@@ -22,20 +22,377 @@ const WorksMap = dynamic(() => import('@/components/WorksMap'), {
 const blobViewUrl = (url?: string) =>
     url && url.startsWith('http') ? `/api/blob?url=${encodeURIComponent(url)}` : url || '#';
 
+interface PkgWorkEntry {
+    workId?: string | { _id?: string; workName?: string; tsAmount?: number | string } | null;
+    workName?: string;
+    amount?: number | string;
+    tsNotRequired?: boolean;
+    jobNumberApprovalDate?: string;
+}
+
+interface ApprovedWorkRef {
+    _id?: string;
+    workName?: string;
+    subDivision?: string;
+    workType?: string;
+    budgetHead?: string;
+    jobNumberAmount?: number | string;
+    approvalYear?: string;
+    jobNumberApprovalDate?: string;
+}
+
+interface PackageDoc {
+    _id?: string;
+    packageName?: string;
+    subDivision?: string;
+    workType?: string;
+    buildingType?: string;
+    budgetHead?: string;
+    dtpConsultant?: string;
+    committee?: string;
+    committeeDate?: string;
+    works?: PkgWorkEntry[];
+}
+
+interface DtpDoc {
+    _id?: string;
+    dtpSendingNo?: string;
+    dtpSendingDate?: string;
+    dtpApprovingAuthority?: string;
+    dtpApprovalNo?: string;
+    dtpApprovalDate?: string;
+    tenderAmount?: number | string;
+    remarks?: string;
+}
+
+interface BidderEntry {
+    rank?: string;
+    contractorName?: string;
+    aboveBelow?: string;
+    percentage?: number | string;
+    totalAmount?: number | string;
+    tenderFeeBankName?: string;
+    tenderFeeDdNo?: string;
+    tenderFeeDdDate?: string;
+    tenderFeeDdAmount?: number | string;
+    tenderFeeChallanDate?: string;
+}
+
+interface TenderDoc {
+    _id?: string;
+    packageId?: string;
+    packageName?: string;
+    tenderId?: string;
+    tenderNoticeYear?: string;
+    noticeNo?: string;
+    srNo?: string;
+    trialNo?: number | string;
+    tenderCreationDate?: string;
+    lastDateOfSubmission?: string;
+    tenderOpeningDate?: string;
+    tenderValidityDate?: string;
+    reInvite?: boolean;
+    cancelled?: boolean;
+    cancellationReason?: string;
+    contractorId?: string;
+    contractorName?: string;
+    contractPrice?: number | string;
+    estimatedAmount?: number | string;
+    aboveBelowPercentage?: number | string;
+    aboveBelowInWord?: string;
+    remarks?: string;
+    bidders?: BidderEntry[];
+    workDurationMonths?: number | string;
+    securityDepositAmount?: number | string;
+}
+
+interface BoqItemEntry {
+    itemNo?: string;
+    description?: string;
+    quantity?: number | string;
+    unit?: string;
+    rate?: number | string;
+    amount?: number | string;
+    itemType?: string;
+}
+
+interface BoqDoc {
+    _id?: string;
+    items?: BoqItemEntry[];
+    totalAmount?: number | string;
+}
+
+interface ApprovalDoc {
+    _id?: string;
+    tenderId?: string;
+    notRequired?: boolean;
+    proposalDate?: string;
+    tenderApprovalOffice?: string;
+    tenderApprovalNo?: string;
+    tenderApprovalDate?: string;
+}
+
+interface LoaNoticeEntry {
+    _id?: string;
+    wsNo?: string;
+    noticeDate?: string | null;
+}
+
+interface LoaDoc {
+    _id?: string;
+    tenderId?: string;
+    stampDuty?: number | string;
+    defectLiabilityPeriod?: string;
+    workDurationMonths?: number | string;
+    acceptanceLetterWorksheetNo?: string;
+    acceptanceLetterDate?: string;
+    notices?: LoaNoticeEntry[];
+}
+
+interface WorkOrderDoc {
+    _id?: string;
+    loaId?: string;
+    notRequired?: boolean;
+    agreementYear?: string;
+    agreementNo?: string;
+    agreementDate?: string | null;
+    securityDepositType?: string;
+    securityDepositBankName?: string;
+    securityDepositNumber?: string;
+    securityDepositAmount?: number | string;
+    securityDepositDate?: string;
+    additionalSecurityDepositType?: string;
+    additionalSecurityDepositBankName?: string;
+    additionalSecurityDepositNumber?: string;
+    additionalSecurityDepositAmount?: number | string;
+    additionalSecurityDepositDate?: string;
+    workOrderWorksheetNo?: string;
+    workOrderDate?: string;
+    timeLimitStartsFrom?: string;
+    workDurationMonths?: number | string;
+    stipulatedCompletionDate?: string;
+    fileSentOnDate?: string;
+    potakaNo?: string;
+}
+
+interface BillRef {
+    _id?: string;
+    billType?: string;
+    billDate?: string;
+    runningBillNumber?: string | number;
+    lastRecordEntryDate?: string;
+    actualCompletionDate?: string;
+    grossAmount?: number | string;
+    totalDeduction?: number | string;
+    netPaidAmount?: number | string;
+}
+
+interface ExcessProposalDoc {
+    _id?: string;
+    proposalNo?: string;
+    proposalDate?: string;
+    pdfUrl?: string;
+    fileName?: string;
+    fileSize?: number | string;
+    remarks?: string;
+    status?: string;
+}
+
+interface DepositRefundDoc {
+    _id?: string;
+    refundType?: string;
+    packageId?: string;
+    workOrderId?: string;
+    orderNo?: string;
+    orderDate?: string;
+    applicationRef?: string;
+    applicationDate?: string;
+    actualCompletionDate?: string;
+    bankName?: string;
+    fdrNumber?: string;
+    fdrDate?: string;
+    amount?: number | string;
+    status?: string;
+    remarks?: string;
+}
+
+interface ParsedBidderEntry {
+    rank?: string;
+    contractorName?: string;
+    aboveBelow?: string;
+    percentage?: number | string;
+    totalAmount?: number | string;
+}
+
+interface ParsedTenderInfo {
+    tenderId?: string;
+    noticeYear?: string;
+    noticeNo?: string;
+    srNo?: string;
+    estimatedAmount?: number | string;
+}
+
+interface BankEntry {
+    _id: string;
+    name?: string;
+    [key: string]: string | undefined;
+}
+
+interface AgencyEntry {
+    _id: string;
+    name?: string;
+    proprietorName?: string;
+    address?: string;
+    mobileNo?: string;
+    agencyType?: string;
+    gstNo?: string;
+    [key: string]: string | undefined;
+}
+
+interface TechnicalSanctionRef {
+    _id?: string;
+    workName?: string;
+    tsDate?: string;
+    tsAmount?: number | string;
+}
+
+interface PackageListEntry {
+    _id?: string;
+    works?: PkgWorkEntry[];
+}
+
+interface PkgFormState {
+    packageName?: string;
+    subDivision?: string;
+    workType?: string;
+    buildingType?: string;
+    dtpConsultant?: string;
+    works?: PkgWorkEntry[];
+    budgetHead?: string;
+    committee?: string;
+    committeeDate?: string;
+}
+
+interface DtpFormState {
+    tsId?: string;
+    dtpSendingNo?: string;
+    dtpSendingDate?: string;
+    dtpApprovingAuthority?: string;
+    dtpApprovalNo?: string;
+    dtpApprovalDate?: string;
+    tenderAmount?: number | string;
+    remarks?: string;
+}
+
+interface TenderFormState {
+    packageId?: string;
+    packageName?: string;
+    tenderId?: string;
+    tenderNoticeYear?: string;
+    noticeNo?: string;
+    srNo?: string;
+    trialNo?: number | string;
+    tenderCreationDate?: string;
+    lastDateOfSubmission?: string;
+    tenderOpeningDate?: string;
+    tenderValidityDate?: string;
+    reInvite?: boolean;
+    cancelled?: boolean;
+    cancellationReason?: string;
+    contractorName?: string;
+    contractPrice?: number | string;
+    estimatedAmount?: number | string;
+    aboveBelowPercentage?: number | string;
+    aboveBelowInWord?: string;
+    remarks?: string;
+    bidders?: BidderEntry[];
+}
+
+interface ApprovalFormState {
+    tenderId?: string;
+    notRequired?: boolean;
+    proposalDate?: string;
+    tenderApprovalOffice?: string;
+    tenderApprovalNo?: string;
+    tenderApprovalDate?: string;
+}
+
+interface LoaFormState {
+    tenderId?: string;
+    stampDuty?: number | string;
+    defectLiabilityPeriod?: string;
+    workDurationMonths?: number | string;
+    acceptanceLetterWorksheetNo?: string;
+    acceptanceLetterDate?: string;
+}
+
+interface NoticeFormState {
+    wsNo?: string;
+    noticeDate?: string;
+}
+
+interface WoFormState {
+    loaId?: string;
+    notRequired?: boolean;
+    agreementYear?: string;
+    agreementNo?: string;
+    agreementDate?: string | null;
+    securityDepositType?: string;
+    securityDepositBankName?: string;
+    securityDepositNumber?: string;
+    securityDepositAmount?: number | string;
+    securityDepositDate?: string;
+    additionalSecurityDepositType?: string;
+    additionalSecurityDepositBankName?: string;
+    additionalSecurityDepositNumber?: string;
+    additionalSecurityDepositAmount?: number | string;
+    additionalSecurityDepositDate?: string;
+    workOrderWorksheetNo?: string;
+    workOrderDate?: string;
+    timeLimitStartsFrom?: string;
+    workDurationMonths?: number | string;
+    stipulatedCompletionDate?: string;
+    fileSentOnDate?: string;
+    potakaNo?: string;
+}
+
+interface AdditionalSdFormState {
+    _id?: string;
+    packageId?: string;
+    workOrderId?: string;
+    refundType?: string;
+    orderNo?: string;
+    orderDate?: string;
+    applicationRef?: string;
+    applicationDate?: string;
+    actualCompletionDate?: string;
+    bankName?: string;
+    fdrNumber?: string;
+    fdrDate?: string;
+    amount?: number | string;
+    status?: string;
+    remarks?: string;
+}
+
+interface BoqFormState {
+    items: BoqItemEntry[];
+    totalAmount: number | string;
+}
+
 interface PackageDetailClientProps {
     packageId: string;
-    pkg: any;
-    approvedWorks: any[];
-    dtp: any;
-    tender: any;
-    tenders?: any[];
-    boq: any;
-    approval: any;
-    loa: any;
-    workOrder: any;
-    bills: any[];
-    excessProposals?: any[];
-    depositRefunds?: any[];
+    pkg: PackageDoc;
+    approvedWorks: ApprovedWorkRef[];
+    dtp: DtpDoc;
+    tender: TenderDoc;
+    tenders?: TenderDoc[];
+    boq: BoqDoc;
+    approval: ApprovalDoc;
+    loa: LoaDoc;
+    workOrder: WorkOrderDoc;
+    bills: BillRef[];
+    excessProposals?: ExcessProposalDoc[];
+    depositRefunds?: DepositRefundDoc[];
     maxAgreementNos?: Record<string, number>;
 }
 
@@ -63,24 +420,24 @@ export default function PackageDetailClient({
     const [pkg, setPkg] = useState(initialPkg);
     const [dtp, setDtp] = useState(initialDtp);
     const [tender, setTender] = useState(initialTender);
-    const [tenders, setTenders] = useState<any[]>(initialTenders || []);
+    const [tenders, setTenders] = useState<TenderDoc[]>(initialTenders || []);
     const [selectedTrialId, setSelectedTrialId] = useState<string | null>(null);
     const [boq, setBoq] = useState(initialBoq);
     const [isBoqExpanded, setIsBoqExpanded] = useState<boolean>(false);
-    const [boqForm, setBoqForm] = useState<any>({ items: [], totalAmount: 0 });
+    const [boqForm, setBoqForm] = useState<BoqFormState>({ items: [], totalAmount: 0 });
     const [parsingBoq, setParsingBoq] = useState(false);
     const [approval, setApproval] = useState(initialApproval);
     const [loa, setLoa] = useState(initialLoa);
     const [workOrder, setWorkOrder] = useState(initialWorkOrder);
     const [bills, setBills] = useState(initialBills);
-    const [excessProposals, setExcessProposals] = useState<any[]>(initialExcessProposals || []);
-    const [depositRefunds, setDepositRefunds] = useState<any[]>(initialDepositRefunds || []);
+    const [excessProposals, setExcessProposals] = useState<ExcessProposalDoc[]>(initialExcessProposals || []);
+    const [depositRefunds, setDepositRefunds] = useState<DepositRefundDoc[]>(initialDepositRefunds || []);
 
     const additionalSdRefund = useMemo(() => {
-        return depositRefunds.find((dr: any) => dr.refundType === 'Additional SD') || null;
+        return depositRefunds.find((dr) => dr.refundType === 'Additional SD') || null;
     }, [depositRefunds]);
 
-    const [additionalSdForm, setAdditionalSdForm] = useState<any>({
+    const [additionalSdForm, setAdditionalSdForm] = useState<AdditionalSdFormState>({
         orderNo: '',
         orderDate: '',
         applicationRef: '',
@@ -96,7 +453,7 @@ export default function PackageDetailClient({
 
     // Excess Proposal modal states
     const [isExcessModalOpen, setIsExcessModalOpen] = useState(false);
-    const [editingExcessProposal, setEditingExcessProposal] = useState<any | null>(null);
+    const [editingExcessProposal, setEditingExcessProposal] = useState<ExcessProposalDoc | null>(null);
     const [uploadingExcessPdf, setUploadingExcessPdf] = useState(false);
     const [savingExcessProposal, setSavingExcessProposal] = useState(false);
     const [deletingExcessId, setDeletingExcessId] = useState<string | null>(null);
@@ -143,11 +500,11 @@ export default function PackageDetailClient({
         }
     }, []);
 
-    const findApprovedWork = useCallback((workName: string) => {
+    const findApprovedWork = useCallback((workName: string | undefined) => {
         if (!approvedWorks || !workName) return null;
-        const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        const normalize = (s: string | undefined) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
         const target = normalize(workName);
-        return approvedWorks.find((aw: any) => normalize(aw.workName) === target);
+        return approvedWorks.find((aw) => normalize(aw.workName) === target);
     }, [approvedWorks]);
 
     const displayedSubDivision = useMemo(() => {
@@ -171,14 +528,14 @@ export default function PackageDetailClient({
     }, [pkg, findApprovedWork]);
 
     // Form states
-    const [pkgForm, setPkgForm] = useState<any>({});
-    const [dtpForm, setDtpForm] = useState<any>({});
-    const [tenderForm, setTenderForm] = useState<any>({});
-    const [approvalForm, setApprovalForm] = useState<any>({});
-    const [loaForm, setLoaForm] = useState<any>({});
-    const [noticeForm, setNoticeForm] = useState<any>({});
+    const [pkgForm, setPkgForm] = useState<PkgFormState>({});
+    const [dtpForm, setDtpForm] = useState<DtpFormState>({});
+    const [tenderForm, setTenderForm] = useState<TenderFormState>({});
+    const [approvalForm, setApprovalForm] = useState<ApprovalFormState>({});
+    const [loaForm, setLoaForm] = useState<LoaFormState>({});
+    const [noticeForm, setNoticeForm] = useState<NoticeFormState>({});
     const [editingNoticeIndex, setEditingNoticeIndex] = useState<number | 'new' | null>(null);
-    const [woForm, setWoForm] = useState<any>({});
+    const [woForm, setWoForm] = useState<WoFormState>({});
 
     const NOTICE_ORDINALS = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'];
     const noticeOrdinal = (i: number) => NOTICE_ORDINALS[i] || `${i + 1}th`;
@@ -193,8 +550,8 @@ export default function PackageDetailClient({
     }, [tender]);
 
     // Dropdown dependency states
-    const [banks, setBanks] = useState<any[]>([]);
-    const [agencies, setAgencies] = useState<any[]>([]);
+    const [banks, setBanks] = useState<BankEntry[]>([]);
+    const [agencies, setAgencies] = useState<AgencyEntry[]>([]);
     const [buildingTypeOptions, setBuildingTypeOptions] = useState<string[]>([]);
     const [isAddingNewBuildingType, setIsAddingNewBuildingType] = useState(false);
     const [newBuildingTypeValue, setNewBuildingTypeValue] = useState('');
@@ -216,25 +573,25 @@ export default function PackageDetailClient({
 
 
     // Package Edit Works States
-    const [availableWorks, setAvailableWorks] = useState<any[]>([]);
-    const [allPackagesData, setAllPackagesData] = useState<any[]>([]);
+    const [availableWorks, setAvailableWorks] = useState<TechnicalSanctionRef[]>([]);
+    const [allPackagesData, setAllPackagesData] = useState<PackageListEntry[]>([]);
     const [tsNotRequiredCheckbox, setTsNotRequiredCheckbox] = useState(false);
     const [currentSelectionId, setCurrentSelectionId] = useState('');
 
     // Tender Fee Modal States
     const [isTenderFeeModalOpen, setIsTenderFeeModalOpen] = useState(false);
-    const [tenderFeeBidders, setTenderFeeBidders] = useState<any[]>([]);
+    const [tenderFeeBidders, setTenderFeeBidders] = useState<BidderEntry[]>([]);
     const [savingTenderFee, setSavingTenderFee] = useState(false);
 
     // Bill Modal States
     const [isBillModalOpen, setIsBillModalOpen] = useState(false);
     const [isReTenderModalOpen, setIsReTenderModalOpen] = useState(false);
     const [reTenderReason, setReTenderReason] = useState('');
-    const [editingBill, setEditingBill] = useState<any | null>(null);
+    const [editingBill, setEditingBill] = useState<BillRef | null>(null);
     // PDF Parse States
     const [parsingTenderPdf, setParsingTenderPdf] = useState(false);
-    const [parsedBidders, setParsedBidders] = useState<any[]>([]);
-    const [parsedTenderInfo, setParsedTenderInfo] = useState<any>(null);
+    const [parsedBidders, setParsedBidders] = useState<ParsedBidderEntry[]>([]);
+    const [parsedTenderInfo, setParsedTenderInfo] = useState<ParsedTenderInfo | null>(null);
     const [isBiddersModalOpen, setIsBiddersModalOpen] = useState(false);
 
     // Sync state with props
@@ -256,7 +613,7 @@ export default function PackageDetailClient({
         if (tender?._id) {
             setSelectedTrialId(tender._id);
         } else if (tenders && tenders.length > 0) {
-            setSelectedTrialId(tenders[0]._id);
+            setSelectedTrialId(tenders[0]._id || null);
         } else {
             setSelectedTrialId(null);
         }
@@ -317,17 +674,17 @@ export default function PackageDetailClient({
             if (dataTS.success && dataPackages.success) {
                 const assignedWorkIds = new Set<string>();
                 dataPackages.data
-                    .filter((p: any) => p._id !== packageId)
-                    .forEach((p: any) => {
+                    .filter((p: PackageListEntry) => p._id !== packageId)
+                    .forEach((p: PackageListEntry) => {
                         if (p.works && Array.isArray(p.works)) {
-                            p.works.forEach((w: any) => {
+                            p.works.forEach((w: PkgWorkEntry) => {
                                 if (w.workId) assignedWorkIds.add(String(w.workId));
                             });
                         }
                     });
 
                 setAllPackagesData(dataPackages.data);
-                const givenTS = dataTS.data.filter((ts: any) => 
+                const givenTS = dataTS.data.filter((ts: TechnicalSanctionRef) => 
                     ts.tsDate && 
                     ts.tsAmount && 
                     !assignedWorkIds.has(String(ts._id))
@@ -343,7 +700,7 @@ export default function PackageDetailClient({
         if (e.target.value === 'ADD_NEW') {
             setIsAddingNewBuildingType(true);
         } else {
-            setPkgForm((prev: any) => ({ ...prev, buildingType: e.target.value }));
+            setPkgForm((prev) => ({ ...prev, buildingType: e.target.value }));
         }
     };
 
@@ -353,7 +710,7 @@ export default function PackageDetailClient({
             if (!buildingTypeOptions.includes(val)) {
                 setBuildingTypeOptions(prev => [...prev, val].sort());
             }
-            setPkgForm((prev: any) => ({ ...prev, buildingType: val }));
+            setPkgForm((prev) => ({ ...prev, buildingType: val }));
             setIsAddingNewBuildingType(false);
             setNewBuildingTypeValue('');
         }
@@ -368,7 +725,7 @@ export default function PackageDetailClient({
         if (e.target.value === 'ADD_NEW') {
             setIsAddingNewBudgetHead(true);
         } else {
-            setPkgForm((prev: any) => ({ ...prev, budgetHead: e.target.value }));
+            setPkgForm((prev) => ({ ...prev, budgetHead: e.target.value }));
         }
     };
 
@@ -378,7 +735,7 @@ export default function PackageDetailClient({
             if (!budgetHeadOptions.includes(val)) {
                 setBudgetHeadOptions(prev => [...prev, val].sort());
             }
-            setPkgForm((prev: any) => ({ ...prev, budgetHead: val }));
+            setPkgForm((prev) => ({ ...prev, budgetHead: val }));
             setIsAddingNewBudgetHead(false);
             setNewBudgetHeadValue('');
         }
@@ -393,19 +750,19 @@ export default function PackageDetailClient({
     useEffect(() => {
         if (!pkgForm.works || pkgForm.works.length === 0 || approvedWorks.length === 0 || editingSection !== 'package') return;
 
-        const normalize = (name: string) => name.toLowerCase().replace(/\s+/g, ' ').trim();
+        const normalize = (name: string | undefined) => (name || '').toLowerCase().replace(/\s+/g, ' ').trim();
         
-        const matchedBudgetHeads = pkgForm.works.map((sw: any) => {
+        const matchedBudgetHeads = (pkgForm.works ?? []).map((sw) => {
             const normalizedName = normalize(sw.workName);
-            const aw = approvedWorks.find((aw: any) => normalize(aw.workName) === normalizedName);
+            const aw = approvedWorks.find((aw) => normalize(aw.workName) === normalizedName);
             return aw?.budgetHead || null;
         }).filter(Boolean);
 
         if (matchedBudgetHeads.length > 0) {
             const first = matchedBudgetHeads[0];
-            const allSame = matchedBudgetHeads.every((bh: string) => bh === first);
+            const allSame = matchedBudgetHeads.every((bh) => bh === first);
             if (allSame && first) {
-                setPkgForm((prev: any) => ({ ...prev, budgetHead: first }));
+                setPkgForm((prev) => ({ ...prev, budgetHead: first }));
             }
         }
     }, [pkgForm.works, approvedWorks, editingSection]);
@@ -439,7 +796,7 @@ export default function PackageDetailClient({
             });
         } else if (section === 'tender') {
             const latestTender = tenders && tenders.length > 0 ? tenders[0] : null;
-            const nextTrialNo = latestTender ? (latestTender.trialNo || 1) + 1 : 1;
+            const nextTrialNo = latestTender ? (Number(latestTender.trialNo || 1)) + 1 : 1;
             setTenderForm({
                 packageId: packageId,
                 packageName: pkg.packageName || '',
@@ -521,7 +878,7 @@ export default function PackageDetailClient({
                 potakaNo: workOrder?.potakaNo || '',
             });
         } else if (section === 'depositRefund') {
-            const finalBill = bills?.find((b: any) => b.billType === 'Final' || b.actualCompletionDate);
+            const finalBill = bills?.find((b) => b.billType === 'Final' || b.actualCompletionDate);
             const defActualDate = finalBill?.actualCompletionDate
                 ? formatDateForInput(finalBill.actualCompletionDate)
                 : (workOrder?.stipulatedCompletionDate ? formatDateForInput(workOrder.stipulatedCompletionDate) : '');
@@ -591,8 +948,8 @@ export default function PackageDetailClient({
             showToast('success', 'Additional SD Refund details saved successfully!');
             setEditingSection(null);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -601,36 +958,36 @@ export default function PackageDetailClient({
     // Generic form handlers
     const handleDtpFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setDtpForm((prev: any) => ({ ...prev, [name]: value }));
+        setDtpForm((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleTenderFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
         const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
-        setTenderForm((prev: any) => ({ ...prev, [name]: val }));
+        setTenderForm((prev) => ({ ...prev, [name]: val }));
     };
 
     const handleApprovalFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target as HTMLInputElement;
         const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
-        setApprovalForm((prev: any) => ({ ...prev, [name]: val }));
+        setApprovalForm((prev) => ({ ...prev, [name]: val }));
     };
 
     const handleLoaFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setLoaForm((prev: any) => ({ ...prev, [name]: value }));
+        setLoaForm((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleNoticeFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setNoticeForm((prev: any) => ({ ...prev, [name]: value }));
+        setNoticeForm((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleWoFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target as HTMLInputElement;
         const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
-        setWoForm((prev: any) => {
-            const next = { ...prev, [name]: val };
+        setWoForm((prev) => {
+            const next = { ...prev, [name]: val } as WoFormState;
             if (name === 'notRequired') {
                 if (val) {
                     next.agreementNo = '';
@@ -658,7 +1015,7 @@ export default function PackageDetailClient({
         if (parsed) {
             const validDate = new Date(parsed);
             validDate.setDate(validDate.getDate() + 120);
-            setTenderForm((prev: any) => ({ ...prev, tenderValidityDate: formatDate(validDate) }));
+            setTenderForm((prev) => ({ ...prev, tenderValidityDate: formatDate(validDate) }));
         }
     }, [tenderForm.lastDateOfSubmission]);
 
@@ -668,16 +1025,16 @@ export default function PackageDetailClient({
         if (!base) return;
 
         if (tenderForm.aboveBelowInWord === 'At Par') {
-            setTenderForm((prev: any) => ({ ...prev, contractPrice: base.toFixed(2), aboveBelowPercentage: 0 }));
+            setTenderForm((prev) => ({ ...prev, contractPrice: base.toFixed(2), aboveBelowPercentage: 0 }));
             return;
         }
 
         const pct = Number(tenderForm.aboveBelowPercentage);
         if (!isNaN(pct)) {
             if (tenderForm.aboveBelowInWord === 'Above') {
-                setTenderForm((prev: any) => ({ ...prev, contractPrice: (base + (base * pct / 100)).toFixed(2) }));
+                setTenderForm((prev) => ({ ...prev, contractPrice: (base + (base * pct / 100)).toFixed(2) }));
             } else if (tenderForm.aboveBelowInWord === 'Below') {
-                setTenderForm((prev: any) => ({ ...prev, contractPrice: (base - (base * pct / 100)).toFixed(2) }));
+                setTenderForm((prev) => ({ ...prev, contractPrice: (base - (base * pct / 100)).toFixed(2) }));
             }
         }
     }, [tenderForm.aboveBelowPercentage, tenderForm.aboveBelowInWord, dtp]);
@@ -690,7 +1047,7 @@ export default function PackageDetailClient({
         const calcDateStr = formatDate(nextMonth);
         const duration = woForm.workDurationMonths || loa.workDurationMonths || '';
         
-        setWoForm((prev: any) => {
+        setWoForm((prev) => {
             if (prev.timeLimitStartsFrom) return prev;
             return { ...prev, timeLimitStartsFrom: calcDateStr, workDurationMonths: duration };
         });
@@ -707,7 +1064,7 @@ export default function PackageDetailClient({
         stipulatedDate.setMonth(stipulatedDate.getMonth() + workMonths);
         stipulatedDate.setDate(stipulatedDate.getDate() - 1);
 
-        setWoForm((prev: any) => ({
+        setWoForm((prev) => ({
             ...prev,
             stipulatedCompletionDate: formatDate(stipulatedDate),
         }));
@@ -720,17 +1077,17 @@ export default function PackageDetailClient({
         if (tsNotRequiredCheckbox) {
             const workToAdd = approvedWorks.find(w => w._id === currentSelectionId);
             if (workToAdd) {
-                const isAlreadyAdded = pkgForm.works?.some((sw: any) => sw.workName === workToAdd.workName);
+                const isAlreadyAdded = pkgForm.works?.some((sw) => sw.workName === workToAdd.workName);
                 if (isAlreadyAdded) {
                     alert("Work already added to this package.");
                     return;
                 }
-                setPkgForm((prev: any) => ({
+                setPkgForm((prev) => ({
                     ...prev,
                     works: [...(prev.works || []), {
                         workId: null,
                         workName: workToAdd.workName,
-                        amount: (workToAdd.jobNumberAmount || 0) * 100000,
+                        amount: Number(workToAdd.jobNumberAmount || 0) * 100000,
                         tsNotRequired: true
                     }]
                 }));
@@ -739,7 +1096,7 @@ export default function PackageDetailClient({
         } else {
             const workToAdd = availableWorks.find(w => w._id === currentSelectionId);
             if (workToAdd) {
-                const isAlreadyAdded = pkgForm.works?.some((sw: any) => {
+                const isAlreadyAdded = pkgForm.works?.some((sw) => {
                     const swId = sw.workId && typeof sw.workId === 'object' ? sw.workId._id : sw.workId;
                     return String(swId) === String(workToAdd._id);
                 });
@@ -747,12 +1104,12 @@ export default function PackageDetailClient({
                     alert("Work already added to this package.");
                     return;
                 }
-                setPkgForm((prev: any) => ({
+                setPkgForm((prev) => ({
                     ...prev,
                     works: [...(prev.works || []), {
                         workId: workToAdd,
                         workName: workToAdd.workName,
-                        amount: (workToAdd.tsAmount || 0) * 100000,
+                        amount: Number(workToAdd.tsAmount || 0) * 100000,
                         tsNotRequired: false
                     }]
                 }));
@@ -761,10 +1118,10 @@ export default function PackageDetailClient({
         }
     };
 
-    const handleRemoveWorkFromPkg = (workName: string, workIdStr: string | null) => {
-        setPkgForm((prev: any) => ({
+    const handleRemoveWorkFromPkg = (workName: string | undefined, workIdStr: string | { _id?: string } | null | undefined) => {
+        setPkgForm((prev) => ({
             ...prev,
-            works: (prev.works || []).filter((w: any) => {
+            works: (prev.works || []).filter((w) => {
                 const id = w.workId && typeof w.workId === 'object' ? w.workId._id : w.workId;
                 if (workIdStr && String(id) === String(workIdStr)) return false;
                 if (w.workName === workName) return false;
@@ -778,7 +1135,7 @@ export default function PackageDetailClient({
         e.preventDefault();
         setLoading(true);
         try {
-            const sanitizedWorks = pkgForm.works.map((w: any) => ({
+            const sanitizedWorks = (pkgForm.works ?? []).map((w) => ({
                 workId: w.workId && typeof w.workId === 'object' ? w.workId._id : w.workId,
                 workName: w.workName,
                 amount: w.amount,
@@ -803,8 +1160,8 @@ export default function PackageDetailClient({
             showToast('success', 'Package details updated successfully!');
             setEditingSection(null);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -838,8 +1195,8 @@ export default function PackageDetailClient({
             showToast('success', 'DTP details saved!');
             setEditingSection(null);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -887,15 +1244,15 @@ export default function PackageDetailClient({
             setIsReTenderModalOpen(false);
             setEditingSection(null);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
     };
 
     const handleBoqAddItem = () => {
-        setBoqForm((prev: any) => ({
+        setBoqForm((prev) => ({
             ...prev,
             items: [...prev.items, { itemNo: '', description: '', quantity: 0, unit: '', rate: 0, amount: 0, itemType: 'Standard' }]
         }));
@@ -904,22 +1261,22 @@ export default function PackageDetailClient({
     const handleBoqRemoveItem = (index: number) => {
         const newItems = [...boqForm.items];
         newItems.splice(index, 1);
-        const total = newItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
-        setBoqForm((prev: any) => ({ ...prev, items: newItems, totalAmount: total }));
+        const total = newItems.reduce((acc, item) => acc + (parseFloat(String(item.amount ?? '')) || 0), 0);
+        setBoqForm((prev) => ({ ...prev, items: newItems, totalAmount: total }));
     };
 
-    const handleBoqItemChange = (index: number, field: string, value: any) => {
+    const handleBoqItemChange = (index: number, field: string, value: string | number) => {
         const newItems = [...boqForm.items];
-        const item = { ...newItems[index], [field]: value };
+        const item = { ...newItems[index], [field]: value } as BoqItemEntry;
         
         // Auto calculate amount
         if (field === 'quantity' || field === 'rate') {
-            item.amount = (parseFloat(item.quantity) || 0) * (parseFloat(item.rate) || 0);
+            item.amount = (parseFloat(String(item.quantity ?? '')) || 0) * (parseFloat(String(item.rate ?? '')) || 0);
         }
 
         newItems[index] = item;
-        const total = newItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
-        setBoqForm((prev: any) => ({ ...prev, items: newItems, totalAmount: total }));
+        const total = newItems.reduce((acc, item) => acc + (parseFloat(String(item.amount ?? '')) || 0), 0);
+        setBoqForm((prev) => ({ ...prev, items: newItems, totalAmount: total }));
     };
 
     const handleBoqPdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -937,13 +1294,13 @@ export default function PackageDetailClient({
             });
             const data = await res.json();
             if (data.success && data.data.length > 0) {
-                const parsedItems = data.data.map((item: any) => ({
+                const parsedItems = data.data.map((item: BoqItemEntry) => ({
                     ...item,
                     itemType: item.itemType || 'Standard'
                 }));
                 const newItems = [...boqForm.items, ...parsedItems];
-                const total = newItems.reduce((acc, item) => acc + (parseFloat(item.amount) || 0), 0);
-                setBoqForm((prev: any) => ({ ...prev, items: newItems, totalAmount: total }));
+                const total = newItems.reduce((acc, item) => acc + (parseFloat(String(item.amount ?? '')) || 0), 0);
+                setBoqForm((prev) => ({ ...prev, items: newItems, totalAmount: total }));
                 showToast('success', `Parsed ${parsedItems.length} items from PDF successfully!`);
             } else {
                 showToast('error', 'Could not extract any items from the PDF.');
@@ -977,8 +1334,8 @@ export default function PackageDetailClient({
                 setParsedTenderInfo(info);
 
                 // Auto-fill from L1 bidder
-                const l1 = bidders.find((b: any) => b.rank === 'L1') || bidders[0];
-                setTenderForm((prev: any) => ({
+                const l1 = bidders.find((b: ParsedBidderEntry) => b.rank === 'L1') || bidders[0];
+                setTenderForm((prev) => ({
                     ...prev,
                     tenderId: prev.tenderId || info?.tenderId || '',
                     tenderNoticeYear: prev.tenderNoticeYear || info?.noticeYear || '2026-27',
@@ -988,7 +1345,7 @@ export default function PackageDetailClient({
                     aboveBelowInWord: l1.aboveBelow === 'EQUALS' ? 'At Par' : (l1.aboveBelow === 'ABOVE' ? 'Above' : 'Below'),
                     aboveBelowPercentage: l1.percentage !== undefined ? l1.percentage : '',
                     contractPrice: l1.totalAmount !== undefined ? l1.totalAmount : '',
-                    bidders: bidders.map((b: any) => ({
+                    bidders: bidders.map((b: ParsedBidderEntry) => ({
                         rank: b.rank,
                         contractorName: b.contractorName,
                         aboveBelow: b.aboveBelow,
@@ -1017,7 +1374,7 @@ export default function PackageDetailClient({
             return;
         }
         const todayStr = formatShortDate(new Date());
-        setTenderFeeBidders(displayTender.bidders.map((b: any) => ({
+        setTenderFeeBidders(displayTender.bidders.map((b) => ({
             ...b,
             tenderFeeBankName: b.tenderFeeBankName || '',
             tenderFeeDdNo: b.tenderFeeDdNo || '',
@@ -1028,8 +1385,8 @@ export default function PackageDetailClient({
         setIsTenderFeeModalOpen(true);
     };
 
-    const handleTenderFeeChange = (index: number, field: string, value: any) => {
-        setTenderFeeBidders((prev: any[]) => prev.map((item, idx) => {
+    const handleTenderFeeChange = (index: number, field: string, value: string) => {
+        setTenderFeeBidders((prev: BidderEntry[]) => prev.map((item, idx) => {
             if (idx === index) {
                 return { ...item, [field]: value };
             }
@@ -1041,8 +1398,8 @@ export default function PackageDetailClient({
         if (!displayTender) return;
         setSavingTenderFee(true);
         try {
-            const updatedBidders = tenderFeeBidders.map((b: any) => {
-                const bidderObj: any = {
+            const updatedBidders = tenderFeeBidders.map((b) => {
+                const bidderObj: BidderEntry = {
                     rank: b.rank,
                     contractorName: b.contractorName,
                     aboveBelow: b.aboveBelow,
@@ -1072,8 +1429,8 @@ export default function PackageDetailClient({
             showToast('success', 'Tender Fee details saved successfully!');
             setIsTenderFeeModalOpen(false);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setSavingTenderFee(false);
         }
@@ -1107,8 +1464,8 @@ export default function PackageDetailClient({
             setBoq(resData.data);
             setEditingSection(null);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -1156,8 +1513,8 @@ export default function PackageDetailClient({
             showToast('success', 'Tender details saved!');
             setEditingSection(null);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -1191,8 +1548,8 @@ export default function PackageDetailClient({
             showToast('success', 'Tender Approval details saved!');
             setEditingSection(null);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -1218,8 +1575,8 @@ export default function PackageDetailClient({
             showToast('success', 'LOA details saved!');
             setEditingSection(null);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -1234,7 +1591,7 @@ export default function PackageDetailClient({
                 const parsed = parseDateStr(noticeForm.noticeDate);
                 if (parsed) noticeDateIso = parsed.toISOString();
             }
-            const updated = (Array.isArray(loa?.notices) ? loa.notices : []).map((n: any) => ({
+            const updated = (Array.isArray(loa?.notices) ? loa.notices : []).map((n) => ({
                 ...(n?._id ? { _id: n._id } : {}),
                 wsNo: n?.wsNo || '',
                 noticeDate: n?.noticeDate ? new Date(n.noticeDate).toISOString() : null,
@@ -1255,8 +1612,8 @@ export default function PackageDetailClient({
             setEditingSection(null);
             setEditingNoticeIndex(null);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -1336,8 +1693,8 @@ export default function PackageDetailClient({
             showToast('success', 'Work Order details saved!');
             setEditingSection(null);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -1358,9 +1715,9 @@ export default function PackageDetailClient({
             if (data.success) {
                 setBanks(prev => [...prev, data.data].sort((a,b) => a.name.localeCompare(b.name)));
                 if (activeBankField === 'security') {
-                    setWoForm((prev: any) => ({ ...prev, securityDepositBankName: data.data.name }));
+                    setWoForm((prev) => ({ ...prev, securityDepositBankName: data.data.name }));
                 } else {
-                    setWoForm((prev: any) => ({ ...prev, additionalSecurityDepositBankName: data.data.name }));
+                    setWoForm((prev) => ({ ...prev, additionalSecurityDepositBankName: data.data.name }));
                 }
                 setNewBankName('');
                 setIsBankModalOpen(false);
@@ -1413,12 +1770,12 @@ export default function PackageDetailClient({
             if (data.success) {
                 if (isEditing) {
                     setAgencies(prev => prev.map(a => a._id === editingContractorId ? data.data : a).sort((a,b) => a.name.localeCompare(b.name)));
-                    setTenderForm((prev: any) => ({ ...prev, contractorName: data.data.name }));
+                    setTenderForm((prev) => ({ ...prev, contractorName: data.data.name }));
                     setSelectedAgencyId(data.data._id);
                     showToast('success', 'Contractor/Agency updated successfully.');
                 } else {
                     setAgencies(prev => [...prev, data.data].sort((a,b) => a.name.localeCompare(b.name)));
-                    setTenderForm((prev: any) => ({ ...prev, contractorName: data.data.name }));
+                    setTenderForm((prev) => ({ ...prev, contractorName: data.data.name }));
                     setSelectedAgencyId(data.data._id);
                     showToast('success', 'Contractor/Agency added successfully.');
                 }
@@ -1438,7 +1795,7 @@ export default function PackageDetailClient({
     // BILLS SECTION LOGIC
     // NOTE: the modal renders the shared BillForm component from editingBill,
     // so no local bill-field state is kept here.
-    const handleOpenBillModal = (existingBill: any = null) => {
+    const handleOpenBillModal = (existingBill: BillRef | null = null) => {
         setEditingBill(existingBill);
         setIsBillModalOpen(true);
         setTimeout(() => {
@@ -1463,14 +1820,14 @@ export default function PackageDetailClient({
         setIsExcessModalOpen(true);
     };
 
-    const handleOpenEditExcessModal = (p: any) => {
+    const handleOpenEditExcessModal = (p: ExcessProposalDoc) => {
         setEditingExcessProposal(p);
         setExcessForm({
             proposalNo: p.proposalNo || '',
             proposalDate: p.proposalDate ? new Date(p.proposalDate).toISOString().split('T')[0] : '',
             pdfUrl: p.pdfUrl || '',
             fileName: p.fileName || '',
-            fileSize: p.fileSize || 0,
+            fileSize: Number(p.fileSize || 0),
             remarks: p.remarks || '',
             status: p.status || 'Submitted',
         });
@@ -1504,8 +1861,8 @@ export default function PackageDetailClient({
                 fileSize: data.fileSize,
             }));
             showToast('success', 'PDF uploaded successfully.');
-        } catch (err: any) {
-            showToast('error', err.message || 'Error uploading file');
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error && err.message ? err.message : 'Error uploading file');
         } finally {
             setUploadingExcessPdf(false);
         }
@@ -1545,8 +1902,8 @@ export default function PackageDetailClient({
             }
 
             setIsExcessModalOpen(false);
-        } catch (err: any) {
-            showToast('error', err.message || 'Error saving proposal');
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error && err.message ? err.message : 'Error saving proposal');
         } finally {
             setSavingExcessProposal(false);
         }
@@ -1568,8 +1925,8 @@ export default function PackageDetailClient({
 
             setExcessProposals(prev => prev.filter(p => p._id !== id));
             showToast('success', 'Excess Proposal deleted successfully.');
-        } catch (err: any) {
-            showToast('error', err.message || 'Error deleting proposal');
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error && err.message ? err.message : 'Error deleting proposal');
         } finally {
             setDeletingExcessId(null);
         }
@@ -1585,8 +1942,8 @@ export default function PackageDetailClient({
             if (timeA !== timeB) {
                 return timeA - timeB;
             }
-            const numA = parseInt(a.runningBillNumber || '0', 10) || 0;
-            const numB = parseInt(b.runningBillNumber || '0', 10) || 0;
+            const numA = parseInt(String(a.runningBillNumber ?? '0'), 10) || 0;
+            const numB = parseInt(String(b.runningBillNumber ?? '0'), 10) || 0;
             return numA - numB;
         });
     }, [bills]);
@@ -1595,26 +1952,26 @@ export default function PackageDetailClient({
         if (tsNotRequiredCheckbox) {
             return approvedWorks
                 .filter(aw => {
-                    const inCurrent = pkgForm.works?.some((sw: any) => sw.workName === aw.workName);
+                    const inCurrent = pkgForm.works?.some((sw) => sw.workName === aw.workName);
                     if (inCurrent) return false;
-                    const inOther = allPackagesData.some((p: any) => 
-                        p._id !== packageId && p.works?.some((w: any) => w.workName === aw.workName)
+                    const inOther = allPackagesData.some((p) => 
+                        p._id !== packageId && p.works?.some((w) => w.workName === aw.workName)
                     );
                     return !inOther;
                 })
                 .map(aw => ({
-                    _id: aw._id,
+                    _id: aw._id || '',
                     packageName: aw.workName,
                     'TS Amount': 'T.S. Not Required'
                 }));
         } else {
             return availableWorks
-                .filter(w => !pkgForm.works?.some((sw: any) => {
+                .filter(w => !pkgForm.works?.some((sw) => {
                     const swId = sw.workId && typeof sw.workId === 'object' ? sw.workId._id : sw.workId;
                     return String(swId) === String(w._id);
                 }))
                 .map(w => ({
-                    _id: w._id,
+                    _id: w._id || '',
                     packageName: w.workName,
                     'TS Amount': w.tsAmount ? `₹${w.tsAmount} Lacs` : 'N/A'
                 }));
@@ -1623,7 +1980,7 @@ export default function PackageDetailClient({
 
     const displayTender = useMemo(() => {
         if (!selectedTrialId) return null;
-        return tenders.find((t: any) => t._id === selectedTrialId) || null;
+        return tenders.find((t) => t._id === selectedTrialId) || null;
     }, [selectedTrialId, tenders]);
 
     return (
@@ -1686,7 +2043,7 @@ export default function PackageDetailClient({
                                                     <input 
                                                         type="text" 
                                                         value={pkgForm.packageName || ''} 
-                                                        onChange={(e) => setPkgForm((prev: any) => ({ ...prev, packageName: e.target.value }))} 
+                                                        onChange={(e) => setPkgForm((prev) => ({ ...prev, packageName: e.target.value }))} 
                                                         required 
                                                         className="excel-cell-input" 
                                                         placeholder="e.g. Resurfacing Of Ugalavan to Sarera Road (NPBT) KM.0/000 to 3/100, Ta.Jesar Dist.Bhavnagar"
@@ -1696,7 +2053,7 @@ export default function PackageDetailClient({
                                             <tr>
                                                 <td className="excel-label">Sub Division</td>
                                                 <td className="excel-value w-[30%]">
-                                                    <select value={pkgForm.subDivision} onChange={(e) => setPkgForm((prev: any) => ({ ...prev, subDivision: e.target.value }))} className="excel-cell-select">
+                                                    <select value={pkgForm.subDivision} onChange={(e) => setPkgForm((prev) => ({ ...prev, subDivision: e.target.value }))} className="excel-cell-select">
                                                         <option value="">-- Select --</option>
                                                         <option value="Bhavnagar">Bhavnagar</option>
                                                         <option value="Mahuva">Mahuva</option>
@@ -1708,7 +2065,7 @@ export default function PackageDetailClient({
                                                 </td>
                                                 <td className="excel-label">DTP Consultant</td>
                                                 <td className="excel-value w-[30%]">
-                                                    <select value={pkgForm.dtpConsultant} onChange={(e) => setPkgForm((prev: any) => ({ ...prev, dtpConsultant: e.target.value }))} className="excel-cell-select">
+                                                    <select value={pkgForm.dtpConsultant} onChange={(e) => setPkgForm((prev) => ({ ...prev, dtpConsultant: e.target.value }))} className="excel-cell-select">
                                                         <option value="">-- Select Consultant --</option>
                                                         <option value="Umiya Engineers and Project Management Consultancy">Umiya Engineers and Project Management Consultancy</option>
                                                         <option value="Trisha Engineers Consultancy">Trisha Engineers Consultancy</option>
@@ -1725,7 +2082,7 @@ export default function PackageDetailClient({
                                                 <td className="excel-value w-[30%]" colSpan={pkgForm.workType === 'Building' ? 1 : 3}>
                                                     <select
                                                         value={pkgForm.workType || ''}
-                                                        onChange={(e) => setPkgForm((prev: any) => ({
+                                                        onChange={(e) => setPkgForm((prev) => ({
                                                             ...prev,
                                                             workType: e.target.value,
                                                             buildingType: e.target.value === 'Building' ? prev.buildingType : ''
@@ -1849,7 +2206,7 @@ export default function PackageDetailClient({
                                                 const isBuilding = (pkgForm.workType || '').trim().toLowerCase() === 'building';
                                                 const bhRaw = (pkgForm.budgetHead || '').trim();
                                                 const bh = bhRaw.toLowerCase();
-                                                const cp = tender?.contractPrice || 0;
+                                                const cp = Number(tender?.contractPrice || 0);
                                                 
                                                 let autoCommittee = '';
                                                 if (isBuilding) {
@@ -1865,7 +2222,7 @@ export default function PackageDetailClient({
                                                 }
                                                 // Sync auto-determined value into form
                                                 if (autoCommittee && pkgForm.committee !== autoCommittee) {
-                                                    setTimeout(() => setPkgForm((prev: any) => ({ ...prev, committee: autoCommittee })), 0);
+                                                    setTimeout(() => setPkgForm((prev) => ({ ...prev, committee: autoCommittee })), 0);
                                                 }
                                                 const showDate = autoCommittee === 'Bandhkam Committee' || autoCommittee === 'Karobari';
                                                 return (
@@ -1886,7 +2243,7 @@ export default function PackageDetailClient({
                                                                 ) : (
                                                                     <select
                                                                         value={pkgForm.committee || ''}
-                                                                        onChange={(e) => setPkgForm((prev: any) => ({ ...prev, committee: e.target.value }))}
+                                                                        onChange={(e) => setPkgForm((prev) => ({ ...prev, committee: e.target.value }))}
                                                                         className="excel-cell-select"
                                                                     >
                                                                         <option value="">-- Select Committee --</option>
@@ -1906,14 +2263,14 @@ export default function PackageDetailClient({
                                                                         type="text"
                                                                         placeholder="DD/MM/YYYY"
                                                                         value={pkgForm.committeeDate || ''}
-                                                                        onChange={(e) => setPkgForm((prev: any) => ({ ...prev, committeeDate: e.target.value }))}
+                                                                        onChange={(e) => setPkgForm((prev) => ({ ...prev, committeeDate: e.target.value }))}
                                                                         onPaste={(e) => {
                                                                             const pasted = e.clipboardData.getData('text');
                                                                             if (pasted) {
                                                                                 const formatted = formatDateForInput(pasted.trim());
                                                                                 if (formatted) {
                                                                                     e.preventDefault();
-                                                                                    setPkgForm((prev: any) => ({ ...prev, committeeDate: formatted }));
+                                                                                    setPkgForm((prev) => ({ ...prev, committeeDate: formatted }));
                                                                                 }
                                                                             }
                                                                         }}
@@ -1921,7 +2278,7 @@ export default function PackageDetailClient({
                                                                             if (pkgForm.committeeDate) {
                                                                                 const formatted = formatDateForInput(pkgForm.committeeDate.trim());
                                                                                 if (formatted) {
-                                                                                    setPkgForm((prev: any) => ({ ...prev, committeeDate: formatted }));
+                                                                                    setPkgForm((prev) => ({ ...prev, committeeDate: formatted }));
                                                                                 }
                                                                             }
                                                                         }}
@@ -1986,7 +2343,7 @@ export default function PackageDetailClient({
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {pkgForm.works?.map((w: any, i: number) => {
+                                                    {pkgForm.works?.map((w, i: number) => {
                                                         const aw = findApprovedWork(w.workName);
                                                         const appYear = aw?.approvalYear || '-';
                                                         const bHead = aw?.budgetHead || '-';
@@ -2009,9 +2366,9 @@ export default function PackageDetailClient({
                                                                         <button 
                                                                             type="button" 
                                                                             onClick={() => {
-                                                                                setPkgForm((prev: any) => ({
+                                                                                setPkgForm((prev) => ({
                                                                                     ...prev,
-                                                                                    works: prev.works.map((item: any, idx: number) => {
+                                                                                    works: (prev.works ?? []).map((item, idx: number) => {
                                                                                         if (idx === i) {
                                                                                             return { ...item, tsNotRequired: !item.tsNotRequired };
                                                                                         }
@@ -2126,7 +2483,7 @@ export default function PackageDetailClient({
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {pkg.works?.map((work: any, i: number) => {
+                                                    {pkg.works?.map((work, i: number) => {
                                                         const aw = findApprovedWork(work.workName);
                                                         const appYear = aw?.approvalYear || '-';
                                                         const bHead = aw?.budgetHead || '-';
@@ -2172,7 +2529,7 @@ export default function PackageDetailClient({
                     </div>
                     <div className="p-6">
                         <WorksMap
-                            works={(pkg.works || []).map((w: any) => w?.workName).filter(Boolean)}
+                            works={(pkg.works || []).map((w) => w?.workName).filter((wn): wn is string => Boolean(wn))}
                             subDivision={pkg.subDivision}
                         />
                     </div>
@@ -2441,7 +2798,7 @@ export default function PackageDetailClient({
                                                                     onChange={(id) => {
                                                                         const selected = agencies.find(a => a._id === id);
                                                                         setSelectedAgencyId(id);
-                                                                        setTenderForm((prev: any) => ({ ...prev, contractorName: selected ? selected.name : '' }));
+                                                                        setTenderForm((prev) => ({ ...prev, contractorName: selected ? selected.name : '' }));
                                                                     }}
                                                                     displayField="name"
                                                                     helperField="address"
@@ -2516,13 +2873,13 @@ export default function PackageDetailClient({
                                     {/* Trial/Attempt selection tabs */}
                                     {tenders && tenders.length > 1 && (
                                         <div className="flex flex-wrap gap-2 mb-4 border-b border-emerald-200/60 pb-3">
-                                            {tenders.map((t: any) => {
+                                            {tenders.map((t) => {
                                                 const isSel = t._id === selectedTrialId;
                                                 return (
                                                     <button
                                                         key={t._id}
                                                         type="button"
-                                                        onClick={() => setSelectedTrialId(t._id)}
+                                                        onClick={() => setSelectedTrialId(t._id || null)}
                                                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
                                                             isSel
                                                                 ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
@@ -2634,7 +2991,7 @@ export default function PackageDetailClient({
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-emerald-100">
-                                                        {displayTender.bidders.map((b: any, idx: number) => {
+                                                        {displayTender.bidders.map((b, idx: number) => {
                                                             const isWinner = b.contractorName === displayTender.contractorName;
                                                             return (
                                                                 <tr key={idx} className={`transition-colors ${isWinner ? 'bg-emerald-100/60' : 'hover:bg-emerald-50/60'}`}>
@@ -2894,7 +3251,7 @@ export default function PackageDetailClient({
                                             </button>
                                         )}
                                     </div>
-                                    {(Array.isArray(loa.notices) ? loa.notices : []).map((notice: any, idx: number) => (
+                                    {(Array.isArray(loa.notices) ? loa.notices : []).map((notice, idx: number) => (
                                         <div key={notice?._id || idx} className="mb-3 border border-emerald-100 rounded-xl p-3 bg-white/60">
                                             <div className="flex items-center justify-between mb-2">
                                                 <span className="text-xs font-bold text-slate-600">{noticeOrdinal(idx)} Notice</span>
@@ -3016,7 +3373,7 @@ export default function PackageDetailClient({
                                                     <tr>
                                                         <td className="excel-label">Agreement Date</td>
                                                         <td className="excel-value" colSpan={3}>
-                                                            <input type="text" placeholder="DD/MM/YYYY" name="agreementDate" value={woForm.agreementDate} onChange={handleWoFieldChange} className="excel-cell-input" />
+                                                            <input type="text" placeholder="DD/MM/YYYY" name="agreementDate" value={woForm.agreementDate || ''} onChange={handleWoFieldChange} className="excel-cell-input" />
                                                         </td>
                                                     </tr>
 
@@ -3041,7 +3398,7 @@ export default function PackageDetailClient({
                                                                         value={banks.find(b => b.name === woForm.securityDepositBankName)?._id || ''}
                                                                         onChange={(id) => {
                                                                             const selected = banks.find(b => b._id === id);
-                                                                            setWoForm((prev: any) => ({ ...prev, securityDepositBankName: selected ? selected.name : '' }));
+                                                                            setWoForm((prev) => ({ ...prev, securityDepositBankName: selected ? selected.name : '' }));
                                                                         }}
                                                                         displayField="name"
                                                                         inputClassName="bg-transparent border-emerald-200"
@@ -3089,7 +3446,7 @@ export default function PackageDetailClient({
                                                                         value={banks.find(b => b.name === woForm.additionalSecurityDepositBankName)?._id || ''}
                                                                         onChange={(id) => {
                                                                             const selected = banks.find(b => b._id === id);
-                                                                            setWoForm((prev: any) => ({ ...prev, additionalSecurityDepositBankName: selected ? selected.name : '' }));
+                                                                            setWoForm((prev) => ({ ...prev, additionalSecurityDepositBankName: selected ? selected.name : '' }));
                                                                         }}
                                                                         displayField="name"
                                                                         inputClassName="bg-transparent border-emerald-200"
@@ -3198,7 +3555,7 @@ export default function PackageDetailClient({
                                                             Type: {workOrder.securityDepositType || '-'} &nbsp;|&nbsp; Bank: {workOrder.securityDepositBankName || '-'} &nbsp;|&nbsp; No: {workOrder.securityDepositNumber || '-'} &nbsp;|&nbsp; Amount: <strong className="text-emerald-900">₹{workOrder.securityDepositAmount?.toLocaleString('en-IN') || 0}</strong>
                                                         </td>
                                                     </tr>
-                                                    {workOrder.additionalSecurityDepositAmount > 0 && (
+                                                    {Number(workOrder.additionalSecurityDepositAmount || 0) > 0 && (
                                                         <tr>
                                                             <td className="excel-label">Additional SD</td>
                                                             <td className="excel-value font-mono" colSpan={3}>
@@ -3344,7 +3701,7 @@ export default function PackageDetailClient({
                                             </tr>
                                         </thead>
                                         <tbody className="bg-transparent divide-y divide-emerald-200/60">
-                                            {boqForm.items?.map((item: any, idx: number) => (
+                                            {boqForm.items?.map((item, idx: number) => (
                                                 <tr key={idx} className="hover:bg-emerald-100/40 transition-colors">
                                                     <td className="px-2 py-1.5">
                                                         <input
@@ -3463,7 +3820,7 @@ export default function PackageDetailClient({
                                                         <td colSpan={6} className="px-6 py-8 text-center text-slate-400">No BOQ items recorded.</td>
                                                     </tr>
                                                 ) : (
-                                                    boq.items.map((item: any, index: number) => (
+                                                    boq.items.map((item, index: number) => (
                                                         <tr key={index} className="hover:bg-emerald-100/50 transition-colors">
                                                             <td className="px-3 py-2.5 text-center font-medium">
                                                                 <div className="flex flex-col items-center gap-0.5">
@@ -3544,7 +3901,7 @@ export default function PackageDetailClient({
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-emerald-200/60">
-                                        {sortedBills.map((bill: any, idx: number) => (
+                                        {sortedBills.map((bill, idx: number) => (
                                             <tr key={bill._id} className="hover:bg-emerald-100/50">
                                                 <td className="border border-slate-200 px-4 py-1.5 text-center font-mono font-semibold text-slate-800">{bill.runningBillNumber || idx + 1}</td>
                                                 <td className="border border-slate-200 px-4 py-1.5 text-center font-semibold">
@@ -3653,7 +4010,7 @@ export default function PackageDetailClient({
                                     initialWorks={pkg?.works}
                                     contractPrice={tender?.contractPrice || tender?.estimatedAmount}
                                     submittedSD={workOrder?.securityDepositAmount || tender?.securityDepositAmount}
-                                    sanctionedWorksTotal={(pkg?.works || []).reduce((s: number, w: any) => {
+                                    sanctionedWorksTotal={(pkg?.works || []).reduce((s: number, w) => {
                                         const live = findApprovedWork(w.workName)?.jobNumberAmount;
                                         return s + (live != null ? Number(live) * 100000 : (Number(w.amount) || 0));
                                     }, 0)}
@@ -3757,7 +4114,7 @@ export default function PackageDetailClient({
                                                             <Edit2 className="w-4 h-4" />
                                                         </button>
                                                         <button
-                                                            onClick={() => handleDeleteExcessProposal(p._id, p.proposalNo)}
+                                                            onClick={() => handleDeleteExcessProposal(p._id || '', p.proposalNo || '')}
                                                             disabled={deletingExcessId === p._id}
                                                             className="p-1 text-rose-600 hover:bg-rose-50 rounded-md cursor-pointer transition-colors disabled:opacity-50"
                                                             title="Delete Proposal"
@@ -3804,7 +4161,7 @@ export default function PackageDetailClient({
                             }`}>
                                 {additionalSdRefund?.status === 'Refunded' ? '✅ Refunded' : additionalSdRefund?.status === 'Order Generated' ? '📄 Order Generated' : '⏳ Pending'}
                             </span>
-                            {workOrder?.additionalSecurityDepositAmount > 0 && (
+                            {Number(workOrder?.additionalSecurityDepositAmount || 0) > 0 && (
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
                                     Additional SD: ₹{Number(workOrder.additionalSecurityDepositAmount).toLocaleString('en-IN')}
                                 </span>
@@ -3838,7 +4195,7 @@ export default function PackageDetailClient({
                                                 type="text"
                                                 placeholder="e.g. 219"
                                                 value={additionalSdForm.orderNo}
-                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, orderNo: e.target.value }))}
+                                                onChange={(e) => setAdditionalSdForm((prev) => ({ ...prev, orderNo: e.target.value }))}
                                                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                             />
                                         </div>
@@ -3848,7 +4205,7 @@ export default function PackageDetailClient({
                                             <input
                                                 type="date"
                                                 value={additionalSdForm.orderDate}
-                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, orderDate: e.target.value }))}
+                                                onChange={(e) => setAdditionalSdForm((prev) => ({ ...prev, orderDate: e.target.value }))}
                                                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                             />
                                         </div>
@@ -3857,7 +4214,7 @@ export default function PackageDetailClient({
                                             <label className="block font-bold text-slate-700 mb-1">Status</label>
                                             <select
                                                 value={additionalSdForm.status}
-                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, status: e.target.value }))}
+                                                onChange={(e) => setAdditionalSdForm((prev) => ({ ...prev, status: e.target.value }))}
                                                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                             >
                                                 <option value="Pending">Pending</option>
@@ -3872,7 +4229,7 @@ export default function PackageDetailClient({
                                                 type="text"
                                                 placeholder="e.g. હરપાલસિંહ અમરસિંહ સરવૈયા ની અરજી"
                                                 value={additionalSdForm.applicationRef}
-                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, applicationRef: e.target.value }))}
+                                                onChange={(e) => setAdditionalSdForm((prev) => ({ ...prev, applicationRef: e.target.value }))}
                                                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                             />
                                         </div>
@@ -3882,7 +4239,7 @@ export default function PackageDetailClient({
                                             <input
                                                 type="date"
                                                 value={additionalSdForm.actualCompletionDate}
-                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, actualCompletionDate: e.target.value }))}
+                                                onChange={(e) => setAdditionalSdForm((prev) => ({ ...prev, actualCompletionDate: e.target.value }))}
                                                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                             />
                                         </div>
@@ -3891,14 +4248,14 @@ export default function PackageDetailClient({
                                             <label className="block font-bold text-slate-700 mb-1">Bank Name</label>
                                             <select
                                                 value={additionalSdForm.bankName}
-                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, bankName: e.target.value }))}
+                                                onChange={(e) => setAdditionalSdForm((prev) => ({ ...prev, bankName: e.target.value }))}
                                                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                             >
                                                 <option value="">-- Select Bank --</option>
-                                                {banks.map((b: any) => (
+                                                {banks.map((b) => (
                                                     <option key={b._id || b.name} value={b.name}>{b.name}</option>
                                                 ))}
-                                                {additionalSdForm.bankName && !banks.some((b: any) => b.name === additionalSdForm.bankName) && (
+                                                {additionalSdForm.bankName && !banks.some((b) => b.name === additionalSdForm.bankName) && (
                                                     <option value={additionalSdForm.bankName}>{additionalSdForm.bankName}</option>
                                                 )}
                                             </select>
@@ -3910,7 +4267,7 @@ export default function PackageDetailClient({
                                                 type="text"
                                                 placeholder="e.g. 01360IBG25000003"
                                                 value={additionalSdForm.fdrNumber}
-                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, fdrNumber: e.target.value }))}
+                                                onChange={(e) => setAdditionalSdForm((prev) => ({ ...prev, fdrNumber: e.target.value }))}
                                                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                             />
                                         </div>
@@ -3920,7 +4277,7 @@ export default function PackageDetailClient({
                                             <input
                                                 type="date"
                                                 value={additionalSdForm.fdrDate}
-                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, fdrDate: e.target.value }))}
+                                                onChange={(e) => setAdditionalSdForm((prev) => ({ ...prev, fdrDate: e.target.value }))}
                                                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                             />
                                         </div>
@@ -3931,7 +4288,7 @@ export default function PackageDetailClient({
                                                 type="number"
                                                 placeholder="e.g. 225000"
                                                 value={additionalSdForm.amount}
-                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, amount: e.target.value }))}
+                                                onChange={(e) => setAdditionalSdForm((prev) => ({ ...prev, amount: e.target.value }))}
                                                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-slate-800 text-right focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                             />
                                         </div>
@@ -3942,7 +4299,7 @@ export default function PackageDetailClient({
                                                 type="text"
                                                 placeholder="Optional notes or reference..."
                                                 value={additionalSdForm.remarks}
-                                                onChange={(e) => setAdditionalSdForm((prev: any) => ({ ...prev, remarks: e.target.value }))}
+                                                onChange={(e) => setAdditionalSdForm((prev) => ({ ...prev, remarks: e.target.value }))}
                                                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                             />
                                         </div>
@@ -4015,8 +4372,8 @@ export default function PackageDetailClient({
                                                         <td className="excel-value font-semibold text-slate-800">
                                                             {additionalSdRefund?.actualCompletionDate
                                                                 ? new Date(additionalSdRefund.actualCompletionDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' })
-                                                                : (bills?.find((b: any) => b.billType === 'Final' || b.actualCompletionDate)?.actualCompletionDate
-                                                                    ? new Date(bills.find((b: any) => b.billType === 'Final' || b.actualCompletionDate).actualCompletionDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' })
+                                                                : (bills?.find((b) => b.billType === 'Final' || b.actualCompletionDate)?.actualCompletionDate
+                                                                    ? new Date(bills.find((b) => b.billType === 'Final' || b.actualCompletionDate)!.actualCompletionDate as string).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' })
                                                                     : 'Not Recorded')}
                                                         </td>
                                                         <td className="excel-label">Refund Order No & Date</td>
@@ -4210,7 +4567,7 @@ export default function PackageDetailClient({
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
-                                        {parsedBidders.map((b: any, idx: number) => {
+                                        {parsedBidders.map((b, idx: number) => {
                                             const isL1 = b.rank === 'L1';
                                             return (
                                                 <tr key={idx} className={`${isL1 ? 'bg-emerald-50/40' : ''}`}>
@@ -4262,7 +4619,7 @@ export default function PackageDetailClient({
                             </p>
                             
                             <div className="space-y-4">
-                                {tenderFeeBidders.map((b: any, idx: number) => {
+                                {tenderFeeBidders.map((b, idx: number) => {
                                     const isL1 = b.rank === 'L1';
                                     return (
                                         <div key={idx} className={`p-4 rounded-xl border ${isL1 ? 'bg-emerald-50/30 border-emerald-200' : 'bg-slate-50/50 border-slate-200'}`}>
@@ -4296,7 +4653,7 @@ export default function PackageDetailClient({
                                                         className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white focus:ring-1 focus:ring-emerald-500 font-medium"
                                                     >
                                                         <option value="">-- Select Bank --</option>
-                                                        {banks.map((bank: any) => (
+                                                        {banks.map((bank) => (
                                                             <option key={bank._id || bank.name} value={bank.name}>
                                                                 {bank.name}
                                                             </option>

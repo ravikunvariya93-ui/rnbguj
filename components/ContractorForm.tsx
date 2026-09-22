@@ -3,8 +3,18 @@
 import { useState, useEffect } from 'react';
 import { X, User, MapPin, Phone, Building, FileText, Loader2 } from 'lucide-react';
 
+interface Contractor {
+    _id?: string;
+    name?: string;
+    proprietorName?: string;
+    address?: string;
+    mobileNo?: string;
+    agencyType?: string;
+    gstNo?: string;
+}
+
 interface ContractorFormProps {
-    contractor?: any;
+    contractor?: Contractor;
     onClose: () => void;
     onSave: () => void;
 }
@@ -56,8 +66,8 @@ export default function ContractorForm({ contractor, onClose, onSave }: Contract
 
             onSave();
             onClose();
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to save contractor');
             setLoading(false);
         }
     };

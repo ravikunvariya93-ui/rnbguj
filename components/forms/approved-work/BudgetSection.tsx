@@ -73,7 +73,7 @@ export default function BudgetSection({ formData, handleChange }: BudgetSectionP
                     name: 'budgetHead',
                     value: newBudgetHeadValue.trim()
                 }
-            } as any;
+            } as React.ChangeEvent<HTMLSelectElement>;
             handleChange(mockEvent);
             setIsAddingNewBudgetHead(false);
             setNewBudgetHeadValue('');
@@ -155,7 +155,7 @@ export default function BudgetSection({ formData, handleChange }: BudgetSectionP
                             onChange={(e) => {
                                 if (e.target.value === 'custom') {
                                     setShowCustomInput(true);
-                                    handleChange({ target: { name: 'approvalYear', value: '' } } as any);
+                                    handleChange({ target: { name: 'approvalYear', value: '' } } as React.ChangeEvent<HTMLSelectElement>);
                                 } else {
                                     handleChange(e);
                                 }
@@ -183,7 +183,7 @@ export default function BudgetSection({ formData, handleChange }: BudgetSectionP
                                 type="button"
                                 onClick={() => {
                                     setShowCustomInput(false);
-                                    handleChange({ target: { name: 'approvalYear', value: '2025-26' } } as any);
+                                    handleChange({ target: { name: 'approvalYear', value: '2025-26' } } as React.ChangeEvent<HTMLSelectElement>);
                                 }}
                                 className="px-2.5 py-1.5 border border-gray-300 rounded-md bg-white text-xs font-semibold text-gray-500 hover:bg-gray-50 transition-colors"
                             >

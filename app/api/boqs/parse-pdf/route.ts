@@ -3,12 +3,53 @@ import PDFParser from 'pdf2json';
 
 export const dynamic = 'force-dynamic';
 
-function parseBoqUniversal(pdfData: any): any[] {
-    const items: any[] = [];
+interface PdfTextRun {
+    T: string;
+}
+
+interface PdfRawText {
+    x: number;
+    y: number;
+    w?: number;
+    R: PdfTextRun[];
+}
+
+interface PdfRawPage {
+    Texts?: PdfRawText[];
+}
+
+interface PdfRawData {
+    Pages?: PdfRawPage[];
+}
+
+interface VisualText {
+    x: number;
+    y: number;
+    w: number;
+    text: string;
+}
+
+interface VisualLine {
+    y: number | null;
+    texts: VisualText[];
+}
+
+interface BoqItem {
+    itemNo: string;
+    description: string;
+    quantity: number;
+    unit: string;
+    rate: number;
+    amount: number;
+    itemType: string;
+}
+
+function parseBoqUniversal(pdfData: PdfRawData): BoqItem[] {
+    const items: BoqItem[] = [];
 
     // Extract pages and visual lines
-    const pagesData = (pdfData.Pages || []).map((page: any, pageIdx: number) => {
-        const texts = (page.Texts || []).map((t: any) => {
+    const pagesData = (pdfData.Pages || []).map((page: PdfRawPage, pageIdx: number) => {
+        const texts = (page.Texts || []).map((t: PdfRawText) => {
             let str = '';
             try {
                 str = decodeURIComponent(t.R[0].T);
@@ -21,14 +62,14 @@ function parseBoqUniversal(pdfData: any): any[] {
                 w: t.w || 0,
                 text: (str || '').trim()
             };
-        }).filter((t: any) => t.text.length > 0);
+        }).filter((t: VisualText) => t.text.length > 0);
 
-        texts.sort((a: any, b: any) => (Math.abs(a.y - b.y) < 0.25 ? a.x - b.x : a.y - b.y));
-        const lines: any[] = [];
-        let curLine: any[] = [];
+        texts.sort((a: VisualText, b: VisualText) => (Math.abs(a.y - b.y) < 0.25 ? a.x - b.x : a.y - b.y));
+        const lines: VisualLine[] = [];
+        let curLine: VisualText[] = [];
         let curY: number | null = null;
 
-        texts.forEach((t: any) => {
+        texts.forEach((t: VisualText) => {
             if (curY === null || Math.abs(t.y - curY) > 0.25) {
                 if (curLine.length > 0) lines.push({ y: curY, texts: curLine });
                 curLine = [t];
@@ -39,7 +80,7 @@ function parseBoqUniversal(pdfData: any): any[] {
         });
         if (curLine.length > 0) lines.push({ y: curY, texts: curLine });
 
-        const pageStr = texts.map((t: any) => t.text).join(' ');
+        const pageStr = texts.map((t: VisualText) => t.text).join(' ');
         return { pageIdx, texts, lines, pageStr };
     });
 
@@ -60,8 +101,8 @@ function parseBoqUniversal(pdfData: any): any[] {
                 if (second && isNum(second.text) && third && unitRegex.test(third.text)) {
                     styleAVotes++;
                 } else {
-                    const hasQtyAt20 = line.texts.some((t: any) => t.x >= 19.0 && t.x <= 25.0 && isNum(t.text));
-                    const hasAmtAt31 = line.texts.some((t: any) => t.x >= 30.0 && isNum(t.text));
+                    const hasQtyAt20 = line.texts.some((t: VisualText) => t.x >= 19.0 && t.x <= 25.0 && isNum(t.text));
+                    const hasAmtAt31 = line.texts.some((t: VisualText) => t.x >= 30.0 && isNum(t.text));
                     if (hasQtyAt20 && hasAmtAt31) {
                         styleBVotes++;
                     }
@@ -79,27 +120,27 @@ function parseBoqUniversal(pdfData: any): any[] {
             if (/Name of Party/i.test(p.pageStr) || /Opening Committee/i.test(p.pageStr)) continue;
 
             // Pass 1: identify all data lines on this page
-            const dataLineInfos: { lIdx: number; first: any; qtyText: any; rateText: any; amtText: any; unitText: any }[] = [];
+            const dataLineInfos: { lIdx: number; first: VisualText; qtyText: VisualText; rateText: VisualText | undefined; amtText: VisualText; unitText: VisualText | undefined }[] = [];
             for (let lIdx = 0; lIdx < p.lines.length; lIdx++) {
                 const line = p.lines[lIdx];
-                const lineStr = line.texts.map((t: any) => t.text).join(' ');
+                const lineStr = line.texts.map((t: VisualText) => t.text).join(' ');
                 if (headerRe.test(lineStr.trim())) continue;
                 if (descHeaderRe.test(lineStr)) continue;
 
-                const qtyText = line.texts.find((t: any) => t.x >= 19.0 && t.x <= 25.0 && isNum(t.text));
-                const amtText = line.texts.find((t: any) => t.x >= 30.5 && isNum(t.text));
+                const qtyText = line.texts.find((t: VisualText) => t.x >= 19.0 && t.x <= 25.0 && isNum(t.text));
+                const amtText = line.texts.find((t: VisualText) => t.x >= 30.5 && isNum(t.text));
                 if (!qtyText || !amtText) continue;
 
                 // Find item number: first digit text at x <= 7.0 on this line
-                let first = line.texts.find((t: any) => t.x <= 7.0 && /^\d{1,3}$/.test(t.text));
+                let first = line.texts.find((t: VisualText) => t.x <= 7.0 && /^\d{1,3}$/.test(t.text));
 
                 // If not found on this line, check nearby lines above (digit may be on separate y-line)
                 if (!first) {
                     for (let lookBack = 1; lookBack <= 5 && lIdx - lookBack >= 0; lookBack++) {
                         const prevLine = p.lines[lIdx - lookBack];
-                        const prevDigit = prevLine.texts.find((t: any) => t.x <= 7.0 && /^\d{1,3}$/.test(t.text));
+                        const prevDigit = prevLine.texts.find((t: VisualText) => t.x <= 7.0 && /^\d{1,3}$/.test(t.text));
                         if (prevDigit) {
-                            const yDiff = Math.abs(line.y - prevLine.y);
+                            const yDiff = Math.abs((line.y ?? 0) - (prevLine.y ?? 0));
                             if (yDiff < 2.0) {
                                 first = prevDigit;
                                 break;
@@ -116,8 +157,8 @@ function parseBoqUniversal(pdfData: any): any[] {
                 const isDuplicate = dataLineInfos.some(d => d.first.text === first.text && Math.abs(d.lIdx - lIdx) < 10);
                 if (isDuplicate) continue;
 
-                const unitText = line.texts.find((t: any) => t.x >= 21.5 && t.x <= 24.5 && /^[A-Za-z.()]+$/i.test(t.text) && !/^(Total|Page|Rupees|Rates)/i.test(t.text));
-                const rateText = line.texts.find((t: any) => t.x >= 26.5 && t.x <= 31.5 && isNum(t.text));
+                const unitText = line.texts.find((t: VisualText) => t.x >= 21.5 && t.x <= 24.5 && /^[A-Za-z.()]+$/i.test(t.text) && !/^(Total|Page|Rupees|Rates)/i.test(t.text));
+                const rateText = line.texts.find((t: VisualText) => t.x >= 26.5 && t.x <= 31.5 && isNum(t.text));
 
                 dataLineInfos.push({ lIdx, first, qtyText, rateText, amtText, unitText });
             }
@@ -133,32 +174,32 @@ function parseBoqUniversal(pdfData: any): any[] {
                 // Collect description from lines BETWEEN previous data line and current
                 for (let k = prevDataLIdx + 1; k < lIdx; k++) {
                     const descLine = p.lines[k];
-                    const descLineStr = descLine.texts.map((t: any) => t.text).join(' ');
+                    const descLineStr = descLine.texts.map((t: VisualText) => t.text).join(' ');
                     if (headerRe.test(descLineStr.trim())) continue;
                     if (descHeaderRe.test(descLineStr)) continue;
                     if (/Name of Party|Opening Committee/i.test(descLineStr)) continue;
                     if (/Name of work|Item Description Quantities|Item\s+No\s|In Figure|In Words|Page\s+\d+\s*\//i.test(descLineStr)) continue;
 
                     descLine.texts
-                        .filter((t: any) => t.x >= 3.0 && t.x < qtyText.x && !/Name of work|Item Description|In Figure|In Words|Page\s+\d/i.test(t.text))
-                        .forEach((t: any) => descParts.push(t.text));
+                        .filter((t: VisualText) => t.x >= 3.0 && t.x < qtyText.x && !/Name of work|Item Description|In Figure|In Words|Page\s+\d/i.test(t.text))
+                        .forEach((t: VisualText) => descParts.push(t.text));
                 }
 
                 // Collect description text on the current data line itself
                 p.lines[lIdx].texts
-                    .filter((t: any) => t.x > first.x && t.x < qtyText.x && t !== first)
-                    .forEach((t: any) => descParts.push(t.text));
+                    .filter((t: VisualText) => t.x > first.x && t.x < qtyText.x && t !== first)
+                    .forEach((t: VisualText) => descParts.push(t.text));
 
                 // Collect continuation description from lines after data line until next data line
                 for (let k = lIdx + 1; k < nextDataLIdx; k++) {
                     const nextLine = p.lines[k];
-                    const nextLineStr = nextLine.texts.map((t: any) => t.text).join(' ');
+                    const nextLineStr = nextLine.texts.map((t: VisualText) => t.text).join(' ');
                     if (pageRe.test(nextLineStr)) break;
                     if (/Page\s+\d+\s*\//.test(nextLineStr)) break;
 
                     nextLine.texts
-                        .filter((t: any) => t.x >= 3.0 && t.x < qtyText.x)
-                        .forEach((t: any) => descParts.push(t.text));
+                        .filter((t: VisualText) => t.x >= 3.0 && t.x < qtyText.x)
+                        .forEach((t: VisualText) => descParts.push(t.text));
                 }
 
                 const q = parseVal(qtyText.text);
@@ -189,16 +230,16 @@ function parseBoqUniversal(pdfData: any): any[] {
                 const itemNum = parseInt(first.text, 10);
                 if (itemNum < 1 || itemNum > 999) continue;
 
-                const qtyText = line.texts.find((t: any) => t.x > first.x && t.x < 11.0 && isNum(t.text));
-                const rateText = line.texts.find((t: any) => t.x >= 20.0 && t.x <= 28.0 && isNum(t.text));
-                const amtText = line.texts.find((t: any) => t.x >= 30.0 && isNum(t.text));
+                const qtyText = line.texts.find((t: VisualText) => t.x > first.x && t.x < 11.0 && isNum(t.text));
+                const rateText = line.texts.find((t: VisualText) => t.x >= 20.0 && t.x <= 28.0 && isNum(t.text));
+                const amtText = line.texts.find((t: VisualText) => t.x >= 30.0 && isNum(t.text));
 
                 if (qtyText && rateText && amtText) {
-                    const unitText = line.texts.find((t: any) => t.x > qtyText.x && t.x < 12.0 && /^[A-Za-z.]+$/.test(t.text));
+                    const unitText = line.texts.find((t: VisualText) => t.x > qtyText.x && t.x < 12.0 && /^[A-Za-z.]+$/.test(t.text));
                     const unit = unitText ? unitText.text : 'Nos';
 
                     const descParts: string[] = [];
-                    line.texts.filter((t: any) => t.x >= 11.0 && t.x < (rateText ? rateText.x : 22.0)).forEach((t: any) => descParts.push(t.text));
+                    line.texts.filter((t: VisualText) => t.x >= 11.0 && t.x < (rateText ? rateText.x : 22.0)).forEach((t: VisualText) => descParts.push(t.text));
 
                     let nextL = lIdx + 1;
                     while (nextL < p.lines.length) {
@@ -206,9 +247,9 @@ function parseBoqUniversal(pdfData: any): any[] {
                         const nextFirst = nextLine.texts[0];
                         if (nextFirst && nextFirst.x <= 7.0 && /^\d{1,4}$/.test(nextFirst.text)) break;
                         if (nextFirst && /^(Total|Rupees|Page\s*\d|Signature)/i.test(nextFirst.text)) break;
-                        if (nextLine.texts.some((t: any) => /^\d{1,4}$/.test(t.text) && t.x <= 7.0)) break;
+                        if (nextLine.texts.some((t: VisualText) => /^\d{1,4}$/.test(t.text) && t.x <= 7.0)) break;
 
-                        nextLine.texts.filter((t: any) => t.x >= 11.0 && t.x < 22.5).forEach((t: any) => descParts.push(t.text));
+                        nextLine.texts.filter((t: VisualText) => t.x >= 11.0 && t.x < 22.5).forEach((t: VisualText) => descParts.push(t.text));
                         nextL++;
                     }
 
@@ -228,7 +269,7 @@ function parseBoqUniversal(pdfData: any): any[] {
         }
     } else {
         // STYLE C: Linear Token Stream Parser (e.g. 2.pdf, 30.pdf, 70.pdf)
-        const fullText = pagesData.map((p: any) => p.texts.map((t: any) => t.text).join(' ')).join('\n');
+        const fullText = pagesData.map((p: { texts: VisualText[] }) => p.texts.map((t: VisualText) => t.text).join(' ')).join('\n');
         const boqMarker = /(Description of Item|Bill of Quantities|SCHEDULE\s*[-–—]?\s*B|Schedule of Quantities)/i;
         const match = boqMarker.exec(fullText);
         const startIdx = match ? match.index : 0;
@@ -333,9 +374,9 @@ export async function POST(req: Request) {
 
         const pdfParser = new PDFParser();
 
-        const p = new Promise<any[]>((resolve, reject) => {
-            pdfParser.on("pdfParser_dataError", (errData: any) => reject(errData.parserError));
-            pdfParser.on("pdfParser_dataReady", pdfData => {
+        const p = new Promise<BoqItem[]>((resolve, reject) => {
+            pdfParser.on("pdfParser_dataError", (errData: Error | { parserError: Error }) => reject((errData as { parserError?: unknown }).parserError));
+            pdfParser.on("pdfParser_dataReady", (pdfData: PdfRawData) => {
                 try {
                     const parsed = parseBoqUniversal(pdfData);
                     resolve(parsed);
@@ -349,8 +390,8 @@ export async function POST(req: Request) {
         const parsedItems = await p;
 
         return NextResponse.json({ success: true, data: parsedItems });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("PDF Parsing error:", error);
-        return NextResponse.json({ success: false, error: 'Failed to parse PDF: ' + error.message }, { status: 500 });
+        return NextResponse.json({ success: false, error: 'Failed to parse PDF: ' + (error instanceof Error ? error.message : 'Unknown error') }, { status: 500 });
     }
 }

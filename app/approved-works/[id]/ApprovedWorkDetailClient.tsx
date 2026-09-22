@@ -12,17 +12,305 @@ import { parseDateStr, formatDate, formatDateForInput } from '@/lib/dateUtils';
 import SearchableSelect from '@/components/SearchableSelect';
 import BillForm from '@/components/BillForm';
 
+interface ApprWorkEntry {
+    workId?: string | { _id?: string; workName?: string; tsAmount?: number | string } | null;
+    workName?: string;
+    amount?: number | string;
+    tsNotRequired?: boolean;
+}
+
+interface ApprovedWorkDoc {
+    circle?: string;
+    district?: string;
+    subDivision?: string;
+    taluka?: string;
+    constituencyName?: string;
+    budgetType?: string;
+    wmsItemCode?: string;
+    approvalYear?: string;
+    jobNumberApprovalDate?: string;
+    jobNumberAmount?: number | string;
+    workName?: string;
+    proposedLength?: string;
+    contractProvision?: string;
+    rpmsCode?: string;
+    type?: string;
+    budgetHead?: string;
+    projectType?: string;
+    mlaName?: string;
+    roadCategory?: string;
+    workType?: string;
+    buildingType?: string;
+    parliamentaryConstituency?: string;
+    mpName?: string;
+    natureOfWork?: string;
+    schemeName?: string;
+    length?: string;
+    chainage?: string;
+    estimateConsultant?: string;
+    remarks?: string;
+}
+
+interface TsDoc {
+    _id?: string;
+    workName?: string;
+    tsAuthority?: string;
+    tsNumber?: string;
+    tsDate?: string;
+    tsAmount?: number | string;
+    remarks?: string;
+}
+
+interface PkgDoc {
+    _id?: string;
+    packageName?: string;
+    subDivision?: string;
+    workType?: string;
+    budgetHead?: string;
+    dtpConsultant?: string;
+    works?: ApprWorkEntry[];
+}
+
+interface ApprDtpDoc {
+    _id?: string;
+    dtpSendingNo?: string;
+    dtpSendingDate?: string;
+    dtpApprovingAuthority?: string;
+    dtpApprovalNo?: string;
+    dtpApprovalDate?: string;
+    tenderAmount?: number | string;
+    remarks?: string;
+}
+
+interface ApprTenderDoc {
+    _id?: string;
+    packageId?: string;
+    packageName?: string;
+    tenderId?: string;
+    tenderNoticeYear?: string;
+    noticeNo?: string;
+    srNo?: string;
+    trialNo?: number | string;
+    tenderCreationDate?: string;
+    lastDateOfSubmission?: string;
+    tenderOpeningDate?: string;
+    tenderValidityDate?: string;
+    reInvite?: boolean;
+    cancelled?: boolean;
+    cancellationReason?: string;
+    contractorName?: string;
+    contractPrice?: number | string;
+    estimatedAmount?: number | string;
+    aboveBelowPercentage?: number | string;
+    aboveBelowInWord?: string;
+    remarks?: string;
+    securityDepositAmount?: number | string;
+    workDurationMonths?: number | string;
+}
+
+interface ApprApprovalDoc {
+    _id?: string;
+    tenderId?: string;
+    notRequired?: boolean;
+    proposalDate?: string;
+    tenderApprovalOffice?: string;
+    tenderApprovalNo?: string;
+    tenderApprovalDate?: string;
+}
+
+interface ApprLoaDoc {
+    _id?: string;
+    tenderId?: string;
+    stampDuty?: number | string;
+    defectLiabilityPeriod?: string;
+    workDurationMonths?: number | string;
+    acceptanceLetterWorksheetNo?: string;
+    acceptanceLetterDate?: string;
+}
+
+interface ApprWorkOrderDoc {
+    _id?: string;
+    loaId?: string;
+    notRequired?: boolean;
+    agreementYear?: string;
+    agreementNo?: string;
+    agreementDate?: string | null;
+    securityDepositType?: string;
+    securityDepositBankName?: string;
+    securityDepositNumber?: string;
+    securityDepositAmount?: number | string;
+    securityDepositDate?: string;
+    additionalSecurityDepositType?: string;
+    additionalSecurityDepositBankName?: string;
+    additionalSecurityDepositNumber?: string;
+    additionalSecurityDepositAmount?: number | string;
+    additionalSecurityDepositDate?: string;
+    workOrderWorksheetNo?: string;
+    workOrderDate?: string;
+    timeLimitStartsFrom?: string;
+    workDurationMonths?: number | string;
+    stipulatedCompletionDate?: string;
+}
+
+interface ApprBillRef {
+    _id?: string;
+    billType?: string;
+    billDate?: string;
+    runningBillNumber?: string | number;
+    netPaidAmount?: number | string;
+    grossAmount?: number | string;
+    totalDeduction?: number | string;
+}
+
+interface ApprBankEntry {
+    _id: string;
+    name?: string;
+    [key: string]: string | undefined;
+}
+
+interface ApprAgencyEntry {
+    _id: string;
+    name?: string;
+    proprietorName?: string;
+    address?: string;
+    mobileNo?: string;
+    agencyType?: string;
+    gstNo?: string;
+    [key: string]: string | undefined;
+}
+
+interface WorkFormState {
+    circle?: string;
+    district?: string;
+    subDivision?: string;
+    taluka?: string;
+    constituencyName?: string;
+    budgetType?: string;
+    wmsItemCode?: string;
+    approvalYear?: string;
+    jobNumberApprovalDate?: string;
+    jobNumberAmount?: number | string;
+    workName?: string;
+    proposedLength?: string;
+    contractProvision?: string;
+    rpmsCode?: string;
+    type?: string;
+    budgetHead?: string;
+    projectType?: string;
+    mlaName?: string;
+    roadCategory?: string;
+    workType?: string;
+    buildingType?: string;
+    parliamentaryConstituency?: string;
+    mpName?: string;
+    natureOfWork?: string;
+    schemeName?: string;
+    length?: string;
+    chainage?: string;
+    estimateConsultant?: string;
+    remarks?: string;
+}
+
+interface TsFormState {
+    workName?: string;
+    tsAuthority?: string;
+    tsNumber?: string;
+    tsDate?: string;
+    tsAmount?: number | string;
+    remarks?: string;
+}
+
+interface ApprPkgFormState {
+    packageName?: string;
+    subDivision?: string;
+    dtpConsultant?: string;
+    works?: ApprWorkEntry[];
+}
+
+interface ApprDtpFormState {
+    tsId?: string;
+    dtpSendingNo?: string;
+    dtpSendingDate?: string;
+    dtpApprovingAuthority?: string;
+    dtpApprovalNo?: string;
+    dtpApprovalDate?: string;
+    tenderAmount?: number | string;
+    remarks?: string;
+}
+
+interface ApprTenderFormState {
+    packageId?: string;
+    packageName?: string;
+    tenderId?: string;
+    tenderNoticeYear?: string;
+    noticeNo?: string;
+    srNo?: string;
+    trialNo?: number | string;
+    tenderCreationDate?: string;
+    lastDateOfSubmission?: string;
+    tenderValidityDate?: string;
+    reInvite?: boolean;
+    cancelled?: boolean;
+    cancellationReason?: string;
+    contractorName?: string;
+    contractPrice?: number | string;
+    aboveBelowPercentage?: number | string;
+    aboveBelowInWord?: string;
+    remarks?: string;
+}
+
+interface ApprApprovalFormState {
+    tenderId?: string;
+    notRequired?: boolean;
+    proposalDate?: string;
+    tenderApprovalOffice?: string;
+    tenderApprovalNo?: string;
+    tenderApprovalDate?: string;
+}
+
+interface ApprLoaFormState {
+    tenderId?: string;
+    stampDuty?: number | string;
+    defectLiabilityPeriod?: string;
+    workDurationMonths?: number | string;
+    acceptanceLetterWorksheetNo?: string;
+    acceptanceLetterDate?: string;
+}
+
+interface ApprWoFormState {
+    loaId?: string;
+    notRequired?: boolean;
+    agreementYear?: string;
+    agreementNo?: string;
+    agreementDate?: string | null;
+    securityDepositType?: string;
+    securityDepositBankName?: string;
+    securityDepositNumber?: string;
+    securityDepositAmount?: number | string;
+    securityDepositDate?: string;
+    additionalSecurityDepositType?: string;
+    additionalSecurityDepositBankName?: string;
+    additionalSecurityDepositNumber?: string;
+    additionalSecurityDepositAmount?: number | string;
+    additionalSecurityDepositDate?: string;
+    workOrderWorksheetNo?: string;
+    workOrderDate?: string;
+    timeLimitStartsFrom?: string;
+    workDurationMonths?: number | string;
+    stipulatedCompletionDate?: string;
+}
+
 interface ApprovedWorkDetailClientProps {
     workId: string;
-    work: any;
-    ts: any;
-    pkg: any;
-    dtp: any;
-    tender: any;
-    approval: any;
-    loa: any;
-    workOrder: any;
-    bills: any[];
+    work: ApprovedWorkDoc;
+    ts: TsDoc;
+    pkg: PkgDoc;
+    dtp: ApprDtpDoc;
+    tender: ApprTenderDoc;
+    approval: ApprApprovalDoc;
+    loa: ApprLoaDoc;
+    workOrder: ApprWorkOrderDoc;
+    bills: ApprBillRef[];
     maxAgreementNos?: Record<string, number>;
 }
 
@@ -73,14 +361,14 @@ export default function ApprovedWorkDetailClient({
     }, []);
 
     // Form states
-    const [workForm, setWorkForm] = useState<any>({});
-    const [tsForm, setTsForm] = useState<any>({});
-    const [pkgForm, setPkgForm] = useState<any>({});
-    const [dtpForm, setDtpForm] = useState<any>({});
-    const [tenderForm, setTenderForm] = useState<any>({});
-    const [approvalForm, setApprovalForm] = useState<any>({});
-    const [loaForm, setLoaForm] = useState<any>({});
-    const [woForm, setWoForm] = useState<any>({});
+    const [workForm, setWorkForm] = useState<WorkFormState>({});
+    const [tsForm, setTsForm] = useState<TsFormState>({});
+    const [pkgForm, setPkgForm] = useState<ApprPkgFormState>({});
+    const [dtpForm, setDtpForm] = useState<ApprDtpFormState>({});
+    const [tenderForm, setTenderForm] = useState<ApprTenderFormState>({});
+    const [approvalForm, setApprovalForm] = useState<ApprApprovalFormState>({});
+    const [loaForm, setLoaForm] = useState<ApprLoaFormState>({});
+    const [woForm, setWoForm] = useState<ApprWoFormState>({});
 
     // Helper to determine if tender approval is not required based on tender amount or contract price
     const isTenderApprovalNotRequired = useMemo(() => {
@@ -92,8 +380,8 @@ export default function ApprovedWorkDetailClient({
     }, [tender]);
     
     // Bank list & contractor list for select dropdowns
-    const [banks, setBanks] = useState<any[]>([]);
-    const [agencies, setAgencies] = useState<any[]>([]);
+    const [banks, setBanks] = useState<ApprBankEntry[]>([]);
+    const [agencies, setAgencies] = useState<ApprAgencyEntry[]>([]);
     const [isBankModalOpen, setIsBankModalOpen] = useState(false);
     const [newBankName, setNewBankName] = useState('');
     const [bankSaving, setBankSaving] = useState(false);
@@ -109,7 +397,7 @@ export default function ApprovedWorkDetailClient({
 
     // Bill modal states
     const [isBillModalOpen, setIsBillModalOpen] = useState(false);
-    const [editingBill, setEditingBill] = useState<any | null>(null);
+    const [editingBill, setEditingBill] = useState<ApprBillRef | null>(null);
 
     // Sync data if props change (e.g. after refresh)
     useEffect(() => {
@@ -192,7 +480,7 @@ export default function ApprovedWorkDetailClient({
                 packageName: pkg?.packageName || work.workName + (work.workType ? " " + work.workType + " Package" : " Package"),
                 subDivision: pkg?.subDivision || work.subDivision || '',
                 dtpConsultant: pkg?.dtpConsultant || '',
-                works: pkg?.works || [{ workId: ts?._id, workName: work.workName, amount: (ts?.tsAmount || 0) * 100000 }],
+                works: pkg?.works || [{ workId: ts?._id, workName: work.workName, amount: Number(ts?.tsAmount || 0) * 100000 }],
             });
         } else if (section === 'dtp') {
             setDtpForm({
@@ -284,41 +572,41 @@ export default function ApprovedWorkDetailClient({
     // Form field changes
     const handleWorkFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setWorkForm((prev: any) => ({ ...prev, [name]: value }));
+        setWorkForm((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleTsFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setTsForm((prev: any) => ({ ...prev, [name]: value }));
+        setTsForm((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleDtpFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setDtpForm((prev: any) => ({ ...prev, [name]: value }));
+        setDtpForm((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleTenderFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
         const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
-        setTenderForm((prev: any) => ({ ...prev, [name]: val }));
+        setTenderForm((prev) => ({ ...prev, [name]: val }));
     };
 
     const handleApprovalFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target as HTMLInputElement;
         const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
-        setApprovalForm((prev: any) => ({ ...prev, [name]: val }));
+        setApprovalForm((prev) => ({ ...prev, [name]: val }));
     };
 
     const handleLoaFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setLoaForm((prev: any) => ({ ...prev, [name]: value }));
+        setLoaForm((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleWoFieldChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target as HTMLInputElement;
         const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
-        setWoForm((prev: any) => {
-            const next = { ...prev, [name]: val };
+        setWoForm((prev) => {
+            const next = { ...prev, [name]: val } as ApprWoFormState;
             if (name === 'notRequired') {
                 if (val) {
                     next.agreementNo = '';
@@ -346,7 +634,7 @@ export default function ApprovedWorkDetailClient({
         if (parsed) {
             const validDate = new Date(parsed);
             validDate.setDate(validDate.getDate() + 120);
-            setTenderForm((prev: any) => ({ ...prev, tenderValidityDate: formatDate(validDate) }));
+            setTenderForm((prev) => ({ ...prev, tenderValidityDate: formatDate(validDate) }));
         }
     }, [tenderForm.lastDateOfSubmission]);
 
@@ -356,16 +644,16 @@ export default function ApprovedWorkDetailClient({
         if (!base) return;
 
         if (tenderForm.aboveBelowInWord === 'At Par') {
-            setTenderForm((prev: any) => ({ ...prev, contractPrice: base.toFixed(2), aboveBelowPercentage: 0 }));
+            setTenderForm((prev) => ({ ...prev, contractPrice: base.toFixed(2), aboveBelowPercentage: 0 }));
             return;
         }
 
         const pct = Number(tenderForm.aboveBelowPercentage);
         if (!isNaN(pct)) {
             if (tenderForm.aboveBelowInWord === 'Above') {
-                setTenderForm((prev: any) => ({ ...prev, contractPrice: (base + (base * pct / 100)).toFixed(2) }));
+                setTenderForm((prev) => ({ ...prev, contractPrice: (base + (base * pct / 100)).toFixed(2) }));
             } else if (tenderForm.aboveBelowInWord === 'Below') {
-                setTenderForm((prev: any) => ({ ...prev, contractPrice: (base - (base * pct / 100)).toFixed(2) }));
+                setTenderForm((prev) => ({ ...prev, contractPrice: (base - (base * pct / 100)).toFixed(2) }));
             }
         }
     }, [tenderForm.aboveBelowPercentage, tenderForm.aboveBelowInWord, dtp]);
@@ -378,7 +666,7 @@ export default function ApprovedWorkDetailClient({
         const calcDateStr = formatDate(nextMonth);
         const duration = woForm.workDurationMonths || loa.workDurationMonths || '';
         
-        setWoForm((prev: any) => {
+        setWoForm((prev) => {
             if (prev.timeLimitStartsFrom) return prev;
             return { ...prev, timeLimitStartsFrom: calcDateStr, workDurationMonths: duration };
         });
@@ -395,7 +683,7 @@ export default function ApprovedWorkDetailClient({
         stipulatedDate.setMonth(stipulatedDate.getMonth() + workMonths);
         stipulatedDate.setDate(stipulatedDate.getDate() - 1);
 
-        setWoForm((prev: any) => ({
+        setWoForm((prev) => ({
             ...prev,
             stipulatedCompletionDate: formatDate(stipulatedDate),
         }));
@@ -420,8 +708,8 @@ export default function ApprovedWorkDetailClient({
             showToast('success', 'Approved Work details saved!');
             setEditingSection(null);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -447,8 +735,8 @@ export default function ApprovedWorkDetailClient({
             showToast('success', 'Technical Sanction details saved!');
             setEditingSection(null);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -462,7 +750,7 @@ export default function ApprovedWorkDetailClient({
                 packageName: pkgForm.packageName,
                 subDivision: pkgForm.subDivision,
                 dtpConsultant: pkgForm.dtpConsultant,
-                works: [{ workId: ts._id, workName: work.workName, amount: (ts.tsAmount || 0) * 100000 }]
+                works: [{ workId: ts._id, workName: work.workName, amount: Number(ts.tsAmount || 0) * 100000 }]
             };
             const url = pkg ? `/api/packages/${pkg._id}` : `/api/packages`;
             const method = pkg ? 'PUT' : 'POST';
@@ -475,8 +763,8 @@ export default function ApprovedWorkDetailClient({
             showToast('success', 'Package details saved!');
             setEditingSection(null);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -506,8 +794,8 @@ export default function ApprovedWorkDetailClient({
             showToast('success', 'DTP details saved!');
             setEditingSection(null);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -541,8 +829,8 @@ export default function ApprovedWorkDetailClient({
             showToast('success', 'Tender details saved!');
             setEditingSection(null);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -576,8 +864,8 @@ export default function ApprovedWorkDetailClient({
             showToast('success', 'Tender Approval details saved!');
             setEditingSection(null);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -603,8 +891,8 @@ export default function ApprovedWorkDetailClient({
             showToast('success', 'LOA details saved!');
             setEditingSection(null);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -655,8 +943,8 @@ export default function ApprovedWorkDetailClient({
             showToast('success', 'Work Order details saved!');
             setEditingSection(null);
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -677,9 +965,9 @@ export default function ApprovedWorkDetailClient({
             if (data.success) {
                 setBanks(prev => [...prev, data.data].sort((a,b) => a.name.localeCompare(b.name)));
                 if (activeBankField === 'security') {
-                    setWoForm((prev: any) => ({ ...prev, securityDepositBankName: data.data.name }));
+                    setWoForm((prev) => ({ ...prev, securityDepositBankName: data.data.name }));
                 } else {
-                    setWoForm((prev: any) => ({ ...prev, additionalSecurityDepositBankName: data.data.name }));
+                    setWoForm((prev) => ({ ...prev, additionalSecurityDepositBankName: data.data.name }));
                 }
                 setNewBankName('');
                 setIsBankModalOpen(false);
@@ -732,11 +1020,11 @@ export default function ApprovedWorkDetailClient({
             if (data.success) {
                 if (isEditing) {
                     setAgencies(prev => prev.map(a => a._id === editingContractorId ? data.data : a).sort((a,b) => a.name.localeCompare(b.name)));
-                    setTenderForm((prev: any) => ({ ...prev, contractorName: data.data.name }));
+                    setTenderForm((prev) => ({ ...prev, contractorName: data.data.name }));
                     showToast('success', 'Contractor/Agency updated successfully.');
                 } else {
                     setAgencies(prev => [...prev, data.data].sort((a,b) => a.name.localeCompare(b.name)));
-                    setTenderForm((prev: any) => ({ ...prev, contractorName: data.data.name }));
+                    setTenderForm((prev) => ({ ...prev, contractorName: data.data.name }));
                     showToast('success', 'Contractor/Agency added successfully.');
                 }
                 setNewContractor({ name: '', proprietorName: '', address: '', mobileNo: '', agencyType: '', gstNo: '' });
@@ -755,7 +1043,7 @@ export default function ApprovedWorkDetailClient({
     // BILLS SECTION LOGIC
     // NOTE: the modal renders the shared BillForm component from editingBill,
     // so no local bill-field state is kept here.
-    const handleOpenBillModal = (existingBill: any = null) => {
+    const handleOpenBillModal = (existingBill: ApprBillRef | null = null) => {
         setEditingBill(existingBill);
         setIsBillModalOpen(true);
         setTimeout(() => {
@@ -774,8 +1062,8 @@ export default function ApprovedWorkDetailClient({
             if (!res.ok) throw new Error('Failed to delete bill.');
             showToast('success', 'Bill deleted.');
             router.refresh();
-        } catch (err: any) {
-            showToast('error', err.message);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error ? err.message : 'Unknown error');
         } finally {
             setLoading(false);
         }
@@ -790,7 +1078,7 @@ export default function ApprovedWorkDetailClient({
             { name: 'Package', done: !!pkg, color: pkg ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-slate-400 bg-slate-50 border-slate-200' },
             { name: 'DTP Approval', done: !!dtp, color: dtp ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-slate-400 bg-slate-50 border-slate-200' },
             { name: 'Tendering', done: !!tender, color: tender ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-slate-400 bg-slate-50 border-slate-200' },
-            { name: 'Approval', done: !!approval || (approval?.notRequired) || isTenderApprovalNotRequired, color: (approval || approval?.notRequired || isTenderApprovalNotRequired) ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-slate-400 bg-slate-50 border-slate-200' },
+            { name: 'Approval', done: !!approval || isTenderApprovalNotRequired, color: (approval || isTenderApprovalNotRequired) ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-slate-400 bg-slate-50 border-slate-200' },
             { name: 'LOA Issued', done: !!loa, color: loa ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-slate-400 bg-slate-50 border-slate-200' },
             { name: 'Work Order', done: !!workOrder, color: workOrder ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-slate-400 bg-slate-50 border-slate-200' },
             { name: 'Bills', done: bills && bills.length > 0, color: (bills && bills.length > 0) ? 'text-emerald-600 bg-emerald-100 border-emerald-300' : 'text-slate-400 bg-slate-50 border-slate-200' },
@@ -812,8 +1100,8 @@ export default function ApprovedWorkDetailClient({
             if (timeA !== timeB) {
                 return timeA - timeB;
             }
-            const numA = parseInt(a.runningBillNumber || '0', 10) || 0;
-            const numB = parseInt(b.runningBillNumber || '0', 10) || 0;
+            const numA = parseInt(String(a.runningBillNumber ?? '0'), 10) || 0;
+            const numB = parseInt(String(b.runningBillNumber ?? '0'), 10) || 0;
             return numA - numB;
         });
     }, [bills]);
@@ -843,7 +1131,7 @@ export default function ApprovedWorkDetailClient({
                 <div className="text-right">
                     <p className="text-xs text-emerald-100 font-semibold uppercase">Job Cost</p>
                     <p className="text-2xl font-extrabold text-white">
-                        ₹{work.jobNumberAmount ? `${work.jobNumberAmount.toFixed(2)} Lacs` : 'N/A'}
+                        ₹{work.jobNumberAmount ? `${Number(work.jobNumberAmount).toFixed(2)} Lacs` : 'N/A'}
                     </p>
                 </div>
             </div>
@@ -1053,7 +1341,7 @@ export default function ApprovedWorkDetailClient({
                                             <td className="excel-label">Estimate Consultant</td>
                                             <td className="excel-value">{work.estimateConsultant || '-'}</td>
                                             <td className="excel-label font-bold">Job Cost</td>
-                                            <td className="excel-value font-bold font-mono text-emerald-700">₹{work.jobNumberAmount ? `${work.jobNumberAmount.toFixed(2)} Lacs` : '-'}</td>
+                                            <td className="excel-value font-bold font-mono text-emerald-700">₹{work.jobNumberAmount ? `${Number(work.jobNumberAmount).toFixed(2)} Lacs` : '-'}</td>
                                         </tr>
                                         <tr>
                                             <td className="excel-label">Road Category / Type</td>
@@ -1162,7 +1450,7 @@ export default function ApprovedWorkDetailClient({
                                         </tr>
                                         <tr>
                                             <td className="excel-label">T.S. Amount</td>
-                                            <td className="excel-value font-bold font-mono text-emerald-700">₹{ts.tsAmount ? `${ts.tsAmount.toFixed(2)} Lacs` : '-'}</td>
+                                            <td className="excel-value font-bold font-mono text-emerald-700">₹{ts.tsAmount ? `${Number(ts.tsAmount).toFixed(2)} Lacs` : '-'}</td>
                                             <td className="excel-label">T.S. Remarks</td>
                                             <td className="excel-value">{ts.remarks || '-'}</td>
                                         </tr>
@@ -1223,7 +1511,7 @@ export default function ApprovedWorkDetailClient({
                                                         type="text" 
                                                         name="packageName" 
                                                         value={pkgForm.packageName || ''} 
-                                                        onChange={(e) => setPkgForm((prev: any) => ({ ...prev, packageName: e.target.value }))} 
+                                                        onChange={(e) => setPkgForm((prev) => ({ ...prev, packageName: e.target.value }))} 
                                                         required 
                                                         className="excel-cell-input" 
                                                         placeholder="e.g. Resurfacing Of Ugalavan to Sarera Road (NPBT) KM.0/000 to 3/100, Ta.Jesar Dist.Bhavnagar"
@@ -1233,7 +1521,7 @@ export default function ApprovedWorkDetailClient({
                                             <tr>
                                                 <td className="excel-label">Sub Division</td>
                                                 <td className="excel-value w-[30%]">
-                                                    <select name="subDivision" value={pkgForm.subDivision} onChange={(e) => setPkgForm((prev: any) => ({ ...prev, subDivision: e.target.value }))} className="excel-cell-select bg-white">
+                                                    <select name="subDivision" value={pkgForm.subDivision} onChange={(e) => setPkgForm((prev) => ({ ...prev, subDivision: e.target.value }))} className="excel-cell-select bg-white">
                                                         <option value="">-- Select --</option>
                                                         <option value="Bhavnagar">Bhavnagar</option>
                                                         <option value="Mahuva">Mahuva</option>
@@ -1245,7 +1533,7 @@ export default function ApprovedWorkDetailClient({
                                                 </td>
                                                 <td className="excel-label">DTP Consultant</td>
                                                 <td className="excel-value w-[30%]">
-                                                    <select name="dtpConsultant" value={pkgForm.dtpConsultant} onChange={(e) => setPkgForm((prev: any) => ({ ...prev, dtpConsultant: e.target.value }))} className="excel-cell-select bg-white">
+                                                    <select name="dtpConsultant" value={pkgForm.dtpConsultant} onChange={(e) => setPkgForm((prev) => ({ ...prev, dtpConsultant: e.target.value }))} className="excel-cell-select bg-white">
                                                         <option value="">-- Select Consultant --</option>
                                                         <option value="Umiya Engineers and Project Management Consultancy">Umiya Engineers and Project Management Consultancy</option>
                                                         <option value="Trisha Engineers Consultancy">Trisha Engineers Consultancy</option>
@@ -1260,7 +1548,7 @@ export default function ApprovedWorkDetailClient({
                                             <tr>
                                                 <td className="excel-label">Linked Work</td>
                                                 <td className="excel-value font-mono text-slate-500 font-semibold" colSpan={3}>
-                                                    📌 {work.workName} &nbsp;|&nbsp; T.S. Amount: ₹{(ts?.tsAmount || 0).toFixed(2)} Lacs
+                                                    📌 {work.workName} &nbsp;|&nbsp; T.S. Amount: ₹{Number(ts?.tsAmount || 0).toFixed(2)} Lacs
                                                 </td>
                                             </tr>
                                         </tbody>
@@ -1530,7 +1818,7 @@ export default function ApprovedWorkDetailClient({
                                                                 value={agencies.find(a => a.name === tenderForm.contractorName)?._id || ''}
                                                                 onChange={(id) => {
                                                                     const selected = agencies.find(a => a._id === id);
-                                                                    setTenderForm((prev: any) => ({ ...prev, contractorName: selected ? selected.name : '' }));
+                                                                    setTenderForm((prev) => ({ ...prev, contractorName: selected ? selected.name : '' }));
                                                                 }}
                                                                 displayField="name"
                                                                 helperField="address"
@@ -1850,7 +2138,7 @@ export default function ApprovedWorkDetailClient({
                 <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
                     <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${(workOrder || workOrder?.notRequired) ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                            <div className={`p-2 rounded-lg ${workOrder ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
                                 <Settings className="w-5 h-5" />
                             </div>
                             <div>
@@ -1920,7 +2208,7 @@ export default function ApprovedWorkDetailClient({
                                             <tr>
                                                 <td className="excel-label">Agreement Date</td>
                                                 <td className="excel-value" colSpan={3}>
-                                                    <input type="text" placeholder="DD/MM/YYYY" name="agreementDate" value={woForm.agreementDate} onChange={handleWoFieldChange} className="excel-cell-input" />
+                                                    <input type="text" placeholder="DD/MM/YYYY" name="agreementDate" value={woForm.agreementDate || ''} onChange={handleWoFieldChange} className="excel-cell-input" />
                                                 </td>
                                             </tr>
 
@@ -1945,7 +2233,7 @@ export default function ApprovedWorkDetailClient({
                                                                 value={banks.find(b => b.name === woForm.securityDepositBankName)?._id || ''}
                                                                 onChange={(id) => {
                                                                     const selected = banks.find(b => b._id === id);
-                                                                    setWoForm((prev: any) => ({ ...prev, securityDepositBankName: selected ? selected.name : '' }));
+                                                                    setWoForm((prev) => ({ ...prev, securityDepositBankName: selected ? selected.name : '' }));
                                                                 }}
                                                                 displayField="name"
                                                             />
@@ -1992,7 +2280,7 @@ export default function ApprovedWorkDetailClient({
                                                                 value={banks.find(b => b.name === woForm.additionalSecurityDepositBankName)?._id || ''}
                                                                 onChange={(id) => {
                                                                     const selected = banks.find(b => b._id === id);
-                                                                    setWoForm((prev: any) => ({ ...prev, additionalSecurityDepositBankName: selected ? selected.name : '' }));
+                                                                    setWoForm((prev) => ({ ...prev, additionalSecurityDepositBankName: selected ? selected.name : '' }));
                                                                 }}
                                                                 displayField="name"
                                                             />
@@ -2085,7 +2373,7 @@ export default function ApprovedWorkDetailClient({
                                                 Type: {workOrder.securityDepositType || '-'} &nbsp;|&nbsp; Bank: {workOrder.securityDepositBankName || '-'} &nbsp;|&nbsp; No: {workOrder.securityDepositNumber || '-'} &nbsp;|&nbsp; Amount: <strong className="text-emerald-700">₹{workOrder.securityDepositAmount?.toLocaleString('en-IN') || 0}</strong>
                                             </td>
                                         </tr>
-                                        {workOrder.additionalSecurityDepositAmount > 0 && (
+                                        {Number(workOrder.additionalSecurityDepositAmount || 0) > 0 && (
                                             <tr>
                                                 <td className="excel-label">Additional SD</td>
                                                 <td className="excel-value font-mono" colSpan={3}>
@@ -2148,7 +2436,7 @@ export default function ApprovedWorkDetailClient({
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-200">
-                                        {sortedBills.map((bill: any, idx: number) => (
+                                        {sortedBills.map((bill, idx: number) => (
                                             <tr key={bill._id} className="hover:bg-slate-50">
                                                 <td className="border border-slate-200 px-4 py-1.5 text-center font-mono font-semibold text-slate-800">{bill.runningBillNumber || idx + 1}</td>
                                                 <td className="border border-slate-200 px-4 py-1.5 text-center font-semibold">
@@ -2169,7 +2457,7 @@ export default function ApprovedWorkDetailClient({
                                                         <button onClick={() => handleOpenBillModal(bill)} className="p-1 text-emerald-700 hover:bg-emerald-50 rounded-md cursor-pointer" title="Edit Bill">
                                                             <Edit2 className="w-4 h-4" />
                                                         </button>
-                                                        <button onClick={() => handleDeleteBill(bill._id)} className="p-1 text-rose-600 hover:bg-rose-50 rounded-md cursor-pointer" title="Delete Bill">
+                                                        <button onClick={() => handleDeleteBill(bill._id || '')} className="p-1 text-rose-600 hover:bg-rose-50 rounded-md cursor-pointer" title="Delete Bill">
                                                             <Trash2 className="w-4 h-4" />
                                                         </button>
                                                     </div>
@@ -2220,8 +2508,8 @@ export default function ApprovedWorkDetailClient({
                                     contractPrice={tender?.contractPrice || tender?.estimatedAmount}
                                     submittedSD={workOrder?.securityDepositAmount || tender?.securityDepositAmount}
                                     sanctionedWorksTotal={(() => {
-                                        const ws = pkg?.works?.length ? pkg.works : (work ? [work] : []);
-                                        return ws.reduce((s: number, w: any) => {
+                                        const ws: { jobNumberAmount?: number | string; amount?: number | string }[] = pkg?.works?.length ? pkg.works : (work ? [work] : []);
+                                        return ws.reduce((s: number, w) => {
                                             if (w.jobNumberAmount != null) return s + Number(w.jobNumberAmount) * 100000;
                                             return s + (Number(w.amount) || 0);
                                         }, 0);

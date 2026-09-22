@@ -8,7 +8,7 @@ export interface PraisaExportItem {
     fullRate?: number | string;
     rate?: number | string;
     amount?: number | string;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 function formatItemDesc(item: PraisaExportItem, prefix?: string): string {

@@ -5,8 +5,51 @@ import { useRouter } from 'next/navigation';
 import { Save, Plus, Trash2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
+interface SelectedWork {
+    workId: string | null;
+    workName: string;
+    amount: number;
+    tsNotRequired?: boolean;
+}
+
+interface ApprovedWorkOption {
+    _id: string;
+    workName: string;
+    jobNumberAmount?: number;
+    budgetHead?: string;
+}
+
+interface PackageWorkRef {
+    workId?: string | null;
+    workName?: string;
+}
+
+interface PackageSummary {
+    _id: string;
+    works?: PackageWorkRef[];
+}
+
+interface TechnicalSanctionRef {
+    _id: string;
+    tsDate?: string;
+    tsAmount?: number | string;
+}
+
+interface PackageInitialData {
+    _id?: string;
+    packageName?: string;
+    subDivision?: string;
+    workType?: string;
+    buildingType?: string;
+    budgetHead?: string;
+    dtpConsultant?: string;
+    works?: SelectedWork[];
+    finalContractPrice?: string | number;
+    committeeDate?: string;
+}
+
 interface PackageFormProps {
-    initialData?: any;
+    initialData?: PackageInitialData;
     isEditing?: boolean;
 }
 
@@ -81,7 +124,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
     const [budgetHeadOptions, setBudgetHeadOptions] = useState<string[]>([]);
     const [isAddingNewBudgetHead, setIsAddingNewBudgetHead] = useState(false);
     const [newBudgetHeadValue, setNewBudgetHeadValue] = useState('');
-    const [approvedWorks, setApprovedWorks] = useState<any[]>([]);
+    const [approvedWorks, setApprovedWorks] = useState<ApprovedWorkOption[]>([]);
 
     // Committee info
     const [finalContractPrice, setFinalContractPrice] = useState<string>(
@@ -170,13 +213,13 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
     };
 
     // Selected works list
-    const [selectedWorks, setSelectedWorks] = useState<{ workId: string | null, workName: string, amount: number, tsNotRequired?: boolean }[]>(initialData.works || []);
+    const [selectedWorks, setSelectedWorks] = useState<SelectedWork[]>(initialData.works || []);
 
     // Available works from DB (Technical Sanctions)
     const [availableWorks, setAvailableWorks] = useState<{ _id: string, workName: string, tsAmount: number }[]>([]);
 
     // All packages from DB
-    const [allPackagesData, setAllPackagesData] = useState<any[]>([]);
+    const [allPackagesData, setAllPackagesData] = useState<PackageSummary[]>([]);
 
     // T.S. Not Required Checkbox State
     const [tsNotRequiredCheckbox, setTsNotRequiredCheckbox] = useState(false);
@@ -199,13 +242,13 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                     setAllPackagesData(dataPackages.data);
                     // Extract all workIds that are already in any OTHER package in the database
                     const otherPackages = isEditing 
-                        ? dataPackages.data.filter((p: any) => p._id !== initialData._id)
+                        ? dataPackages.data.filter((p: PackageSummary) => p._id !== initialData._id)
                         : dataPackages.data;
                     
                     const assignedWorkIds = new Set<string>();
-                    otherPackages.forEach((p: any) => {
+                    otherPackages.forEach((p: PackageSummary) => {
                         if (p.works && Array.isArray(p.works)) {
-                            p.works.forEach((w: any) => {
+                            p.works.forEach((w: PackageWorkRef) => {
                                 if (w.workId) {
                                     assignedWorkIds.add(String(w.workId));
                                 }
@@ -214,7 +257,7 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                     });
 
                     // Only include works where TS has been given AND is not assigned to any other package
-                    const givenTS = dataTS.data.filter((ts: any) => 
+                    const givenTS = dataTS.data.filter((ts: TechnicalSanctionRef) => 
                         ts.tsDate && 
                         ts.tsAmount && 
                         !assignedWorkIds.has(String(ts._id))
@@ -351,8 +394,8 @@ export default function PackageForm({ initialData = {}, isEditing = false }: Pac
                 .filter(aw => {
                     const inCurrent = selectedWorks.some(sw => sw.workName === aw.workName);
                     if (inCurrent) return false;
-                    const inOther = allPackagesData.some((p: any) => 
-                        p._id !== initialData._id && p.works?.some((w: any) => w.workName === aw.workName)
+                    const inOther = allPackagesData.some((p: PackageSummary) => 
+                        p._id !== initialData._id && p.works?.some((w: PackageWorkRef) => w.workName === aw.workName)
                     );
                     return !inOther;
                 })

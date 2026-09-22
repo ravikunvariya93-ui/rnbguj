@@ -9,7 +9,7 @@ interface Option {
     contractorName?: string;
     tenderId?: string;
     name?: string; // Generic name field
-    [key: string]: any; // Allow other fields
+    [key: string]: string | undefined; // Allow other string fields
 }
 
 interface Props {
@@ -42,14 +42,14 @@ export default function SearchableSelect({
     const dropdownRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const getDisplayValue = useCallback((opt: Option) => {
-        if (displayField) return opt[displayField];
-        return opt.packageName || opt.name || opt.tenderId || '';
+    const getDisplayValue = useCallback((opt: Option): string => {
+        if (displayField) return opt[displayField] ?? '';
+        return opt.packageName ?? opt.name ?? opt.tenderId ?? '';
     }, [displayField]);
 
-    const getHelperValue = useCallback((opt: Option) => {
-        if (helperField) return opt[helperField];
-        return opt.contractorName || '';
+    const getHelperValue = useCallback((opt: Option): string => {
+        if (helperField) return opt[helperField] ?? '';
+        return opt.contractorName ?? '';
     }, [helperField]);
 
     // Track previous value to only sync when value changes or dropdown is closed

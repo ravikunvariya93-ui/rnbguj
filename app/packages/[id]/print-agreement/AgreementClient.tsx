@@ -5,13 +5,41 @@ import { ArrowLeft, Printer, Download, Edit3 } from 'lucide-react';
 import { useEffect } from 'react';
 import { formatDateDMYIST } from '@/lib/dateUtils';
 
+interface AgreementPackage {
+    _id?: string;
+    packageName?: string;
+}
+
+interface AgreementTender {
+    contractorName?: string;
+    packageName?: string;
+    contractPrice?: number;
+    agreementDate?: string;
+    workOrderDate?: string;
+}
+
+interface AgreementLOA {
+    acceptanceLetterDate?: string;
+}
+
+interface AgreementWorkOrder {
+    agreementDate?: string;
+    workOrderDate?: string;
+    agreementNo?: string;
+    agreementYear?: string;
+}
+
+interface AgreementAgency {
+    address?: string;
+}
+
 interface AgreementClientProps {
-    packageData: any;
-    tender: any;
-    loa: any;
-    workOrder: any;
-    agency: any;
-    dtp: any;
+    packageData: AgreementPackage;
+    tender: AgreementTender;
+    loa: AgreementLOA | null;
+    workOrder: AgreementWorkOrder;
+    agency: AgreementAgency | null;
+    dtp: Record<string, unknown> | null;
 }
 
 function formatDateToAgreement(dateInput?: string) {
@@ -40,8 +68,8 @@ export default function AgreementClient({
         const filename = 'Agreement_Form.doc';
         const downloadLink = document.createElement('a');
         document.body.appendChild(downloadLink);
-        if ((navigator as any).msSaveOrOpenBlob) {
-            (navigator as any).msSaveOrOpenBlob(blob, filename);
+        if ((navigator as unknown as { msSaveOrOpenBlob?: (blob: Blob, filename: string) => void }).msSaveOrOpenBlob) {
+            (navigator as unknown as { msSaveOrOpenBlob?: (blob: Blob, filename: string) => void }).msSaveOrOpenBlob?.(blob, filename);
         } else {
             downloadLink.href = url;
             downloadLink.download = filename;

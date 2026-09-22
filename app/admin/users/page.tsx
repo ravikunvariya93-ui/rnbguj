@@ -7,13 +7,21 @@ import {
 } from 'lucide-react';
 import UserForm from '@/components/UserForm';
 
+interface ManagedUser {
+    _id: string;
+    name: string;
+    username: string;
+    role: string;
+    createdAt: string;
+}
+
 export default function UserManagementPage() {
-    const [users, setUsers] = useState<any[]>([]);
+    const [users, setUsers] = useState<ManagedUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [, setError] = useState('');
     const [search, setSearch] = useState('');
     const [isFormOpen, setIsFormOpen] = useState(false);
-    const [selectedUser, setSelectedUser] = useState<any>(null);
+    const [selectedUser, setSelectedUser] = useState<ManagedUser | null>(null);
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -22,8 +30,8 @@ export default function UserManagementPage() {
             if (!res.ok) throw new Error('Failed to fetch users');
             const data = await res.json();
             setUsers(data);
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to fetch users');
         } finally {
             setLoading(false);
         }
@@ -43,8 +51,8 @@ export default function UserManagementPage() {
                 throw new Error(data.error || 'Failed to delete user');
             }
             fetchUsers();
-        } catch (err: any) {
-            alert(err.message);
+        } catch (err: unknown) {
+            alert(err instanceof Error && err.message ? err.message : 'Failed to delete user');
         }
     };
 
@@ -180,7 +188,7 @@ export default function UserManagementPage() {
 
             {isFormOpen && (
                 <UserForm
-                    user={selectedUser}
+                    user={selectedUser ?? undefined}
                     onClose={() => setIsFormOpen(false)}
                     onSave={fetchUsers}
                 />

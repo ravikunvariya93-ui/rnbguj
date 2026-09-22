@@ -8,16 +8,29 @@ export interface GeoCandidate {
     address: string;
 }
 
-async function googleResults(query: string, apiKey: string): Promise<any[]> {
+interface GoogleGeocodeResult {
+    geometry?: { location?: { lat?: unknown; lng?: unknown } };
+    formatted_address?: string;
+    address_components?: { long_name?: string }[];
+}
+
+interface VillageDoc {
+    lat: number;
+    lng: number;
+    address?: string;
+    source?: string;
+}
+
+async function googleResults(query: string, apiKey: string): Promise<GoogleGeocodeResult[]> {
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&components=country:IN&key=${apiKey}`;
     const res = await fetch(url);
     if (!res.ok) return [];
-    const data = await res.json();
+    const data = await res.json() as { status?: string; results?: GoogleGeocodeResult[] };
     if (data.status !== 'OK' || !Array.isArray(data.results)) return [];
     return data.results;
 }
 
-function toCandidate(r: any): GeoCandidate | null {
+function toCandidate(r: GoogleGeocodeResult): GeoCandidate | null {
     const loc = r?.geometry?.location;
     if (typeof loc?.lat !== 'number' || typeof loc?.lng !== 'number') return null;
     return { lat: loc.lat, lng: loc.lng, address: r.formatted_address || '' };
@@ -27,11 +40,11 @@ function toCandidate(r: any): GeoCandidate | null {
 // district/taluka components corroborate the context (or Bhavnagar). This
 // rejects both taluka-center fallbacks and same-named villages in far
 // districts (e.g. Bordi, Kheda instead of Bordi, Bhavnagar).
-function isTrustedHit(r: any, firstWord: string, context: string): boolean {
+function isTrustedHit(r: GoogleGeocodeResult, firstWord: string, context: string): boolean {
     const addr = (r?.formatted_address || '').toLowerCase();
     if (!addr.includes(firstWord.toLowerCase())) return false;
     const areas: string[] = Array.isArray(r?.address_components)
-        ? r.address_components.map((c: any) => String(c?.long_name || '').toLowerCase())
+        ? r.address_components.map((c: { long_name?: string }) => String(c?.long_name || '').toLowerCase())
         : [];
     const wants = [context.toLowerCase(), 'bhavnagar'].filter(Boolean);
     return wants.some((w) => addr.includes(w) || areas.some((a) => a.includes(w)));
@@ -60,7 +73,7 @@ export async function GET(request: Request) {
         // Same village saved under a different context (prefer Bhavnagar ones).
         const sameName = await Village.find({ name: new RegExp(`^${village.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }).lean();
         if (sameName.length > 0) {
-            const preferred = sameName.find((v: any) => (v.address || '').toLowerCase().includes('bhavnagar')) || sameName[0];
+            const preferred = sameName.find((v: VillageDoc) => (v.address || '').toLowerCase().includes('bhavnagar')) || sameName[0];
             return NextResponse.json({
                 success: true,
                 data: { lat: preferred.lat, lng: preferred.lng, address: preferred.address, source: preferred.source },
@@ -111,7 +124,7 @@ export async function GET(request: Request) {
         }
 
         return NextResponse.json({ success: false, error: 'not found', candidates }, { status: 404 });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error?.message || 'geocode failed' }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ success: false, error: error instanceof Error && error.message ? error.message : 'geocode failed' }, { status: 500 });
     }
 }

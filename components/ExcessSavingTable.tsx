@@ -5,8 +5,20 @@ import Link from 'next/link';
 import { ChevronDown, ChevronUp, LayoutList, Printer, Download } from 'lucide-react';
 import { downloadPraisaExcessWorkOrderExcel } from '@/lib/exportPraisaWorkOrder';
 
+interface ExcessSavingItem {
+    itemNo?: string;
+    description?: string;
+    unit?: string;
+    boqQuantity?: number | string;
+    fullRate?: number | string;
+    quantity?: number | string;
+    partRate?: number | string | null;
+    uptoDateAmount?: number | string | null;
+    [key: string]: string | number | null | undefined;
+}
+
 interface ExcessSavingTableProps {
-    items: any[];
+    items: ExcessSavingItem[];
     title?: string;
     initialExpanded?: boolean;
     packageId?: string;
@@ -22,17 +34,17 @@ export default function ExcessSavingTable({
 }: ExcessSavingTableProps) {
     const [isExpanded, setIsExpanded] = useState<boolean>(initialExpanded);
 
-    const totalTender = items.reduce((s: number, i: any) => s + ((Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0))), 0);
-    const totalBill = items.reduce((s: number, i: any) => s + (Number(i.uptoDateAmount || (Number(i.quantity || 0) * Number(i.partRate || i.fullRate || 0)))), 0);
+    const totalTender = items.reduce((s: number, i: ExcessSavingItem) => s + ((Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0))), 0);
+    const totalBill = items.reduce((s: number, i: ExcessSavingItem) => s + (Number(i.uptoDateAmount || (Number(i.quantity || 0) * Number(i.partRate || i.fullRate || 0)))), 0);
     
-    const totalExcess = items.reduce((s: number, i: any) => {
+    const totalExcess = items.reduce((s: number, i: ExcessSavingItem) => {
         const tAmt = (Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0));
         const bAmt = Number(i.uptoDateAmount || (Number(i.quantity || 0) * Number(i.partRate || i.fullRate || 0)));
         const diff = bAmt - tAmt;
         return s + (diff > 0 ? diff : 0);
     }, 0);
 
-    const totalSaving = items.reduce((s: number, i: any) => {
+    const totalSaving = items.reduce((s: number, i: ExcessSavingItem) => {
         const tAmt = (Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0));
         const bAmt = Number(i.uptoDateAmount || (Number(i.quantity || 0) * Number(i.partRate || i.fullRate || 0)));
         const diff = bAmt - tAmt;
@@ -150,7 +162,7 @@ export default function ExcessSavingTable({
                                 </td>
                             </tr>
                         ) : (
-                            items.map((item: any, index: number) => {
+                            items.map((item: ExcessSavingItem, index: number) => {
                                 const tenderQty = Number(item.boqQuantity || 0);
                                 const tenderRate = Number(item.fullRate || 0);
                                 const tenderAmt = tenderQty * tenderRate;

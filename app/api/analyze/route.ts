@@ -15,7 +15,7 @@ export async function GET() {
         const fileBuffer = fs.readFileSync(filePath);
         const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
 
-        const result: any = {};
+        const result: Record<string, unknown[]> = {};
 
         workbook.SheetNames.forEach(sheetName => {
             const sheet = workbook.Sheets[sheetName];
@@ -24,8 +24,8 @@ export async function GET() {
         });
 
         return NextResponse.json({ success: true, data: result });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error reading file:', error);
-        return NextResponse.json({ success: false, error: error.message, stack: error.stack });
+        return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error', stack: error instanceof Error ? error.stack : undefined });
     }
 }

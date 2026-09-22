@@ -12,14 +12,14 @@ export async function GET() {
 
   try {
     await dbConnect();
-    const userId = (session.user as any).id;
+    const userId = (session.user as { id?: string }).id;
     const user = await User.findById(userId).select('-password').lean();
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
     return NextResponse.json(user);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
 
@@ -34,7 +34,7 @@ export async function PUT(req: Request) {
     const { name, designation } = await req.json();
     await dbConnect();
 
-    const userId = (session.user as any).id;
+    const userId = (session.user as { id?: string }).id;
     const currentUser = await User.findById(userId);
     if (!currentUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -51,19 +51,19 @@ export async function PUT(req: Request) {
             name: currentUser.name,
             designation: currentUser.designation || '',
             changedAt: new Date(),
-            changedBy: (session.user as any).username || 'self',
+            changedBy: (session.user as { username?: string }).username || 'self',
           },
         },
       });
     }
 
-    const updateData: any = {};
+    const updateData: { name?: string; designation?: string } = {};
     if (name) updateData.name = name;
     if (designation !== undefined) updateData.designation = designation;
 
     const updated = await User.findByIdAndUpdate(userId, updateData, { new: true }).select('-password');
     return NextResponse.json(updated);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }

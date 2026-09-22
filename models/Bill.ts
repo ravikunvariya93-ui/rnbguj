@@ -100,7 +100,7 @@ const BillSchema: Schema = new Schema({
         type: Number,
         min: 1,
         max: 50,
-        required: function (this: any) { return this.billType === 'Running'; },
+        required: function (this: { billType?: string }) { return this.billType === 'Running'; },
     },
     billDate: { type: Date, required: true },
     grossAmount: { type: Number, required: true, min: 0 },

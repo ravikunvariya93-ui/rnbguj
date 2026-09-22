@@ -18,6 +18,32 @@ import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
+type LeanId = { toString(): string };
+interface WorkNameDoc {
+    workName?: string;
+    subDivision?: string;
+    workType?: string;
+    budgetHead?: string;
+    [key: string]: unknown;
+}
+interface PkgWorkEntry {
+    workName?: string;
+    [key: string]: unknown;
+}
+interface PkgLean {
+    _id: LeanId;
+    subDivision?: string;
+    workType?: string;
+    budgetHead?: string;
+    works?: PkgWorkEntry[];
+    [key: string]: unknown;
+}
+interface PkgRow {
+    _id: string;
+    [key: string]: unknown;
+}
+type MongoFilter = Record<string, unknown>;
+
 interface Props {
     searchParams: Promise<ListPageSearchParams>;
 }
@@ -25,7 +51,7 @@ interface Props {
 export default async function PackagesListPage({ searchParams }: Props) {
     await dbConnect();
     const session = await auth();
-    const userRole = (session?.user as any)?.role;
+    const userRole = (session?.user as { role?: string } | undefined)?.role;
     const auditorSubDivision = getAuditorSubDivision(userRole);
     const isAuditor = isAuditorRole(userRole);
 
@@ -46,14 +72,14 @@ export default async function PackagesListPage({ searchParams }: Props) {
     const budgetHeads = Array.from(new Set(['Pending', ...budgetHeadsPkg, ...budgetHeadsAw])).filter(Boolean).sort() as string[];
     const consultants = dtpConsultants.filter(Boolean).sort() as string[];
 
-    const query: any = {};
+    const query: MongoFilter = {};
     const filterLabels: string[] = [];
 
-    const andConditions: any[] = [];
+    const andConditions: MongoFilter[] = [];
 
     if (params.subDivision) {
         const worksInSubDiv = await ApprovedWork.find({ subDivision: params.subDivision }).select('workName').lean();
-        const workNamesInSubDiv = worksInSubDiv.map((aw: any) => aw.workName).filter(Boolean);
+        const workNamesInSubDiv = worksInSubDiv.map((aw) => aw.workName).filter(Boolean);
         andConditions.push({
             $or: [
                 { subDivision: params.subDivision },
@@ -67,7 +93,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
         const worksWithWorkType = await ApprovedWork.find({
             workType: { $exists: true, $ne: null, $nin: ['', 'Pending'] }
         }).select('workName').lean();
-        const workNamesWithWorkType = worksWithWorkType.map((aw: any) => aw.workName).filter(Boolean);
+        const workNamesWithWorkType = worksWithWorkType.map((aw) => aw.workName).filter(Boolean);
         andConditions.push({
             $and: [
                 {
@@ -86,7 +112,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
         filterLabels.push('Work Type: Pending');
     } else if (params.workType) {
         const worksInWorkType = await ApprovedWork.find({ workType: params.workType }).select('workName').lean();
-        const workNamesInWorkType = worksInWorkType.map((aw: any) => aw.workName).filter(Boolean);
+        const workNamesInWorkType = worksInWorkType.map((aw) => aw.workName).filter(Boolean);
         andConditions.push({
             $or: [
                 { workType: params.workType },
@@ -105,7 +131,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
                 { budgetHead: '' }
             ]
         }).select('workName').lean();
-        const workNamesInBudgetHead = worksInBudgetHead.map((aw: any) => aw.workName).filter(Boolean);
+        const workNamesInBudgetHead = worksInBudgetHead.map((aw) => aw.workName).filter(Boolean);
         andConditions.push({
             $or: [
                 { budgetHead: 'Pending' },
@@ -118,7 +144,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
         filterLabels.push('Budget Head: Pending');
     } else if (params.budgetHead) {
         const worksInBudgetHead = await ApprovedWork.find({ budgetHead: params.budgetHead }).select('workName').lean();
-        const workNamesInBudgetHead = worksInBudgetHead.map((aw: any) => aw.workName).filter(Boolean);
+        const workNamesInBudgetHead = worksInBudgetHead.map((aw) => aw.workName).filter(Boolean);
         andConditions.push({
             $or: [
                 { budgetHead: params.budgetHead },
@@ -167,7 +193,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
 
     if (isAuditor && auditorSubDivision) {
         const worksInAuditorSubDiv = await ApprovedWork.find({ subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } }).select('workName').lean();
-        const workNamesInAuditorSubDiv = worksInAuditorSubDiv.map((aw: any) => aw.workName).filter(Boolean);
+        const workNamesInAuditorSubDiv = worksInAuditorSubDiv.map((aw) => aw.workName).filter(Boolean);
         andConditions.push({
             $or: [
                 { subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } },
@@ -194,23 +220,23 @@ export default async function PackagesListPage({ searchParams }: Props) {
     const { page, limit, skip } = parsePagination(params);
     const sortObj = parseSort(params, { createdAt: -1 });
 
-    const totalItems = await Package.countDocuments(query);
+    const totalItems = await Package.countDocuments(query as unknown as Parameters<typeof Package.countDocuments>[0]);
     const totalPages = Math.ceil(totalItems / limit);
 
     const [packagesRaw, allApprovedWorks] = await Promise.all([
-        Package.find(query)
+        Package.find(query as unknown as Parameters<typeof Package.find>[0])
             .sort(sortObj)
             .skip(skip)
             .limit(limit)
             .lean(),
-        ApprovedWork.find({}).select('workName subDivision workType budgetHead').lean() as Promise<any[]>
+        ApprovedWork.find({}).select('workName subDivision workType budgetHead').lean() as unknown as WorkNameDoc[]
     ]);
         
-    const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const normalize = (s: string | null | undefined) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
     const workSubDivisionMap = new Map<string, string>();
     const workTypeMap = new Map<string, string>();
     const workBudgetHeadMap = new Map<string, string>();
-    allApprovedWorks.forEach((aw: any) => {
+    allApprovedWorks.forEach((aw) => {
         if (aw.workName) {
             const key = normalize(aw.workName);
             workSubDivisionMap.set(key, aw.subDivision || '');
@@ -219,7 +245,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
         }
     });
 
-    const packages = packagesRaw.map((p: any) => {
+    const packages: PkgRow[] = packagesRaw.map((p) => {
         const firstWorkName = p.works && p.works[0]?.workName;
         const normalizedKey = firstWorkName ? normalize(firstWorkName) : '';
         const inferredSubDivision = normalizedKey ? workSubDivisionMap.get(normalizedKey) : '';
@@ -227,7 +253,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
         
         let inferredBudgetHead = '';
         if (p.works && p.works.length > 0) {
-            const heads = p.works.map((w: any) => {
+            const heads = p.works.map((w) => {
                 const key = normalize(w.workName);
                 return workBudgetHeadMap.get(key) || '';
             }).filter(Boolean);
@@ -246,7 +272,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
             workType: p.workType || inferredWorkType || '',
             budgetHead: p.budgetHead || inferredBudgetHead || '',
             approvedWorks: p.works && p.works.length > 0
-                ? p.works.map((w: any) => w.workName).filter(Boolean)
+                ? p.works.map((w) => w.workName).filter(Boolean)
                 : []
         };
     });
@@ -312,17 +338,17 @@ export default async function PackagesListPage({ searchParams }: Props) {
         }
     ];
 
-    const renderActions = (row: any) => (
+    const renderActions = (row) => (
         <div className="flex items-center justify-end space-x-3">
-            <Link href={`/packages/${row._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
+            <Link href={`/packages/${String(row._id)}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
                 <Eye className="w-5 h-5" />
             </Link>
-            <Link href={`/packages/${row._id}/edit`} className="text-emerald-600 hover:text-emerald-900 p-1" title="Edit Item">
+            <Link href={`/packages/${String(row._id)}/edit`} className="text-emerald-600 hover:text-emerald-900 p-1" title="Edit Item">
                 <Edit2 className="w-5 h-5" />
             </Link>
             <GenericDeleteButton 
-                itemId={row._id} 
-                itemName={row.packageName} 
+                itemId={String(row._id)} 
+                itemName={String(row.packageName ?? '')} 
                 apiPath="/api/packages" 
             />
         </div>

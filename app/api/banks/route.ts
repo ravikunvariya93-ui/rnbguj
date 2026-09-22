@@ -34,8 +34,8 @@ export async function GET() {
         }
         
         return NextResponse.json({ success: true, data: banks });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
     }
 }
 
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
         
         const bank = await Bank.create({ name });
         return NextResponse.json({ success: true, data: bank }, { status: 201 });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    } catch (error: unknown) {
+        return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 400 });
     }
 }

@@ -15,6 +15,7 @@ import WorkTypeFilter from '@/components/WorkTypeFilter';
 import SearchBar from '@/components/SearchBar';
 import MasterReportTable from '@/components/MasterReportTable';
 import WeeklyWorkOrderReport from '@/components/WeeklyWorkOrderReport';
+import WeeklyWorkOrderJobNoReport from '@/components/WeeklyWorkOrderJobNoReport';
 import { formatShortDate, getISTCalendar, istMidnightUTC } from '@/lib/dateUtils';
 import type { Column } from '@/lib/types';
 import Link from 'next/link';
@@ -74,10 +75,127 @@ interface Props {
     }>;
 }
 
+type LeanId = { toString(): string };
+interface WorkNameDoc {
+    _id: LeanId;
+    workName?: string;
+    approvalYear?: string;
+    [key: string]: unknown;
+}
+interface TsNameDoc {
+    workName?: string;
+    [key: string]: unknown;
+}
+interface PkgWorkEntry {
+    workName?: string;
+    amount?: number | string;
+    [key: string]: unknown;
+}
+interface PkgDoc {
+    _id: LeanId;
+    packageName?: string;
+    works?: PkgWorkEntry[];
+    [key: string]: unknown;
+}
+interface DtpDoc {
+    tsId?: LeanId | string | null;
+    dtpApprovalDate?: unknown;
+    tenderAmount?: number;
+    [key: string]: unknown;
+}
+interface TenderDoc {
+    _id: LeanId;
+    packageId?: LeanId | string | null;
+    estimatedAmount?: number;
+    contractPrice?: number;
+    proposalDate?: unknown;
+    tenderApprovalDate?: unknown;
+    [key: string]: unknown;
+}
+interface ApprovalDoc {
+    tenderId?: LeanId | string | null;
+    proposalDate?: unknown;
+    tenderApprovalDate?: unknown;
+    notRequired?: boolean;
+    [key: string]: unknown;
+}
+interface LoaDoc {
+    _id: LeanId;
+    tenderId?: LeanId | string | null;
+    acceptanceLetterDate?: unknown;
+    [key: string]: unknown;
+}
+interface WorkOrderDoc {
+    _id?: LeanId;
+    loaId?: LeanId | string | null;
+    workOrderDate?: unknown;
+    [key: string]: unknown;
+}
+interface MasterWorkDoc {
+    _id: LeanId;
+    workName?: string;
+    jobNumberApprovalDate?: string | Date | null;
+    createdAt?: string | Date | null;
+    updatedAt?: string | Date | null;
+    [key: string]: unknown;
+}
+interface MasterRow {
+    _id: string;
+    [key: string]: unknown;
+}
+interface SummaryRow {
+    year: string;
+    total: number;
+    tsPrepared: number;
+    tsPending: number;
+    dtpPrepared: number;
+    dtpPending: number;
+}
+interface WeeklyPkg {
+    _id?: LeanId;
+    packageName?: string;
+    works?: PkgWorkEntry[];
+    [key: string]: unknown;
+}
+interface WeeklyTender {
+    packageId?: (WeeklyPkg & { _id?: LeanId }) | string | null;
+    packageName?: string;
+    contractorName?: string;
+    estimatedAmount?: number;
+    [key: string]: unknown;
+}
+interface WeeklyLoa {
+    tenderId?: WeeklyTender | null;
+    [key: string]: unknown;
+}
+interface WeeklyWorkOrder {
+    _id: LeanId;
+    loaId?: WeeklyLoa | string | null;
+    workOrderDate?: string | Date | null;
+    [key: string]: unknown;
+}
+interface SearchTenderDoc {
+    _id: LeanId;
+    packageId?: LeanId | string | null;
+    estimatedAmount?: number;
+    contractPrice?: number;
+    proposalDate?: unknown;
+    tenderApprovalDate?: unknown;
+    acceptanceLetterDate?: unknown;
+    workOrderDate?: unknown;
+    [key: string]: unknown;
+}
+interface SearchApprovedWorkDoc {
+    _id: LeanId;
+    workName?: string;
+    [key: string]: unknown;
+}
+type MongoFilter = Record<string, unknown>;
+
 export default async function Home({ searchParams }: Props) {
     await dbConnect();
     const session = await auth();
-    const userRole = (session?.user as any)?.role;
+    const userRole = (session?.user as { role?: string } | undefined)?.role;
     const auditorSubDivision = getAuditorSubDivision(userRole);
     const isAuditor = isAuditorRole(userRole);
 
@@ -123,7 +241,7 @@ export default async function Home({ searchParams }: Props) {
 
     const PREDEFINED_WORK_TYPES = ['Road', 'Building', 'Structure', 'Service'];
 
-    const approvedWorkQuery: any = {};
+    const approvedWorkQuery: MongoFilter = {};
     if (shouldFilter) {
         approvedWorkQuery.workType = { $in: activeWorkTypes };
     }
@@ -161,11 +279,11 @@ export default async function Home({ searchParams }: Props) {
         masterWorkOrders
     ] = await Promise.all([
         ApprovedWork.distinct('workType').then((r: unknown) => r as string[]),
-        needApprovedWorks ? ApprovedWork.find(approvedWorkQuery).select('_id workName approvalYear workType').lean() : Promise.resolve([]),
+        needApprovedWorks ? ApprovedWork.find(approvedWorkQuery as unknown as Parameters<typeof ApprovedWork.find>[0]).select('_id workName approvalYear workType').lean() : Promise.resolve([]),
         needPackages ? Package.find({}).select('_id packageName works.workName').lean() : Promise.resolve([]),
         needTS ? TechnicalSanction.find({}).select('workName').lean() : Promise.resolve([]),
         needDTPs ? DTP.find({}).select('tsId dtpApprovalDate tenderAmount').lean() : Promise.resolve([]),
-        loadMaster ? ApprovedWork.find(approvedWorkQuery).lean() : Promise.resolve([]),
+        loadMaster ? ApprovedWork.find(approvedWorkQuery as unknown as Parameters<typeof ApprovedWork.find>[0]).lean() : Promise.resolve([]),
         loadMaster ? TechnicalSanction.find({}).lean() : Promise.resolve([]),
         loadMaster ? Package.find({}).lean() : Promise.resolve([]),
         loadMaster ? DTP.find({}).lean() : Promise.resolve([]),
@@ -178,22 +296,24 @@ export default async function Home({ searchParams }: Props) {
     const workTypes = Array.from(new Set([...PREDEFINED_WORK_TYPES, ...distinctWorkTypes])).filter(Boolean).sort();
 
     // Normalize strings for fuzzy matching
-    const normalizeString = (str: string) => (str || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const normalizeString = (str: string | null | undefined) => (str || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const toISO = (v: unknown): string | null => (v ? new Date(v as string | number | Date).toISOString() : null);
 
-    let serializedMasterWorks: any[] = [];
+    let serializedMasterWorks: MasterRow[] = [];
     if (loadMaster) {
-        const tsMap = new Map<string, any>();
-        masterTS.forEach((ts: any) => {
+        const tsMap = new Map<string, Record<string, unknown>>();
+        masterTS.forEach((ts: Record<string, unknown>) => {
             if (ts.workName) {
-                const key = normalizeString(ts.workName);
+                const key = normalizeString(ts.workName as string);
                 tsMap.set(key, ts);
             }
         });
 
-        const workToPkgMap = new Map<string, any>();
-        masterPackages.forEach((pkg: any) => {
-            if (pkg.works) {
-                pkg.works.forEach((w: any) => {
+        const workToPkgMap = new Map<string, Record<string, unknown>>();
+        masterPackages.forEach((pkg: Record<string, unknown>) => {
+            const works = pkg.works as PkgWorkEntry[] | undefined;
+            if (works) {
+                works.forEach((w: PkgWorkEntry) => {
                     if (w.workName) {
                         workToPkgMap.set(normalizeString(w.workName), pkg);
                     }
@@ -201,68 +321,68 @@ export default async function Home({ searchParams }: Props) {
             }
         });
 
-        const dtpMap = new Map<string, any>();
-        masterDTPs.forEach((dtp: any) => {
+        const dtpMap = new Map<string, Record<string, unknown>>();
+        masterDTPs.forEach((dtp: Record<string, unknown>) => {
             if (dtp.tsId) {
-                dtpMap.set(dtp.tsId.toString(), dtp);
+                dtpMap.set(String(dtp.tsId), dtp);
             }
         });
 
-        const tenderMap = new Map<string, any>();
-        masterTenders.forEach((tender: any) => {
+        const tenderMap = new Map<string, Record<string, unknown>>();
+        masterTenders.forEach((tender: Record<string, unknown>) => {
             if (tender.packageId) {
-                tenderMap.set(tender.packageId.toString(), tender);
+                tenderMap.set(String(tender.packageId), tender);
             }
         });
 
-        const approvalMap = new Map<string, any>();
-        masterApprovals.forEach((app: any) => {
+        const approvalMap = new Map<string, Record<string, unknown>>();
+        masterApprovals.forEach((app: Record<string, unknown>) => {
             if (app.tenderId) {
-                approvalMap.set(app.tenderId.toString(), app);
+                approvalMap.set(String(app.tenderId), app);
             }
         });
 
-        const loaMap = new Map<string, any>();
-        masterLOAs.forEach((loa: any) => {
+        const loaMap = new Map<string, Record<string, unknown>>();
+        masterLOAs.forEach((loa: Record<string, unknown>) => {
             if (loa.tenderId) {
-                loaMap.set(loa.tenderId.toString(), loa);
+                loaMap.set(String(loa.tenderId), loa);
             }
         });
 
-        const woMap = new Map<string, any>();
-        masterWorkOrders.forEach((wo: any) => {
+        const woMap = new Map<string, Record<string, unknown>>();
+        masterWorkOrders.forEach((wo: Record<string, unknown>) => {
             if (wo.loaId) {
-                woMap.set(wo.loaId.toString(), wo);
+                woMap.set(String(wo.loaId), wo);
             }
         });
 
-        serializedMasterWorks = masterWorks.map((w: any) => {
+        serializedMasterWorks = masterWorks.map((w: MasterWorkDoc & Record<string, unknown>) => {
             const normalizedName = normalizeString(w.workName);
             const ts = tsMap.get(normalizedName) || {};
             const pkg = workToPkgMap.get(normalizedName) || {};
-            const pkgIdStr = pkg._id ? pkg._id.toString() : null;
+            const pkgIdStr = pkg._id ? String(pkg._id) : null;
             const dtp = pkgIdStr ? dtpMap.get(pkgIdStr) || {} : {};
             const tender = pkgIdStr ? tenderMap.get(pkgIdStr) || {} : {};
-            const tenderIdStr = tender._id ? tender._id.toString() : null;
+            const tenderIdStr = tender._id ? String(tender._id) : null;
             const approval = tenderIdStr ? approvalMap.get(tenderIdStr) || {} : {};
             const loa = tenderIdStr ? loaMap.get(tenderIdStr) || {} : {};
-            const loaIdStr = loa._id ? loa._id.toString() : null;
+            const loaIdStr = loa._id ? String(loa._id) : null;
             const wo = loaIdStr ? woMap.get(loaIdStr) || {} : {};
 
-            const item: any = {
+            const item: MasterRow = {
                 ...w,
                 _id: w._id.toString(),
-                jobNumberApprovalDate: w.jobNumberApprovalDate ? new Date(w.jobNumberApprovalDate).toISOString() : null,
-                createdAt: w.createdAt ? new Date(w.createdAt).toISOString() : null,
-                updatedAt: w.updatedAt ? new Date(w.updatedAt).toISOString() : null,
+                jobNumberApprovalDate: w.jobNumberApprovalDate ? new Date(w.jobNumberApprovalDate as string | number | Date).toISOString() : null,
+                createdAt: w.createdAt ? new Date(w.createdAt as string | number | Date).toISOString() : null,
+                updatedAt: w.updatedAt ? new Date(w.updatedAt as string | number | Date).toISOString() : null,
             };
 
             // TS properties
-            item.ts_dateSendingTS = ts.dateSendingTS ? new Date(ts.dateSendingTS).toISOString() : null;
+            item.ts_dateSendingTS = toISO(ts.dateSendingTS);
             item.ts_tsAuthority = ts.tsAuthority || null;
             item.ts_tsAmount = ts.tsAmount || null;
             item.ts_tsNumber = ts.tsNumber || null;
-            item.ts_tsDate = ts.tsDate ? new Date(ts.tsDate).toISOString() : null;
+            item.ts_tsDate = toISO(ts.tsDate);
             item.ts_remarks = ts.remarks || null;
 
             // Package properties
@@ -270,10 +390,10 @@ export default async function Home({ searchParams }: Props) {
 
             // DTP properties
             item.dtp_dtpSendingNo = dtp.dtpSendingNo || null;
-            item.dtp_dtpSendingDate = dtp.dtpSendingDate ? new Date(dtp.dtpSendingDate).toISOString() : null;
+            item.dtp_dtpSendingDate = toISO(dtp.dtpSendingDate);
             item.dtp_dtpApprovingAuthority = dtp.dtpApprovingAuthority || null;
             item.dtp_dtpApprovalNo = dtp.dtpApprovalNo || null;
-            item.dtp_dtpApprovalDate = dtp.dtpApprovalDate ? new Date(dtp.dtpApprovalDate).toISOString() : null;
+            item.dtp_dtpApprovalDate = toISO(dtp.dtpApprovalDate);
             item.dtp_tenderAmount = dtp.tenderAmount || null;
             item.dtp_remarks = dtp.remarks || null;
 
@@ -283,10 +403,10 @@ export default async function Home({ searchParams }: Props) {
             item.tender_noticeNo = tender.noticeNo || null;
             item.tender_srNo = tender.srNo || null;
             item.tender_trialNo = tender.trialNo || null;
-            item.tender_tenderCreationDate = tender.tenderCreationDate ? new Date(tender.tenderCreationDate).toISOString() : null;
-            item.tender_lastDateOfSubmission = tender.lastDateOfSubmission ? new Date(tender.lastDateOfSubmission).toISOString() : null;
-            item.tender_tenderOpeningDate = tender.tenderOpeningDate ? new Date(tender.tenderOpeningDate).toISOString() : null;
-            item.tender_tenderValidityDate = tender.tenderValidityDate ? new Date(tender.tenderValidityDate).toISOString() : null;
+            item.tender_tenderCreationDate = toISO(tender.tenderCreationDate);
+            item.tender_lastDateOfSubmission = toISO(tender.lastDateOfSubmission);
+            item.tender_tenderOpeningDate = toISO(tender.tenderOpeningDate);
+            item.tender_tenderValidityDate = toISO(tender.tenderValidityDate);
             item.tender_estimatedAmount = tender.estimatedAmount || dtp.tenderAmount || null;
             item.tender_reInvite = tender.reInvite !== undefined ? tender.reInvite : null;
             item.tender_cancelled = tender.cancelled !== undefined ? tender.cancelled : null;
@@ -295,28 +415,28 @@ export default async function Home({ searchParams }: Props) {
             item.tender_contractPrice = tender.contractPrice || null;
             item.tender_aboveBelowPercentage = tender.aboveBelowPercentage || null;
             item.tender_aboveBelowInWord = tender.aboveBelowInWord || null;
-            item.tender_proposalDate = tender.proposalDate ? new Date(tender.proposalDate).toISOString() : null;
+            item.tender_proposalDate = toISO(tender.proposalDate);
             item.tender_tenderApprovalOffice = tender.tenderApprovalOffice || null;
             item.tender_tenderApprovalNo = tender.tenderApprovalNo || null;
-            item.tender_tenderApprovalDate = tender.tenderApprovalDate ? new Date(tender.tenderApprovalDate).toISOString() : null;
+            item.tender_tenderApprovalDate = toISO(tender.tenderApprovalDate);
             item.tender_workDurationMonths = tender.workDurationMonths || null;
             item.tender_acceptanceLetterWorksheetNo = tender.acceptanceLetterWorksheetNo || null;
-            item.tender_acceptanceLetterDate = tender.acceptanceLetterDate ? new Date(tender.acceptanceLetterDate).toISOString() : null;
+            item.tender_acceptanceLetterDate = toISO(tender.acceptanceLetterDate);
             item.tender_agreementYear = tender.agreementYear || null;
             item.tender_agreementNo = tender.agreementNo || null;
-            item.tender_agreementDate = tender.agreementDate ? new Date(tender.agreementDate).toISOString() : null;
+            item.tender_agreementDate = toISO(tender.agreementDate);
             item.tender_securityDepositType = tender.securityDepositType || null;
             item.tender_securityDepositBankName = tender.securityDepositBankName || null;
             item.tender_securityDepositNumber = tender.securityDepositNumber || null;
             item.tender_securityDepositAmount = tender.securityDepositAmount || null;
-            item.tender_securityDepositDate = tender.securityDepositDate ? new Date(tender.securityDepositDate).toISOString() : null;
+            item.tender_securityDepositDate = toISO(tender.securityDepositDate);
             item.tender_additionalSecurityDepositType = tender.additionalSecurityDepositType || null;
             item.tender_additionalSecurityDepositBankName = tender.additionalSecurityDepositBankName || null;
             item.tender_additionalSecurityDepositNumber = tender.additionalSecurityDepositNumber || null;
             item.tender_additionalSecurityDepositAmount = tender.additionalSecurityDepositAmount || null;
-            item.tender_additionalSecurityDepositDate = tender.additionalSecurityDepositDate ? new Date(tender.additionalSecurityDepositDate).toISOString() : null;
+            item.tender_additionalSecurityDepositDate = toISO(tender.additionalSecurityDepositDate);
             item.tender_workOrderWorksheetNo = tender.workOrderWorksheetNo || null;
-            item.tender_workOrderDate = tender.workOrderDate ? new Date(tender.workOrderDate).toISOString() : null;
+            item.tender_workOrderDate = toISO(tender.workOrderDate);
             item.tender_remarks = tender.remarks || null;
 
             // Approval properties
@@ -326,52 +446,52 @@ export default async function Home({ searchParams }: Props) {
                     : (tender.contractPrice !== undefined && Number(tender.contractPrice) < 5000000)
             );
             item.approval_notRequired = isApprovalNotRequired;
-            item.approval_proposalDate = approval.proposalDate ? new Date(approval.proposalDate).toISOString() : null;
+            item.approval_proposalDate = toISO(approval.proposalDate);
             item.approval_tenderApprovalOffice = approval.tenderApprovalOffice || null;
             item.approval_tenderApprovalNo = approval.tenderApprovalNo || null;
-            item.approval_tenderApprovalDate = approval.tenderApprovalDate ? new Date(approval.tenderApprovalDate).toISOString() : null;
+            item.approval_tenderApprovalDate = toISO(approval.tenderApprovalDate);
 
             // LOA properties
             item.loa_stampDuty = loa.stampDuty || null;
             item.loa_defectLiabilityPeriod = loa.defectLiabilityPeriod || null;
             item.loa_workDurationMonths = loa.workDurationMonths || null;
             item.loa_acceptanceLetterWorksheetNo = loa.acceptanceLetterWorksheetNo || null;
-            item.loa_acceptanceLetterDate = loa.acceptanceLetterDate ? new Date(loa.acceptanceLetterDate).toISOString() : null;
+            item.loa_acceptanceLetterDate = toISO(loa.acceptanceLetterDate);
 
             // Work Order properties
             item.wo_agreementYear = wo.agreementYear || null;
             item.wo_agreementNo = wo.agreementNo || null;
-            item.wo_agreementDate = wo.agreementDate ? new Date(wo.agreementDate).toISOString() : null;
+            item.wo_agreementDate = toISO(wo.agreementDate);
             item.wo_securityDepositType = wo.securityDepositType || null;
             item.wo_securityDepositBankName = wo.securityDepositBankName || null;
             item.wo_securityDepositNumber = wo.securityDepositNumber || null;
             item.wo_securityDepositAmount = wo.securityDepositAmount || null;
-            item.wo_securityDepositDate = wo.securityDepositDate ? new Date(wo.securityDepositDate).toISOString() : null;
+            item.wo_securityDepositDate = toISO(wo.securityDepositDate);
             item.wo_additionalSecurityDepositType = wo.additionalSecurityDepositType || null;
             item.wo_additionalSecurityDepositBankName = wo.additionalSecurityDepositBankName || null;
             item.wo_additionalSecurityDepositNumber = wo.additionalSecurityDepositNumber || null;
             item.wo_additionalSecurityDepositAmount = wo.additionalSecurityDepositAmount || null;
-            item.wo_additionalSecurityDepositDate = wo.additionalSecurityDepositDate ? new Date(wo.additionalSecurityDepositDate).toISOString() : null;
+            item.wo_additionalSecurityDepositDate = toISO(wo.additionalSecurityDepositDate);
             item.wo_workOrderWorksheetNo = wo.workOrderWorksheetNo || null;
-            item.wo_workOrderDate = wo.workOrderDate ? new Date(wo.workOrderDate).toISOString() : null;
-            item.wo_timeLimitStartsFrom = wo.timeLimitStartsFrom ? new Date(wo.timeLimitStartsFrom).toISOString() : null;
-            item.wo_stipulatedCompletionDate = wo.stipulatedCompletionDate ? new Date(wo.stipulatedCompletionDate).toISOString() : null;
+            item.wo_workOrderDate = toISO(wo.workOrderDate);
+            item.wo_timeLimitStartsFrom = toISO(wo.timeLimitStartsFrom);
+            item.wo_stipulatedCompletionDate = toISO(wo.stipulatedCompletionDate);
 
             return item;
         });
     }
 
-    let summaryData: any[] = [];
+    let summaryData: SummaryRow[] = [];
     if (loadSummary) {
         const tsCountMap: Record<string, number> = {};
-        allTS.forEach((ts: any) => {
-            const name = normalizeString(ts.workName as string);
+        allTS.forEach((ts: TsNameDoc) => {
+            const name = normalizeString(ts.workName);
             tsCountMap[name] = (tsCountMap[name] || 0) + 1;
         });
 
         const pendingTSIds = new Set<string>();
-        allApprovedWorks.forEach((w: any) => {
-            const safeName = normalizeString(w.workName as string);
+        allApprovedWorks.forEach((w: WorkNameDoc) => {
+            const safeName = normalizeString(w.workName);
             if (tsCountMap[safeName] > 0) {
                 tsCountMap[safeName]--;
             } else {
@@ -379,10 +499,10 @@ export default async function Home({ searchParams }: Props) {
             }
         });
 
-        const workNameToPkg = new Map<string, any>();
-        allPackages.forEach((pkg: any) => {
+        const workNameToPkg = new Map<string, PkgDoc>();
+        allPackages.forEach((pkg: PkgDoc) => {
             if (pkg.works) {
-                pkg.works.forEach((pw: any) => {
+                pkg.works.forEach((pw: PkgWorkEntry) => {
                     if (pw.workName) {
                         workNameToPkg.set(normalizeString(pw.workName), pkg);
                     }
@@ -390,17 +510,17 @@ export default async function Home({ searchParams }: Props) {
             }
         });
 
-        const pkgIdToDTP = new Map<string, any>();
-        allDTPs.forEach((d: any) => {
+        const pkgIdToDTP = new Map<string, DtpDoc>();
+        allDTPs.forEach((d: DtpDoc) => {
             if (d.tsId) {
-                pkgIdToDTP.set(d.tsId.toString(), d);
+                pkgIdToDTP.set(String(d.tsId), d);
             }
         });
 
-        const summaryMap: Record<string, any> = {};
+        const summaryMap: Record<string, SummaryRow> = {};
 
-        allApprovedWorks.forEach((work: any) => {
-            const year = work.approvalYear || 'Unspecified';
+        allApprovedWorks.forEach((work: WorkNameDoc) => {
+            const year = (work.approvalYear as string) || 'Unspecified';
             if (!summaryMap[year]) {
                 summaryMap[year] = { year, total: 0, tsPrepared: 0, tsPending: 0, dtpPrepared: 0, dtpPending: 0 };
             }
@@ -412,7 +532,7 @@ export default async function Home({ searchParams }: Props) {
                 summaryMap[year].tsPending++;
             } else {
                 summaryMap[year].tsPrepared++;
-                const safeName = normalizeString(work.workName as string);
+                const safeName = normalizeString(work.workName);
                 const pkg = workNameToPkg.get(safeName);
                 const dtp = pkg ? pkgIdToDTP.get(pkg._id.toString()) : null;
                 const hasApprovedDTP = Boolean(dtp && (dtp.dtpApprovalDate || (dtp.tenderAmount !== undefined && dtp.tenderAmount !== null)));
@@ -480,41 +600,46 @@ export default async function Home({ searchParams }: Props) {
         .lean();
 
     const weeklyWorkOrderRows = await (async () => {
-        const raw = weeklyWorkOrdersRaw as any[];
+        const raw = weeklyWorkOrdersRaw as unknown as WeeklyWorkOrder[];
+        const getIds = (wo: WeeklyWorkOrder): string | null => {
+            const loa = (wo.loaId ?? null) as WeeklyLoa | null;
+            const tender = (loa?.tenderId ?? null) as WeeklyTender | null;
+            const pkg = (tender?.packageId ?? null) as (WeeklyPkg & { _id?: LeanId }) | string | null;
+            const pkgIdObj = typeof pkg === 'object' && pkg !== null ? (pkg as { _id?: LeanId })._id : null;
+            return (pkgIdObj ? String(pkgIdObj) : null)
+                || (typeof pkg === 'object' && pkg !== null && (pkg as WeeklyPkg)._id ? String((pkg as WeeklyPkg)._id) : null)
+                || (typeof pkg === 'string' ? pkg : null);
+        };
         const pkgIdStrs = raw
-            .map((wo: any) => {
-                const loa = wo.loaId as any;
-                const tender = loa?.tenderId as any;
-                const pkg = tender?.packageId as any;
-                return tender?.packageId?._id?.toString() || pkg?._id?.toString() || tender?.packageId?.toString() || null;
-            })
-            .filter(Boolean) as string[];
-        let dtpMap = new Map<string, number>();
+            .map(getIds)
+            .filter((v): v is string => Boolean(v));
+        const dtpMap = new Map<string, number>();
         if (pkgIdStrs.length > 0) {
             try {
-                const dtps = await DTP.find({ tsId: { $in: pkgIdStrs } } as any).select('tsId tenderAmount').lean() as any[];
-                dtps.forEach((d: any) => {
-                    if (d.tsId && d.tenderAmount != null) dtpMap.set(d.tsId.toString(), Number(d.tenderAmount));
+                const dtps = await DTP.find({ tsId: { $in: pkgIdStrs } } as unknown as Parameters<typeof DTP.find>[0]).select('tsId tenderAmount').lean() as unknown as DtpDoc[];
+                dtps.forEach((d: DtpDoc) => {
+                    if (d.tsId && d.tenderAmount != null) dtpMap.set(String(d.tsId), Number(d.tenderAmount));
                 });
             } catch { /* non-fatal — fall back to tender/package amounts */ }
         }
-        return raw.map((wo: any) => {
-            const loa = wo.loaId as any;
-            const tender = loa?.tenderId as any;
-            const pkg = tender?.packageId as any;
-            const pkgIdStr = tender?.packageId?._id?.toString() || pkg?._id?.toString() || tender?.packageId?.toString() || null;
-            const worksSum = pkg?.works && pkg.works.length > 0
-                ? pkg.works.reduce((acc: number, w: any) => acc + (Number(w.amount) || 0), 0)
+        return raw.map((wo: WeeklyWorkOrder) => {
+            const loa = (wo.loaId ?? null) as WeeklyLoa | null;
+            const tender = (loa?.tenderId ?? null) as WeeklyTender | null;
+            const pkg = (tender?.packageId ?? null) as (WeeklyPkg & { _id?: LeanId }) | string | null;
+            const pkgObj = (typeof pkg === 'object' && pkg !== null ? pkg : null) as WeeklyPkg | null;
+            const pkgIdStr = getIds(wo);
+            const worksSum = pkgObj?.works && pkgObj.works.length > 0
+                ? pkgObj.works.reduce((acc: number, w: PkgWorkEntry) => acc + (Number(w.amount) || 0), 0)
                 : null;
             const fromMap = pkgIdStr ? dtpMap.get(pkgIdStr) : undefined;
             const tenderAmount = fromMap ?? tender?.estimatedAmount ?? (worksSum ? Number(worksSum) : null);
             return {
                 _id: wo._id.toString(),
-                packageName: tender?.packageName || pkg?.packageName || '-',
+                packageName: tender?.packageName || pkgObj?.packageName || '-',
                 packageId: pkgIdStr,
                 contractorName: tender?.contractorName || '-',
                 tenderAmount: tenderAmount != null ? Number(tenderAmount) : null,
-                workOrderDate: wo.workOrderDate ? new Date(wo.workOrderDate).toISOString() : null,
+                workOrderDate: wo.workOrderDate ? new Date(wo.workOrderDate as string | number | Date).toISOString() : null,
             };
         });
     })();
@@ -555,16 +680,16 @@ export default async function Home({ searchParams }: Props) {
     ];
 
     // 4. Search Results Report (If search query exists)
-    let searchResultsData: any[] = [];
-    let searchApprovedWorksData: any[] = [];
+    let searchResultsData: MasterRow[] = [];
+    let searchApprovedWorksData: MasterRow[] = [];
     if (searchQuery) {
         // Find packages whose packageName matches OR which contain a work matching the search query
-        const searchPackages = allPackages.filter((pkg: any) => {
+        const searchPackages = allPackages.filter((pkg: PkgDoc) => {
             const pkgNameMatch = pkg.packageName?.toLowerCase().includes(searchQuery.toLowerCase());
-            const workNameMatch = pkg.works?.some((w: any) => w.workName?.toLowerCase().includes(searchQuery.toLowerCase()));
+            const workNameMatch = pkg.works?.some((w: PkgWorkEntry) => w.workName?.toLowerCase().includes(searchQuery.toLowerCase()));
             return pkgNameMatch || workNameMatch;
         });
-        const searchPackageIds = searchPackages.map((pkg: any) => pkg._id);
+        const searchPackageIds = searchPackages.map((pkg: PkgDoc) => pkg._id);
 
         // Tender branch + approved-works branch run concurrently (were sequential).
         const [searchTendersRaw, matchedApprovedWorksRaw] = await Promise.all([
@@ -587,23 +712,23 @@ export default async function Home({ searchParams }: Props) {
             .lean(),
         ]);
 
-        const searchTenderIds = searchTendersRaw.map((t: any) => t._id);
+        const searchTenderIds = searchTendersRaw.map((t: SearchTenderDoc) => t._id);
 
         // Fetch related records for matched search tenders
         const [searchApprovals, searchLOAs] = await Promise.all([
-            Approval.find({ tenderId: { $in: searchTenderIds } }).select('tenderId notRequired proposalDate tenderApprovalDate').lean(),
-            LOA.find({ tenderId: { $in: searchTenderIds } }).select('_id tenderId acceptanceLetterDate').lean()
+            Approval.find({ tenderId: { $in: searchTenderIds } }).select('tenderId notRequired proposalDate tenderApprovalDate').lean() as unknown as ApprovalDoc[],
+            LOA.find({ tenderId: { $in: searchTenderIds } }).select('_id tenderId acceptanceLetterDate').lean() as unknown as LoaDoc[]
         ]);
 
-        const searchLoaIds = searchLOAs.map((l: any) => l._id);
-        const searchWorkOrders = await WorkOrder.find({ loaId: { $in: searchLoaIds } }).select('loaId workOrderDate').lean();
+        const searchLoaIds = searchLOAs.map((l: LoaDoc) => l._id);
+        const searchWorkOrders = await WorkOrder.find({ loaId: { $in: searchLoaIds } }).select('loaId workOrderDate').lean() as unknown as WorkOrderDoc[];
 
-        const searchApprovalMap = new Map(searchApprovals.map((a: any) => [a.tenderId?.toString(), a]));
-        const searchLoaMap = new Map(searchLOAs.map((l: any) => [l.tenderId?.toString(), l]));
-        const searchWorkOrderMap = new Map(searchWorkOrders.map((wo: any) => [wo.loaId?.toString(), wo]));
-        const searchPackageMap = new Map(allPackages.map((p: any) => [p._id.toString(), p]));
+        const searchApprovalMap = new Map(searchApprovals.map((a: ApprovalDoc) => [String(a.tenderId), a]));
+        const searchLoaMap = new Map(searchLOAs.map((l: LoaDoc) => [String(l.tenderId), l]));
+        const searchWorkOrderMap = new Map(searchWorkOrders.map((wo: WorkOrderDoc) => [String(wo.loaId), wo]));
+        const searchPackageMap = new Map(allPackages.map((p: PkgDoc) => [p._id.toString(), p]));
 
-        searchResultsData = searchTendersRaw.map((tender: any) => {
+        searchResultsData = searchTendersRaw.map((tender: SearchTenderDoc & Record<string, unknown>) => {
             const tIdStr = tender._id.toString();
             const approval = searchApprovalMap.get(tIdStr);
             const loa = searchLoaMap.get(tIdStr);
@@ -619,9 +744,9 @@ export default async function Home({ searchParams }: Props) {
             const acceptanceLetterDate = tender.acceptanceLetterDate || loa?.acceptanceLetterDate || null;
             const workOrderDate = tender.workOrderDate || workOrder?.workOrderDate || null;
 
-            const pkg = tender.packageId ? searchPackageMap.get(tender.packageId.toString()) : null;
+            const pkg = tender.packageId ? searchPackageMap.get(String(tender.packageId)) : null;
             const approvedWorks = pkg && pkg.works && pkg.works.length > 0 
-                ? pkg.works.map((w: any) => w.workName).filter(Boolean)
+                ? pkg.works.map((w: PkgWorkEntry) => w.workName).filter(Boolean)
                 : [];
 
             // Compute lifecycle status
@@ -647,7 +772,7 @@ export default async function Home({ searchParams }: Props) {
                 srNo: tender.srNo || '-',
                 packageName: tender.packageName || 'Unspecified Package',
                 approvedWorks,
-                packageId: tender.packageId?.toString() || null,
+                packageId: tender.packageId ? String(tender.packageId) : null,
                 contractorName: tender.contractorName || '-',
                 proposalDate,
                 tenderApprovalDate,
@@ -661,20 +786,20 @@ export default async function Home({ searchParams }: Props) {
 
         // Search Approved Works directly (already fetched above in parallel)
         const workNameToPkgInfo = new Map<string, { _id: string, packageName: string }>();
-        allPackages.forEach((pkg: any) => {
+        allPackages.forEach((pkg: PkgDoc) => {
             if (pkg.works) {
-                pkg.works.forEach((pw: any) => {
+                pkg.works.forEach((pw: PkgWorkEntry) => {
                     if (pw.workName) {
                         workNameToPkgInfo.set(normalizeString(pw.workName), {
                             _id: pkg._id.toString(),
-                            packageName: pkg.packageName
+                            packageName: pkg.packageName as string
                         });
                     }
                 });
             }
         });
 
-        searchApprovedWorksData = matchedApprovedWorksRaw.map((w: any) => {
+        searchApprovedWorksData = matchedApprovedWorksRaw.map((w: SearchApprovedWorkDoc & Record<string, unknown>) => {
             const pkgInfo = workNameToPkgInfo.get(normalizeString(w.workName));
             return {
                 ...w,
@@ -822,6 +947,14 @@ export default async function Home({ searchParams }: Props) {
                     rows={weeklyWorkOrderRows}
                 />
 
+                {/* 0b. Weekly Work Order Report with Job No Amount */}
+                <WeeklyWorkOrderJobNoReport
+                    weeks={weeklyWeeks}
+                    selectedWeek={selectedWeekValue}
+                    weekLabel={selectedWeekLabel}
+                    rows={weeklyWorkOrderRows}
+                />
+
                 {/* 1. Summary Report */}
                 <div className="bg-white p-6 shadow-sm rounded-xl border border-slate-100 space-y-4">
                     <div className="flex justify-between items-start">
@@ -867,7 +1000,7 @@ export default async function Home({ searchParams }: Props) {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-200">
-                                    {summaryData.length > 0 ? summaryData.map((row: any, index: number) => {
+                                    {summaryData.length > 0 ? summaryData.map((row: SummaryRow, index: number) => {
                                         const rowBg = index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
                                         return (
                                             <tr key={row.year} className={`${rowBg} hover:bg-emerald-50/80 transition-colors`}>

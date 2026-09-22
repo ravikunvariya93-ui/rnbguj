@@ -10,7 +10,7 @@ export async function GET(
         await dbConnect();
         const { packageId } = await params;
 
-        const latestTender = await Tender.findOne({ packageId: packageId as any })
+        const latestTender = await Tender.findOne({ packageId: packageId } as unknown as Parameters<typeof Tender.findOne>[0])
             .sort({ trialNo: -1 })
             .select('trialNo')
             .lean();
@@ -19,7 +19,7 @@ export async function GET(
             success: true, 
             latestTrialNo: latestTender ? latestTender.trialNo : 0 
         });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
     }
 }

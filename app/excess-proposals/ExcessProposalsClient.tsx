@@ -8,10 +8,23 @@ import {
     AlertCircle, Check
 } from 'lucide-react';
 
-interface Proposal {
+export interface ProposalPackageRef {
+    _id?: unknown;
+    packageName?: string;
+    subDivision?: string;
+}
+
+export interface ProposalWorkOrderRef {
+    _id?: unknown;
+    agreementNo?: string;
+    agreementYear?: string;
+    agencyName?: string;
+}
+
+export interface Proposal {
     _id: string;
-    packageId: any;
-    workOrderId?: any;
+    packageId: ProposalPackageRef | string | null;
+    workOrderId?: ProposalWorkOrderRef | string | null;
     proposalNo: string;
     contractorName?: string;
     proposalDate?: string;
@@ -28,9 +41,27 @@ interface Proposal {
     createdAt: string;
 }
 
+export interface PackageOption {
+    _id: string;
+    packageName: string;
+    subDivision?: string;
+}
+
+function refObject(ref: Proposal['packageId']): ProposalPackageRef | null {
+    return typeof ref === 'object' && ref !== null ? ref : null;
+}
+
+function refId(ref: Proposal['packageId']): string {
+    if (ref == null) return '';
+    if (typeof ref === 'string') return ref;
+    const id = ref._id;
+    if (id == null) return String(ref);
+    return String(id);
+}
+
 interface Props {
     initialProposals: Proposal[];
-    packages: any[];
+    packages: PackageOption[];
 }
 
 const blobViewUrl = (url?: string) =>
@@ -63,8 +94,8 @@ export default function ExcessProposalsClient({ initialProposals, packages }: Pr
                 !search ||
                 p.proposalNo?.toLowerCase().includes(search.toLowerCase()) ||
                 p.contractorName?.toLowerCase().includes(search.toLowerCase()) ||
-                p.packageId?.packageName?.toLowerCase().includes(search.toLowerCase()) ||
-                p.packageId?.subDivision?.toLowerCase().includes(search.toLowerCase()) ||
+                refObject(p.packageId)?.packageName?.toLowerCase().includes(search.toLowerCase()) ||
+                refObject(p.packageId)?.subDivision?.toLowerCase().includes(search.toLowerCase()) ||
                 p.remarks?.toLowerCase().includes(search.toLowerCase());
 
             const matchesStatus = 
@@ -93,7 +124,7 @@ export default function ExcessProposalsClient({ initialProposals, packages }: Pr
     const handleOpenEditModal = (p: Proposal) => {
         setEditingProposal(p);
         setForm({
-            packageId: p.packageId?._id || p.packageId || '',
+            packageId: refId(p.packageId),
             proposalNo: p.proposalNo || '',
             proposalDate: p.proposalDate ? new Date(p.proposalDate).toISOString().split('T')[0] : '',
             pdfUrl: p.pdfUrl || '',
@@ -131,8 +162,8 @@ export default function ExcessProposalsClient({ initialProposals, packages }: Pr
                 fileName: data.fileName,
                 fileSize: data.fileSize,
             }));
-        } catch (err: any) {
-            alert(err.message || 'Error uploading file');
+        } catch (err: unknown) {
+            alert(err instanceof Error && err.message ? err.message : 'Error uploading file');
         } finally {
             setUploading(false);
         }
@@ -170,8 +201,8 @@ export default function ExcessProposalsClient({ initialProposals, packages }: Pr
             }
 
             setIsModalOpen(false);
-        } catch (err: any) {
-            alert(err.message || 'Error saving proposal');
+        } catch (err: unknown) {
+            alert(err instanceof Error && err.message ? err.message : 'Error saving proposal');
         } finally {
             setSaving(false);
         }
@@ -192,8 +223,8 @@ export default function ExcessProposalsClient({ initialProposals, packages }: Pr
             }
 
             setProposals((prev) => prev.filter((p) => p._id !== id));
-        } catch (err: any) {
-            alert(err.message || 'Error deleting proposal');
+        } catch (err: unknown) {
+            alert(err instanceof Error && err.message ? err.message : 'Error deleting proposal');
         } finally {
             setDeletingId(null);
         }
@@ -273,9 +304,10 @@ export default function ExcessProposalsClient({ initialProposals, packages }: Pr
                         <tbody className="divide-y divide-slate-100 bg-white">
                             {filteredProposals.length > 0 ? (
                                 filteredProposals.map((p, idx) => {
-                                    const pkgId = p.packageId?._id || p.packageId;
-                                    const pkgName = p.packageId?.packageName || 'Unknown Package';
-                                    const subDiv = p.packageId?.subDivision || '-';
+                                    const pkgId = refId(p.packageId);
+                                    const pkg = refObject(p.packageId);
+                                    const pkgName = pkg?.packageName || 'Unknown Package';
+                                    const subDiv = pkg?.subDivision || '-';
 
                                     return (
                                         <tr key={p._id} className="hover:bg-emerald-50/40 transition-colors">
@@ -406,7 +438,7 @@ export default function ExcessProposalsClient({ initialProposals, packages }: Pr
                                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                                 >
                                     <option value="">-- Choose Package --</option>
-                                    {packages.map((pkg: any) => (
+                                    {packages.map((pkg) => (
                                         <option key={pkg._id} value={pkg._id}>
                                             {pkg.packageName} ({pkg.subDivision || 'Sub-Div'})
                                         </option>

@@ -6,7 +6,7 @@ import { auth } from '@/auth';
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
-  if ((session?.user as any)?.role !== 'ADMIN') {
+  if ((session?.user as { role?: string } | undefined)?.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -46,11 +46,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         name: currentUser.name,
         designation: currentUser.designation || '',
         changedAt: new Date(),
-        changedBy: (session?.user as any)?.username || 'admin',
+        changedBy: (session?.user as { username?: string } | undefined)?.username || 'admin',
       };
     }
 
-    const updateData: any = {};
+    const updateData: { role?: string; name?: string; username?: string; designation?: string; password?: string } = {};
     if (role !== undefined) updateData.role = role;
     if (name) updateData.name = name;
     if (username) updateData.username = username;
@@ -72,21 +72,21 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     return NextResponse.json(user);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
-  if ((session?.user as any)?.role !== 'ADMIN') {
+  if ((session?.user as { role?: string } | undefined)?.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { id } = await params;
   
   // Prevent deleting self
-  if (id === (session?.user as any)?.id) {
+  if (id === (session?.user as { id?: string } | undefined)?.id) {
     return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 });
   }
 
@@ -98,7 +98,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     }
 
     return NextResponse.json({ message: 'User deleted successfully' });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }

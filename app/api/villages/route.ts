@@ -34,7 +34,7 @@ export async function POST(request: Request) {
             { upsert: true, new: true }
         );
         return NextResponse.json({ success: true, data: doc }, { status: 201 });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error?.message || 'save failed' }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ success: false, error: error instanceof Error && error.message ? error.message : 'save failed' }, { status: 500 });
     }
 }

@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
             fileName: file.name,
             fileSize: file.size,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('File upload error:', error);
         return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
     }

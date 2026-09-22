@@ -23,6 +23,36 @@ void Package;
 
 export const dynamic = 'force-dynamic';
 
+type LeanId = { toString(): string };
+interface PopulatedTender {
+    packageId?: unknown;
+    packageName?: string;
+    contractorName?: string;
+}
+interface PopulatedLoa {
+    tenderId?: PopulatedTender | null;
+}
+interface PopulatedWorkOrder {
+    loaId?: PopulatedLoa | null;
+}
+interface BillRow {
+    _id: LeanId | string;
+    workOrderId?: unknown;
+    runningBillNumber?: number;
+    billType?: string;
+    grossAmount?: { toLocaleString(locales: string): string } | number | null;
+    billDate?: string | Date | null;
+    [key: string]: unknown;
+}
+const getTender = (workOrderId: unknown): PopulatedTender | undefined => {
+    if (!workOrderId || typeof workOrderId !== 'object') return undefined;
+    const loa = (workOrderId as PopulatedWorkOrder).loaId;
+    if (!loa || typeof loa !== 'object') return undefined;
+    const tender = (loa as PopulatedLoa).tenderId;
+    if (!tender || typeof tender !== 'object') return undefined;
+    return tender as PopulatedTender;
+};
+
 interface Props {
     searchParams: Promise<ListPageSearchParams>;
 }
@@ -30,58 +60,58 @@ interface Props {
 export default async function BillsPage({ searchParams }: Props) {
     await dbConnect();
     const session = await auth();
-    const userRole = (session?.user as any)?.role;
+    const userRole = (session?.user as { role?: string } | undefined)?.role;
     const auditorSubDivision = getAuditorSubDivision(userRole);
     const isAuditor = isAuditorRole(userRole);
 
     const params = await searchParams;
     
     // Build base query — auditors are limited to their subDivision
-    const query: any = {};
+    const query: Record<string, unknown> = {};
 
     // If auditor, find WorkOrder IDs that belong to their subDivision (via Package.subDivision)
     if (isAuditor && auditorSubDivision) {
-        const packageIds = (await Package.find({
+        const packageIds = await Package.find({
             subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') }
-        }).distinct('_id')) as any[];
-        const tenderIds = (await Tender.find({ packageId: { $in: packageIds } }).distinct('_id')) as any[];
-        const loaIds = (await LOA.find({ tenderId: { $in: tenderIds } }).distinct('_id')) as any[];
-        const workOrderIds = (await WorkOrder.find({ loaId: { $in: loaIds } }).distinct('_id')) as any[];
+        }).distinct('_id');
+        const tenderIds = await Tender.find({ packageId: { $in: packageIds } }).distinct('_id');
+        const loaIds = await LOA.find({ tenderId: { $in: tenderIds } }).distinct('_id');
+        const workOrderIds = await WorkOrder.find({ loaId: { $in: loaIds } }).distinct('_id');
         query.workOrderId = { $in: workOrderIds };
     }
 
     if (params.search) {
         // Find matching Tenders by package name or contractor name
-        let matchingPackageIds: any[] = [];
-        const packageSearchFilter: any = {
+        let matchingPackageIds: unknown[] = [];
+        const packageSearchFilter: Record<string, unknown> = {
             packageName: { $regex: params.search, $options: 'i' }
         };
         // Restrict to auditor's subDivision if applicable
         if (isAuditor && auditorSubDivision) {
             packageSearchFilter.subDivision = { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') };
         }
-        matchingPackageIds = (await Package.find(packageSearchFilter).distinct('_id')) as any[];
+        matchingPackageIds = await Package.find(packageSearchFilter as unknown as Parameters<typeof Package.find>[0]).distinct('_id');
 
-        const tenderSearchFilter: any = {
+        const tenderSearchFilter: Record<string, unknown> = {
             $or: [
                 { packageId: { $in: matchingPackageIds } },
                 { contractorName: { $regex: params.search, $options: 'i' } }
             ]
         };
 
-        const matchingTenders = (await Tender.find(tenderSearchFilter).distinct('_id')) as any[];
-        const matchingLOAs = (await LOA.find({ tenderId: { $in: matchingTenders } }).distinct('_id')) as any[];
-        const matchingWorkOrders = (await WorkOrder.find({ loaId: { $in: matchingLOAs } }).distinct('_id')) as any[];
+        const matchingTenders = await Tender.find(tenderSearchFilter as unknown as Parameters<typeof Tender.find>[0]).distinct('_id');
+        const matchingLOAs = await LOA.find({ tenderId: { $in: matchingTenders } }).distinct('_id');
+        const matchingWorkOrders = await WorkOrder.find({ loaId: { $in: matchingLOAs } }).distinct('_id');
         query.workOrderId = { $in: matchingWorkOrders };
     }
 
     const { page, limit, skip } = parsePagination(params);
     const sortObj = parseSort(params, { createdAt: -1 });
 
-    const totalItems = await Bill.countDocuments(query);
+    const totalItems = await Bill.countDocuments(query as unknown as Parameters<typeof Bill.countDocuments>[0]);
     const totalPages = Math.ceil(totalItems / limit);
 
-    const billsRaw = await Bill.find(query)
+    const billsRaw = await Bill.find(query as unknown as Parameters<typeof Bill.find>[0])
         .populate({
             path: 'workOrderId',
             populate: {
@@ -94,7 +124,7 @@ export default async function BillsPage({ searchParams }: Props) {
         .limit(limit)
         .lean();
 
-    const bills = billsRaw.map((bill: any) => ({
+    const bills = billsRaw.map((bill) => ({
         ...bill,
         _id: bill._id.toString(),
     }));
@@ -105,7 +135,7 @@ export default async function BillsPage({ searchParams }: Props) {
             label: 'Bill Type / No.', 
             sortable: true,
             render: (row) => {
-                const tender = (row.workOrderId as any)?.loaId?.tenderId;
+                const tender = getTender(row.workOrderId);
                 const packageId = tender?.packageId;
                 const nth = row.runningBillNumber === 1 ? 'st' : row.runningBillNumber === 2 ? 'nd' : row.runningBillNumber === 3 ? 'rd' : 'th';
                 const label = `${row.runningBillNumber}${nth} and ${row.billType} Bill`;
@@ -124,7 +154,7 @@ export default async function BillsPage({ searchParams }: Props) {
             sortable: true,
             minWidth: '200px',
             render: (row) => {
-                const tender = (row.workOrderId as any)?.loaId?.tenderId;
+                const tender = getTender(row.workOrderId);
                 return tender?.packageId ? (
                     <Link href={`/packages/${tender.packageId}`} className="text-emerald-600 hover:underline font-semibold max-w-xs whitespace-normal break-words">
                         {tender.packageName || 'Unknown Package'}
@@ -140,7 +170,7 @@ export default async function BillsPage({ searchParams }: Props) {
             sortable: true,
             minWidth: '160px',
             render: (row) => {
-                const tender = (row.workOrderId as any)?.loaId?.tenderId;
+                const tender = getTender(row.workOrderId);
                 return <span className="font-medium text-slate-800">{tender?.contractorName || '-'}</span>;
             }
         },
@@ -158,8 +188,8 @@ export default async function BillsPage({ searchParams }: Props) {
         }
     ];
 
-    const renderActions = (row: any) => {
-        const tender = (row.workOrderId as any)?.loaId?.tenderId;
+    const renderActions = (row) => {
+        const tender = getTender(row.workOrderId);
         const packageId = tender?.packageId;
         const viewHref = packageId ? `/packages/${packageId}/bills/${row._id}/deduction` : `/bills`;
         const checklistHref = packageId ? `/packages/${packageId}/bills/${row._id}/checklist` : `/bills/${row._id}/checklist`;

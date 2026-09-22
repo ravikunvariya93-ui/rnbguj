@@ -19,6 +19,32 @@ import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
+type LeanId = { toString(): string };
+interface WorkNameDoc {
+    workName?: string;
+    [key: string]: unknown;
+}
+interface PkgLeanDoc {
+    _id: LeanId;
+    subDivision?: string;
+    works?: WorkNameDoc[];
+    [key: string]: unknown;
+}
+interface TenderLeanDoc {
+    _id: LeanId;
+    cancelled?: boolean;
+    [key: string]: unknown;
+}
+interface RefLeanDoc {
+    _id: LeanId;
+    [key: string]: unknown;
+}
+interface WorkOrderBrief {
+    agreementYear?: string;
+    agreementNo?: string;
+    [key: string]: unknown;
+}
+
 function serialize<T>(obj: T): T {
     if (obj === null || obj === undefined) return obj;
     const sanitized = JSON.parse(
@@ -35,13 +61,13 @@ function serialize<T>(obj: T): T {
         })
     );
 
-    const clean = (val: any): any => {
+    const clean = (val: unknown): unknown => {
         if (!val || typeof val !== 'object') return val;
         if (Array.isArray(val)) return val.map(clean);
-        const res: any = {};
-        for (const k of Object.keys(val)) {
-            const v = val[k];
-            if (v && typeof v === 'object' && v.buffer && typeof v.buffer === 'object') {
+        const res: Record<string, unknown> = {};
+        for (const k of Object.keys(val as Record<string, unknown>)) {
+            const v = (val as Record<string, unknown>)[k];
+            if (v && typeof v === 'object' && (v as Record<string, unknown>).buffer && typeof (v as Record<string, unknown>).buffer === 'object') {
                 res[k] = String(v);
             } else {
                 res[k] = clean(v);
@@ -56,21 +82,21 @@ function serialize<T>(obj: T): T {
 export default async function PackageDetailPage({ params }: { params: Promise<{ id: string }> }) {
     await dbConnect();
     const session = await auth();
-    const userRole = (session?.user as any)?.role;
+    const userRole = (session?.user as { role?: string } | undefined)?.role;
     const auditorSubDivision = getAuditorSubDivision(userRole);
     const isAuditor = isAuditorRole(userRole);
 
     const { id } = await params;
 
-    const pkg = await Package.findById(id).populate('works.workId').lean() as any;
+    const pkg = await Package.findById(id).populate('works.workId').lean() as unknown as PkgLeanDoc | null;
     if (!pkg) notFound();
 
     // Auditor access check: verify package belongs to auditor's sub-division
     if (isAuditor && auditorSubDivision) {
         const worksInAuditorSubDiv = await ApprovedWork.find({ subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') } }).select('workName').lean();
-        const workNames = new Set(worksInAuditorSubDiv.map((aw: any) => (aw.workName || '').toLowerCase().trim()));
+        const workNames = new Set(worksInAuditorSubDiv.map((aw: WorkNameDoc) => (aw.workName || '').toLowerCase().trim()));
         const pkgSubDiv = (pkg.subDivision || '').toLowerCase().trim();
-        const hasMatchingWork = (pkg.works || []).some((w: any) => workNames.has((w.workName || '').toLowerCase().trim()));
+        const hasMatchingWork = (pkg.works || []).some((w: WorkNameDoc) => workNames.has((w.workName || '').toLowerCase().trim()));
         const isAllowed = pkgSubDiv === auditorSubDivision.toLowerCase().trim() || hasMatchingWork;
 
         if (!isAllowed) {
@@ -93,13 +119,13 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
     }
 
     // Fetch all ApprovedWorks to match details by name on client side
-    const approvedWorks = await ApprovedWork.find({}).lean() as any[];
+    const approvedWorks = await ApprovedWork.find({}).lean() as unknown as WorkNameDoc[];
 
     // DTP — linked to Package._id
-    const dtp = await DTP.findOne({ tsId: pkg._id }).lean() as any;
+    const dtp = await DTP.findOne({ tsId: pkg._id }).lean() as unknown as RefLeanDoc | null;
 
     // Fetch all tenders for the package (all trials/attempts) sorted by trialNo descending
-    const tenders = await Tender.find({ packageId: pkg._id }).sort({ trialNo: -1 }).lean() as any[];
+    const tenders = await Tender.find({ packageId: pkg._id }).sort({ trialNo: -1 }).lean() as unknown as TenderLeanDoc[];
 
     // Tender — linked to Package._id (latest non-cancelled)
     const tender = tenders.find(t => !t.cancelled) || null;
@@ -107,33 +133,33 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
     // Approval + LOA + BOQ
     const [approval, loa, boq] = tender
         ? await Promise.all([
-            Approval.findOne({ tenderId: tender._id }).lean() as any,
-            LOA.findOne({ tenderId: tender._id }).lean() as any,
-            BOQ.findOne({ tenderId: tender._id }).lean() as any,
+            Approval.findOne({ tenderId: tender._id }).lean() as unknown as RefLeanDoc | null,
+            LOA.findOne({ tenderId: tender._id }).lean() as unknown as RefLeanDoc | null,
+            BOQ.findOne({ tenderId: tender._id }).lean() as unknown as RefLeanDoc | null,
         ])
         : [null, null, null];
 
     // WorkOrder
-    const workOrder = loa ? await WorkOrder.findOne({ loaId: loa._id }).lean() as any : null;
+    const workOrder = loa ? await WorkOrder.findOne({ loaId: loa._id }).lean() as unknown as RefLeanDoc | null : null;
 
     // Bills
     const bills = workOrder
         ? await Bill.find({ workOrderId: workOrder._id })
-            .sort({ billDate: 1, runningBillNumber: 1 }).lean() as any[]
+            .sort({ billDate: 1, runningBillNumber: 1 }).lean() as unknown as RefLeanDoc[]
         : [];
 
     // Excess Proposals
     const excessProposals = await ExcessProposal.find({ packageId: pkg._id })
         .sort({ proposalDate: -1, createdAt: -1 })
-        .lean() as any[];
+        .lean() as unknown as RefLeanDoc[];
 
     // Deposit Refunds
     const depositRefunds = await DepositRefund.find({ packageId: pkg._id })
         .sort({ orderDate: -1, createdAt: -1 })
-        .lean() as any[];
+        .lean() as unknown as RefLeanDoc[];
 
     // Fetch all work orders to determine the maximum agreement number per year
-    const allWorkOrders = await WorkOrder.find({ notRequired: { $ne: true } }, 'agreementYear agreementNo').lean() as any[];
+    const allWorkOrders = await WorkOrder.find({ notRequired: { $ne: true } }, 'agreementYear agreementNo').lean() as unknown as WorkOrderBrief[];
     const maxAgreementNos: Record<string, number> = {};
     for (const wo of allWorkOrders) {
         if (wo.agreementYear && wo.agreementNo) {

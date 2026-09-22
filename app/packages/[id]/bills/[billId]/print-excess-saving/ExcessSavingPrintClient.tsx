@@ -5,13 +5,60 @@ import Link from 'next/link';
 import { ArrowLeft, Printer, FileSpreadsheet } from 'lucide-react';
 import { formatDate } from '@/lib/dateUtils';
 
+interface BillItem {
+    itemNo?: string | number;
+    description?: string;
+    unit?: string;
+    boqQuantity?: number | string;
+    fullRate?: number | string;
+    uptoDateAmount?: number | string;
+    quantity?: number | string;
+    partRate?: number | string | null;
+}
+
+interface ExcessSavingPackage {
+    _id?: string;
+    packageName?: string;
+    budgetHead?: string;
+}
+
+interface ExcessSavingTender {
+    packageName?: string;
+    contractorName?: string;
+    contractPrice?: number;
+    estimatedAmount?: number;
+    aboveBelowPercentage?: number;
+    aboveBelowInWord?: string;
+}
+
+interface ExcessSavingWorkOrder {
+    _id?: string;
+    workOrderWorksheetNo?: string;
+    workOrderNo?: string;
+    workOrderDate?: string;
+}
+
+interface ExcessSavingAgency {
+    _id?: string;
+    gstNo?: string;
+}
+
+interface ExcessSavingBill {
+    _id?: string;
+    items?: BillItem[];
+    runningBillNumber?: number;
+    billType?: string;
+    billDate?: string;
+    grossAmount?: number;
+}
+
 interface ExcessSavingPrintClientProps {
-    packageData: any;
-    tender: any;
-    loa: any;
-    workOrder: any;
-    agency: any;
-    bill: any;
+    packageData: ExcessSavingPackage | null;
+    tender: ExcessSavingTender | null;
+    loa: unknown;
+    workOrder: ExcessSavingWorkOrder | null;
+    agency: ExcessSavingAgency | null;
+    bill: ExcessSavingBill | null;
 }
 
 function formatDateDMY(d: Date | string | null | undefined): string {
@@ -35,7 +82,7 @@ export default function ExcessSavingPrintClient({
 }: ExcessSavingPrintClientProps) {
     const printRef = useRef<HTMLDivElement>(null);
 
-    const items: any[] = bill?.items || [];
+    const items: BillItem[] = bill?.items || [];
 
     const workName = tender?.packageName || packageData?.packageName || '-';
     const budgetHead = packageData?.budgetHead || '-';
@@ -53,17 +100,17 @@ export default function ExcessSavingPrintClient({
     const grossAmount = bill?.grossAmount || 0;
 
     // Totals
-    const totalTender = items.reduce((s: number, i: any) => s + ((Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0))), 0);
-    const totalBill = items.reduce((s: number, i: any) => s + (Number(i.uptoDateAmount != null ? i.uptoDateAmount : ((Number(i.quantity || 0)) * Number(i.partRate || i.fullRate || 0)))), 0);
+    const totalTender = items.reduce((s: number, i: BillItem) => s + ((Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0))), 0);
+    const totalBill = items.reduce((s: number, i: BillItem) => s + (Number(i.uptoDateAmount != null ? i.uptoDateAmount : ((Number(i.quantity || 0)) * Number(i.partRate || i.fullRate || 0)))), 0);
 
-    const totalExcess = items.reduce((s: number, i: any) => {
+    const totalExcess = items.reduce((s: number, i: BillItem) => {
         const tAmt = (Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0));
         const bAmt = Number(i.uptoDateAmount != null ? i.uptoDateAmount : ((Number(i.quantity || 0)) * Number(i.partRate || i.fullRate || 0)));
         const diff = bAmt - tAmt;
         return s + (diff > 0 ? diff : 0);
     }, 0);
 
-    const totalSaving = items.reduce((s: number, i: any) => {
+    const totalSaving = items.reduce((s: number, i: BillItem) => {
         const tAmt = (Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0));
         const bAmt = Number(i.uptoDateAmount != null ? i.uptoDateAmount : ((Number(i.quantity || 0)) * Number(i.partRate || i.fullRate || 0)));
         const diff = bAmt - tAmt;
@@ -107,7 +154,7 @@ export default function ExcessSavingPrintClient({
             ]
         ];
 
-        items.forEach((item: any) => {
+        items.forEach((item: BillItem) => {
             const tQty = Number(item.boqQuantity || 0);
             const tRate = Number(item.fullRate || 0);
             const tAmt = tQty * tRate;
@@ -387,7 +434,7 @@ export default function ExcessSavingPrintClient({
                                     </td>
                                 </tr>
                             ) : (
-                                items.map((item: any, idx: number) => {
+                                items.map((item: BillItem, idx: number) => {
                                     const tQty = Number(item.boqQuantity || 0);
                                     const tRate = Number(item.fullRate || 0);
                                     const tAmt = tQty * tRate;

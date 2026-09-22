@@ -27,11 +27,32 @@ interface Props {
     params: Promise<{ id: string; billId: string }>;
 }
 
+interface IdLean {
+    _id: string;
+}
+
+interface PopulatedBillLean {
+    _id: string;
+    workOrderId?: (IdLean & {
+        loaId?: (IdLean & {
+            tenderId?: (IdLean & {
+                contractorId?: string;
+                contractorName?: string;
+            }) | null;
+        }) | null;
+    }) | null;
+}
+
+interface TenderLean {
+    contractorId?: string;
+    contractorName?: string;
+}
+
 export default async function PrintExcessSavingPage({ params }: Props) {
     await dbConnect();
     const { id: packageId, billId } = await params;
 
-    const pkgRaw = await Package.findById(packageId).lean() as any;
+    const pkgRaw = await Package.findById(packageId).lean() as unknown as IdLean | null;
     if (!pkgRaw) notFound();
 
     const billRaw = await Bill.findById(billId)
@@ -45,19 +66,19 @@ export default async function PrintExcessSavingPage({ params }: Props) {
                 }
             }
         })
-        .lean() as any;
+        .lean() as unknown as PopulatedBillLean | null;
 
     if (!billRaw) notFound();
 
-    const workOrderRaw = billRaw.workOrderId as any;
-    const loaRaw = workOrderRaw?.loaId as any;
-    const tenderRaw = loaRaw?.tenderId as any;
+    const workOrderRaw = billRaw.workOrderId ?? null;
+    const loaRaw = workOrderRaw?.loaId ?? null;
+    const tenderRaw = (loaRaw?.tenderId ?? null) as TenderLean | null;
 
-    let agencyRaw = null;
+    let agencyRaw: IdLean | null = null;
     if (tenderRaw?.contractorName) {
         agencyRaw = tenderRaw.contractorId
-            ? await Agency.findById(tenderRaw.contractorId).lean() as any
-            : await Agency.findOne({ name: tenderRaw.contractorName }).lean() as any;
+            ? await Agency.findById(tenderRaw.contractorId).lean() as unknown as IdLean | null
+            : await Agency.findOne({ name: tenderRaw.contractorName }).lean() as unknown as IdLean | null;
     }
 
     const packageData = serialize(pkgRaw);

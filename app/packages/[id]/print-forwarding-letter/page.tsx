@@ -11,16 +11,20 @@ interface Props {
     params: Promise<{ id: string }>;
 }
 
+interface IdLean {
+    _id: string;
+}
+
 export default async function PrintForwardingLetterPage({ params }: Props) {
     await dbConnect();
     const { id } = await params;
 
     // Fetch Package details
-    const pkgRaw = await Package.findById(id).lean() as any;
+    const pkgRaw = await Package.findById(id).lean() as unknown as IdLean | null;
     if (!pkgRaw) notFound();
 
     // Fetch DTP details
-    const dtpRaw = await DTP.findOne({ tsId: pkgRaw._id }).lean() as any;
+    const dtpRaw = await DTP.findOne({ tsId: pkgRaw._id }).lean() as unknown as IdLean | null;
 
     if (!dtpRaw) {
         return (

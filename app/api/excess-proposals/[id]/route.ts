@@ -25,9 +25,9 @@ export async function GET(
         }
 
         return NextResponse.json({ success: true, data: proposal });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Failed to fetch excess proposal:', error);
-        return NextResponse.json({ error: error.message || 'Failed to fetch excess proposal' }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error && error.message ? error.message : 'Failed to fetch excess proposal' }, { status: 500 });
     }
 }
 
@@ -40,7 +40,22 @@ export async function PUT(
         const { id } = await params;
         const body = await req.json();
 
-        const updateData: any = {};
+        const updateData: {
+            proposalNo?: string;
+            proposalDate?: Date | null;
+            pdfUrl?: string;
+            fileName?: string;
+            fileSize?: number;
+            remarks?: string;
+            status?: string;
+            excessAmount?: number | null;
+            savingAmount?: number | null;
+            approvalNo?: string;
+            approvalDate?: Date | null;
+            approvalAuthority?: string;
+            packageId?: string;
+            workOrderId?: string;
+        } = {};
         if (body.proposalNo !== undefined) updateData.proposalNo = body.proposalNo ? body.proposalNo.trim() : '';
         if (body.proposalDate !== undefined) updateData.proposalDate = body.proposalDate ? new Date(body.proposalDate) : null;
         if (body.pdfUrl !== undefined) updateData.pdfUrl = body.pdfUrl;
@@ -66,9 +81,9 @@ export async function PUT(
         }
 
         return NextResponse.json({ success: true, data: updated });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Failed to update excess proposal:', error);
-        return NextResponse.json({ error: error.message || 'Failed to update excess proposal' }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error && error.message ? error.message : 'Failed to update excess proposal' }, { status: 500 });
     }
 }
 
@@ -97,8 +112,8 @@ export async function DELETE(
         await ExcessProposal.findByIdAndDelete(id);
 
         return NextResponse.json({ success: true, message: 'Excess Proposal deleted successfully' });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Failed to delete excess proposal:', error);
-        return NextResponse.json({ error: error.message || 'Failed to delete excess proposal' }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error && error.message ? error.message : 'Failed to delete excess proposal' }, { status: 500 });
     }
 }

@@ -8,13 +8,13 @@ import { notFound } from 'next/navigation';
 export default async function TenderDetailPage({ params }: { params: Promise<{ id: string }> }) {
     await dbConnect();
     const { id } = await params;
-    const tender = await Tender.findById(id).lean() as any;
+    const tender = await Tender.findById(id).lean();
 
     if (!tender) {
         notFound();
     }
 
-    const dtp = tender.packageId ? await DTP.findOne({ tsId: tender.packageId }).lean() as any : null;
+    const dtp = tender.packageId ? await DTP.findOne({ tsId: tender.packageId }).lean() : null;
     const estAmt = tender.estimatedAmount || dtp?.tenderAmount;
 
     const sections = [

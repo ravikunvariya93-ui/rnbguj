@@ -7,6 +7,10 @@ import Agency from '@/models/Agency';
 import ApprovedWork from '@/models/ApprovedWork';
 import Approval from '@/models/Approval';
 import DTP from '@/models/DTP';
+import type { QueryFilter } from 'mongoose';
+import type { ITender } from '@/models/Tender';
+import type { IWorkOrder } from '@/models/WorkOrder';
+import type { IDTP } from '@/models/DTP';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import WorkOrderLetterClient from './WorkOrderLetterClient';
@@ -17,17 +21,37 @@ interface Props {
     params: Promise<{ id: string }>;
 }
 
+interface PackageLean {
+    _id: string;
+    works?: { workName: string }[];
+    budgetHead?: string;
+}
+
+interface TenderLean {
+    _id: string;
+    contractorId?: string;
+    contractorName?: string;
+}
+
+interface IdLean {
+    _id: string;
+}
+
+interface ApprovedWorkLean {
+    budgetHead?: string;
+}
+
 export default async function PrintWorkOrderPage({ params }: Props) {
     await dbConnect();
     const { id } = await params;
 
     // Fetch Package details
-    const pkgRaw = await Package.findById(id).lean() as any;
+    const pkgRaw = await Package.findById(id).lean() as unknown as PackageLean | null;
     if (!pkgRaw) notFound();
 
     // Fetch related Tender
-    const tenderRaw = await Tender.findOne({ packageId: pkgRaw._id, cancelled: { $ne: true } })
-        .sort({ trialNo: -1 }).lean() as any;
+    const tenderRaw = await Tender.findOne({ packageId: pkgRaw._id, cancelled: { $ne: true } } as unknown as QueryFilter<ITender>)
+        .sort({ trialNo: -1 }).lean() as unknown as TenderLean | null;
 
     if (!tenderRaw) {
         return (
@@ -47,11 +71,11 @@ export default async function PrintWorkOrderPage({ params }: Props) {
 
     // Fetch related LOA and Approval
     const [loaRaw, approvalRaw] = await Promise.all([
-        LOA.findOne({ tenderId: tenderRaw._id }).lean() as any,
-        Approval.findOne({ tenderId: tenderRaw._id }).lean() as any
+        LOA.findOne({ tenderId: tenderRaw._id }).lean() as unknown as Promise<IdLean | null>,
+        Approval.findOne({ tenderId: tenderRaw._id }).lean() as unknown as Promise<IdLean | null>
     ]);
 
-    const workOrderRaw = loaRaw ? await WorkOrder.findOne({ loaId: loaRaw._id }).lean() as any : null;
+    const workOrderRaw = loaRaw ? await WorkOrder.findOne({ loaId: loaRaw._id } as unknown as QueryFilter<IWorkOrder>).lean() as unknown as IdLean & { workOrderWorksheetNo?: string; workOrderNo?: string; workOrderDate?: string } | null : null;
 
     if (!workOrderRaw || (!workOrderRaw.workOrderWorksheetNo && !workOrderRaw.workOrderNo) || !workOrderRaw.workOrderDate) {
         return (
@@ -74,16 +98,16 @@ export default async function PrintWorkOrderPage({ params }: Props) {
 
     // Fetch Agency (Contractor) details for address and mobile number
     const agencyRaw = tenderRaw.contractorId
-        ? await Agency.findById(tenderRaw.contractorId).lean() as any
-        : await Agency.findOne({ name: tenderRaw.contractorName }).lean() as any;
+        ? await Agency.findById(tenderRaw.contractorId).lean() as unknown as IdLean | null
+        : await Agency.findOne({ name: tenderRaw.contractorName }).lean() as unknown as IdLean | null;
 
     // Fetch DTP details for tenderAmount
-    const dtpRaw = await DTP.findOne({ tsId: pkgRaw._id }).lean() as any;
+    const dtpRaw = await DTP.findOne({ tsId: pkgRaw._id } as unknown as QueryFilter<IDTP>).lean() as unknown as IdLean | null;
 
     // Fetch linked ApprovedWorks to find budget heads
-    const workNames = pkgRaw.works ? pkgRaw.works.map((w: any) => w.workName) : [];
-    const matchedApprovedWorks = await ApprovedWork.find({ workName: { $in: workNames } }).lean();
-    const budgetHeads = Array.from(new Set([pkgRaw.budgetHead, ...matchedApprovedWorks.map((aw: any) => aw.budgetHead)].filter(Boolean)));
+    const workNames = pkgRaw.works ? pkgRaw.works.map((w: { workName: string }) => w.workName) : [];
+    const matchedApprovedWorks = await ApprovedWork.find({ workName: { $in: workNames } }).lean() as unknown as ApprovedWorkLean[];
+    const budgetHeads = Array.from(new Set([pkgRaw.budgetHead, ...matchedApprovedWorks.map((aw: ApprovedWorkLean) => aw.budgetHead)].filter((b): b is string => Boolean(b))));
 
     // Serialize data to avoid any passing of rich objects (e.g. Mongoose Document, ObjectIds, Dates) to the Client Component
     const packageData = JSON.parse(JSON.stringify(pkgRaw));

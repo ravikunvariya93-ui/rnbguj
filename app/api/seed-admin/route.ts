@@ -22,7 +22,7 @@ export async function GET() {
     const anyUser = await User.findOne({}).select('_id').lean();
     if (anyUser) {
       const session = await auth();
-      if ((session?.user as any)?.role !== 'ADMIN') {
+      if ((session?.user as { role?: string } | undefined)?.role !== 'ADMIN') {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
     }
@@ -43,7 +43,7 @@ export async function GET() {
         role: admin.role,
       },
     });
-  } catch (error: any) {
+  } catch {
     return NextResponse.json({ error: 'Failed to create admin user' }, { status: 500 });
   }
 }

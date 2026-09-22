@@ -4,9 +4,28 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, LayoutList, Download } from 'lucide-react';
 import { downloadPraisaWorkOrderExcel, downloadPraisaExcessWorkOrderExcel } from '@/lib/exportPraisaWorkOrder';
 
+interface BillAbstractItem {
+    itemNo?: string | number;
+    description?: string;
+    unit?: string;
+    boqQuantity?: number | string;
+    fullRate?: number;
+    quantity?: number;
+    partRate?: number;
+    uptoDateAmount?: number;
+    previousPaidAmount?: number;
+    toBePaidAmount?: number;
+    [key: string]: string | number | undefined;
+}
+
+interface BillTender {
+    aboveBelowPercentage?: number | string;
+    aboveBelowInWord?: string;
+}
+
 interface BillAbstractTableProps {
-    items: any[];
-    tender?: any;
+    items: BillAbstractItem[];
+    tender?: BillTender;
     labourCessApplicable?: boolean;
     initialExpanded?: boolean;
 }
@@ -27,11 +46,11 @@ export default function BillAbstractTable({
         downloadPraisaExcessWorkOrderExcel(items, 'WorkOrder_Excess.xls');
     };
 
-    const totalUptoDate = items.reduce((s: number, i: any) => s + (i.uptoDateAmount || 0), 0);
-    const totalPrevPaid = items.reduce((s: number, i: any) => s + (i.previousPaidAmount || 0), 0);
-    const totalToBePaid = items.reduce((s: number, i: any) => s + (i.toBePaidAmount || 0), 0);
+    const totalUptoDate = items.reduce((s: number, i: BillAbstractItem) => s + (i.uptoDateAmount || 0), 0);
+    const totalPrevPaid = items.reduce((s: number, i: BillAbstractItem) => s + (i.previousPaidAmount || 0), 0);
+    const totalToBePaid = items.reduce((s: number, i: BillAbstractItem) => s + (i.toBePaidAmount || 0), 0);
 
-    const pct = tender?.aboveBelowPercentage || 0;
+    const pct = Number(tender?.aboveBelowPercentage || 0);
     const dir = tender?.aboveBelowInWord || 'Above';
     const isCess = labourCessApplicable;
 
@@ -151,7 +170,7 @@ export default function BillAbstractTable({
                                 </td>
                             </tr>
                         ) : (
-                            items.map((item: any, index: number) => (
+                            items.map((item: BillAbstractItem, index: number) => (
                                 <tr key={index} className="hover:bg-emerald-50/50 transition-colors">
                                     <td className="border border-slate-200 px-3 py-2 text-sm text-slate-700 font-mono font-bold whitespace-nowrap">{item.itemNo}</td>
                                     <td className="border border-slate-200 px-3 py-2 text-xs text-slate-600 line-clamp-3 font-medium" title={item.description}>{item.description}</td>

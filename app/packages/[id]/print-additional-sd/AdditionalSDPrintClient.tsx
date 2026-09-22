@@ -7,13 +7,56 @@ import { ArrowLeft, Printer, Download, Edit3 } from 'lucide-react';
 import { logoBase64 } from '@/lib/logoBase64';
 import { formatDate, getISTYear } from '@/lib/dateUtils';
 
+interface AdditionalSDPackage {
+    _id?: string;
+    packageName?: string;
+    subDivision?: string;
+}
+
+interface AdditionalSDTender {
+    contractorName?: string;
+    packageName?: string;
+    taluka?: string;
+    workDurationMonths?: number;
+}
+
+interface AdditionalSDLOA {
+    acceptanceLetterDate?: string;
+    workDurationMonths?: number;
+}
+
+interface AdditionalSDWorkOrder {
+    timeLimitStartsFrom?: string;
+    workOrderDate?: string;
+    workDurationMonths?: number;
+    stipulatedCompletionDate?: string;
+    additionalSecurityDepositBankName?: string;
+    additionalSecurityDepositNumber?: string;
+    additionalSecurityDepositDate?: string;
+    additionalSecurityDepositAmount?: number | string;
+}
+
+interface AdditionalSDAgency {
+    name?: string;
+}
+
+interface AdditionalSDRefund {
+    orderNo?: string;
+    orderDate?: string;
+    actualCompletionDate?: string;
+    bankName?: string;
+    fdrNumber?: string;
+    fdrDate?: string;
+    amount?: number | string;
+}
+
 interface AdditionalSDPrintClientProps {
-    packageData: any;
-    tender: any;
-    loa: any;
-    workOrder: any;
-    agency: any;
-    depositRefund: any;
+    packageData: AdditionalSDPackage;
+    tender: AdditionalSDTender | null;
+    loa: AdditionalSDLOA | null;
+    workOrder: AdditionalSDWorkOrder | null;
+    agency: AdditionalSDAgency | null;
+    depositRefund: AdditionalSDRefund | null;
     defaultActualCompletionDate?: string | Date | null;
 }
 
@@ -82,8 +125,8 @@ export default function AdditionalSDPrintClient({
         const filename = `Additional_SD_Refund_${(packageData?.subDivision || 'Package').replace(/\s+/g, '_')}.doc`;
         const downloadLink = document.createElement('a');
         document.body.appendChild(downloadLink);
-        if ((navigator as any).msSaveOrOpenBlob) {
-            (navigator as any).msSaveOrOpenBlob(blob, filename);
+        if ((navigator as unknown as { msSaveOrOpenBlob?: (blob: Blob, filename: string) => void }).msSaveOrOpenBlob) {
+            (navigator as unknown as { msSaveOrOpenBlob?: (blob: Blob, filename: string) => void }).msSaveOrOpenBlob?.(blob, filename);
         } else {
             downloadLink.href = url;
             downloadLink.download = filename;

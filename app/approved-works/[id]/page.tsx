@@ -13,6 +13,41 @@ import ApprovedWorkDetailClient from './ApprovedWorkDetailClient';
 
 export const dynamic = 'force-dynamic';
 
+type LeanId = { toString(): string };
+interface TSLeanDoc {
+    _id?: LeanId;
+    workName?: string;
+    [key: string]: unknown;
+}
+interface PkgWorkEntry {
+    workName?: string;
+    [key: string]: unknown;
+}
+interface PkgLeanDoc {
+    _id: LeanId;
+    works?: PkgWorkEntry[];
+    [key: string]: unknown;
+}
+interface WorkLeanDoc {
+    _id: LeanId;
+    workName?: string;
+    [key: string]: unknown;
+}
+interface TenderLeanDoc {
+    _id: LeanId;
+    cancelled?: boolean;
+    [key: string]: unknown;
+}
+interface RefLeanDoc {
+    _id: LeanId;
+    [key: string]: unknown;
+}
+interface WorkOrderBrief {
+    agreementYear?: string;
+    agreementNo?: string;
+    [key: string]: unknown;
+}
+
 function serialize<T>(obj: T): T {
     if (obj === null || obj === undefined) return obj;
     return JSON.parse(
@@ -34,52 +69,52 @@ export default async function ApprovedWorkDetailPage({ params }: { params: Promi
     await dbConnect();
     const { id } = await params;
 
-    const work = await ApprovedWork.findById(id).lean() as any;
+    const work = await ApprovedWork.findById(id).lean() as unknown as WorkLeanDoc | null;
     if (!work) notFound();
 
-    const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const normalize = (s: string | null | undefined) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
     const workNameNorm = normalize(work.workName);
 
     // TS — name-match
     const allTS = await TechnicalSanction.find({})
         .select('_id workName tsNumber tsDate tsAmount tsAuthority dateSendingTS remarks')
-        .lean() as any[];
-    const ts = allTS.find((t: any) => normalize(t.workName) === workNameNorm) || null;
+        .lean() as unknown as TSLeanDoc[];
+    const ts = allTS.find((t: TSLeanDoc) => normalize(t.workName) === workNameNorm) || null;
 
     // Package — contains this work name
-    const allPackages = await Package.find({}).lean() as any[];
-    const pkg = allPackages.find((p: any) =>
-        p.works?.some((w: any) => normalize(w.workName) === workNameNorm)
+    const allPackages = await Package.find({}).lean() as unknown as PkgLeanDoc[];
+    const pkg = allPackages.find((p: PkgLeanDoc) =>
+        p.works?.some((w: PkgWorkEntry) => normalize(w.workName) === workNameNorm)
     ) || null;
 
     // DTP — linked to Package._id
-    const dtp = pkg ? await DTP.findOne({ tsId: pkg._id }).lean() as any : null;
+    const dtp = pkg ? await DTP.findOne({ tsId: pkg._id }).lean() as unknown as RefLeanDoc | null : null;
 
     // Tender — linked to Package._id (latest non-cancelled)
     const tender = pkg
         ? await Tender.findOne({ packageId: pkg._id, cancelled: { $ne: true } })
-            .sort({ trialNo: -1 }).lean() as any
+            .sort({ trialNo: -1 }).lean() as unknown as TenderLeanDoc | null
         : null;
 
     // Approval + LOA
     const [approval, loa] = tender
         ? await Promise.all([
-            Approval.findOne({ tenderId: tender._id }).lean() as any,
-            LOA.findOne({ tenderId: tender._id }).lean() as any,
+            Approval.findOne({ tenderId: tender._id }).lean() as unknown as RefLeanDoc | null,
+            LOA.findOne({ tenderId: tender._id }).lean() as unknown as RefLeanDoc | null,
         ])
         : [null, null];
 
     // WorkOrder
-    const workOrder = loa ? await WorkOrder.findOne({ loaId: loa._id }).lean() as any : null;
+    const workOrder = loa ? await WorkOrder.findOne({ loaId: loa._id }).lean() as unknown as RefLeanDoc | null : null;
 
     // Bills
     const bills = workOrder
         ? await Bill.find({ workOrderId: workOrder._id })
-            .sort({ billDate: 1, runningBillNumber: 1 }).lean() as any[]
+            .sort({ billDate: 1, runningBillNumber: 1 }).lean() as unknown as RefLeanDoc[]
         : [];
 
     // Fetch all work orders to determine the maximum agreement number per year
-    const allWorkOrders = await WorkOrder.find({ notRequired: { $ne: true } }, 'agreementYear agreementNo').lean() as any[];
+    const allWorkOrders = await WorkOrder.find({ notRequired: { $ne: true } }, 'agreementYear agreementNo').lean() as unknown as WorkOrderBrief[];
     const maxAgreementNos: Record<string, number> = {};
     for (const wo of allWorkOrders) {
         if (wo.agreementYear && wo.agreementNo) {

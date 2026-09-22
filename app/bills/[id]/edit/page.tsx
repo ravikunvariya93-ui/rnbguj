@@ -29,9 +29,12 @@ export default async function EditBillPage({ params }: { params: Promise<{ id: s
         notFound();
     }
 
-    const workOrder = bill.workOrderId as any;
-    const loa = workOrder?.loaId as any;
-    const tender = loa?.tenderId as any;
+    const populatedBill = bill as unknown as {
+        workOrderId?: { loaId?: { tenderId?: { packageId?: unknown } } | null } | null;
+    };
+    const workOrder = populatedBill.workOrderId;
+    const loa = workOrder?.loaId;
+    const tender = loa?.tenderId;
 
     // Redirect to new package-scoped edit endpoint
     if (tender?.packageId) {

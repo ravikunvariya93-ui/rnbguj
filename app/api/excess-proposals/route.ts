@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const packageId = searchParams.get('packageId');
 
-        const query: any = {};
+        const query: { packageId?: string } = {};
         if (packageId) {
             query.packageId = packageId;
         }
@@ -30,7 +30,10 @@ export async function GET(req: NextRequest) {
         // Resolve contractor name from each package's winning (non-cancelled) tender
         const packageIds = [...new Set(
             proposals
-                .map((p: any) => p.packageId?._id || p.packageId)
+                .map((p) => {
+                    const pkg = p.packageId as unknown as { _id?: unknown } | string | null;
+                    return (typeof pkg === 'object' && pkg !== null ? pkg._id : pkg) || undefined;
+                })
                 .filter(Boolean)
         )];
 
@@ -40,12 +43,12 @@ export async function GET(req: NextRequest) {
                 packageId: { $in: packageIds },
                 cancelled: { $ne: true },
                 contractorName: { $exists: true, $ne: '' },
-            })
+            } as unknown as Parameters<typeof Tender.find>[0])
                 .sort({ trialNo: -1 })
                 .select('packageId contractorName')
                 .lean();
 
-            for (const t of tenders as any[]) {
+            for (const t of tenders as { packageId?: unknown; contractorName?: string }[]) {
                 const key = String(t.packageId);
                 if (!contractorMap.has(key)) {
                     contractorMap.set(key, t.contractorName || '');
@@ -53,8 +56,9 @@ export async function GET(req: NextRequest) {
             }
         }
 
-        const enriched = proposals.map((p: any) => {
-            const pkgId = p.packageId?._id || p.packageId;
+        const enriched = proposals.map((p) => {
+            const pkg = p.packageId as unknown as { _id?: unknown } | string | null;
+            const pkgId: unknown = typeof pkg === 'object' && pkg !== null ? pkg._id : pkg;
             return {
                 ...p,
                 contractorName: pkgId ? (contractorMap.get(String(pkgId)) || '') : '',
@@ -62,9 +66,9 @@ export async function GET(req: NextRequest) {
         });
 
         return NextResponse.json({ success: true, data: enriched });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Failed to fetch excess proposals:', error);
-        return NextResponse.json({ error: error.message || 'Failed to fetch excess proposals' }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error && error.message ? error.message : 'Failed to fetch excess proposals' }, { status: 500 });
     }
 }
 
@@ -99,8 +103,8 @@ export async function POST(req: NextRequest) {
             .lean();
 
         return NextResponse.json({ success: true, data: populated }, { status: 201 });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Failed to create excess proposal:', error);
-        return NextResponse.json({ error: error.message || 'Failed to create excess proposal' }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error && error.message ? error.message : 'Failed to create excess proposal' }, { status: 500 });
     }
 }

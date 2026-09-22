@@ -10,7 +10,7 @@ import LOA from '@/models/LOA';
 import WorkOrder from '@/models/WorkOrder';
 
 // Helper: Convert Excel serial date number to JS Date
-function excelDateToJSDate(serial: any): Date | undefined {
+function excelDateToJSDate(serial: string | number | undefined): Date | undefined {
     if (!serial) return undefined;
     const num = Number(serial);
     if (isNaN(num)) return undefined;
@@ -26,7 +26,7 @@ export async function GET() {
     }
     const { auth } = await import('@/auth');
     const session = await auth();
-    if ((session?.user as any)?.role !== 'ADMIN') {
+    if ((session?.user as { role?: string } | undefined)?.role !== 'ADMIN') {
         return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     const filePath = path.join(process.cwd(), 'Tender details.xlsm');
@@ -46,7 +46,7 @@ export async function GET() {
         }
 
         const sheet = workbook.Sheets[sheetName];
-        const rawData: any[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+        const rawData: Record<string, string | number>[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
         // Clear ALL existing data for clean import
         await Tender.deleteMany({});
@@ -65,7 +65,7 @@ export async function GET() {
         }
 
         // Build a map: packageName -> Package _id
-        const packageMap = new Map<string, any>();
+        const packageMap = new Map<string, { toString(): string }>();
         const packageDocs = [];
         for (const name of uniquePackageNames) {
             packageDocs.push({
@@ -155,7 +155,7 @@ export async function GET() {
             tenderCount++;
         }
 
-        let insertedTenders: any[] = [];
+        let insertedTenders: { _id: unknown; packageName?: string; estimatedAmount?: number; contractPrice?: number; proposalDate?: Date; tenderApprovalOffice?: string; tenderApprovalNo?: string; tenderApprovalDate?: Date; acceptanceLetterWorksheetNo?: string; acceptanceLetterDate?: Date; agreementYear?: string; agreementNo?: string; agreementDate?: Date; securityDepositType?: string; securityDepositBankName?: string; securityDepositNumber?: string; securityDepositAmount?: number; securityDepositDate?: Date; additionalSecurityDepositType?: string; additionalSecurityDepositBankName?: string; additionalSecurityDepositNumber?: string; additionalSecurityDepositAmount?: number; additionalSecurityDepositDate?: Date; workOrderWorksheetNo?: string; workOrderDate?: Date; workDurationMonths?: number }[] = [];
         if (tenderDocs.length > 0) {
             insertedTenders = await Tender.insertMany(tenderDocs);
         }
@@ -168,7 +168,7 @@ export async function GET() {
         for (const [pkgName, pkgId] of packageMap.entries()) {
             // Use exact name match as both are trimmed
             const relatedTenders = insertedTenders.filter(t => t.packageName === pkgName);
-            const totalEstimated = relatedTenders.reduce((sum: number, t: any) => sum + (Number(t.estimatedAmount) || 0), 0);
+            const totalEstimated = relatedTenders.reduce((sum: number, t: { estimatedAmount?: number }) => sum + (Number(t.estimatedAmount) || 0), 0);
             
             // LOG for first 5 packages
             if (updateCount < 5) {
@@ -229,13 +229,13 @@ export async function GET() {
             }
         }
 
-        let insertedLOAs: any[] = [];
+        let insertedLOAs: { _id: unknown; tenderId: unknown }[] = [];
         if (loaDocs.length > 0) {
             insertedLOAs = await LOA.insertMany(loaDocs);
         }
 
         // Build a map: tenderId -> LOA _id for linking WorkOrders
-        const tenderToLoaMap = new Map<string, any>();
+        const tenderToLoaMap = new Map<string, unknown>();
         for (const loa of insertedLOAs) {
             tenderToLoaMap.set(String(loa.tenderId), loa._id);
         }
@@ -308,8 +308,8 @@ export async function GET() {
                 workOrders: workOrderCount,
             }
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error seeding data:', error);
-        return NextResponse.json({ success: false, error: error.message, stack: error.stack });
+        return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error', stack: error instanceof Error ? error.stack : undefined });
     }
 }

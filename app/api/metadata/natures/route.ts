@@ -9,7 +9,7 @@ export async function GET() {
         // Filter out empty/null values and sort
         const filteredNatures = natures.filter(Boolean).sort();
         return NextResponse.json(filteredNatures);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
     }
 }

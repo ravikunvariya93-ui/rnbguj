@@ -5,9 +5,21 @@ import { ArrowLeft, Printer, Download, Edit3 } from 'lucide-react';
 import { useEffect } from 'react';
 import { formatDate, getISTYear } from '@/lib/dateUtils';
 
+interface DTPOrderPackage {
+    _id?: string;
+    packageName?: string;
+    subDivision?: string;
+}
+
+interface DTPOrder {
+    dtpApprovalNo?: string;
+    dtpApprovalDate?: string;
+    tenderAmount?: number;
+}
+
 interface DTPOrderLetterClientProps {
-    packageData: any;
-    dtp: any;
+    packageData: DTPOrderPackage;
+    dtp: DTPOrder;
 }
 
 function formatDateToOutput(dateInput?: string) {
@@ -104,8 +116,8 @@ export default function DTPOrderLetterClient({ packageData, dtp }: DTPOrderLette
         const filename = 'DTP_Order.doc';
         const downloadLink = document.createElement('a');
         document.body.appendChild(downloadLink);
-        if ((navigator as any).msSaveOrOpenBlob) {
-            (navigator as any).msSaveOrOpenBlob(blob, filename);
+        if ((navigator as unknown as { msSaveOrOpenBlob?: (blob: Blob, filename: string) => void }).msSaveOrOpenBlob) {
+            (navigator as unknown as { msSaveOrOpenBlob?: (blob: Blob, filename: string) => void }).msSaveOrOpenBlob?.(blob, filename);
         } else {
             downloadLink.href = url;
             downloadLink.download = filename;

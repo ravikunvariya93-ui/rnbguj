@@ -1,6 +1,7 @@
 import dbConnect from '@/lib/db';
 import Tender from '@/models/Tender';
 import TenderForm from '@/components/TenderForm';
+import { formatDateForInput } from '@/lib/dateUtils';
 import { notFound } from 'next/navigation';
 
 export default async function EditTenderPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,11 +19,17 @@ export default async function EditTenderPage({ params }: { params: Promise<{ id:
         notFound();
     }
 
-    // Convert _id and packageId to string for serialization
+    // Convert _id and packageId to string for serialization; pre-format dates
+    // to DD/MM/YYYY (the same format TenderForm normalizes to on mount).
     const serializedTender = {
         ...tender,
-        _id: (tender._id as any).toString(),
-        packageId: (tender.packageId as any).toString(),
+        _id: String(tender._id),
+        packageId: tender.packageId?.toString() ?? '',
+        contractorId: tender.contractorId?.toString() ?? '',
+        tenderCreationDate: formatDateForInput(tender.tenderCreationDate),
+        lastDateOfSubmission: formatDateForInput(tender.lastDateOfSubmission),
+        tenderOpeningDate: formatDateForInput(tender.tenderOpeningDate),
+        tenderValidityDate: formatDateForInput(tender.tenderValidityDate),
     };
 
     return (

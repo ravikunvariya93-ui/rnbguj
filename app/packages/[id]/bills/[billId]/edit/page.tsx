@@ -42,14 +42,16 @@ export default async function EditPackageBillPage({ params }: Props) {
     const serializedBill = JSON.parse(JSON.stringify(bill));
 
     // Live AA sanctioned total: sum of assigned works' Job Number Amount (Lakh × 100000)
-    const pkgDoc = await Package.findById(packageId).lean() as any;
+    const pkgDoc = await Package.findById(packageId).lean() as unknown as {
+        works?: { workName?: string; amount?: number | string }[];
+    } | null;
     const pkgWorks = pkgDoc?.works || [];
     const liveAWs = pkgWorks.length > 0
-        ? await ApprovedWork.find({ workName: { $in: pkgWorks.map((w: any) => w.workName) } }).lean() as any[]
+        ? await ApprovedWork.find({ workName: { $in: pkgWorks.map((w: { workName?: string }) => w.workName).filter((n): n is string => Boolean(n)) } }).lean() as unknown as { workName?: string; jobNumberAmount?: number | string }[]
         : [];
-    const norm = (s: any) => String(s || '').trim().toLowerCase();
-    const liveMap = new Map(liveAWs.map((aw: any) => [norm(aw.workName), Number(aw.jobNumberAmount) || 0]));
-    const sanctionedWorksTotal = pkgWorks.reduce((s: number, w: any) => {
+    const norm = (s: string | null | undefined) => String(s || '').trim().toLowerCase();
+    const liveMap = new Map(liveAWs.map((aw: { workName?: string; jobNumberAmount?: number | string }) => [norm(aw.workName), Number(aw.jobNumberAmount) || 0]));
+    const sanctionedWorksTotal = pkgWorks.reduce((s: number, w: { workName?: string; amount?: number | string }) => {
         const live = liveMap.get(norm(w.workName));
         return s + (live ? live * 100000 : (Number(w.amount) || 0));
     }, 0);

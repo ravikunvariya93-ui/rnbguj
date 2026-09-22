@@ -51,17 +51,33 @@ export default async function PackageBillChecklistPage({
 
     if (!bill) notFound();
 
-    const workOrder = bill.workOrderId as any;
-    const loa = workOrder?.loaId as any;
-    const tender = loa?.tenderId as any;
-    const pkg = tender?.packageId as any;
+    const workOrder = bill.workOrderId as unknown as {
+        loaId?: unknown;
+        workOrderDate?: string;
+        stipulatedCompletionDate?: string;
+    } | null;
+    const loa = workOrder?.loaId as unknown as { tenderId?: unknown } | null;
+    const tender = loa?.tenderId as unknown as {
+        packageName?: string;
+        packageId?: unknown;
+        estimatedAmount?: number;
+        contractPrice?: number;
+        contractorName?: string;
+        contractorId?: string;
+    } | null;
+    const pkg = tender?.packageId as unknown as {
+        packageName?: string;
+        budgetHead?: string;
+        estimatedAmount?: number;
+        works?: { workName?: string }[];
+    } | null;
 
     const workName = tender?.packageName || pkg?.packageName || '-';
     const yojanaName = pkg?.budgetHead || '-';
     // Saiddhantik & vahivati approval amounts = total of Job Number Amount (Lakh)
     // of the works included in the package, converted to rupees.
     const includedWorkNames: string[] = Array.isArray(pkg?.works)
-        ? pkg.works.map((w: any) => w?.workName).filter(Boolean)
+        ? pkg.works.map((w: { workName?: string }) => w?.workName).filter((n): n is string => Boolean(n))
         : [];
     let approvalBaseTotal: number | null = null;
     if (includedWorkNames.length > 0) {
@@ -99,7 +115,7 @@ export default async function PackageBillChecklistPage({
     const workOrderDate = formatDateDMY(workOrder?.workOrderDate);
     const completionDate = formatDateDMY(workOrder?.stipulatedCompletionDate);
 
-    const mbNumber = (bill as any).mbNumber || '-';
+    const mbNumber = (bill as unknown as { mbNumber?: string }).mbNumber || '-';
 
     const rows: { no: string; text: string; sub?: string; included: string; }[] = [
         { no: '૧', text: 'સદર કામની સૈધ્ધાંતીક મંજુરી સામેલ છે. જેમાં સક્ષમ અધિકારીશ્રીની સહી થયેલ છે', included: 'હા' },

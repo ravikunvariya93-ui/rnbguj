@@ -32,9 +32,9 @@ export const GET = withApi(async (_ctx, request: Request) => {
             .lean();
         
         // Group by packageId and keep the one with the highest trialNo
-        const packageMap = new Map<string, any>();
+        const packageMap = new Map<string, { trialNo?: number; _id: { toString(): string } }>();
         for (const tender of tenders) {
-            const pkg = tender.packageId as any;
+            const pkg = tender.packageId as unknown as { _id?: { toString(): string } } | null | undefined;
             const pkgId = pkg?._id?.toString() || pkg?.toString();
             if (!pkgId) {
                 // If there's no packageId, keep it as is

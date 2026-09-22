@@ -1,6 +1,32 @@
 import { NextResponse } from 'next/server';
 import PDFParser from 'pdf2json';
 
+interface Pdf2JsonText {
+    R: { T: string }[];
+}
+
+interface Pdf2JsonPage {
+    Texts: Pdf2JsonText[];
+}
+
+interface ParsedBidder {
+    rank: string;
+    contractorName: string;
+    estimatedAmount: number;
+    aboveBelow: string;
+    percentage: number;
+    totalAmount: number;
+    amountInWords: string;
+}
+
+interface ParsedTenderInfo {
+    tenderId: string;
+    noticeNo: string;
+    noticeYear: string;
+    srNo: string;
+    estimatedAmount: number;
+}
+
 export async function POST(req: Request) {
     try {
         const formData = await req.formData();
@@ -14,11 +40,11 @@ export async function POST(req: Request) {
 
         const pdfParser = new PDFParser();
 
-        const p = new Promise<any>((resolve, reject) => {
-            pdfParser.on("pdfParser_dataError", (errData: any) => reject(errData.parserError));
+        const p = new Promise<{ tenderInfo: ParsedTenderInfo; bidders: ParsedBidder[] }>((resolve, reject) => {
+            pdfParser.on("pdfParser_dataError", (errData: Error | { parserError: Error }) => reject('parserError' in errData ? errData.parserError : errData));
             pdfParser.on("pdfParser_dataReady", pdfData => {
-                const text = pdfData.Pages.map((page: any) =>
-                    page.Texts.map((t: any) => {
+                const text = pdfData.Pages.map((page: Pdf2JsonPage) =>
+                    page.Texts.map((t: Pdf2JsonText) => {
                         try {
                             return decodeURIComponent(t.R[0].T);
                         } catch (e) {
@@ -58,7 +84,7 @@ export async function POST(req: Request) {
                     indices.push({ rank: match[1], index: match.index });
                 }
 
-                const bidders: any[] = [];
+                const bidders: ParsedBidder[] = [];
                 for (let i = 0; i < indices.length; i++) {
                     const start = indices[i].index;
                     const end = (i + 1 < indices.length) ? indices[i + 1].index : text.length;
@@ -97,8 +123,8 @@ export async function POST(req: Request) {
         const result = await p;
 
         return NextResponse.json({ success: true, ...result });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error(error);
-        return NextResponse.json({ success: false, error: 'Failed to parse PDF: ' + error.message }, { status: 500 });
+        return NextResponse.json({ success: false, error: 'Failed to parse PDF: ' + (error instanceof Error ? error.message : 'Unknown error') }, { status: 500 });
     }
 }

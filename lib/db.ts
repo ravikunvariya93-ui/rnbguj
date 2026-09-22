@@ -25,10 +25,11 @@ interface MongooseCache {
 }
 
 // Global scope to preserve connection across hot reloads in development
-let cached = (global as any).mongoose as MongooseCache;
+type GlobalWithMongoose = { mongoose?: MongooseCache };
+let cached = (global as unknown as GlobalWithMongoose).mongoose as MongooseCache;
 
 if (!cached) {
-  cached = (global as any).mongoose = { conn: null, promise: null };
+  cached = (global as unknown as GlobalWithMongoose).mongoose = { conn: null, promise: null };
 }
 
 async function dbConnect() {

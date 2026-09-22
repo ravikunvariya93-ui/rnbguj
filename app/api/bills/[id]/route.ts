@@ -22,7 +22,7 @@ export async function GET(
         if (!session) {
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
-        const userRole = (session?.user as any)?.role;
+        const userRole = (session?.user as { role?: string } | undefined)?.role;
         const auditorSubDivision = getAuditorSubDivision(userRole);
 
         const { id } = await params;
@@ -64,7 +64,7 @@ export async function PUT(
         if (!session) {
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
-        const role = (session?.user as any)?.role;
+        const role = (session?.user as { role?: string } | undefined)?.role;
         // Tender Clerks cannot modify bills
         if (role === 'TENDERCLERK') {
             return NextResponse.json({ success: false, error: 'Tender Clerks do not have permission to modify bills' }, { status: 403 });
@@ -107,7 +107,7 @@ export async function DELETE(
         if (!session) {
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
-        const role = (session?.user as any)?.role;
+        const role = (session?.user as { role?: string } | undefined)?.role;
         // Tender Clerks cannot delete bills
         if (role === 'TENDERCLERK') {
             return NextResponse.json({ success: false, error: 'Tender Clerks do not have permission to delete bills' }, { status: 403 });

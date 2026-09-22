@@ -4,8 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Filter, X, ChevronDown } from 'lucide-react';
 
+interface FilterAgency {
+    _id: string;
+    name: string;
+}
+
 interface TendersFilterBarProps {
-    agencies: any[];
+    agencies: FilterAgency[];
     years: string[];
     subDivisions: string[];
     workTypes?: string[];

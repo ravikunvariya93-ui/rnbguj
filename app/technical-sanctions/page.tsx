@@ -16,6 +16,11 @@ import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
+import type { QueryFilter } from 'mongoose';
+import type { ITechnicalSanction } from '@/models/TechnicalSanction';
+
+type TechnicalSanctionFilter = QueryFilter<ITechnicalSanction>;
+
 interface Props {
     searchParams: Promise<ListPageSearchParams>;
 }
@@ -23,19 +28,19 @@ interface Props {
 export default async function TechnicalSanctionsListPage({ searchParams }: Props) {
     await dbConnect();
     const session = await auth();
-    const userRole = (session?.user as any)?.role;
+    const userRole = (session?.user as { role?: string } | undefined)?.role;
     const auditorSubDivision = getAuditorSubDivision(userRole);
     const isAuditor = isAuditorRole(userRole);
 
     const params = await searchParams;
     
-    let query: any = {};
+    let query: TechnicalSanctionFilter = {};
 
     if (isAuditor && auditorSubDivision) {
         const worksInAuditorSubDiv = await ApprovedWork.find({
             subDivision: { $regex: new RegExp(`^${auditorSubDivision}$`, 'i') }
         }).select('workName').lean();
-        const workNamesInSubDiv = worksInAuditorSubDiv.map((aw: any) => aw.workName).filter(Boolean);
+        const workNamesInSubDiv = worksInAuditorSubDiv.map((aw) => aw.workName).filter(Boolean);
 
         const packagesInSubDiv = await Package.find({
             $or: [
@@ -45,8 +50,8 @@ export default async function TechnicalSanctionsListPage({ searchParams }: Props
         }).select('works').lean();
 
         const tsIdsFromPackages: string[] = [];
-        packagesInSubDiv.forEach((pkg: any) => {
-            (pkg.works || []).forEach((w: any) => {
+        packagesInSubDiv.forEach((pkg) => {
+            (pkg.works || []).forEach((w) => {
                 if (w.workId) tsIdsFromPackages.push(w.workId.toString());
             });
         });
@@ -86,7 +91,7 @@ export default async function TechnicalSanctionsListPage({ searchParams }: Props
     const tsIdToPkgInfo = new Map<string, { _id: string, packageName: string }>();
     allPackages.forEach(pkg => {
         if (pkg.works) {
-            pkg.works.forEach((w: any) => {
+            pkg.works.forEach((w) => {
                 if (w.workId) {
                     tsIdToPkgInfo.set(w.workId.toString(), {
                         _id: pkg._id.toString(),
@@ -97,11 +102,11 @@ export default async function TechnicalSanctionsListPage({ searchParams }: Props
         }
     });
         
-    const sanctions = sanctionsRaw.map((ts: any) => {
-        const pkgInfo = tsIdToPkgInfo.get(ts._id.toString());
+    const sanctions = sanctionsRaw.map((ts) => {
+        const pkgInfo = tsIdToPkgInfo.get(String(ts._id));
         return {
             ...ts,
-            _id: ts._id.toString(),
+            _id: String(ts._id),
             packageId: pkgInfo?._id || null,
             packageName: pkgInfo?.packageName || null,
         };
@@ -170,17 +175,17 @@ export default async function TechnicalSanctionsListPage({ searchParams }: Props
         }
     ];
 
-    const renderActions = (row: any) => (
+    const renderActions = (row: { _id?: unknown; [key: string]: unknown }) => (
         <div className="flex items-center justify-end space-x-3">
-            <Link href={`/technical-sanctions/${row._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
+            <Link href={`/technical-sanctions/${String(row._id)}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
                 <Eye className="w-5 h-5" />
             </Link>
-            <Link href={`/technical-sanctions/${row._id}/edit`} className="text-emerald-600 hover:text-emerald-900 p-1" title="Edit Item">
+            <Link href={`/technical-sanctions/${String(row._id)}/edit`} className="text-emerald-600 hover:text-emerald-900 p-1" title="Edit Item">
                 <Edit2 className="w-5 h-5" />
             </Link>
             <GenericDeleteButton 
-                itemId={row._id} 
-                itemName={row.workName} 
+                itemId={String(row._id)} 
+                itemName={String(row.workName ?? '')} 
                 apiPath="/api/technical-sanctions" 
             />
         </div>

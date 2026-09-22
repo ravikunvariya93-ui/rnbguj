@@ -14,7 +14,7 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
     await dbConnect();
     const { id } = await params;
     
-    const bill = await Bill.findById(id)
+    const bill = (await Bill.findById(id)
         .populate({
             path: 'workOrderId',
             populate: {
@@ -22,7 +22,9 @@ export default async function BillDetailPage({ params }: { params: Promise<{ id:
                 populate: { path: 'tenderId' }
             }
         })
-        .lean() as any;
+        .lean()) as unknown as {
+        workOrderId?: { loaId?: { tenderId?: { packageId?: unknown } } | null } | null;
+    } | null;
 
     if (!bill) {
         notFound();

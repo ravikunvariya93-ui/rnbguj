@@ -12,8 +12,8 @@ export async function POST(request: Request) {
         const body = await request.json();
         const boq = await BOQ.create(body);
         return NextResponse.json({ success: true, data: boq }, { status: 201 });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    } catch (error: unknown) {
+        return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 400 });
     }
 }
 
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
             data: boqs,
             pagination: { total, page, limit, totalPages: Math.ceil(total / limit) }
         });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
     }
 }

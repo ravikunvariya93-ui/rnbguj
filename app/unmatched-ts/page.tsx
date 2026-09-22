@@ -34,7 +34,7 @@ export default async function UnmatchedTSPage({ searchParams }: Props) {
     const allTS = await TechnicalSanction.find({}).lean();
     
     // 3. Find unmatched TS
-    let unmatchedTS: any[] = [];
+    let unmatchedTS: typeof allTS = [];
     allTS.forEach(ts => {
         const name = normalizeString(ts.workName as string);
         if (approvedWorkCounts[name] && approvedWorkCounts[name] > 0) {
@@ -65,7 +65,7 @@ export default async function UnmatchedTSPage({ searchParams }: Props) {
     const totalPages = Math.ceil(totalItems / limit);
     const paginatedTS = unmatchedTS.slice(skip, skip + limit).map(ts => ({
         ...ts,
-        _id: ts._id.toString()
+        _id: String(ts._id)
     }));
 
     const columns: Column[] = [
@@ -91,17 +91,17 @@ export default async function UnmatchedTSPage({ searchParams }: Props) {
         }
     ];
 
-    const renderActions = (row: any) => (
+    const renderActions = (row: { _id?: unknown; [key: string]: unknown }) => (
         <div className="flex items-center justify-end space-x-3">
-            <Link href={`/technical-sanctions/${row._id}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
+            <Link href={`/technical-sanctions/${String(row._id)}`} className="text-gray-600 hover:text-gray-900 p-1" title="View Details">
                 <Eye className="w-5 h-5" />
             </Link>
-            <Link href={`/technical-sanctions/${row._id}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Item">
+            <Link href={`/technical-sanctions/${String(row._id)}/edit`} className="text-blue-600 hover:text-blue-900 p-1" title="Edit Item">
                 <Edit2 className="w-5 h-5" />
             </Link>
             <GenericDeleteButton 
-                itemId={row._id} 
-                itemName={row.workName} 
+                itemId={String(row._id)} 
+                itemName={String(row.workName ?? '')} 
                 apiPath="/api/technical-sanctions" 
             />
         </div>

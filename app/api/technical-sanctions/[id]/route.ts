@@ -13,8 +13,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         }
 
         return NextResponse.json({ success: true, data: sanction });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
     }
 }
 
@@ -37,8 +37,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         }
 
         return NextResponse.json({ success: true, data: sanction });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    } catch (error: unknown) {
+        return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 400 });
     }
 }
 
@@ -53,7 +53,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
         }
 
         return NextResponse.json({ success: true, data: {} });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    } catch (error: unknown) {
+        return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 400 });
     }
 }

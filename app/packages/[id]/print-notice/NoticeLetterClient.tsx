@@ -5,14 +5,19 @@ import Link from 'next/link';
 import { ArrowLeft, Printer, Download, Edit3 } from 'lucide-react';
 import { formatDate, formatDateDMYIST, getISTYear } from '@/lib/dateUtils';
 
+interface NoticeItem {
+    wsNo?: string;
+    noticeDate?: string;
+}
+
 interface NoticeLetterClientProps {
-    packageData: any;
-    tender: any;
-    loa: any;
-    notice: any;
+    packageData: { _id?: string; packageName?: string };
+    tender: { contractorName?: string; packageName?: string };
+    loa: { acceptanceLetterWorksheetNo?: string; acceptanceLetterDate?: string } | null;
+    notice: NoticeItem;
     noticeIndex: number;
-    notices: any[];
-    agency: any;
+    notices: NoticeItem[];
+    agency: { address?: string; mobileNo?: string } | null;
 }
 
 function toGujaratiDigits(str: string | number): string {
@@ -59,8 +64,8 @@ export default function NoticeLetterClient({ packageData, tender, loa, notice, n
         const filename = `Notice_${noticeIndex + 1}.doc`;
         const downloadLink = document.createElement('a');
         document.body.appendChild(downloadLink);
-        if ((navigator as any).msSaveOrOpenBlob) {
-            (navigator as any).msSaveOrOpenBlob(blob, filename);
+        if ((navigator as unknown as { msSaveOrOpenBlob?: (blob: Blob, filename: string) => void }).msSaveOrOpenBlob) {
+            (navigator as unknown as { msSaveOrOpenBlob?: (blob: Blob, filename: string) => void }).msSaveOrOpenBlob?.(blob, filename);
         } else {
             downloadLink.href = url;
             downloadLink.download = filename;
@@ -84,7 +89,7 @@ export default function NoticeLetterClient({ packageData, tender, loa, notice, n
 
     // Previous notices become સંદર્ભ (૨), (૩), … for second notice onwards
     const prevNotices = (Array.isArray(notices) ? notices : []).slice(0, noticeIndex);
-    const prevRefNames = prevNotices.map((_: any, k: number) => `સંદર્ભપત્ર-(${toGujaratiDigits(k + 2)})`);
+    const prevRefNames = prevNotices.map((_: NoticeItem, k: number) => `સંદર્ભપત્ર-(${toGujaratiDigits(k + 2)})`);
     let prevRefsText = '';
     if (prevRefNames.length === 1) prevRefsText = prevRefNames[0];
     else if (prevRefNames.length === 2) prevRefsText = `${prevRefNames[0]} અને ${prevRefNames[1]}`;
@@ -161,7 +166,7 @@ export default function NoticeLetterClient({ packageData, tender, loa, notice, n
                                     ) : (
                                         <>
                                             <div>(૧) અત્રેની કચેરીના પત્ર નં.ડીપી/મામવિ/ટેન્ડર/વશી/{refNo}/{refYear}, તા.{refDate}</div>
-                                            {prevNotices.map((pn: any, k: number) => (
+                                            {prevNotices.map((pn: NoticeItem, k: number) => (
                                                 <div key={k}>({toGujaratiDigits(k + 2)}) અત્રેની કચેરીના નોટિસ નં.ડીપી/મામવિ/ટેન્ડર/વશી/{pn?.wsNo || '-'}/{getYearFromDate(pn?.noticeDate)}, Dt.{formatDateDash(pn?.noticeDate)}</div>
                                             ))}
                                         </>

@@ -39,7 +39,7 @@ export async function GET(request: Request) {
         }
 
         // 3. Find previous bills for this WorkOrder to calculate previousPaidAmount
-        const previousBills = await Bill.find({ workOrderId: workOrderId as any }).sort({ runningBillNumber: 1 });
+        const previousBills = await Bill.find({ workOrderId: workOrderId } as unknown as Parameters<typeof Bill.find>[0]).sort({ runningBillNumber: 1 });
         
         const previousPaidMap: Record<string, number> = {};
         
@@ -62,7 +62,7 @@ export async function GET(request: Request) {
             : 0;
 
         // 4. Construct the abstract template based on BOQ items
-        const abstractItems = boq.items.map((boqItem: any) => {
+        const abstractItems = boq.items.map((boqItem: { itemNo: string; description: string; quantity?: number; rate: number; unit: string; itemType?: string }) => {
             const prevPaid = previousPaidMap[boqItem.itemNo] || 0;
             return {
                 itemNo: boqItem.itemNo,
@@ -87,7 +87,7 @@ export async function GET(request: Request) {
         const contractPrice = tender?.contractPrice || tender?.estimatedAmount || 0;
         const submittedSD = workOrder?.securityDepositAmount || tender?.securityDepositAmount || 0;
 
-        const works = (packageDoc?.works || []).map((w: any, i: number) => ({
+        const works = (packageDoc?.works || []).map((w: { workName?: string; nameOfWork?: string }, i: number) => ({
             srNo: String(i + 1),
             nameOfWork: w.workName || w.nameOfWork || '',
             amount: 0
@@ -104,8 +104,8 @@ export async function GET(request: Request) {
             previouslyPaid: totalPreviouslyPaid
         });
 
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error fetching bill abstract:', error);
-        return NextResponse.json({ success: false, error: (error as any).message }, { status: 500 });
+        return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
     }
 }

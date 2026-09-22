@@ -16,7 +16,63 @@ import {
 } from '@/lib/billing/calculations';
 import { parseDateStr as parseSharedDateStr, formatDateForInput as formatSharedDateForInput, todayISTFormatted } from '@/lib/dateUtils';
 
-interface IBillItem {
+interface BillWorkRow {
+    srNo?: string;
+    workName?: string;
+    nameOfWork?: string;
+    amount?: number | string;
+}
+
+interface BillTenderRef {
+    aboveBelowPercentage?: number | string;
+    aboveBelowInWord?: string;
+    contractPrice?: number | string;
+    estimatedAmount?: number | string;
+    packageId?: {
+        workType?: string;
+        budgetHead?: string;
+        works?: BillWorkRow[];
+    };
+    packageName?: string;
+    contractorName?: string;
+}
+
+interface BillWorkOrderRef {
+    _id?: string;
+    securityDepositAmount?: number | string;
+    stipulatedCompletionDate?: string;
+    loaId?: {
+        tenderId?: BillTenderRef;
+    };
+}
+
+interface BillSourceDoc {
+    _id?: string;
+    works?: BillWorkRow[];
+    workOrderId?: string | { _id?: string };
+    items?: IBillItem[];
+    billDate?: string;
+    passingDate?: string;
+    actualCompletionDate?: string;
+    lastRecordEntryDate?: string;
+    praisaBillNo?: string;
+    praisaBillDate?: string;
+    voucherNo?: string;
+    voucherDate?: string;
+    labourCessApplicable?: boolean;
+    mbNumber?: string;
+    runningBillNumber?: string | number;
+    securityDeposit?: number | string;
+    timeLimitDeposit?: number | string;
+    asphaltDeposit?: number | string;
+    billType?: string;
+    grossAmount?: number | string;
+    totalDeduction?: number | string;
+    netPaidAmount?: number | string;
+    netPayableAmount?: number | string;
+}
+
+type IBillItem = {
     itemNo: string;
     description: string;
     boqQuantity?: number;
@@ -29,15 +85,15 @@ interface IBillItem {
     toBePaidAmount: number;
     itemType?: 'Standard' | 'Extra';
     considerForAsphalt?: boolean;
-}
+};
 
 interface BillFormData {
     workOrderId: string;
     billType: string;
-    runningBillNumber: string;
+    runningBillNumber: string | number;
     billDate: string;
-    grossAmount: number;
-    netPaidAmount: any;
+    grossAmount: number | string;
+    netPaidAmount: number | string;
     passingDate: string;
     praisaBillNo?: string;
     praisaBillDate?: string;
@@ -46,44 +102,45 @@ interface BillFormData {
     actualCompletionDate?: string;
     lastRecordEntryDate?: string;
     remarks: string;
-    auditMemoPreviouslyPaid: any;
-    dismantleCredit: any;
-    excessExtraAmount: any;
-    priceAdjustment: any;
+    auditMemoPreviouslyPaid: number | string;
+    dismantleCredit: number | string;
+    excessExtraAmount: number | string;
+    priceAdjustment: number | string;
     priceAdjustmentType: string;
-    adminApprovalAmount: any;
-    withheldDeposit: any;
-    netPayableAmount: any;
-    incomeTax: any;
-    gst: any;
-    labourCess: any;
-    securityDeposit: any;
-    freeMaintenanceDeposit: any;
-    asphaltDeposit: any;
-    coreSampleDeposit: any;
-    tpi: any;
-    esmp: any;
-    timeLimitDeposit: any;
-    testingCharges: any;
-    otherDeposit: any;
+    adminApprovalAmount: number | string;
+    withheldDeposit: number | string;
+    netPayableAmount: number | string;
+    incomeTax: number | string;
+    gst: number | string;
+    labourCess: number | string;
+    securityDeposit: number | string;
+    freeMaintenanceDeposit: number | string;
+    asphaltDeposit: number | string;
+    coreSampleDeposit: number | string;
+    tpi: number | string;
+    esmp: number | string;
+    timeLimitDeposit: number | string;
+    testingCharges: number | string;
+    otherDeposit: number | string;
     otherDepositLabel?: string;
-    otherDeposit2: any;
+    otherDeposit2: number | string;
     otherDeposit2Label?: string;
-    totalDeduction: any;
+    totalDeduction: number | string;
     labourCessApplicable: boolean;
+    mbNumber?: string;
     items: IBillItem[];
-    works: any[];
+    works: BillWorkRow[];
 }
 
 interface BillFormProps {
-    initialData?: any;
+    initialData?: BillSourceDoc;
     isEditing?: boolean;
     initialWorkOrderId?: string;
-    initialTenderPercentage?: number;
+    initialTenderPercentage?: number | string;
     initialTenderDirection?: string;
-    initialWorks?: any[];
-    contractPrice?: number;
-    submittedSD?: number;
+    initialWorks?: BillWorkRow[];
+    contractPrice?: number | string;
+    submittedSD?: number | string;
     // Live Administrative Approval sanctioned total in rupees (sum of assigned
     // works' Job Number Amount × 100000). Takes precedence over snapshots.
     sanctionedWorksTotal?: number;
@@ -101,7 +158,7 @@ function parseDateStr(dateStr: string): Date | null {
     return parseSharedDateStr(dateStr);
 }
 
-function formatDateForInput(dateString: string): string {
+function formatDateForInput(dateString: string | Date | null | undefined): string {
     return formatSharedDateForInput(dateString);
 }
 
@@ -129,15 +186,15 @@ export default function BillForm({
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [fetchingAbstract, setFetchingAbstract] = useState(false);
-    const [workOrders, setWorkOrders] = useState<any[]>([]);
+    const [workOrders, setWorkOrders] = useState<BillWorkOrderRef[]>([]);
     const [tenderPercentage, setTenderPercentage] = useState<number>(
-        initialTenderPercentage !== undefined ? initialTenderPercentage : 0
+        initialTenderPercentage !== undefined ? Number(initialTenderPercentage) : 0
     );
     const [tenderDirection, setTenderDirection] = useState<string>(
         initialTenderDirection === 'Equals' ? 'At Par' : (initialTenderDirection || 'Above')
     );
-    const [contractPriceState, setContractPriceState] = useState<number>(contractPrice || 0);
-    const [, setSubmittedSDState] = useState<number>(submittedSD || 0);
+    const [contractPriceState, setContractPriceState] = useState<number>(Number(contractPrice || 0));
+    const [, setSubmittedSDState] = useState<number>(Number(submittedSD || 0));
     const [workTypeState, setWorkTypeState] = useState<string>(workType || '');
     const [budgetHeadState, setBudgetHeadState] = useState<string>(budgetHead || '');
     const [abstractFetched, setAbstractFetched] = useState(false);
@@ -151,35 +208,35 @@ export default function BillForm({
 
     const sanitized = Object.fromEntries(
         Object.entries(initialData).map(([k, v]) => [k, v == null ? '' : v])
-    ) as any;
+    ) as unknown as Record<string, string | number | undefined>;
 
     const formattedInitialWorks = (initialData.works && initialData.works.length > 0)
         ? initialData.works
         : (initialWorks && initialWorks.length > 0)
-            ? initialWorks.map((w: any, i: number) => ({
+            ? initialWorks.map((w, i: number) => ({
                 srNo: String(i + 1),
                 nameOfWork: w.workName || w.nameOfWork || '',
                 amount: 0
             }))
             : [];
 
-    const normalizedWorkOrderId = initialWorkOrderId || (typeof initialData?.workOrderId === 'object' ? initialData?.workOrderId?._id : initialData?.workOrderId) || sanitized.workOrderId || '';
+    const normalizedWorkOrderId = String(initialWorkOrderId || (typeof initialData?.workOrderId === 'object' ? initialData?.workOrderId?._id : initialData?.workOrderId) || sanitized.workOrderId || '');
 
     const [formData, setFormData] = useState<BillFormData>({
         billType: 'Running',
         runningBillNumber: '1',
-        billDate: sanitized.billDate ? formatDateForInput(sanitized.billDate) : getTodayDateFormatted(),
+        billDate: sanitized.billDate ? formatDateForInput(String(sanitized.billDate)) : getTodayDateFormatted(),
         grossAmount: 0,
         netPaidAmount: sanitized.netPaidAmount || '',
         passingDate: '',
-        actualCompletionDate: sanitized.actualCompletionDate ? formatDateForInput(sanitized.actualCompletionDate) : '',
-        lastRecordEntryDate: sanitized.lastRecordEntryDate ? formatDateForInput(sanitized.lastRecordEntryDate) : '',
+        actualCompletionDate: sanitized.actualCompletionDate ? formatDateForInput(String(sanitized.actualCompletionDate)) : '',
+        lastRecordEntryDate: sanitized.lastRecordEntryDate ? formatDateForInput(String(sanitized.lastRecordEntryDate)) : '',
         remarks: '',
         auditMemoPreviouslyPaid: sanitized.auditMemoPreviouslyPaid ?? 0,
         dismantleCredit: sanitized.dismantleCredit ?? 0,
         excessExtraAmount: sanitized.excessExtraAmount ?? 0,
         priceAdjustment: sanitized.priceAdjustment ?? 0,
-        priceAdjustmentType: sanitized.priceAdjustmentType || 'Payable',
+        priceAdjustmentType: String(sanitized.priceAdjustmentType || 'Payable'),
         adminApprovalAmount: sanitized.adminApprovalAmount ?? 0,
         withheldDeposit: sanitized.withheldDeposit ?? 0,
         netPayableAmount: sanitized.netPayableAmount ?? 0,
@@ -199,14 +256,14 @@ export default function BillForm({
         otherDeposit2: sanitized.otherDeposit2 ?? 0,
         totalDeduction: sanitized.totalDeduction ?? 0,
         ...sanitized,
-        otherDepositLabel: sanitized.otherDepositLabel || 'Other Deposit',
-        otherDeposit2Label: sanitized.otherDeposit2Label || 'Other Deposit 2',
+        otherDepositLabel: String(sanitized.otherDepositLabel || 'Other Deposit'),
+        otherDeposit2Label: String(sanitized.otherDeposit2Label || 'Other Deposit 2'),
         workOrderId: normalizedWorkOrderId,
-        praisaBillNo: sanitized.praisaBillNo || '',
-        praisaBillDate: sanitized.praisaBillDate ? formatDateForInput(sanitized.praisaBillDate) : '',
-        voucherNo: sanitized.voucherNo || '',
-        voucherDate: sanitized.voucherDate ? formatDateForInput(sanitized.voucherDate) : '',
-        labourCessApplicable: sanitized.labourCessApplicable ?? false,
+        praisaBillNo: String(sanitized.praisaBillNo || ''),
+        praisaBillDate: sanitized.praisaBillDate ? formatDateForInput(String(sanitized.praisaBillDate)) : '',
+        voucherNo: String(sanitized.voucherNo || ''),
+        voucherDate: sanitized.voucherDate ? formatDateForInput(String(sanitized.voucherDate)) : '',
+        labourCessApplicable: Boolean(sanitized.labourCessApplicable ?? false),
         items: initialData.items || [] as IBillItem[],
         works: formattedInitialWorks,
     });
@@ -228,15 +285,15 @@ export default function BillForm({
     }, []);
 
     useEffect(() => {
-        if (contractPrice !== undefined) setContractPriceState(contractPrice);
-        if (submittedSD !== undefined) setSubmittedSDState(submittedSD);
+        if (contractPrice !== undefined) setContractPriceState(Number(contractPrice));
+        if (submittedSD !== undefined) setSubmittedSDState(Number(submittedSD));
         if (workType !== undefined) setWorkTypeState(workType);
         if (budgetHead !== undefined) setBudgetHeadState(budgetHead);
     }, [contractPrice, submittedSD, workType, budgetHead]);
 
     useEffect(() => {
         if (initialTenderPercentage !== undefined) {
-            setTenderPercentage(initialTenderPercentage);
+            setTenderPercentage(Number(initialTenderPercentage));
         }
         if (initialTenderDirection) {
             let dir = initialTenderDirection;
@@ -257,13 +314,13 @@ export default function BillForm({
 
     useEffect(() => {
         if (isEditing && initialData) {
-            setFormData((prev: any) => ({
+            setFormData((prev) => ({
                 ...prev,
                 billDate: formatDateForInput(initialData.billDate),
                 passingDate: formatDateForInput(initialData.passingDate),
                 actualCompletionDate: formatDateForInput(initialData.actualCompletionDate),
                 lastRecordEntryDate: formatDateForInput(initialData.lastRecordEntryDate),
-                workOrderId: initialData.workOrderId?._id || initialData.workOrderId || '',
+                workOrderId: (typeof initialData.workOrderId === 'object' ? initialData.workOrderId?._id : initialData.workOrderId) || '',
                 praisaBillNo: initialData.praisaBillNo || '',
                 praisaBillDate: initialData.praisaBillDate ? formatDateForInput(initialData.praisaBillDate) : '',
                 voucherNo: initialData.voucherNo || '',
@@ -274,13 +331,13 @@ export default function BillForm({
 
     useEffect(() => {
         if (formData.workOrderId && workOrders.length > 0) {
-            const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
+            const selectedWorkOrder = workOrders.find((wo) => wo._id === formData.workOrderId);
             if (selectedWorkOrder?.loaId?.tenderId) {
-                const pct = selectedWorkOrder.loaId.tenderId.aboveBelowPercentage !== undefined ? selectedWorkOrder.loaId.tenderId.aboveBelowPercentage : 0;
+                const pct = selectedWorkOrder.loaId.tenderId.aboveBelowPercentage !== undefined ? Number(selectedWorkOrder.loaId.tenderId.aboveBelowPercentage) : 0;
                 let dir = selectedWorkOrder.loaId.tenderId.aboveBelowInWord || 'Above';
                 if (dir === 'Equals') dir = 'At Par';
-                const cp = selectedWorkOrder.loaId.tenderId.contractPrice || selectedWorkOrder.loaId.tenderId.estimatedAmount || 0;
-                const ssd = selectedWorkOrder.securityDepositAmount || 0;
+                const cp = Number(selectedWorkOrder.loaId.tenderId.contractPrice || selectedWorkOrder.loaId.tenderId.estimatedAmount || 0);
+                const ssd = Number(selectedWorkOrder.securityDepositAmount || 0);
                 const wType = selectedWorkOrder.loaId.tenderId.packageId?.workType || '';
                 const bHead = selectedWorkOrder.loaId.tenderId.packageId?.budgetHead || '';
 
@@ -314,19 +371,19 @@ export default function BillForm({
                 if (data.success && Array.isArray(data.data)) {
                     const currentBillNo = Number(formData.runningBillNumber) || 1;
                     const currentBillId = initialData?._id;
-                    const prevBills = data.data.filter((b: any) => {
+                    const prevBills: BillSourceDoc[] = data.data.filter((b: BillSourceDoc) => {
                         if (currentBillId && b._id === currentBillId) {
                             return false;
                         }
-                        return (b.runningBillNumber || 0) < currentBillNo;
+                        return Number(b.runningBillNumber || 0) < currentBillNo;
                     });
-                    const sum = prevBills.reduce((s: number, b: any) => s + (b.securityDeposit || 0), 0);
-                    const sumTLD = prevBills.reduce((s: number, b: any) => s + (b.timeLimitDeposit || 0), 0);
-                    const sumAsphalt = prevBills.reduce((s: number, b: any) => s + (b.asphaltDeposit || 0), 0);
+                    const sum = prevBills.reduce((s: number, b) => s + (Number(b.securityDeposit) || 0), 0);
+                    const sumTLD = prevBills.reduce((s: number, b) => s + (Number(b.timeLimitDeposit) || 0), 0);
+                    const sumAsphalt = prevBills.reduce((s: number, b) => s + (Number(b.asphaltDeposit) || 0), 0);
                     setPreviousSDTotal(sum);
                     setPreviousTLDTotal(sumTLD);
                     setPreviousAsphaltTotal(sumAsphalt);
-                    setFormData((prev: any) => {
+                    setFormData((prev) => {
                         return recalculateAuditMemoInternal(prev, undefined, sum, sumTLD, sumAsphalt);
                     });
                 }
@@ -367,20 +424,20 @@ export default function BillForm({
     // Order's package works.
     const getSanctionedWorksTotal = (workOrderId?: string): number => {
         if (sanctionedWorksTotal != null && sanctionedWorksTotal > 0) return sanctionedWorksTotal;
-        const sumAmounts = (works: any[]) =>
-            (works || []).reduce((s: number, w: any) => s + (Number(w?.amount) || 0), 0);
-        const fromProps = sumAmounts(initialWorks as any[]);
+        const sumAmounts = (works: BillWorkRow[] | undefined) =>
+            (works || []).reduce((s: number, w) => s + (Number(w?.amount) || 0), 0);
+        const fromProps = sumAmounts(initialWorks);
         if (fromProps > 0) return fromProps;
-        const selectedWorkOrder = workOrders.find((wo: any) => wo._id === (workOrderId || formData.workOrderId));
+        const selectedWorkOrder = workOrders.find((wo) => wo._id === (workOrderId || formData.workOrderId));
         return sumAmounts(selectedWorkOrder?.loaId?.tenderId?.packageId?.works || []);
     };
 
-    const recalculateAuditMemoInternal = (nextData: any, updatedFields?: Partial<typeof formData>, prevSD?: number, prevTLD?: number, prevAsphalt?: number, forceRecalculate?: boolean) => {
-        const gross = parseFloat(nextData.grossAmount) || 0;
-        const prevPaid = parseFloat(nextData.auditMemoPreviouslyPaid) || 0;
-        const dismantle = parseFloat(nextData.dismantleCredit) || 0;
-        const excessExtra = parseFloat(nextData.excessExtraAmount) || 0;
-        const priceAdj = parseFloat(nextData.priceAdjustment) || 0;
+    const recalculateAuditMemoInternal = (nextData: BillFormData, updatedFields?: Partial<typeof formData>, prevSD?: number, prevTLD?: number, prevAsphalt?: number, forceRecalculate?: boolean) => {
+        const gross = parseFloat(String(nextData.grossAmount)) || 0;
+        const prevPaid = parseFloat(String(nextData.auditMemoPreviouslyPaid)) || 0;
+        const dismantle = parseFloat(String(nextData.dismantleCredit)) || 0;
+        const excessExtra = parseFloat(String(nextData.excessExtraAmount)) || 0;
+        const priceAdj = parseFloat(String(nextData.priceAdjustment)) || 0;
         const priceAdjType = nextData.priceAdjustmentType || 'Payable';
         const priceAdjSign = priceAdjType === 'Deductible' ? -1 : 1;
         const manualDeductionFields = new Set(updatedFields ? Object.keys(updatedFields) : []);
@@ -390,14 +447,14 @@ export default function BillForm({
         const sanctionedTotal = getSanctionedWorksTotal(nextData.workOrderId);
         const autoAdminAppr = sanctionedTotal > 0
             ? parseFloat(Math.max(0, gross - sanctionedTotal).toFixed(2))
-            : (parseFloat(nextData.adminApprovalAmount) || 0);
+            : (parseFloat(String(nextData.adminApprovalAmount)) || 0);
         const adminAppr = manualDeductionFields.has('adminApprovalAmount')
-            ? (parseFloat(nextData.adminApprovalAmount) || 0)
+            ? (parseFloat(String(nextData.adminApprovalAmount)) || 0)
             : autoAdminAppr;
-        const withheld = parseFloat(nextData.withheldDeposit) || 0;
+        const withheld = parseFloat(String(nextData.withheldDeposit)) || 0;
 
         const netPay = parseFloat((gross - prevPaid - dismantle - excessExtra + (priceAdjSign * priceAdj) - adminAppr - withheld).toFixed(2));
-        const oldNetPay = parseFloat(nextData.netPayableAmount) || 0;
+        const oldNetPay = parseFloat(String(nextData.netPayableAmount)) || 0;
 
         const autoDeductions = getDeductionsForNetPayable(netPay, Number(nextData.runningBillNumber), undefined, undefined, undefined, undefined, prevSD);
 
@@ -406,16 +463,16 @@ export default function BillForm({
         // ── Asphalt Deposit: 2% of flagged items' upto-date total (rounded up
         // to ₹100), minus asphalt already deducted in previous bills ──────────
         const flaggedAsphaltBase = (nextData.items || []).reduce(
-            (s: number, it: any) => s + (it?.considerForAsphalt ? (Number(it.uptoDateAmount) || 0) : 0), 0);
+            (s: number, it) => s + (it?.considerForAsphalt ? (Number(it.uptoDateAmount) || 0) : 0), 0);
         const currentPrevAsphalt = prevAsphalt !== undefined ? prevAsphalt : previousAsphaltTotal;
         const autoAsphalt = flaggedAsphaltBase > 0
             ? Math.max(0, Math.ceil((flaggedAsphaltBase * 0.02) / 100) * 100 - currentPrevAsphalt)
-            : (parseFloat(nextData.asphaltDeposit) || 0);
+            : (parseFloat(String(nextData.asphaltDeposit)) || 0);
         // No Asphalt Deposit deduction on Final Bill.
         const asphaltVal = nextData.billType === 'Final'
             ? 0
             : (manualDeductionFields.has('asphaltDeposit')
-                ? (parseFloat(nextData.asphaltDeposit) || 0)
+                ? (parseFloat(String(nextData.asphaltDeposit)) || 0)
                 : autoAsphalt);
 
         // ── When editing a saved bill, never auto-recalculate deductions ────────
@@ -431,22 +488,22 @@ export default function BillForm({
                 storedFMD  = autoDeductions.freeMaintenanceDeposit;
                 storedAsph = asphaltVal;
             } else {
-                storedIT   = parseFloat(nextData.incomeTax)              || 0;
+                storedIT   = parseFloat(String(nextData.incomeTax))              || 0;
                 storedGST  = (manualDeductionFields.has('incomeTax') && !manualDeductionFields.has('gst'))
                     ? storedIT
-                    : (parseFloat(nextData.gst) || 0);
-                storedCess = parseFloat(nextData.labourCess)             || 0;
-                storedSD   = parseFloat(nextData.securityDeposit)        || 0;
-                storedFMD  = parseFloat(nextData.freeMaintenanceDeposit) || 0;
-                storedAsph = manualDeductionFields.has('asphaltDeposit') ? (parseFloat(nextData.asphaltDeposit) || 0) : asphaltVal;
+                    : (parseFloat(String(nextData.gst)) || 0);
+                storedCess = parseFloat(String(nextData.labourCess))             || 0;
+                storedSD   = parseFloat(String(nextData.securityDeposit))        || 0;
+                storedFMD  = parseFloat(String(nextData.freeMaintenanceDeposit)) || 0;
+                storedAsph = manualDeductionFields.has('asphaltDeposit') ? (parseFloat(String(nextData.asphaltDeposit)) || 0) : asphaltVal;
             }
-            const storedTPI   = parseFloat(nextData.tpi)                    || 0;
-            const storedESMP  = parseFloat(nextData.esmp)                   || 0;
-            const storedTLD   = parseFloat(nextData.timeLimitDeposit)       || 0;
-            const storedCore  = parseFloat(nextData.coreSampleDeposit)      || 0;
-            const storedTest  = parseFloat(nextData.testingCharges)         || 0;
-            const storedOther = parseFloat(nextData.otherDeposit)           || 0;
-            const storedOther2 = parseFloat(nextData.otherDeposit2)         || 0;
+            const storedTPI   = parseFloat(String(nextData.tpi))                    || 0;
+            const storedESMP  = parseFloat(String(nextData.esmp))                   || 0;
+            const storedTLD   = parseFloat(String(nextData.timeLimitDeposit))       || 0;
+            const storedCore  = parseFloat(String(nextData.coreSampleDeposit))      || 0;
+            const storedTest  = parseFloat(String(nextData.testingCharges))         || 0;
+            const storedOther = parseFloat(String(nextData.otherDeposit))           || 0;
+            const storedOther2 = parseFloat(String(nextData.otherDeposit2))         || 0;
 
             const editTotalDed = parseFloat((storedIT + storedGST + storedCess + storedSD + storedFMD + storedAsph + storedCore + storedTPI + storedESMP + storedTLD + storedTest + storedOther + storedOther2).toFixed(2));
             const editNetPaid  = parseFloat((netPay - editTotalDed).toFixed(2));
@@ -468,24 +525,24 @@ export default function BillForm({
 
         // ── New bill: auto-calculate deductions ──────────────────────────────
         const deductionChanged = forceRecalculate || oldNetPay !== netPay;
-        const it = manualDeductionFields.has('incomeTax') ? (parseFloat(nextData.incomeTax) || 0)
-            : (deductionChanged ? autoDeductions.incomeTax : (nextData.incomeTax !== undefined ? (parseFloat(nextData.incomeTax) || 0) : autoDeductions.incomeTax));
-        const gstDeduction = manualDeductionFields.has('gst') ? (parseFloat(nextData.gst) || 0)
-            : (manualDeductionFields.has('incomeTax') ? it : (deductionChanged ? autoDeductions.gst : (nextData.gst !== undefined ? (parseFloat(nextData.gst) || 0) : autoDeductions.gst)));
-        const cessVal = manualDeductionFields.has('labourCess') ? (parseFloat(nextData.labourCess) || 0)
-            : (deductionChanged ? autoDeductions.labourCess : (nextData.labourCess !== undefined ? (parseFloat(nextData.labourCess) || 0) : autoDeductions.labourCess));
-        const sd = manualDeductionFields.has('securityDeposit') ? (parseFloat(nextData.securityDeposit) || 0)
-            : (deductionChanged ? autoDeductions.securityDeposit : (nextData.securityDeposit !== undefined ? (parseFloat(nextData.securityDeposit) || 0) : autoDeductions.securityDeposit));
-        const fmd = manualDeductionFields.has('freeMaintenanceDeposit') ? (parseFloat(nextData.freeMaintenanceDeposit) || 0)
-            : (deductionChanged ? autoDeductions.freeMaintenanceDeposit : (nextData.freeMaintenanceDeposit !== undefined ? (parseFloat(nextData.freeMaintenanceDeposit) || 0) : autoDeductions.freeMaintenanceDeposit));
-        const tpiVal = manualDeductionFields.has('tpi') ? (parseFloat(nextData.tpi) || 0)
-            : (deductionChanged ? autoDeductions.tpi : (nextData.tpi !== undefined ? (parseFloat(nextData.tpi) || 0) : autoDeductions.tpi));
-        const esmpVal = manualDeductionFields.has('esmp') ? (parseFloat(nextData.esmp) || 0)
-            : (deductionChanged ? autoDeductions.esmp : (nextData.esmp !== undefined ? (parseFloat(nextData.esmp) || 0) : autoDeductions.esmp));
+        const it = manualDeductionFields.has('incomeTax') ? (parseFloat(String(nextData.incomeTax)) || 0)
+            : (deductionChanged ? autoDeductions.incomeTax : (nextData.incomeTax !== undefined ? (parseFloat(String(nextData.incomeTax)) || 0) : autoDeductions.incomeTax));
+        const gstDeduction = manualDeductionFields.has('gst') ? (parseFloat(String(nextData.gst)) || 0)
+            : (manualDeductionFields.has('incomeTax') ? it : (deductionChanged ? autoDeductions.gst : (nextData.gst !== undefined ? (parseFloat(String(nextData.gst)) || 0) : autoDeductions.gst)));
+        const cessVal = manualDeductionFields.has('labourCess') ? (parseFloat(String(nextData.labourCess)) || 0)
+            : (deductionChanged ? autoDeductions.labourCess : (nextData.labourCess !== undefined ? (parseFloat(String(nextData.labourCess)) || 0) : autoDeductions.labourCess));
+        const sd = manualDeductionFields.has('securityDeposit') ? (parseFloat(String(nextData.securityDeposit)) || 0)
+            : (deductionChanged ? autoDeductions.securityDeposit : (nextData.securityDeposit !== undefined ? (parseFloat(String(nextData.securityDeposit)) || 0) : autoDeductions.securityDeposit));
+        const fmd = manualDeductionFields.has('freeMaintenanceDeposit') ? (parseFloat(String(nextData.freeMaintenanceDeposit)) || 0)
+            : (deductionChanged ? autoDeductions.freeMaintenanceDeposit : (nextData.freeMaintenanceDeposit !== undefined ? (parseFloat(String(nextData.freeMaintenanceDeposit)) || 0) : autoDeductions.freeMaintenanceDeposit));
+        const tpiVal = manualDeductionFields.has('tpi') ? (parseFloat(String(nextData.tpi)) || 0)
+            : (deductionChanged ? autoDeductions.tpi : (nextData.tpi !== undefined ? (parseFloat(String(nextData.tpi)) || 0) : autoDeductions.tpi));
+        const esmpVal = manualDeductionFields.has('esmp') ? (parseFloat(String(nextData.esmp)) || 0)
+            : (deductionChanged ? autoDeductions.esmp : (nextData.esmp !== undefined ? (parseFloat(String(nextData.esmp)) || 0) : autoDeductions.esmp));
 
         // Calculate Time Limit Deposit automatically
         let calculatedTLD = 0;
-        const selectedWorkOrder = workOrders.find((wo: any) => wo._id === nextData.workOrderId);
+        const selectedWorkOrder = workOrders.find((wo) => wo._id === nextData.workOrderId);
         const compTargetDate = stipulatedCompletionDate 
             ? new Date(stipulatedCompletionDate) 
             : (selectedWorkOrder?.stipulatedCompletionDate ? new Date(selectedWorkOrder.stipulatedCompletionDate) : null);
@@ -502,7 +559,7 @@ export default function BillForm({
                 const lastRecordDate = nextData.lastRecordEntryDate ? parseDateStr(nextData.lastRecordEntryDate) : null;
                 if (lastRecordDate) {
                     const daysDelay = Math.max(0, Math.min(100, getDaysDiff(lastRecordDate, compTargetDate)));
-                    const sayAmt = parseFloat(nextData.grossAmount) || 0;
+                    const sayAmt = parseFloat(String(nextData.grossAmount)) || 0;
                     const totalTLD = Math.ceil((0.001 * sayAmt * daysDelay) / 100) * 100;
                     calculatedTLD = Math.max(0, totalTLD - currentPrevTLD);
                 }
@@ -510,10 +567,10 @@ export default function BillForm({
                 const completionDate = nextData.actualCompletionDate ? parseDateStr(nextData.actualCompletionDate) : null;
                 if (completionDate) {
                     const daysDelay = Math.max(0, Math.min(100, getDaysDiff(completionDate, compTargetDate)));
-                    const contractPriceVal = contractPrice 
-                        ? contractPrice 
-                        : (selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0);
-                    const totalTLD = Math.ceil((0.001 * contractPriceVal * daysDelay) / 100) * 100;
+                    const contractPriceVal = Number(contractPrice
+                        ? contractPrice
+                        : (selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0));
+                    const totalTLD = Math.ceil((0.001 * Number(contractPriceVal) * daysDelay) / 100) * 100;
                     calculatedTLD = Math.max(0, totalTLD - currentPrevTLD);
                 }
             }
@@ -531,13 +588,13 @@ export default function BillForm({
             : (nextData.timeLimitDeposit !== undefined && nextData.timeLimitDeposit !== '' && nextData.timeLimitDeposit !== 0
                 ? nextData.timeLimitDeposit
                 : calculatedTLD);
-        const tldNum = parseFloat(tldRaw) || 0;
+        const tldNum = parseFloat(String(tldRaw)) || 0;
 
         const asphalt = asphaltVal;
-        const core = parseFloat(nextData.coreSampleDeposit) || 0;
-        const testing = parseFloat(nextData.testingCharges) || 0;
-        const otherDep = parseFloat(nextData.otherDeposit) || 0;
-        const otherDep2 = parseFloat(nextData.otherDeposit2) || 0;
+        const core = parseFloat(String(nextData.coreSampleDeposit)) || 0;
+        const testing = parseFloat(String(nextData.testingCharges)) || 0;
+        const otherDep = parseFloat(String(nextData.otherDeposit)) || 0;
+        const otherDep2 = parseFloat(String(nextData.otherDeposit2)) || 0;
 
         const totalDed = parseFloat((it + gstDeduction + cessVal + sd + fmd + asphalt + core + tpiVal + esmpVal + tldNum + testing + otherDep + otherDep2).toFixed(2));
         const netPaid = parseFloat((netPay - totalDed).toFixed(2));
@@ -571,17 +628,17 @@ export default function BillForm({
         const name = target.name;
         
         if (name === 'runningBillNumber') {
-            setFormData((prev: any) => {
-                const nextData = { ...prev, [name]: value };
+            setFormData((prev) => {
+                const nextData = { ...prev, [name]: value } as BillFormData;
                 return recalculateAuditMemoInternal(nextData);
             });
         } else if (name === 'lastRecordEntryDate' || name === 'actualCompletionDate' || name === 'billDate' || name === 'billType') {
-            setFormData((prev: any) => {
-                const nextData = { ...prev, [name]: value };
+            setFormData((prev) => {
+                const nextData = { ...prev, [name]: value } as BillFormData;
                 return recalculateAuditMemoInternal(nextData, { [name]: value });
             });
         } else {
-            setFormData((prev: any) => ({ ...prev, [name]: value }));
+            setFormData((prev) => ({ ...prev, [name]: value }));
         }
 
         if (name === 'labourCessApplicable') {
@@ -591,9 +648,9 @@ export default function BillForm({
 
     useEffect(() => {
         if (initialWorks && initialWorks.length > 0) {
-            setFormData((prev: any) => {
+            setFormData((prev) => {
                 if (!prev.works || prev.works.length === 0) {
-                    const formatted = initialWorks.map((w: any, i: number) => ({
+                    const formatted = initialWorks.map((w, i: number) => ({
                         srNo: String(i + 1),
                         nameOfWork: w.workName || w.nameOfWork || '',
                         amount: 0
@@ -606,15 +663,15 @@ export default function BillForm({
     }, [initialWorks]);
 
     const handleWorkOrderSelect = async (id: string) => {
-        const selectedWorkOrderObj = workOrders.find((wo: any) => wo._id === id);
+        const selectedWorkOrderObj = workOrders.find((wo) => wo._id === id);
         const pkgWorks = selectedWorkOrderObj?.loaId?.tenderId?.packageId?.works || [];
-        const mappedWorks = pkgWorks.map((pw: any, i: number) => ({
+        const mappedWorks = pkgWorks.map((pw, i: number) => ({
             srNo: String(i + 1),
             nameOfWork: pw.workName || pw.nameOfWork || '',
             amount: 0
         }));
 
-        setFormData((prev: any) => ({ 
+        setFormData((prev) => ({ 
             ...prev, 
             workOrderId: id, 
             works: (prev.works && prev.works.length > 0)
@@ -633,7 +690,7 @@ export default function BillForm({
                     const dir = data.tenderDirection || tenderDirection;
                     setTenderPercentage(pct);
                     setTenderDirection(dir);
-                    setFormData((prev: any) => ({ 
+                    setFormData((prev) => ({ 
                         ...prev, 
                         items: data.data,
                         works: (prev.works && prev.works.length > 0)
@@ -653,7 +710,7 @@ export default function BillForm({
                 setFetchingAbstract(false);
             }
         } else {
-            setFormData((prev: any) => ({ ...prev, items: [] }));
+            setFormData((prev) => ({ ...prev, items: [] }));
             setTableRawInputs({});
             calculateTotals([]);
         }
@@ -678,21 +735,21 @@ export default function BillForm({
         item.uptoDateAmount = parseFloat((item.quantity * item.partRate).toFixed(2));
         item.toBePaidAmount = parseFloat((item.uptoDateAmount - item.previousPaidAmount).toFixed(2));
         
-        setFormData((prev: any) => ({ ...prev, items: newItems }));
+        setFormData((prev) => ({ ...prev, items: newItems }));
         calculateTotals(newItems);
     };
 
     const handleAsphaltFlagChange = (index: number, checked: boolean) => {
         const newItems = [...formData.items];
         newItems[index] = { ...newItems[index], considerForAsphalt: checked };
-        setFormData((prev: any) => ({ ...prev, items: newItems }));
+        setFormData((prev) => ({ ...prev, items: newItems }));
         calculateTotals(newItems);
     };
 
     const getNextExtraItemNo = (items: IBillItem[]) => {
-        const extraItems = items.filter((i: any) => i.itemType === 'Extra');
+        const extraItems = items.filter((i) => i.itemType === 'Extra');
         const nums = extraItems
-            .map((i: any) => {
+            .map((i) => {
                 const match = i.itemNo?.match(/Extra Item (\d+)/);
                 return match ? parseInt(match[1]) : 0;
             })
@@ -721,11 +778,11 @@ export default function BillForm({
             considerForAsphalt: false
         };
         const nextItems = [...formData.items, newItem];
-        setFormData((prev: any) => ({ ...prev, items: nextItems }));
+        setFormData((prev) => ({ ...prev, items: nextItems }));
         calculateTotals(nextItems);
     };
 
-    const handleExtraItemFieldChange = (index: number, field: keyof IBillItem, value: any) => {
+    const handleExtraItemFieldChange = (index: number, field: keyof IBillItem, value: string) => {
         const newItems = [...formData.items];
         const item = { ...newItems[index] };
         
@@ -734,24 +791,26 @@ export default function BillForm({
             item.fullRate = numVal;
             item.partRate = numVal;
         } else if (field === 'description' || field === 'unit') {
-            item[field] = value as any;
+            item[field] = value;
         }
         
         item.uptoDateAmount = parseFloat((item.quantity * item.partRate).toFixed(2));
         item.toBePaidAmount = parseFloat((item.uptoDateAmount - item.previousPaidAmount).toFixed(2));
         
         newItems[index] = item;
-        setFormData((prev: any) => ({ ...prev, items: newItems }));
+        setFormData((prev) => ({ ...prev, items: newItems }));
         calculateTotals(newItems);
     };
 
     const handleWorkChange = (index: number, field: string, value: string) => {
-        setFormData((prev: any) => {
+        setFormData((prev: BillFormData) => {
             const newWorks = [...prev.works];
             if (field === 'amount') {
-                newWorks[index][field] = value === '' ? 0 : parseFloat(value);
-            } else {
+                newWorks[index].amount = value === '' ? 0 : parseFloat(value);
+            } else if (field === 'nameOfWork' || field === 'srNo') {
                 newWorks[index][field] = value;
+            } else {
+                (newWorks[index] as Record<string, unknown>)[field] = value;
             }
             return { ...prev, works: newWorks };
         });
@@ -765,14 +824,14 @@ export default function BillForm({
             cess !== undefined ? cess : formData.labourCessApplicable,
         );
 
-        setFormData((prev: any) => {
+        setFormData((prev) => {
             const nextData = { ...prev, grossAmount: gross };
             return recalculateAuditMemoInternal(nextData);
         });
     };
 
     const recalculateAuditMemo = (updatedFields: Partial<typeof formData>, forceRecalculate?: boolean) => {
-        setFormData((prev: any) => {
+        setFormData((prev) => {
             const nextData = { ...prev, ...updatedFields };
             return recalculateAuditMemoInternal(nextData, updatedFields, undefined, undefined, undefined, forceRecalculate);
         });
@@ -794,22 +853,22 @@ export default function BillForm({
                 return d ? d.toISOString() : undefined;
             };
 
-            submissionData.billDate = parseDateOutput(formData.billDate) as any;
-            submissionData.passingDate = parseDateOutput(formData.passingDate) as any;
-            submissionData.praisaBillDate = parseDateOutput(formData.praisaBillDate) as any;
+            submissionData.billDate = parseDateOutput(formData.billDate) as string;
+            submissionData.passingDate = parseDateOutput(formData.passingDate) as string;
+            submissionData.praisaBillDate = parseDateOutput(formData.praisaBillDate);
             submissionData.praisaBillNo = formData.praisaBillNo || undefined;
-            submissionData.voucherDate = parseDateOutput(formData.voucherDate) as any;
+            submissionData.voucherDate = parseDateOutput(formData.voucherDate);
             submissionData.voucherNo = formData.voucherNo || undefined;
             if (formData.billType === 'Final') {
-                submissionData.actualCompletionDate = parseDateOutput(formData.actualCompletionDate || '') as any;
+                submissionData.actualCompletionDate = parseDateOutput(formData.actualCompletionDate || '');
                 submissionData.lastRecordEntryDate = undefined;
             } else {
-                submissionData.lastRecordEntryDate = parseDateOutput(formData.lastRecordEntryDate || '') as any;
+                submissionData.lastRecordEntryDate = parseDateOutput(formData.lastRecordEntryDate || '');
                 submissionData.actualCompletionDate = undefined;
             }
-            submissionData.grossAmount = Number(formData.grossAmount) as any;
-            submissionData.netPaidAmount = Number(formData.netPaidAmount || 0) as any;
-            submissionData.runningBillNumber = Number(formData.runningBillNumber) as any;
+            submissionData.grossAmount = Number(formData.grossAmount);
+            submissionData.netPaidAmount = Number(formData.netPaidAmount || 0);
+            submissionData.runningBillNumber = Number(formData.runningBillNumber);
             submissionData.labourCessApplicable = Boolean(formData.labourCessApplicable);
 
             // Audit Memo Fields
@@ -864,14 +923,14 @@ export default function BillForm({
             }
         } catch (error) {
             console.error(error);
-            alert((error as any).message || 'Error saving Bill');
+            alert(error instanceof Error && error.message ? error.message : 'Error saving Bill');
         } finally {
             setLoading(false);
         }
     };
 
-    const workOrderOptions = workOrders.map((wo: any) => ({
-        _id: wo._id,
+    const workOrderOptions = workOrders.map((wo) => ({
+        _id: wo._id || '',
         packageName: wo.loaId?.tenderId?.packageName || 'Unknown Package',
         contractorName: wo.loaId?.tenderId?.contractorName || 'N/A'
     }));
@@ -992,7 +1051,7 @@ export default function BillForm({
                                     <td className="excel-value">
                                         <input 
                                             type="text" placeholder="e.g. 2295" name="mbNumber" id="mbNumber" 
-                                            value={(formData as any).mbNumber || ''} onChange={handleChange} 
+                                            value={formData.mbNumber || ''} onChange={handleChange} 
                                             className="excel-cell-input font-mono"
                                         />
                                     </td>
@@ -1000,7 +1059,7 @@ export default function BillForm({
                                     <td className="excel-value">
                                         <span className="font-mono font-bold text-slate-800 text-xs">
                                             {(() => {
-                                                const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
+                                                const selectedWorkOrder = workOrders.find((wo) => wo._id === formData.workOrderId);
                                                 const compTargetDate = stipulatedCompletionDate 
                                                     ? new Date(stipulatedCompletionDate) 
                                                     : (selectedWorkOrder?.stipulatedCompletionDate ? new Date(selectedWorkOrder.stipulatedCompletionDate) : null);
@@ -1344,9 +1403,9 @@ export default function BillForm({
                             )}
                         </tbody>
                         {formData.items.length > 0 && (() => {
-                            const totalUptoDate = formData.items.reduce((s: number, i: any) => s + (i.uptoDateAmount || 0), 0);
-                            const totalPrevPaid = formData.items.reduce((s: number, i: any) => s + (i.previousPaidAmount || 0), 0);
-                            const totalToBePaid = formData.items.reduce((s: number, i: any) => s + (i.toBePaidAmount || 0), 0);
+                            const totalUptoDate = formData.items.reduce((s: number, i) => s + (i.uptoDateAmount || 0), 0);
+                            const totalPrevPaid = formData.items.reduce((s: number, i) => s + (i.previousPaidAmount || 0), 0);
+                            const totalToBePaid = formData.items.reduce((s: number, i) => s + (i.toBePaidAmount || 0), 0);
 
                             const pctMultiplier = tenderPercentage / 100;
                             const uptoDateAdj = totalUptoDate * pctMultiplier;
@@ -1532,7 +1591,7 @@ export default function BillForm({
                                         </td>
                                     </tr>
                                 ) : (
-                                    formData.works.map((work: any, index: number) => (
+                                    formData.works.map((work, index: number) => (
                                         <tr key={index} className="hover:bg-emerald-50/50">
                                             <td className="border border-slate-200 px-3 py-2">
                                                 <input type="text" value={work.srNo} readOnly className="block w-full text-xs font-bold sm:text-sm border-slate-200 rounded-lg p-1.5 border bg-slate-50 font-mono" />
@@ -1548,7 +1607,7 @@ export default function BillForm({
                                 )}
                             </tbody>
                             {formData.works.length > 0 && (() => {
-                                const totalAmount = formData.works.reduce((s: number, w: any) => s + (w.amount || 0), 0);
+                                const totalAmount = formData.works.reduce((s: number, w) => s + (Number(w.amount) || 0), 0);
                                 const pctMultiplier = tenderPercentage / 100;
                                 const adjAmount = totalAmount * pctMultiplier;
                                 const netAmount = tenderDirection === 'Below' ? totalAmount - adjAmount : totalAmount + adjAmount;
@@ -1695,7 +1754,7 @@ export default function BillForm({
                                     </td>
                                 </tr>
                             ) : (
-                                formData.items.map((item: any, index: number) => {
+                                formData.items.map((item, index: number) => {
                                     const tenderQty = Number(item.boqQuantity || 0);
                                     const tenderRate = Number(item.fullRate || 0);
                                     const tenderAmt = tenderQty * tenderRate;
@@ -1744,17 +1803,17 @@ export default function BillForm({
                         {formData.items.length > 0 && (
                             <tfoot className="bg-emerald-50/90 font-bold text-xs border-t-2 border-emerald-300">
                                 {(() => {
-                                    const totalTender = formData.items.reduce((s: number, i: any) => s + ((Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0))), 0);
-                                    const totalBill = formData.items.reduce((s: number, i: any) => s + (Number(i.uptoDateAmount || (Number(i.quantity || 0) * Number(i.partRate || i.fullRate || 0)))), 0);
+                                    const totalTender = formData.items.reduce((s: number, i) => s + ((Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0))), 0);
+                                    const totalBill = formData.items.reduce((s: number, i) => s + (Number(i.uptoDateAmount || (Number(i.quantity || 0) * Number(i.partRate || i.fullRate || 0)))), 0);
                                     
-                                    const totalExcess = formData.items.reduce((s: number, i: any) => {
+                                    const totalExcess = formData.items.reduce((s: number, i) => {
                                         const tAmt = (Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0));
                                         const bAmt = Number(i.uptoDateAmount || (Number(i.quantity || 0) * Number(i.partRate || i.fullRate || 0)));
                                         const diff = bAmt - tAmt;
                                         return s + (diff > 0 ? diff : 0);
                                     }, 0);
 
-                                    const totalSaving = formData.items.reduce((s: number, i: any) => {
+                                    const totalSaving = formData.items.reduce((s: number, i) => {
                                         const tAmt = (Number(i.boqQuantity || 0)) * (Number(i.fullRate || 0));
                                         const bAmt = Number(i.uptoDateAmount || (Number(i.quantity || 0) * Number(i.partRate || i.fullRate || 0)));
                                         const diff = bAmt - tAmt;
@@ -1830,7 +1889,7 @@ export default function BillForm({
                                                 name="grossAmount"
                                                 id="grossAmount"
                                                 value={formData.grossAmount === 0 ? '' : formData.grossAmount}
-                                                onChange={(e) => recalculateAuditMemo({ grossAmount: e.target.value as any })}
+                                                onChange={(e) => recalculateAuditMemo({ grossAmount: e.target.value })}
                                                 className="excel-cell-input text-right font-mono font-bold"
                                                 placeholder="0.00"
                                             />
@@ -2032,8 +2091,8 @@ export default function BillForm({
                                         <td className="excel-value">
                                             <div className="flex items-center gap-2">
                                                 {(() => {
-                                                    const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
-                                                    const cp = contractPriceState || parseFloat(selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0);
+                                                    const selectedWorkOrder = workOrders.find((wo) => wo._id === formData.workOrderId);
+                                                    const cp = contractPriceState || parseFloat(String(selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0));
                                                     const maxSD = cp > 0 ? Math.ceil((cp * 0.05) / 100) * 100 : 0;
                                                     const remainingSD = Math.max(0, maxSD - previousSDTotal);
                                                     return (
@@ -2061,8 +2120,8 @@ export default function BillForm({
                                                 />
                                             </div>
                                             {(() => {
-                                                const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
-                                                const cp = contractPriceState || parseFloat(selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0);
+                                                const selectedWorkOrder = workOrders.find((wo) => wo._id === formData.workOrderId);
+                                                const cp = contractPriceState || parseFloat(String(selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0));
                                                 const maxSD = cp > 0 ? Math.ceil((cp * 0.05) / 100) * 100 : 0;
                                                 return (
                                                     <div className="text-[10px] text-slate-500 font-medium pr-0.5 space-y-0.5 mt-1 border-t border-dashed border-emerald-200 pt-1 text-right">
@@ -2117,7 +2176,7 @@ export default function BillForm({
                                                 </div>
                                             ) : (() => {
                                                 const flagged = (formData.items || []).reduce(
-                                                    (s: number, it: any) => s + (it?.considerForAsphalt ? (Number(it.uptoDateAmount) || 0) : 0), 0);
+                                                    (s: number, it) => s + (it?.considerForAsphalt ? (Number(it.uptoDateAmount) || 0) : 0), 0);
                                                 if (!flagged) return null;
                                                 return (
                                                     <div className="text-[10px] text-slate-500 font-mono text-right mt-0.5">
@@ -2194,7 +2253,7 @@ export default function BillForm({
                                         <td className="excel-value">
                                             <div className="flex items-center gap-2">
                                                 {(() => {
-                                                    const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
+                                                    const selectedWorkOrder = workOrders.find((wo) => wo._id === formData.workOrderId);
                                                     const compTargetDate = stipulatedCompletionDate 
                                                         ? new Date(stipulatedCompletionDate) 
                                                         : (selectedWorkOrder?.stipulatedCompletionDate ? new Date(selectedWorkOrder.stipulatedCompletionDate) : null);
@@ -2223,7 +2282,7 @@ export default function BillForm({
                                                                 const contractPriceVal = contractPriceState 
                                                                     ? contractPriceState 
                                                                     : (selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0);
-                                                                totalCalculatedTLD = Math.ceil((0.001 * contractPriceVal * daysDelay) / 100) * 100;
+                                                                totalCalculatedTLD = Math.ceil((0.001 * Number(contractPriceVal) * daysDelay) / 100) * 100;
                                                             }
                                                         }
                                                     }
@@ -2253,7 +2312,7 @@ export default function BillForm({
                                                 />
                                             </div>
                                             {(() => {
-                                                const selectedWorkOrder = workOrders.find((wo: any) => wo._id === formData.workOrderId);
+                                                const selectedWorkOrder = workOrders.find((wo) => wo._id === formData.workOrderId);
                                                 const compTargetDate = stipulatedCompletionDate 
                                                     ? new Date(stipulatedCompletionDate) 
                                                     : (selectedWorkOrder?.stipulatedCompletionDate ? new Date(selectedWorkOrder.stipulatedCompletionDate) : null);
@@ -2282,7 +2341,7 @@ export default function BillForm({
                                                             const contractPriceVal = contractPriceState 
                                                                 ? contractPriceState 
                                                                 : (selectedWorkOrder?.loaId?.tenderId?.contractPrice || selectedWorkOrder?.loaId?.tenderId?.estimatedAmount || 0);
-                                                            totalCalculatedTLD = Math.ceil((0.001 * contractPriceVal * daysDelay) / 100) * 100;
+                                                            totalCalculatedTLD = Math.ceil((0.001 * Number(contractPriceVal) * daysDelay) / 100) * 100;
                                                         }
                                                     }
                                                 }
@@ -2330,7 +2389,7 @@ export default function BillForm({
                                                 type="text"
                                                 name="otherDepositLabel"
                                                 value={formData.otherDepositLabel !== undefined ? formData.otherDepositLabel : 'Other Deposit'}
-                                                onChange={(e) => setFormData((prev: any) => ({ ...prev, otherDepositLabel: e.target.value }))}
+                                                onChange={(e) => setFormData((prev) => ({ ...prev, otherDepositLabel: e.target.value }))}
                                                 className="text-xs font-bold text-slate-600 bg-transparent px-1 py-0.5 outline-none w-full border-b border-dashed border-emerald-300 focus:border-emerald-600"
                                                 placeholder="Other Deposit"
                                                 title="Click to edit label"
@@ -2357,7 +2416,7 @@ export default function BillForm({
                                                 type="text"
                                                 name="otherDeposit2Label"
                                                 value={formData.otherDeposit2Label !== undefined ? formData.otherDeposit2Label : 'Other Deposit 2'}
-                                                onChange={(e) => setFormData((prev: any) => ({ ...prev, otherDeposit2Label: e.target.value }))}
+                                                onChange={(e) => setFormData((prev) => ({ ...prev, otherDeposit2Label: e.target.value }))}
                                                 className="text-xs font-bold text-slate-600 bg-transparent px-1 py-0.5 outline-none w-full border-b border-dashed border-emerald-300 focus:border-emerald-600"
                                                 placeholder="Other Deposit 2"
                                                 title="Click to edit label"

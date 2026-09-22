@@ -6,7 +6,7 @@ import { auth } from '@/auth';
 
 export async function GET() {
   const session = await auth();
-  if ((session?.user as any)?.role !== 'ADMIN') {
+  if ((session?.user as { role?: string } | undefined)?.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -14,14 +14,14 @@ export async function GET() {
     await dbConnect();
     const users = await User.find({}).select('-password').sort({ createdAt: -1 });
     return NextResponse.json(users);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
   const session = await auth();
-  if ((session?.user as any)?.role !== 'ADMIN') {
+  if ((session?.user as { role?: string } | undefined)?.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
 
     const { password: _, ...userWithoutPassword } = user.toObject();
     return NextResponse.json(userWithoutPassword, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }

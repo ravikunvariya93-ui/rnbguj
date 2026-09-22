@@ -5,9 +5,20 @@ import { ArrowLeft, Printer, Download, Edit3 } from 'lucide-react';
 import { useEffect } from 'react';
 import { formatDate, getISTYear } from '@/lib/dateUtils';
 
+interface ForwardingPackage {
+    _id?: string;
+    packageName?: string;
+}
+
+interface ForwardingDTP {
+    dtpSendingNo?: string;
+    dtpSendingDate?: string;
+    tenderAmount?: number;
+}
+
 interface ForwardingLetterClientProps {
-    packageData: any;
-    dtp: any;
+    packageData: ForwardingPackage;
+    dtp: ForwardingDTP;
 }
 
 function formatDateToOutput(dateInput?: string) {
@@ -33,8 +44,8 @@ export default function ForwardingLetterClient({ packageData, dtp }: ForwardingL
         const filename = 'DTP_Forwarding_Letter.doc';
         const downloadLink = document.createElement('a');
         document.body.appendChild(downloadLink);
-        if ((navigator as any).msSaveOrOpenBlob) {
-            (navigator as any).msSaveOrOpenBlob(blob, filename);
+        if ((navigator as unknown as { msSaveOrOpenBlob?: (blob: Blob, filename: string) => void }).msSaveOrOpenBlob) {
+            (navigator as unknown as { msSaveOrOpenBlob?: (blob: Blob, filename: string) => void }).msSaveOrOpenBlob?.(blob, filename);
         } else {
             downloadLink.href = url;
             downloadLink.download = filename;

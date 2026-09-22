@@ -91,7 +91,7 @@ export async function GET(request: Request) {
             if (suggestions.length >= 8) break;
         }
         return NextResponse.json({ success: true, data: suggestions });
-    } catch (error: any) {
-        return NextResponse.json({ success: false, error: error?.message || 'search failed' }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ success: false, error: error instanceof Error && error.message ? error.message : 'search failed' }, { status: 500 });
     }
 }

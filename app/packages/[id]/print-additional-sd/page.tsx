@@ -6,6 +6,11 @@ import WorkOrder from '@/models/WorkOrder';
 import Agency from '@/models/Agency';
 import Bill from '@/models/Bill';
 import DepositRefund from '@/models/DepositRefund';
+import type { QueryFilter } from 'mongoose';
+import type { ITender } from '@/models/Tender';
+import type { IWorkOrder } from '@/models/WorkOrder';
+import type { IDepositRefund } from '@/models/DepositRefund';
+import type { IBill } from '@/models/Bill';
 import { notFound } from 'next/navigation';
 import AdditionalSDPrintClient from './AdditionalSDPrintClient';
 
@@ -15,35 +20,50 @@ interface Props {
     params: Promise<{ id: string }>;
 }
 
+interface IdLean {
+    _id: string;
+}
+
+interface TenderLean {
+    _id: string;
+    contractorId?: string;
+    contractorName?: string;
+}
+
+interface BillLean {
+    billType?: string;
+    actualCompletionDate?: string;
+}
+
 export default async function PrintAdditionalSDPage({ params }: Props) {
     await dbConnect();
     const { id } = await params;
 
     // Fetch Package details
-    const pkgRaw = await Package.findById(id).lean() as any;
+    const pkgRaw = await Package.findById(id).lean() as unknown as IdLean | null;
     if (!pkgRaw) notFound();
 
     // Fetch related Tender (latest non-cancelled)
-    const tenderRaw = await Tender.findOne({ packageId: pkgRaw._id, cancelled: { $ne: true } })
-        .sort({ trialNo: -1 }).lean() as any;
+    const tenderRaw = await Tender.findOne({ packageId: pkgRaw._id, cancelled: { $ne: true } } as unknown as QueryFilter<ITender>)
+        .sort({ trialNo: -1 }).lean() as unknown as TenderLean | null;
 
-    const loaRaw = tenderRaw ? await LOA.findOne({ tenderId: tenderRaw._id }).lean() as any : null;
-    const workOrderRaw = loaRaw ? await WorkOrder.findOne({ loaId: loaRaw._id }).lean() as any : null;
+    const loaRaw = tenderRaw ? await LOA.findOne({ tenderId: tenderRaw._id }).lean() as unknown as IdLean | null : null;
+    const workOrderRaw = loaRaw ? await WorkOrder.findOne({ loaId: loaRaw._id } as unknown as QueryFilter<IWorkOrder>).lean() as unknown as IdLean | null : null;
     const agencyRaw = tenderRaw ? (
         tenderRaw.contractorId
-            ? await Agency.findById(tenderRaw.contractorId).lean() as any
-            : await Agency.findOne({ name: tenderRaw.contractorName }).lean() as any
+            ? await Agency.findById(tenderRaw.contractorId).lean() as unknown as IdLean | null
+            : await Agency.findOne({ name: tenderRaw.contractorName }).lean() as unknown as IdLean | null
     ) : null;
 
     // Fetch existing DepositRefund record for this package
-    const depositRefundRaw = await DepositRefund.findOne({ packageId: pkgRaw._id, refundType: 'Additional SD' }).lean() as any;
+    const depositRefundRaw = await DepositRefund.findOne({ packageId: pkgRaw._id, refundType: 'Additional SD' } as unknown as QueryFilter<IDepositRefund>).lean() as unknown as (IdLean & { actualCompletionDate?: string }) | null;
 
     // Fetch Bills to find actualCompletionDate from final bill
     const billsRaw = workOrderRaw
-        ? await Bill.find({ workOrderId: workOrderRaw._id }).sort({ billDate: -1, runningBillNumber: -1 }).lean() as any[]
+        ? await Bill.find({ workOrderId: workOrderRaw._id } as unknown as QueryFilter<IBill>).sort({ billDate: -1, runningBillNumber: -1 }).lean() as unknown as BillLean[]
         : [];
 
-    const finalBill = billsRaw.find((b: any) => b.billType === 'Final' || b.actualCompletionDate);
+    const finalBill = billsRaw.find((b: BillLean) => b.billType === 'Final' || b.actualCompletionDate);
 
     // Serialize data
     const packageData = JSON.parse(JSON.stringify(pkgRaw));

@@ -133,8 +133,8 @@ export default function VillagePicker({ village, context, candidates, near, onSa
                 if (!res.ok || !body?.success) throw new Error(body?.error || 'Search failed');
                 setSuggestions(body.data || []);
                 setShowSuggest(true);
-            } catch (e: any) {
-                setError(e?.message || 'Search failed');
+            } catch (e: unknown) {
+                setError(e instanceof Error ? e.message : 'Search failed');
                 setSuggestions([]);
             } finally {
                 setSuggesting(false);
@@ -235,8 +235,8 @@ export default function VillagePicker({ village, context, candidates, near, onSa
             const body = await res.json().catch(() => null);
             if (!res.ok || !body?.success) throw new Error(body?.error || 'Place lookup failed');
             setAllCandidates((prev) => mergeCandidates([body.data, ...prev]));
-        } catch (e: any) {
-            setError(e?.message || 'Place lookup failed');
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : 'Place lookup failed');
         } finally {
             setSaving(false);
         }
@@ -254,8 +254,8 @@ export default function VillagePicker({ village, context, candidates, near, onSa
             const body = await res.json().catch(() => null);
             if (!res.ok || !body?.success) throw new Error(body?.error || 'Failed to save location');
             onSaved(payload.lat, payload.lng);
-        } catch (e: any) {
-            setError(e?.message || 'Failed to save location');
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : 'Failed to save location');
         } finally {
             setSaving(false);
         }

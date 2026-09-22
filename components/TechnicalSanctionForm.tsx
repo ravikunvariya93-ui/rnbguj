@@ -7,9 +7,32 @@ import Link from 'next/link';
 import { useEffect } from 'react';
 import { formatDateForInput } from '@/lib/dateUtils';
 
+interface TechnicalSanctionInitialData {
+    _id?: string;
+    workName?: string;
+    tsAuthority?: string;
+    tsAmount?: string | number;
+    tsNumber?: string;
+    tsDate?: string;
+    remarks?: string;
+}
+
 interface TechnicalSanctionFormProps {
-    initialData?: any;
+    initialData?: TechnicalSanctionInitialData;
     isEditing?: boolean;
+}
+
+interface TechnicalSanctionFormState {
+    workName: string;
+    tsAuthority: string;
+    tsAmount: string | number;
+    tsNumber: string;
+    tsDate: string;
+    remarks: string;
+}
+
+interface ApprovedWorkRef {
+    workName: string;
 }
 
 import SearchableSelect from './SearchableSelect';
@@ -17,7 +40,7 @@ import SearchableSelect from './SearchableSelect';
 export default function TechnicalSanctionForm({ initialData = {}, isEditing = false }: TechnicalSanctionFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<TechnicalSanctionFormState>({
         workName: '',
         tsAuthority: '',
         tsAmount: '',
@@ -27,7 +50,7 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
         ...initialData
     });
 
-    const [approvedWorks, setApprovedWorks] = useState<any[]>([]);
+    const [approvedWorks, setApprovedWorks] = useState<ApprovedWorkRef[]>([]);
     const [existingTSNames, setExistingTSNames] = useState<string[]>([]);
 
     useEffect(() => {
@@ -44,7 +67,7 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
                 const resTS = await fetch('/api/technical-sanctions');
                 const dataTS = await resTS.json();
                 if (dataTS.success) {
-                    const names = dataTS.data.map((ts: any) => ts.workName);
+                    const names = dataTS.data.map((ts: ApprovedWorkRef) => ts.workName);
                     setExistingTSNames(names);
                 }
             } catch (error) {
@@ -57,7 +80,7 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
     useEffect(() => {
         // Format dates if editing
         const updateDates = () => {
-            const newData: any = {};
+            const newData: Partial<TechnicalSanctionFormState> = {};
             
             if (initialData.tsDate) {
                 const formatted = formatDateForInput(initialData.tsDate);
@@ -66,7 +89,7 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
 
 
             if (Object.keys(newData).length > 0) {
-                setFormData((prev: any) => ({ ...prev, ...newData }));
+                setFormData((prev: TechnicalSanctionFormState) => ({ ...prev, ...newData }));
             }
         };
 
@@ -78,11 +101,11 @@ export default function TechnicalSanctionForm({ initialData = {}, isEditing = fa
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setFormData((prev: any) => ({ ...prev, [name]: value }));
+        setFormData((prev: TechnicalSanctionFormState) => ({ ...prev, [name]: value }));
     };
 
     const handleWorkSelect = (name: string) => {
-        setFormData((prev: any) => ({ ...prev, workName: name }));
+        setFormData((prev: TechnicalSanctionFormState) => ({ ...prev, workName: name }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {

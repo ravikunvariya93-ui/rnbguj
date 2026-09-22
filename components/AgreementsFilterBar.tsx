@@ -4,8 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Filter, X } from 'lucide-react';
 
+interface FilterAgency {
+    _id: string;
+    name: string;
+}
+
 interface AgreementsFilterBarProps {
-    agencies: any[];
+    agencies: FilterAgency[];
     years: string[];
 }
 

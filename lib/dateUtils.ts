@@ -94,7 +94,7 @@ export function formatDate(d: Date | string | number | null | undefined): string
     if (d instanceof Date) {
         dateObj = d;
     } else {
-        dateObj = parseDateStr(d as any);
+        dateObj = typeof d === 'number' ? new Date(d) : parseDateStr(d);
         if (!dateObj) {
             const temp = new Date(d);
             if (!isNaN(temp.getTime())) {
@@ -123,9 +123,12 @@ export function formatDateForInput(dateString: string | Date | null | undefined)
     }
 }
 
-export function formatShortDate(date: any): string {
+export function formatShortDate(date: unknown): string {
     if (!date) return '-';
-    return formatDate(date);
+    if (date instanceof Date || typeof date === 'string' || typeof date === 'number') {
+        return formatDate(date);
+    }
+    return '-';
 }
 
 /** DD-MM-YYYY in IST (for Gujarati/official print formats). */
@@ -164,7 +167,7 @@ export function formatDateTimeIST(d: Date | string | number | null | undefined):
 /** Calendar year of an instant in IST (e.g. for letter numbers). */
 export function getISTYear(d: Date | string | number | null | undefined): number | string {
     if (d == null || d === '') return '-';
-    const dateObj = d instanceof Date ? d : new Date(d as any);
+    const dateObj = d instanceof Date ? d : new Date(d);
     if (isNaN(dateObj.getTime())) return '-';
     return getISTCalendar(dateObj).year;
 }
