@@ -81,7 +81,7 @@ export default async function PrintNoticePage({ params, searchParams }: Props) {
 
     const agencyRaw = tenderRaw.contractorId
         ? await Agency.findById(tenderRaw.contractorId).lean() as unknown as IdLean | null
-        : await Agency.findOne({ name: tenderRaw.contractorName }).lean() as unknown as IdLean | null;
+        : await Agency.findOne({ name: (tenderRaw.contractorName ?? '').trim() }).collation({ locale: 'en', strength: 2 }).lean() as unknown as IdLean | null;
 
     const packageData = JSON.parse(JSON.stringify(pkgRaw));
     const tender = JSON.parse(JSON.stringify(tenderRaw));

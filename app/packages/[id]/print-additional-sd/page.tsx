@@ -52,7 +52,7 @@ export default async function PrintAdditionalSDPage({ params }: Props) {
     const agencyRaw = tenderRaw ? (
         tenderRaw.contractorId
             ? await Agency.findById(tenderRaw.contractorId).lean() as unknown as IdLean | null
-            : await Agency.findOne({ name: tenderRaw.contractorName }).lean() as unknown as IdLean | null
+            : await Agency.findOne({ name: (tenderRaw.contractorName ?? '').trim() }).collation({ locale: 'en', strength: 2 }).lean() as unknown as IdLean | null
     ) : null;
 
     // Fetch existing DepositRefund record for this package

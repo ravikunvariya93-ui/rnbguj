@@ -82,9 +82,14 @@ export default async function DeductionPage({ params }: Props) {
 
     let agencyRaw: IdLean | null = null;
     if (tenderRaw?.contractorName) {
-        agencyRaw = tenderRaw.contractorId
-            ? await Agency.findById(tenderRaw.contractorId).lean() as unknown as IdLean | null
-            : await Agency.findOne({ name: tenderRaw.contractorName }).lean() as unknown as IdLean | null;
+        if (tenderRaw.contractorId) {
+            agencyRaw = await Agency.findById(tenderRaw.contractorId).lean() as unknown as IdLean | null;
+        }
+        if (!agencyRaw) {
+            // Case-insensitive exact match: tender may store "Universal associates"
+            // while Agency stores "Universal Associates"
+            agencyRaw = await Agency.findOne({ name: tenderRaw.contractorName.trim() }).collation({ locale: 'en', strength: 2 }).lean() as unknown as IdLean | null;
+        }
     }
 
     // Also fetch all previous bills for this workOrder to accurately show "Since Previous Bill"

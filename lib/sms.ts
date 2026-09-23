@@ -85,7 +85,7 @@ export async function checkAndSendWorkOrderSMS(workOrderId: string): Promise<boo
             Package.findById(tender.packageId),
             tender.contractorId
                 ? Agency.findById(tender.contractorId)
-                : Agency.findOne({ name: tender.contractorName })
+                : Agency.findOne({ name: tender.contractorName.trim() }).collation({ locale: 'en', strength: 2 })
         ]);
 
         if (!agency) {

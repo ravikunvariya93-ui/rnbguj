@@ -100,7 +100,7 @@ export default async function PrintWorkOrderPage({ params }: Props) {
     // Fetch Agency (Contractor) details for address and mobile number
     const agencyRaw = tenderRaw.contractorId
         ? await Agency.findById(tenderRaw.contractorId).lean() as unknown as IdLean | null
-        : await Agency.findOne({ name: tenderRaw.contractorName }).lean() as unknown as IdLean | null;
+        : await Agency.findOne({ name: (tenderRaw.contractorName ?? '').trim() }).collation({ locale: 'en', strength: 2 }).lean() as unknown as IdLean | null;
 
     // Fetch DTP details for tenderAmount
     const dtpRaw = await DTP.findOne({ tsId: pkgRaw._id } as unknown as QueryFilter<IDTP>).lean() as unknown as IdLean | null;
