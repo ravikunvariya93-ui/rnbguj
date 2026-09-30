@@ -6,7 +6,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { memo, useMemo } from 'react';
 import { 
     Building2, FileText, Home, CheckCircle, 
-    Package, Layers, X, User, LogOut, Users, ClipboardList, TrendingUp, Landmark 
+    Package, Layers, X, User, LogOut, Users, ClipboardList, TrendingUp, Landmark, BarChart3 
 } from 'lucide-react';
 import { ALL_AUDITOR_ROLES, ROLE_LABELS } from '@/lib/roles';
 
@@ -33,6 +33,7 @@ export default memo(function Sidebar({ isOpen, onClose }: SidebarProps) {
 
     const navigation = [
         { name: 'Dashboard',       href: '/',                  icon: Home,          roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...AUDITOR_ROLES] },
+        { name: 'Reports',         href: '/reports',            icon: BarChart3,     roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...AUDITOR_ROLES] },
         { name: 'Approved Work',   href: '/approved-works',    icon: CheckCircle,   roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...AUDITOR_ROLES] },
         { name: 'TS',              href: '/technical-sanctions', icon: Layers,      roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...AUDITOR_ROLES] },
         { name: 'Package',         href: '/packages',          icon: Package,       roles: ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', ...AUDITOR_ROLES] },
