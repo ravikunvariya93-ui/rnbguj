@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import { auth } from '@/auth';
+import { isAdminSession } from '@/lib/accessServer';
 
 export async function GET() {
   // Bootstrap endpoint: disabled in production unless explicitly allowed.
@@ -22,7 +23,7 @@ export async function GET() {
     const anyUser = await User.findOne({}).select('_id').lean();
     if (anyUser) {
       const session = await auth();
-      if ((session?.user as { role?: string } | undefined)?.role !== 'ADMIN') {
+      if (!(await isAdminSession(session))) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
     }
@@ -33,14 +34,18 @@ export async function GET() {
       name: 'Super Admin',
       username: 'admin',
       password: hashedPassword,
-      role: 'ADMIN',
+      roles: ['ADMIN'],
+      officeType: 'DIVISION',
+      jurisdiction: '',
+      assignedSubDivisions: [],
+      nameHistory: [],
     });
 
     return NextResponse.json({
       message: 'Admin user created successfully',
       user: {
         username: admin.username,
-        role: admin.role,
+        roles: admin.roles,
       },
     });
   } catch {

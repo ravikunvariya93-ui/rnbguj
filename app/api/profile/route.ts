@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
+import Jurisdiction from '@/models/Jurisdiction';
 import { auth } from '@/auth';
 
 /** GET /api/profile — fetch own full profile including nameHistory */
@@ -13,17 +14,25 @@ export async function GET() {
   try {
     await dbConnect();
     const userId = (session.user as { id?: string }).id;
-    const user = await User.findById(userId).select('-password').lean();
+    const user = await User.findById(userId).select('-password').lean() as unknown as Record<string, unknown> | null;
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
-    return NextResponse.json(user);
+    // Resolve posting name for display (stored as doc id).
+    let jurisdictionName = '';
+    if (typeof user.jurisdiction === 'string' && /^[0-9a-fA-F]{24}$/.test(user.jurisdiction)) {
+      const jDoc = await Jurisdiction.findById(user.jurisdiction).select('name').lean() as unknown as { name?: string } | null;
+      jurisdictionName = jDoc?.name || '';
+    } else if (typeof user.jurisdiction === 'string') {
+      jurisdictionName = user.jurisdiction;
+    }
+    return NextResponse.json({ ...user, jurisdictionName });
   } catch (error: unknown) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
 
-/** PUT /api/profile — update own name and/or designation */
+/** PUT /api/profile — update own name */
 export async function PUT(req: Request) {
   const session = await auth();
   if (!session?.user) {
@@ -31,7 +40,7 @@ export async function PUT(req: Request) {
   }
 
   try {
-    const { name, designation } = await req.json();
+    const { name } = await req.json();
     await dbConnect();
 
     const userId = (session.user as { id?: string }).id;
@@ -41,15 +50,13 @@ export async function PUT(req: Request) {
     }
 
     const nameChanged = name && name !== currentUser.name;
-    const designationChanged = designation !== undefined && designation !== currentUser.designation;
 
-    // Archive old values into history
-    if (nameChanged || designationChanged) {
+    // Archive old name into history
+    if (nameChanged) {
       await User.findByIdAndUpdate(userId, {
         $push: {
           nameHistory: {
             name: currentUser.name,
-            designation: currentUser.designation || '',
             changedAt: new Date(),
             changedBy: (session.user as { username?: string }).username || 'self',
           },
@@ -57,9 +64,8 @@ export async function PUT(req: Request) {
       });
     }
 
-    const updateData: { name?: string; designation?: string } = {};
+    const updateData: { name?: string } = {};
     if (name) updateData.name = name;
-    if (designation !== undefined) updateData.designation = designation;
 
     const updated = await User.findByIdAndUpdate(userId, updateData, { new: true }).select('-password');
     return NextResponse.json(updated);

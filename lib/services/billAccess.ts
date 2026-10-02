@@ -14,7 +14,7 @@ void LOA;
 void Tender;
 void Package;
 
-/** Verify an auditor may access a bill via the Package.subDivision chain. */
+/** Verify a scoped user may access a bill via the Package.subDivision chain. */
 export async function auditorCanAccessBill(billId: string, auditorSubDivision: string): Promise<boolean> {
   const bill = (await Bill.findById(billId)
     .populate({ path: 'workOrderId', populate: { path: 'loaId', populate: { path: 'tenderId' } } })
@@ -31,7 +31,7 @@ export async function auditorCanAccessBill(billId: string, auditorSubDivision: s
 }
 
 /**
- * Work-order ids visible to an auditor's sub-division. Single place for the
+ * Work-order ids visible to a scoped sub-division. Single place for the
  * Package → Tender → LOA → WorkOrder chain so list + create stay in sync.
  */
 export async function getAuditorWorkOrderIds(auditorSubDivision: string): Promise<string[]> {

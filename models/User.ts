@@ -1,5 +1,4 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
-import { ALL_AUDITOR_ROLES } from '@/lib/roles';
 
 export interface INameHistoryEntry {
   name: string;
@@ -12,8 +11,13 @@ export interface IUser extends Document {
   name: string;
   username: string;
   password?: string;
-  role: 'ADMIN' | 'SUPERVISOR' | 'VIEWER' | 'TENDERCLERK' | 'AAE' | 'DEE' | 'AUDITOR_BVN' | 'AUDITOR_TLJ' | 'AUDITOR_MHV' | 'AUDITOR_SHR' | 'AUDITOR_VLB' | 'AUDITOR_PLT';
-  designation?: string;
+  /** Assigned role keys. First entry is the primary (display) role. */
+  roles: string[];
+  officeType: 'DIVISION' | 'SUB_DIVISION';
+  jurisdiction: string;
+  /** Sub-division whose bills this user passes (Auditor posted in Division office). Stores the doc id. */
+  /** Sub-divisions whose bills this user passes (Auditor posted in Division office). Stores doc ids. */
+  assignedSubDivisions: string[];
   nameHistory: INameHistoryEntry[];
   createdAt: Date;
 }
@@ -24,8 +28,6 @@ const NameHistoryEntrySchema = new Schema<INameHistoryEntry>({
   changedAt: { type: Date, default: Date.now },
   changedBy: { type: String },
 }, { _id: false });
-
-const allRoles = ['ADMIN', 'SUPERVISOR', 'VIEWER', 'TENDERCLERK', 'AAE', 'DEE', ...ALL_AUDITOR_ROLES];
 
 const UserSchema: Schema = new Schema({
   name: {
@@ -41,14 +43,23 @@ const UserSchema: Schema = new Schema({
     type: String,
     required: [true, 'Please provide a password'],
   },
-  role: {
-    type: String,
-    enum: allRoles,
-    default: 'VIEWER',
+  roles: {
+    type: [String],
+    default: [],
   },
-  designation: {
+  officeType: {
+    type: String,
+    enum: ['DIVISION', 'SUB_DIVISION'],
+    default: 'DIVISION',
+  },
+  jurisdiction: {
     type: String,
     default: '',
+    trim: true,
+  },
+  assignedSubDivisions: {
+    type: [String],
+    default: [],
   },
   nameHistory: {
     type: [NameHistoryEntrySchema],

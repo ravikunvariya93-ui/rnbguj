@@ -11,12 +11,22 @@ interface ManagedUser {
     _id: string;
     name: string;
     username: string;
-    role: string;
+    role?: string;
+    roles?: string[];
+    officeType?: string;
+    jurisdiction?: string;
+    assignedSubDivision?: string;
+    assignedSubDivisions?: string[];
     createdAt: string;
 }
 
+const userRolesOf = (user: ManagedUser): string[] =>
+    Array.isArray(user.roles) && user.roles.length > 0 ? user.roles : (user.role ? [user.role] : []);
+
 export default function UserManagementPage() {
     const [users, setUsers] = useState<ManagedUser[]>([]);
+    const [roleLabels, setRoleLabels] = useState<Record<string, string>>({});
+    const [jurisdictionNames, setJurisdictionNames] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(true);
     const [, setError] = useState('');
     const [search, setSearch] = useState('');
@@ -26,10 +36,30 @@ export default function UserManagementPage() {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/admin/users');
-            if (!res.ok) throw new Error('Failed to fetch users');
-            const data = await res.json();
+            const [usersRes, rolesRes, jurisdictionsRes] = await Promise.all([
+                fetch('/api/admin/users'),
+                fetch('/api/admin/roles'),
+                fetch('/api/admin/jurisdictions'),
+            ]);
+            if (!usersRes.ok) throw new Error('Failed to fetch users');
+            const data = await usersRes.json();
             setUsers(data);
+            if (rolesRes.ok) {
+                const roles = await rolesRes.json();
+                const map: Record<string, string> = {};
+                (Array.isArray(roles) ? roles : []).forEach((r: { key: string; label: string }) => {
+                    map[r.key] = r.label;
+                });
+                setRoleLabels(map);
+            }
+            if (jurisdictionsRes.ok) {
+                const jurisdictions = await jurisdictionsRes.json();
+                const jmap: Record<string, string> = {};
+                (Array.isArray(jurisdictions) ? jurisdictions : []).forEach((j: { _id: string; name: string }) => {
+                    jmap[j._id] = j.name;
+                });
+                setJurisdictionNames(jmap);
+            }
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Failed to fetch users');
         } finally {
@@ -112,6 +142,7 @@ export default function UserManagementPage() {
                             <tr>
                                 <th className="px-6 py-4">User</th>
                                 <th className="px-6 py-4">Role</th>
+                                <th className="px-6 py-4">Office</th>
                                 <th className="px-6 py-4">Created At</th>
                                 <th className="px-6 py-4 text-right">Actions</th>
                             </tr>
@@ -119,14 +150,14 @@ export default function UserManagementPage() {
                         <tbody className="divide-y divide-gray-50">
                             {loading && users.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-12 text-center">
+                                    <td colSpan={5} className="px-6 py-12 text-center">
                                         <Loader2 className="h-8 w-8 text-emerald-600 animate-spin mx-auto mb-2" />
                                         <p className="text-gray-500 text-sm">Loading users...</p>
                                     </td>
                                 </tr>
                             ) : filteredUsers.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
+                                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
                                         <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-20" />
                                         No users found.
                                     </td>
@@ -146,10 +177,25 @@ export default function UserManagementPage() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${getRoleBadgeColor(user.role)}`}>
-                                                <Shield className="h-3 w-3" />
-                                                {user.role}
-                                            </span>
+                                            <div className="flex flex-wrap gap-1">
+                                                {userRolesOf(user).map((rk) => (
+                                                    <span key={rk} className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border ${getRoleBadgeColor(rk)}`}>
+                                                        <Shield className="h-3 w-3" />
+                                                        {roleLabels[rk] || rk}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <p className="text-sm font-semibold text-gray-800">
+                                                {user.officeType === 'SUB_DIVISION' ? 'Sub Division' : 'Division'}
+                                            </p>
+                                            {user.jurisdiction && (
+                                                <p className="text-xs text-gray-500">{jurisdictionNames[user.jurisdiction] || user.jurisdiction}</p>
+                                            )}
+                                            {((user.assignedSubDivisions && user.assignedSubDivisions.length > 0 ? user.assignedSubDivisions : (user.assignedSubDivision ? [user.assignedSubDivision] : [])).length > 0) && (
+                                                <p className="text-xs text-amber-600 font-medium">Scope: {(user.assignedSubDivisions && user.assignedSubDivisions.length > 0 ? user.assignedSubDivisions : [user.assignedSubDivision as string]).map((v) => jurisdictionNames[v] || v).join(', ')}</p>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2 text-gray-500 text-sm">

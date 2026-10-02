@@ -6,8 +6,6 @@ import LOA from '@/models/LOA';
 import Tender from '@/models/Tender';
 import ApprovedWork from '@/models/ApprovedWork';
 import ExcessProposalsClient, { type Proposal, type PackageOption } from './ExcessProposalsClient';
-import { auth } from '@/auth';
-import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 import type { QueryFilter } from 'mongoose';
 import type { IExcessProposal } from '@/models/ExcessProposal';
 import type { IPackage } from '@/models/Package';
@@ -44,6 +42,9 @@ void LOA;
 void Tender;
 void ApprovedWork;
 
+import { auth } from '@/auth';
+import { getScopedSubDivision } from '@/lib/access';
+
 export const dynamic = 'force-dynamic';
 
 function serialize<T>(obj: T): T {
@@ -66,9 +67,8 @@ function serialize<T>(obj: T): T {
 export default async function ExcessProposalsPage() {
     await dbConnect();
     const session = await auth();
-    const userRole = (session?.user as { role?: string } | undefined)?.role;
-    const auditorSubDivision = getAuditorSubDivision(userRole);
-    const isAuditor = isAuditorRole(userRole);
+    const auditorSubDivision = getScopedSubDivision(session?.user);
+    const isAuditor = auditorSubDivision !== null;
 
     const proposalQuery: ExcessProposalFilter = {};
     let packageQuery: PackageFilter = {};

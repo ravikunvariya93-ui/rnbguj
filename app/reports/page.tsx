@@ -10,8 +10,9 @@ import WorkTypeFilter from '@/components/WorkTypeFilter';
 import WeeklyWorkOrderJobNoReport from '@/components/WeeklyWorkOrderJobNoReport';
 import { getISTCalendar, istMidnightUTC } from '@/lib/dateUtils';
 import Link from 'next/link';
+
 import { auth } from '@/auth';
-import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
+import { getScopedSubDivision } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -127,9 +128,8 @@ type MongoFilter = Record<string, unknown>;
 export default async function ReportsPage({ searchParams }: Props) {
     await dbConnect();
     const session = await auth();
-    const userRole = (session?.user as { role?: string } | undefined)?.role;
-    const auditorSubDivision = getAuditorSubDivision(userRole);
-    const isAuditor = isAuditorRole(userRole);
+    const auditorSubDivision = getScopedSubDivision(session?.user);
+    const isAuditor = auditorSubDivision !== null;
 
     const params = await searchParams;
 

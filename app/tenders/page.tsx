@@ -17,8 +17,9 @@ import ViewBiddersModalButton from '@/components/ViewBiddersModalButton';
 import { buildDashboardFilter, parsePagination } from '@/lib/queryHelpers';
 import type { ListPageSearchParams, Column } from '@/lib/types';
 import { formatShortDate } from '@/lib/dateUtils';
+
 import { auth } from '@/auth';
-import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
+import { getScopedSubDivision } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -103,9 +104,8 @@ interface Props {
 export default async function TendersListPage({ searchParams }: Props) {
     await dbConnect();
     const session = await auth();
-    const userRole = (session?.user as { role?: string } | undefined)?.role;
-    const auditorSubDivision = getAuditorSubDivision(userRole);
-    const isAuditor = isAuditorRole(userRole);
+    const auditorSubDivision = getScopedSubDivision(session?.user);
+    const isAuditor = auditorSubDivision !== null;
 
     const params = await searchParams;
 

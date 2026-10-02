@@ -4,7 +4,8 @@ import Bill from '@/models/Bill';
 import WorkOrder from '@/models/WorkOrder';
 import Package from '@/models/Package';
 import { auth } from '@/auth';
-import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
+import { getScopedSubDivision } from '@/lib/access';
+import { canAccessModuleServer } from '@/lib/accessServer';
 import { getAuditorWorkOrderIds } from '@/lib/services/billAccess';
 import { getPagination, isObjectId, sanitizeUpdate } from '@/lib/api/validation';
 
@@ -19,9 +20,8 @@ export async function GET(request: Request) {
         if (!session?.user) {
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
-        const userRole = (session?.user as { role?: string } | undefined)?.role;
-        const auditorSubDivision = getAuditorSubDivision(userRole);
-        const isAuditor = isAuditorRole(userRole);
+        const auditorSubDivision = getScopedSubDivision(session?.user);
+        const isAuditor = auditorSubDivision !== null;
 
         const { searchParams } = new URL(request.url);
         const { page, limit, skip } = getPagination(request.url);
@@ -79,10 +79,9 @@ export async function POST(request: Request) {
         if (!session?.user) {
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
-        const role = (session.user as { role?: string } | undefined)?.role;
-        // Tender Clerks cannot create bills
-        if (role === 'TENDERCLERK') {
-            return NextResponse.json({ success: false, error: 'Tender Clerks do not have permission to create bills' }, { status: 403 });
+        // Roles without bill access cannot create bills
+        if (!(await canAccessModuleServer(session, 'bills'))) {
+            return NextResponse.json({ success: false, error: 'Your role does not have permission to create bills' }, { status: 403 });
         }
 
         await dbConnect();
@@ -95,9 +94,9 @@ export async function POST(request: Request) {
         }
         const clean = sanitizeUpdate(body);
 
-        // If Auditor, ensure the target workOrder belongs to their sub-division
-        const auditorSubDivision = getAuditorSubDivision(role);
-        if (isAuditorRole(role) && auditorSubDivision) {
+        // If scoped to a sub-division, ensure the target workOrder belongs to it
+        const auditorSubDivision = getScopedSubDivision(session?.user);
+        if (auditorSubDivision) {
             const workOrder = await WorkOrder.findById(clean.workOrderId).populate({
                 path: 'loaId',
                 populate: { path: 'tenderId' }

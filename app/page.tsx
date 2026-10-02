@@ -9,6 +9,7 @@ import ApprovedWork from '@/models/ApprovedWork';
 import DataTable from '@/components/DataTable';
 import Badge, { toneForTenderStatus } from '@/components/ui/Badge';
 import SearchBar from '@/components/SearchBar';
+import TasksCard from '@/components/TasksCard';
 import { Search } from 'lucide-react';
 import { formatShortDate } from '@/lib/dateUtils';
 import type { Column } from '@/lib/types';
@@ -364,6 +365,9 @@ export default async function Home({ searchParams }: Props) {
                         Case-insensitive partial match — results appear below in Tenders & Packages and Approved Works tables. Clear the box to hide results.
                     </p>
                 </div>
+
+                {/* My Tasks */}
+                <TasksCard />
 
                 {/* Search Results Section */}
                 {searchQuery && (

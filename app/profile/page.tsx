@@ -2,12 +2,12 @@
 
 import { useSession, signOut } from 'next-auth/react';
 import { useEffect, useState } from 'react';
-import { User, Shield, LogOut, Building2, Briefcase, Clock, ChevronRight, Loader2, Edit2, Check, X } from 'lucide-react';
-import { ROLE_LABELS, isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
+import { User, Shield, LogOut, Building2, Clock, ChevronRight, Loader2, Edit2, Check, X } from 'lucide-react';
+import { ROLE_LABELS } from '@/lib/roles';
+import { OFFICE_TYPE_LABELS, MODULES, getScopedSubDivision } from '@/lib/access';
 
 interface NameHistoryEntry {
   name: string;
-  designation?: string;
   changedAt: string;
   changedBy?: string;
 }
@@ -15,9 +15,101 @@ interface NameHistoryEntry {
 interface FullProfile {
   name: string;
   username: string;
-  role: string;
-  designation?: string;
+  role?: string;
+  roles?: string[];
+  officeType?: string;
+  jurisdictionName?: string;
   nameHistory: NameHistoryEntry[];
+}
+
+function ChangePasswordForm() {
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [isError, setIsError] = useState(false);
+
+  const handleChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMsg('');
+    setIsError(false);
+    if (newPassword.length < 6) {
+      setIsError(true);
+      setMsg('New password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setIsError(true);
+      setMsg('New passwords do not match.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch('/api/profile/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to change password');
+      setMsg('Password changed successfully.');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      setIsError(true);
+      setMsg(err instanceof Error ? err.message : 'Failed to change password.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleChange} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+      <p className="text-sm font-bold text-gray-800">Change Password</p>
+      {msg && (
+        <p className={`text-xs font-semibold rounded-md px-3 py-2 ${isError ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
+          {msg}
+        </p>
+      )}
+      <input
+        type="password"
+        value={currentPassword}
+        onChange={(e) => setCurrentPassword(e.target.value)}
+        placeholder="Current password"
+        required
+        autoComplete="current-password"
+        className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white"
+      />
+      <input
+        type="password"
+        value={newPassword}
+        onChange={(e) => setNewPassword(e.target.value)}
+        placeholder="New password (min 6 characters)"
+        required
+        autoComplete="new-password"
+        className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white"
+      />
+      <input
+        type="password"
+        value={confirmPassword}
+        onChange={(e) => setConfirmPassword(e.target.value)}
+        placeholder="Confirm new password"
+        required
+        autoComplete="new-password"
+        className="block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white"
+      />
+      <button
+        type="submit"
+        disabled={saving}
+        className="w-full flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold disabled:opacity-60 transition-colors"
+      >
+        {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+        Update Password
+      </button>
+    </form>
+  );
 }
 
 export default function ProfilePage() {
@@ -26,7 +118,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState('');
-  const [editDesignation, setEditDesignation] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
 
@@ -36,7 +127,6 @@ export default function ProfilePage() {
       .then(data => {
         setProfile(data);
         setEditName(data.name || '');
-        setEditDesignation(data.designation || '');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -48,7 +138,7 @@ export default function ProfilePage() {
       const res = await fetch('/api/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editName, designation: editDesignation }),
+        body: JSON.stringify({ name: editName }),
       });
       if (!res.ok) throw new Error('Failed to save');
       const updated = await res.json();
@@ -80,14 +170,26 @@ export default function ProfilePage() {
     );
   }
 
-  const user = session.user as { role?: string; name?: string | null; username?: string };
-  const userRole = user.role ?? '';
-  const roleLabel = ROLE_LABELS[userRole] || user.role;
-  const auditorSubDivision = getAuditorSubDivision(user.role);
+  const user = session.user as { role?: string; roles?: string[]; roleLabels?: string[]; roleLabel?: string; officeType?: string; jurisdiction?: string; jurisdictionName?: string; assignedSubDivisionNames?: string[]; assignedSubDivisionName?: string; name?: string | null; username?: string };
+  // Session (JWT) may predate the roles migration — fall back to the live DB
+  // profile so labels never render blank.
+  const effectiveRoles: string[] = Array.isArray(user.roles) && user.roles.length > 0
+    ? user.roles
+    : (user.role ? [user.role] : (Array.isArray(profile?.roles) && (profile.roles as string[]).length > 0 ? (profile.roles as string[]) : (profile?.role ? [profile.role] : [])));
+  const isAdminUser = effectiveRoles.includes('ADMIN');
+  const userRole = effectiveRoles[0] ?? user.role ?? '';
+  const roleLabelList = Array.isArray(user.roleLabels) && user.roleLabels.length > 0
+    ? user.roleLabels
+    : effectiveRoles.length > 0
+      ? effectiveRoles.map((rk) => ROLE_LABELS[rk] || rk)
+      : [isAdminUser ? 'Administrator' : 'No role assigned'];
+  const roleLabel = roleLabelList[0];
+  const officeLabel = (user.officeType || profile?.officeType) ? (OFFICE_TYPE_LABELS[(user.officeType || profile?.officeType) as string] || (user.officeType || profile?.officeType)) : '';
+  const jurisdictionName = user.jurisdictionName || profile?.jurisdictionName || '';
+  const scopedJurisdiction = getScopedSubDivision(session.user);
   const roleBadgeClass =
-    user.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' :
-    user.role === 'SUPERVISOR' ? 'bg-emerald-100 text-emerald-800' :
-    isAuditorRole(user.role) ? 'bg-amber-100 text-amber-800' :
+    isAdminUser ? 'bg-purple-100 text-purple-800' :
+    scopedJurisdiction ? 'bg-amber-100 text-amber-800' :
     'bg-gray-100 text-gray-800';
 
   const history: NameHistoryEntry[] = (profile?.nameHistory || []).slice().reverse();
@@ -103,13 +205,18 @@ export default function ProfilePage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold">{profile?.name || user.name}</h1>
-              {profile?.designation && (
-                <p className="text-white/80 text-sm mt-0.5">{profile.designation}</p>
-              )}
               <p className="opacity-70 flex items-center gap-2 mt-1 text-sm">
                 <Shield className="h-3.5 w-3.5" />
                 {roleLabel}
-                {auditorSubDivision && <span className="ml-1 text-white/60">· {auditorSubDivision}</span>}
+                {officeLabel && <span className="ml-1 text-white/60">· {officeLabel}</span>}
+                {jurisdictionName && <span className="ml-1 text-white/60">· {jurisdictionName}</span>}
+                {isAdminUser && <span className="ml-1 text-white/60">· All authority</span>}
+                {(user.assignedSubDivisionNames && user.assignedSubDivisionNames.length > 0
+                  ? user.assignedSubDivisionNames
+                  : (user.assignedSubDivisionName ? [user.assignedSubDivisionName] : [])
+                ).length > 0 && (
+                  <span className="ml-1 text-white/60">· Scope: {(user.assignedSubDivisionNames && user.assignedSubDivisionNames.length > 0 ? user.assignedSubDivisionNames : [user.assignedSubDivisionName as string]).join(', ')}</span>
+                )}
               </p>
             </div>
           </div>
@@ -157,27 +264,6 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Designation */}
-              <div className="flex items-start gap-4">
-                <div className="p-2 bg-emerald-50 rounded-lg flex-shrink-0">
-                  <Briefcase className="h-5 w-5 text-emerald-600" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-500">Designation</p>
-                  {editing ? (
-                    <input
-                      type="text"
-                      value={editDesignation}
-                      onChange={e => setEditDesignation(e.target.value)}
-                      className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                      placeholder="e.g. Junior Auditor"
-                    />
-                  ) : (
-                    <p className="text-base font-semibold text-gray-900">{profile?.designation || <span className="text-gray-400 font-normal italic">Not set</span>}</p>
-                  )}
-                </div>
-              </div>
-
               {/* Username */}
               <div className="flex items-start gap-4">
                 <div className="p-2 bg-emerald-50 rounded-lg flex-shrink-0">
@@ -196,11 +282,28 @@ export default function ProfilePage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Access Level</p>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1 ${roleBadgeClass}`}>
-                    {roleLabel}
-                  </span>
-                  {auditorSubDivision && (
-                    <p className="text-xs text-gray-500 mt-1">Bills restricted to: <span className="font-semibold text-amber-700">{auditorSubDivision}</span> sub-division</p>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {roleLabelList.map((rl) => (
+                      <span key={rl} className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${roleBadgeClass}`}>
+                        {rl}
+                      </span>
+                    ))}
+                  </div>
+                  {isAdminUser ? (
+                    <div className="mt-2">
+                      <p className="text-xs font-bold text-purple-700">Full authority — every module, division & sub-division.</p>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {MODULES.filter((m) => m.key !== 'admin').map((m) => (
+                          <span key={m.key} className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                            {m.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    scopedJurisdiction && (
+                      <p className="text-xs text-gray-500 mt-1">Restricted to: <span className="font-semibold text-amber-700">{scopedJurisdiction}</span> sub-division</p>
+                    )
                   )}
                 </div>
               </div>
@@ -228,7 +331,7 @@ export default function ProfilePage() {
                     Save
                   </button>
                   <button
-                    onClick={() => { setEditing(false); setEditName(profile?.name || ''); setEditDesignation(profile?.designation || ''); }}
+                    onClick={() => { setEditing(false); setEditName(profile?.name || ''); }}
                     className="flex items-center gap-1.5 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-colors"
                   >
                     <X className="h-4 w-4" /> Cancel
@@ -240,7 +343,9 @@ export default function ProfilePage() {
             {/* Security + Sign Out */}
             <div className="space-y-5">
               <h2 className="text-xl font-bold text-gray-900 border-b pb-2">Login & Security</h2>
-              
+
+              <ChangePasswordForm />
+
               <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-xl text-yellow-800 text-sm">
                 <p className="font-semibold mb-1">Security Tip</p>
                 Always ensure you log out of shared computers after completing your work.
@@ -268,7 +373,7 @@ export default function ProfilePage() {
         {history.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
             <Clock className="h-10 w-10 mx-auto mb-2 text-gray-200" />
-            <p className="text-sm">No history yet. Changes to name or designation will be recorded here.</p>
+            <p className="text-sm">No history yet. Name changes will be recorded here.</p>
           </div>
         ) : (
           <ol className="relative border-l-2 border-emerald-100 space-y-6 ml-4">
@@ -280,11 +385,6 @@ export default function ProfilePage() {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="text-sm font-bold text-gray-800">{entry.name}</p>
-                      {entry.designation && (
-                        <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-                          <Briefcase className="h-3 w-3" /> {entry.designation}
-                        </p>
-                      )}
                     </div>
                     <span className="text-xs text-gray-400 whitespace-nowrap">
                       {new Date(entry.changedAt).toLocaleDateString('en-GB', {
@@ -307,11 +407,6 @@ export default function ProfilePage() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-sm font-bold text-emerald-900">{profile?.name} <span className="text-emerald-600 font-normal text-xs ml-1">(current)</span></p>
-                    {profile?.designation && (
-                      <p className="text-xs text-emerald-700 mt-0.5 flex items-center gap-1">
-                        <Briefcase className="h-3 w-3" /> {profile.designation}
-                      </p>
-                    )}
                   </div>
                   <span className="text-xs text-emerald-500 font-semibold">Now</span>
                 </div>

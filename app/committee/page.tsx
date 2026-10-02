@@ -13,9 +13,11 @@ import ListPageLayout from '@/components/ListPageLayout';
 import DataTable from '@/components/DataTable';
 import { parsePagination } from '@/lib/queryHelpers';
 import type { ListPageSearchParams, Column } from '@/lib/types';
-import { auth } from '@/auth';
-import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
+
 import { formatDate, parseDateStr } from '@/lib/dateUtils';
+
+import { auth } from '@/auth';
+import { getScopedSubDivision } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,9 +88,9 @@ interface Props {
 export default async function CommitteeListPage({ searchParams }: Props) {
     await dbConnect();
     const session = await auth();
-    const userRole = (session?.user as { role?: string } | undefined)?.role;
-    const auditorSubDivision = getAuditorSubDivision(userRole);
-    const isAuditor = isAuditorRole(userRole);
+    const auditorSubDivision = getScopedSubDivision(session?.user);
+    const isAuditor = auditorSubDivision !== null;
+
 
     const params = await searchParams;
     

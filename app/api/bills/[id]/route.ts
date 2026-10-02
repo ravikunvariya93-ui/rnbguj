@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Bill from '@/models/Bill';
 import { auth } from '@/auth';
-import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
+import { getScopedSubDivision } from '@/lib/access';
+import { canAccessModuleServer } from '@/lib/accessServer';
 import { auditorCanAccessBill } from '@/lib/services/billAccess';
 import { isObjectId, sanitizeUpdate } from '@/lib/api/validation';
 
@@ -22,16 +23,15 @@ export async function GET(
         if (!session) {
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
-        const userRole = (session?.user as { role?: string } | undefined)?.role;
-        const auditorSubDivision = getAuditorSubDivision(userRole);
+        const auditorSubDivision = getScopedSubDivision(session?.user);
 
         const { id } = await params;
         if (!/^[0-9a-fA-F]{24}$/.test(id)) {
             return NextResponse.json({ success: false, error: 'Invalid bill id' }, { status: 400 });
         }
 
-        // Auditor access check
-        if (isAuditorRole(userRole) && auditorSubDivision) {
+        // Scoped access check
+        if (auditorSubDivision) {
             const allowed = await auditorCanAccessBill(id, auditorSubDivision);
             if (!allowed) {
                 return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
@@ -64,18 +64,17 @@ export async function PUT(
         if (!session) {
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
-        const role = (session?.user as { role?: string } | undefined)?.role;
-        // Tender Clerks cannot modify bills
-        if (role === 'TENDERCLERK') {
-            return NextResponse.json({ success: false, error: 'Tender Clerks do not have permission to modify bills' }, { status: 403 });
+        // Roles without bill access cannot modify bills
+        if (!(await canAccessModuleServer(session, 'bills'))) {
+            return NextResponse.json({ success: false, error: 'Your role does not have permission to modify bills' }, { status: 403 });
         }
 
         const { id } = await params;
         if (!isObjectId(id)) {
             return NextResponse.json({ success: false, error: 'Invalid bill id' }, { status: 400 });
         }
-        const auditorSubDivision = getAuditorSubDivision(role);
-        if (isAuditorRole(role) && auditorSubDivision) {
+        const auditorSubDivision = getScopedSubDivision(session?.user);
+        if (auditorSubDivision) {
             const allowed = await auditorCanAccessBill(id, auditorSubDivision);
             if (!allowed) {
                 return NextResponse.json({ success: false, error: 'Cannot modify bill for another sub-division' }, { status: 403 });
@@ -107,18 +106,17 @@ export async function DELETE(
         if (!session) {
             return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
         }
-        const role = (session?.user as { role?: string } | undefined)?.role;
-        // Tender Clerks cannot delete bills
-        if (role === 'TENDERCLERK') {
-            return NextResponse.json({ success: false, error: 'Tender Clerks do not have permission to delete bills' }, { status: 403 });
+        // Roles without bill access cannot delete bills
+        if (!(await canAccessModuleServer(session, 'bills'))) {
+            return NextResponse.json({ success: false, error: 'Your role does not have permission to delete bills' }, { status: 403 });
         }
 
         const { id } = await params;
         if (!/^[0-9a-fA-F]{24}$/.test(id)) {
             return NextResponse.json({ success: false, error: 'Invalid bill id' }, { status: 400 });
         }
-        const auditorSubDivision = getAuditorSubDivision(role);
-        if (isAuditorRole(role) && auditorSubDivision) {
+        const auditorSubDivision = getScopedSubDivision(session?.user);
+        if (auditorSubDivision) {
             const allowed = await auditorCanAccessBill(id, auditorSubDivision);
             if (!allowed) {
                 return NextResponse.json({ success: false, error: 'Cannot delete bill for another sub-division' }, { status: 403 });

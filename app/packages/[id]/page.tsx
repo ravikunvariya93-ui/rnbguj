@@ -14,9 +14,10 @@ import { notFound } from 'next/navigation';
 import PackageDetailClient from './PackageDetailClient';
 import Link from 'next/link';
 import { ArrowLeft, ShieldAlert } from 'lucide-react';
-import { auth } from '@/auth';
-import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 import type { ComponentProps } from 'react';
+
+import { auth } from '@/auth';
+import { getScopedSubDivision } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,9 +85,8 @@ function serialize<T>(obj: T): T {
 export default async function PackageDetailPage({ params }: { params: Promise<{ id: string }> }) {
     await dbConnect();
     const session = await auth();
-    const userRole = (session?.user as { role?: string } | undefined)?.role;
-    const auditorSubDivision = getAuditorSubDivision(userRole);
-    const isAuditor = isAuditorRole(userRole);
+    const auditorSubDivision = getScopedSubDivision(session?.user);
+    const isAuditor = auditorSubDivision !== null;
 
     const { id } = await params;
 

@@ -15,14 +15,15 @@ import { parsePagination, parseSort } from '@/lib/queryHelpers';
 import type { ListPageSearchParams, Column } from '@/lib/types';
 import { formatShortDate, parseDateStr } from '@/lib/dateUtils';
 import ApprovedWork from '@/models/ApprovedWork';
-import { auth } from '@/auth';
-import { isAuditorRole, getAuditorSubDivision } from '@/lib/roles';
 
 // Register models for populating nested relationships
 void LOA;
 void Tender;
 void Package;
 void ApprovedWork;
+
+import { auth } from '@/auth';
+import { getScopedSubDivision } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,9 +78,8 @@ interface Props {
 export default async function AgreementsListPage({ searchParams }: Props) {
     await dbConnect();
     const session = await auth();
-    const userRole = (session?.user as { role?: string } | undefined)?.role;
-    const auditorSubDivision = getAuditorSubDivision(userRole);
-    const isAuditor = isAuditorRole(userRole);
+    const auditorSubDivision = getScopedSubDivision(session?.user);
+    const isAuditor = auditorSubDivision !== null;
 
     const params = await searchParams;
 
