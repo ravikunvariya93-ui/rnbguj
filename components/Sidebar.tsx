@@ -74,7 +74,7 @@ export default memo(function Sidebar({ isOpen, onClose }: SidebarProps) {
             })
             .catch(() => null);
         return () => { cancelled = true; };
-    }, [sessionUser?.username]);
+    }, [sessionUser]);
 
     const user = useMemo(
         () => (serverIdentity ? { ...sessionUser, ...serverIdentity } : sessionUser),
@@ -94,7 +94,7 @@ export default memo(function Sidebar({ isOpen, onClose }: SidebarProps) {
         [user?.role, JSON.stringify(user?.modules)],
     );
 
-    const showAdmin = useMemo(() => canAccessModule(user, 'admin'), [user?.role, user?.modules]);
+    const showAdmin = useMemo(() => canAccessModule(user, 'admin'), [user]);
 
     // Stale session (minted before roles/modules existed in the token) —
     // every module check fails and the nav renders empty. Surface an

@@ -177,7 +177,6 @@ export default function ProfilePage() {
     ? user.roles
     : (user.role ? [user.role] : (Array.isArray(profile?.roles) && (profile.roles as string[]).length > 0 ? (profile.roles as string[]) : (profile?.role ? [profile.role] : [])));
   const isAdminUser = effectiveRoles.includes('ADMIN');
-  const userRole = effectiveRoles[0] ?? user.role ?? '';
   const roleLabelList = Array.isArray(user.roleLabels) && user.roleLabels.length > 0
     ? user.roleLabels
     : effectiveRoles.length > 0

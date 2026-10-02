@@ -64,7 +64,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         return NextResponse.json({ error: 'Select a Division / Sub Division posting' }, { status: 400 });
       }
       // Accept a doc id (new) or a legacy stored name.
-      let jDoc = /^[0-9a-fA-F]{24}$/.test(rawRef)
+      const jDoc = /^[0-9a-fA-F]{24}$/.test(rawRef)
         ? await Jurisdiction.findById(rawRef).lean() as unknown as { _id?: unknown; type?: string } | null
         : await Jurisdiction.findOne({ name: rawRef }).lean() as unknown as { _id?: unknown; type?: string } | null;
       if (!jDoc?._id) {
