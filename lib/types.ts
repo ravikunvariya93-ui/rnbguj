@@ -17,6 +17,7 @@ export interface ListPageSearchParams {
   noticeNo?: string;
   contractorName?: string;
   trialNo?: string;
+  percentage?: string;
   budgetHead?: string;
   dtpConsultant?: string;
   hasWorks?: string;

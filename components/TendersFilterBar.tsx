@@ -29,6 +29,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
     const [subDivision, setSubDivision] = useState(searchParams.get('subDivision') || '');
     const [workType, setWorkType] = useState(searchParams.get('workType') || '');
     const [buildingType, setBuildingType] = useState(searchParams.get('buildingType') || '');
+    const [percentage, setPercentage] = useState(searchParams.get('percentage') || '');
     const [isWorkTypeOpen, setIsWorkTypeOpen] = useState(false);
     const [isBuildingTypeOpen, setIsBuildingTypeOpen] = useState(false);
 
@@ -57,6 +58,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
         setSubDivision(searchParams.get('subDivision') || '');
         setWorkType(searchParams.get('workType') || '');
         setBuildingType(searchParams.get('buildingType') || '');
+        setPercentage(searchParams.get('percentage') || '');
     }, [searchParams]);
 
     const handleApplyFilters = () => {
@@ -86,6 +88,9 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
         if (buildingType) params.set('buildingType', buildingType);
         else params.delete('buildingType');
 
+        if (percentage) params.set('percentage', percentage);
+        else params.delete('percentage');
+
         router.push(`${pathname}?${params.toString()}`);
     };
 
@@ -98,6 +103,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
         params.delete('subDivision');
         params.delete('workType');
         params.delete('buildingType');
+        params.delete('percentage');
         params.set('page', '1');
 
         setNoticeYear('');
@@ -107,11 +113,12 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
         setSubDivision('');
         setWorkType('');
         setBuildingType('');
+        setPercentage('');
 
         router.push(`${pathname}?${params.toString()}`);
     };
 
-    const hasActiveFilters = !!(noticeYear || noticeNo || contractorName || trialNo || subDivision || workType || buildingType);
+    const hasActiveFilters = !!(noticeYear || noticeNo || contractorName || trialNo || subDivision || workType || buildingType || percentage);
     const selectedWorkTypes = workType ? workType.split(',').filter(Boolean) : [];
     const selectedBuildingTypes = buildingType ? buildingType.split(',').filter(Boolean) : [];
 
@@ -124,7 +131,7 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                 <span>Filter Tenders</span>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-8 gap-4 items-end">
                 {/* Sub Division */}
                 <div>
                     <label htmlFor="filterSubDivision" className="block text-xs font-bold text-emerald-900 uppercase tracking-wider mb-1">Sub Division</label>
@@ -299,6 +306,22 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                         <option value="3">Trial 3</option>
                         <option value="4">Trial 4</option>
                         <option value="5">Trial 5</option>
+                    </select>
+                </div>
+
+                {/* Percentage */}
+                <div>
+                    <label htmlFor="filterPercentage" className="block text-xs font-bold text-emerald-900 uppercase tracking-wider mb-1">Percentage</label>
+                    <select
+                        id="filterPercentage"
+                        value={percentage}
+                        onChange={(e) => setPercentage(e.target.value)}
+                        className="block w-full rounded-xl border-emerald-200 bg-white/90 text-emerald-950 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs transition-all"
+                    >
+                        <option value="">All Percentages</option>
+                        <option value="Above">Above</option>
+                        <option value="Below">Below</option>
+                        <option value="At Par">At Par</option>
                     </select>
                 </div>
             </div>

@@ -459,6 +459,24 @@ export default async function TendersListPage({ searchParams }: Props) {
         filterLabels.push(`Trial No: ${params.trialNo}`);
     }
 
+    if (params.percentage) {
+        // Whitelist: only the three UI options are accepted. 'Equals' is the
+        // legacy value for 'At Par' (see the Tender schema enum), so it is
+        // grouped with 'At Par' — direction lives in aboveBelowInWord, not in
+        // the numeric percentage (103 docs have a 0/missing percentage but a
+        // valid direction word).
+        const PERCENTAGE_DIRECTIONS: Record<string, string[]> = {
+            Above: ['Above'],
+            Below: ['Below'],
+            'At Par': ['At Par', 'Equals'],
+        };
+        const directions = PERCENTAGE_DIRECTIONS[params.percentage];
+        if (directions) {
+            query.aboveBelowInWord = { $in: directions };
+            filterLabels.push(`Percentage: ${params.percentage}`);
+        }
+    }
+
     const { page, limit, skip } = parsePagination(params);
     const sortObj: Record<string, 1 | -1> = {};
     if (params.sort && params.order && params.sort !== 'workType' && params.sort !== 'contractorMobile' && params.sort !== 'noOfRoads') {
@@ -715,7 +733,7 @@ export default async function TendersListPage({ searchParams }: Props) {
             addHref="/tenders/new"
             addLabel="Add New Tender"
             searchPlaceholder="Search by Tender ID, Package, or Contractor..."
-            filterActive={!!params.filter || !!params.search || !!params.noticeYear || !!params.noticeNo || !!params.contractorName || !!params.trialNo || !!params.subDivision || !!params.workType || !!params.buildingType || !!fromBoundStr || !!toBoundStr}
+            filterActive={!!params.filter || !!params.search || !!params.noticeYear || !!params.noticeNo || !!params.contractorName || !!params.trialNo || !!params.percentage || !!params.subDivision || !!params.workType || !!params.buildingType || !!fromBoundStr || !!toBoundStr}
             clearFiltersHref="/tenders"
         >
             <TendersFilterBar agencies={agencies} years={years} subDivisions={subDivisions} workTypes={workTypes} buildingTypes={buildingTypes} />
