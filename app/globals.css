@@ -16,12 +16,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* NOTE: no prefers-color-scheme: dark override — the app UI is light-only
+   (every surface hard-codes bg-white/bg-gray-*, text-gray-*). Flipping
+   --foreground to #ededed made inherited text (e.g. form inputs, which
+   Tailwind preflight sets to color:inherit) render white-on-white. */
 
 body {
   background: var(--background);
