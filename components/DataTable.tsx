@@ -26,9 +26,12 @@ interface DataTableProps<TRow> {
   exportFilename?: string;
   theme?: 'default' | 'emerald';
   fixedLayout?: boolean;
+  /** Minimum table width in px. Below this the wrapper scrolls horizontally
+   * instead of crushing columns (percentage widths + table-fixed). */
+  minWidth?: number;
 }
 
-function DataTableInner<TRow extends { _id?: unknown; [key: string]: unknown }>({ columns, data, emptyMessage = 'No data available.', actions, exportFilename, theme = 'default', fixedLayout = false }: DataTableProps<TRow>) {
+function DataTableInner<TRow extends { _id?: unknown; [key: string]: unknown }>({ columns, data, emptyMessage = 'No data available.', actions, exportFilename, theme = 'default', fixedLayout = false, minWidth }: DataTableProps<TRow>) {
   const tableIdBase = useId();
   const tableId = useMemo(() => `data-table-${tableIdBase.replace(/:/g, '')}`, [tableIdBase]);
   const totalColumns = columns.length + (actions ? 1 : 0);
@@ -50,7 +53,7 @@ function DataTableInner<TRow extends { _id?: unknown; [key: string]: unknown }>(
         </div>
       )}
       <div className={`overflow-x-auto border ${isEmerald ? 'border-emerald-300' : 'border-slate-300'} shadow-sm rounded-md cv-auto`}>
-        <table id={tableId} className={`w-full text-left border-collapse text-xs font-medium ${fixedLayout ? 'table-fixed' : ''}`}>
+        <table id={tableId} style={minWidth ? { minWidth } : undefined} className={`w-full text-left border-collapse text-xs font-medium ${fixedLayout ? 'table-fixed' : ''}`}>
         <thead>
           <tr className={`${isEmerald ? 'bg-emerald-100/80 border-b border-emerald-300' : 'bg-slate-100 border-b border-slate-300'}`}>
             {columns.map((col, colIdx) => {

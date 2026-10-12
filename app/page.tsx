@@ -107,7 +107,8 @@ export default async function Home({ searchParams }: Props) {
     const searchApprovedWorksColumns: Column[] = [
         { 
             key: 'srNo', 
-            label: 'Sr. No.', 
+            label: 'Sr. No.',
+            cellClassName: 'whitespace-nowrap',
             render: (row, idx) => idx + 1, 
             align: 'center',
             width: '5%'
@@ -134,10 +135,10 @@ export default async function Home({ searchParams }: Props) {
                 <span className="text-slate-400 italic">Unpackaged</span>
             )
         },
-        { key: 'jobNumberAmount', label: 'Amount (Lakh)', align: 'center', width: '10%', render: (row) => row.jobNumberAmount || '-' },
-        { key: 'approvalYear', label: 'Approval Year', align: 'center', width: '12%' },
+        { key: 'jobNumberAmount', label: 'Amount (Lakh)', align: 'center', width: '10%', cellClassName: 'whitespace-nowrap', render: (row) => row.jobNumberAmount || '-' },
+        { key: 'approvalYear', label: 'Approval Year', align: 'center', width: '12%', cellClassName: 'whitespace-nowrap' },
         { key: 'workType', label: 'Work Type', width: '12%' },
-        { key: 'estimateConsultant', label: 'Estimate Consultant', width: '17%' }
+        { key: 'estimateConsultant', label: 'Estimate Consultant', width: '17%', cellClassName: 'break-words' }
     ];
 
     // 4. Search Results Report (If search query exists)
@@ -272,13 +273,13 @@ export default async function Home({ searchParams }: Props) {
     }
 
     const searchColumns: Column[] = [
-        { key: 'tenderNoticeYear', label: 'Notice Year', width: '7%' },
-        { key: 'noticeNo', label: 'Notice No.', width: '7%' },
-        { key: 'srNo', label: 'Sr No.', align: 'center', width: '4%' },
+        { key: 'tenderNoticeYear', label: 'Notice Year', width: '6%', cellClassName: 'whitespace-nowrap' },
+        { key: 'noticeNo', label: 'Notice No.', width: '7%', cellClassName: 'whitespace-nowrap' },
+        { key: 'srNo', label: 'Sr No.', align: 'center', width: '4%', cellClassName: 'whitespace-nowrap' },
         { 
             key: 'packageName', 
             label: 'Package Name', 
-            width: '16%', 
+            width: '14%', 
             render: (row) => (
                 <div className="flex flex-col gap-1">
                     {row.packageId ? (
@@ -294,7 +295,7 @@ export default async function Home({ searchParams }: Props) {
         { 
             key: 'approvedWorks', 
             label: 'Approved Works', 
-            width: '20%',
+            width: '16%', 
             render: (row) => row.approvedWorks.length > 0 ? (
                 <div className="space-y-1">
                     {row.approvedWorks.map((work: string, idx: number) => (
@@ -305,39 +306,43 @@ export default async function Home({ searchParams }: Props) {
                 </div>
             ) : <span className="text-slate-400 italic">No works found</span>
         },
-        { key: 'contractorName', label: 'Contractor Name', width: '11%' },
+        { key: 'contractorName', label: 'Contractor Name', width: '10%', cellClassName: 'break-words' },
         { 
-            key: 'proposalDate', 
+            key: 'proposalDate',
+            cellClassName: 'whitespace-nowrap',
             label: 'Proposal Date', 
-            width: '7%',
+            width: '8.5%', 
             render: (row) => row.proposalDate === 'Not Required' ? (
-                <span className="text-slate-500 italic font-semibold">Not Required</span>
+                <span className="text-slate-500 italic font-semibold whitespace-normal">Not Required</span>
             ) : <span className="text-slate-600">{formatShortDate(row.proposalDate)}</span> 
         },
         { 
-            key: 'tenderApprovalDate', 
+            key: 'tenderApprovalDate',
+            cellClassName: 'whitespace-nowrap',
             label: 'Approval Date', 
-            width: '7%',
+            width: '8.5%', 
             render: (row) => row.tenderApprovalDate === 'Not Required' ? (
-                <span className="text-slate-500 italic font-semibold">Not Required</span>
+                <span className="text-slate-500 italic font-semibold whitespace-normal">Not Required</span>
             ) : <span className="text-slate-600">{formatShortDate(row.tenderApprovalDate)}</span> 
         },
         { 
-            key: 'acceptanceLetterDate', 
+            key: 'acceptanceLetterDate',
+            cellClassName: 'whitespace-nowrap',
             label: 'Acceptance Date', 
-            width: '7%',
-            render: (row) => <span className="text-slate-600">{formatShortDate(row.acceptanceLetterDate)}</span> 
+            width: '8.5%', 
+            render: (row) => <span className="text-slate-600">{formatShortDate(row.acceptanceLetterDate)}</span>  
         },
         { 
-            key: 'workOrderDate', 
+            key: 'workOrderDate',
+            cellClassName: 'whitespace-nowrap',
             label: 'Work Order Date', 
-            width: '7%',
-            render: (row) => <span className="text-slate-600">{formatShortDate(row.workOrderDate)}</span> 
+            width: '8.5%', 
+            render: (row) => <span className="text-slate-600">{formatShortDate(row.workOrderDate)}</span>  
         },
         {
             key: 'status',
             label: 'Status',
-            width: '7%',
+            width: '9%',
             render: (row) => <Badge tone={toneForTenderStatus(row.status)}>{row.status}</Badge>,
         }
     ];
@@ -366,9 +371,6 @@ export default async function Home({ searchParams }: Props) {
                     </p>
                 </div>
 
-                {/* My Tasks */}
-                <TasksCard />
-
                 {/* Search Results Section */}
                 {searchQuery && (
                     <div className="bg-white p-6 shadow-sm rounded-xl border border-slate-100 space-y-6">
@@ -386,6 +388,7 @@ export default async function Home({ searchParams }: Props) {
                                 emptyMessage="No matching tenders or packages found."
                                 exportFilename="Tenders_Search_Results.xlsx"
                                 fixedLayout
+                                minWidth={960}
                             />
                         </div>
 
@@ -398,10 +401,14 @@ export default async function Home({ searchParams }: Props) {
                                 emptyMessage="No matching approved works found."
                                 exportFilename="Approved_Works_Search_Results.xlsx"
                                 fixedLayout
+                                minWidth={820}
                             />
                         </div>
                     </div>
                 )}
+
+                {/* My Tasks — rendered last so it never sits between the search box and its results */}
+                <TasksCard />
 
             </div>
         </div>
