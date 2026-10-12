@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
     Save, RefreshCw, Plus, Loader2, ChevronDown, ChevronUp, 
@@ -206,6 +206,10 @@ export default function BillForm({
     const [isExcessSavingExpanded, setIsExcessSavingExpanded] = useState<boolean>(false);
     const [isWorkWiseExpanded, setIsWorkWiseExpanded] = useState<boolean>(false);
 
+    // Remembers the work order for which we already auto-filled the next Bill
+    // Number, so a manual selection afterwards isn't overwritten.
+    const autoBillNoForWorkOrder = useRef<string | null>(null);
+
     const sanitized = Object.fromEntries(
         Object.entries(initialData).map(([k, v]) => [k, v == null ? '' : v])
     ) as unknown as Record<string, string | number | undefined>;
@@ -369,9 +373,21 @@ export default function BillForm({
                 const res = await fetch(`/api/bills?workOrderId=${formData.workOrderId}&limit=1000`);
                 const data = await res.json();
                 if (data.success && Array.isArray(data.data)) {
-                    const currentBillNo = Number(formData.runningBillNumber) || 1;
+                    // Auto-increment the Bill Number for a new bill: default to
+                    // the highest existing number for this work order + 1.
+                    // Applied once per work order so a later manual choice wins.
+                    const billsList = data.data as BillSourceDoc[];
+                    const maxExistingNo = billsList.reduce((m, b) => Math.max(m, Number(b.runningBillNumber) || 0), 0);
+                    const shouldAutoNumber = !isEditing && autoBillNoForWorkOrder.current !== formData.workOrderId;
+                    if (shouldAutoNumber) {
+                        autoBillNoForWorkOrder.current = formData.workOrderId;
+                        setFormData((prev) => ({ ...prev, runningBillNumber: String(maxExistingNo + 1) }));
+                    }
+                    const currentBillNo = shouldAutoNumber
+                        ? maxExistingNo + 1
+                        : (Number(formData.runningBillNumber) || 1);
                     const currentBillId = initialData?._id;
-                    const prevBills: BillSourceDoc[] = data.data.filter((b: BillSourceDoc) => {
+                    const prevBills: BillSourceDoc[] = billsList.filter((b: BillSourceDoc) => {
                         if (currentBillId && b._id === currentBillId) {
                             return false;
                         }
@@ -396,7 +412,7 @@ export default function BillForm({
         // recalculateAuditMemoInternal is render-scoped; listing it would
         // re-run (and re-setState) on every render.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [formData.workOrderId, formData.runningBillNumber, initialData?._id]);
+    }, [formData.workOrderId, formData.runningBillNumber, initialData?._id, isEditing]);
 
     const getDeductionsForNetPayable = (
         netPayVal: number,
@@ -1006,7 +1022,7 @@ export default function BillForm({
                                             className="excel-cell-select font-medium"
                                             required
                                         >
-                                            {[...Array(50)].map((_, i) => {
+                                            {[...Array(Math.max(50, Number(formData.runningBillNumber) || 1))].map((_, i) => {
                                                 const num = i + 1;
                                                 const suffix = num === 1 ? 'st' : num === 2 ? 'nd' : num === 3 ? 'rd' : 'th';
                                                 return (
