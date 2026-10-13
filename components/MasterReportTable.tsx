@@ -77,7 +77,7 @@ const ALL_COLUMNS: ColumnConfig[] = [
     { key: 'dtp_dtpApprovingAuthority', label: 'DTP Approving Authority', category: 'dtp', defaultVisible: false, minWidth: '180px' },
     { key: 'dtp_dtpApprovalNo', label: 'DTP Approval No', category: 'dtp', defaultVisible: false, minWidth: '150px' },
     { key: 'dtp_dtpApprovalDate', label: 'DTP Approval Date', category: 'dtp', defaultVisible: false, isDate: true, minWidth: '150px' },
-    { key: 'dtp_tenderAmount', label: 'DTP Tender Amount (Lakh)', category: 'dtp', defaultVisible: false, align: 'right', minWidth: '150px' },
+    { key: 'dtp_tenderAmount', label: 'DTP Tender Amount (₹)', category: 'dtp', defaultVisible: false, align: 'right', minWidth: '150px' },
     { key: 'dtp_remarks', label: 'DTP Remarks', category: 'dtp', defaultVisible: false, minWidth: '200px' },
 
     // Tender
