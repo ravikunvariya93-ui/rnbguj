@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
+import { MapPin } from 'lucide-react';
 import VillagePicker, { type GeoCandidate, type NearRef } from './VillagePicker';
 
 export interface WorkRoute {
@@ -117,6 +118,7 @@ export default function WorksMap({ works, subDivision }: WorksMapProps) {
     const mapObj = useRef<L.Map | null>(null);
     const [routes, setRoutes] = useState<WorkRoute[]>([]);
     const [locating, setLocating] = useState(false);
+    const [showMap, setShowMap] = useState(false);
     const [picker, setPicker] = useState<{ village: string; candidates: GeoCandidate[]; near: NearRef | null } | null>(null);
     const context = (subDivision || '').trim();
 
@@ -151,16 +153,18 @@ export default function WorksMap({ works, subDivision }: WorksMapProps) {
         if (!cancelledRef.cancelled) setLocating(false);
     };
 
-    // Parse + geocode whenever the work list changes.
+    // Parse + geocode only once the user asks to see the map.
     useEffect(() => {
+        if (!showMap) return;
         const ref = { cancelled: false };
         locateAll(works, context, ref);
         return () => { ref.cancelled = true; };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [works.join('|'), context]);
+    }, [showMap, works.join('|'), context]);
 
     // Render Leaflet map from resolved routes.
     useEffect(() => {
+        if (!showMap) return;
         if (!mapRef.current) return;
         const allCoords = routes.flatMap((r) => r.coords).filter((c): c is [number, number] => !!c);
         if (allCoords.length === 0) return;
@@ -205,7 +209,7 @@ export default function WorksMap({ works, subDivision }: WorksMapProps) {
         if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
 
         return () => { /* keep map instance across route updates */ };
-    }, [routes]);
+    }, [routes, showMap]);
 
     useEffect(() => () => { mapObj.current?.remove(); mapObj.current = null; }, []);
 
@@ -254,6 +258,25 @@ export default function WorksMap({ works, subDivision }: WorksMapProps) {
 
     if (works.length === 0) {
         return <p className="text-sm text-slate-400 italic px-1 py-4 text-center">No works linked yet.</p>;
+    }
+
+    if (!showMap) {
+        return (
+            <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-8 text-center">
+                <MapPin className="h-6 w-6 text-slate-400" aria-hidden="true" />
+                <p className="text-xs font-semibold text-slate-500">
+                    The map is not loaded yet, so this page stays fast. Load it when you need it.
+                </p>
+                <button
+                    type="button"
+                    onClick={() => setShowMap(true)}
+                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+                >
+                    <MapPin className="h-4 w-4" aria-hidden="true" />
+                    Show on Map
+                </button>
+            </div>
+        );
     }
 
     const anyLocated = routes.some((r) => r.coords.some(Boolean));
