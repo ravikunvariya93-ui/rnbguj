@@ -1,11 +1,15 @@
-import { Suspense } from 'react';
+import { Suspense, type ComponentProps } from 'react';
 import dbConnect from '@/lib/db';
 import ApprovedWork from '@/models/ApprovedWork';
 import Package from '@/models/Package';
 import TechnicalSanction from '@/models/TechnicalSanction';
 import DTP from '@/models/DTP';
 import WorkOrder from '@/models/WorkOrder';
+import Tender from '@/models/Tender';
+import Approval from '@/models/Approval';
+import LOA from '@/models/LOA';
 import ExportTableButton from '@/components/ExportTableButton';
+import MasterReportTable from '@/components/MasterReportTable';
 import WorkTypeFilter from '@/components/WorkTypeFilter';
 import WeeklyWorkOrderJobNoReport from '@/components/WeeklyWorkOrderJobNoReport';
 import { getISTCalendar, istMidnightUTC } from '@/lib/dateUtils';
@@ -59,6 +63,7 @@ interface Props {
     searchParams: Promise<{
         workType?: string;
         loadSummary?: string;
+        loadMaster?: string;
         woWeek?: string;
         woWeeks?: string;
     }>;
@@ -90,6 +95,18 @@ interface DtpDoc {
     tsId?: LeanId | string | null;
     dtpApprovalDate?: unknown;
     tenderAmount?: number;
+    [key: string]: unknown;
+}
+interface MasterWorkDoc {
+    _id: LeanId;
+    workName?: string;
+    jobNumberApprovalDate?: string | Date | null;
+    createdAt?: string | Date | null;
+    updatedAt?: string | Date | null;
+    [key: string]: unknown;
+}
+interface MasterRow {
+    _id: string;
     [key: string]: unknown;
 }
 interface SummaryRow {
@@ -137,6 +154,7 @@ export default async function ReportsPage({ searchParams }: Props) {
         const newParams = new URLSearchParams();
         if (params.workType) newParams.set('workType', params.workType);
         if (params.loadSummary === 'true') newParams.set('loadSummary', 'true');
+        if (params.loadMaster === 'true') newParams.set('loadMaster', 'true');
         if (params.woWeek) newParams.set('woWeek', params.woWeek);
         if (params.woWeeks) newParams.set('woWeeks', params.woWeeks);
         Object.entries(overrides).forEach(([key, val]) => {
@@ -181,25 +199,228 @@ export default async function ReportsPage({ searchParams }: Props) {
     const filterLabelText = !shouldFilter ? 'All' : activeWorkTypes.length === 0 ? 'None' : activeWorkTypes.join(', ');
 
     const loadSummary = params.loadSummary === 'true';
+    const loadMaster = params.loadMaster === 'true';
 
     const [
         distinctWorkTypes,
         allApprovedWorks,
         allPackages,
         allTS,
-        allDTPs
+        allDTPs,
+        masterWorks,
+        masterTS,
+        masterPackages,
+        masterDTPs,
+        masterTenders,
+        masterApprovals,
+        masterLOAs,
+        masterWorkOrders
     ] = await Promise.all([
         ApprovedWork.distinct('workType').then((r: unknown) => r as string[]),
         loadSummary ? ApprovedWork.find(approvedWorkQuery as unknown as Parameters<typeof ApprovedWork.find>[0]).select('_id workName approvalYear workType').lean() : Promise.resolve([]),
         loadSummary ? Package.find({}).select('_id packageName works.workName').lean() : Promise.resolve([]),
         loadSummary ? TechnicalSanction.find({}).select('workName').lean() : Promise.resolve([]),
-        loadSummary ? DTP.find({}).select('tsId dtpApprovalDate tenderAmount').lean() : Promise.resolve([])
+        loadSummary ? DTP.find({}).select('tsId dtpApprovalDate tenderAmount').lean() : Promise.resolve([]),
+        loadMaster ? ApprovedWork.find(approvedWorkQuery as unknown as Parameters<typeof ApprovedWork.find>[0]).lean() : Promise.resolve([]),
+        loadMaster ? TechnicalSanction.find({}).lean() : Promise.resolve([]),
+        loadMaster ? Package.find({}).lean() : Promise.resolve([]),
+        loadMaster ? DTP.find({}).lean() : Promise.resolve([]),
+        loadMaster ? Tender.find({}).lean() : Promise.resolve([]),
+        loadMaster ? Approval.find({}).lean() : Promise.resolve([]),
+        loadMaster ? LOA.find({}).lean() : Promise.resolve([]),
+        loadMaster ? WorkOrder.find({}).lean() : Promise.resolve([])
     ]);
 
     const workTypes = Array.from(new Set([...PREDEFINED_WORK_TYPES, ...distinctWorkTypes])).filter(Boolean).sort();
 
     // Normalize strings for fuzzy matching
     const normalizeString = (str: string | null | undefined) => (str || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const toISO = (v: unknown): string | null => (v ? new Date(v as string | number | Date).toISOString() : null);
+
+    // ── Master Report (Approved Works) ────────────────────────────────────
+    // Joins every collection of the work pipeline into one flat row per
+    // approved work: AW → TS → Package → DTP → Tender → Approval → LOA → WO.
+    let serializedMasterWorks: MasterRow[] = [];
+    if (loadMaster) {
+        const tsMap = new Map<string, Record<string, unknown>>();
+        (masterTS as unknown as Record<string, unknown>[]).forEach((ts: Record<string, unknown>) => {
+            if (ts.workName) {
+                const key = normalizeString(ts.workName as string);
+                tsMap.set(key, ts);
+            }
+        });
+
+        const workToPkgMap = new Map<string, Record<string, unknown>>();
+        (masterPackages as unknown as Record<string, unknown>[]).forEach((pkg: Record<string, unknown>) => {
+            const works = pkg.works as PkgWorkEntry[] | undefined;
+            if (works) {
+                works.forEach((w: PkgWorkEntry) => {
+                    if (w.workName) {
+                        workToPkgMap.set(normalizeString(w.workName), pkg);
+                    }
+                });
+            }
+        });
+
+        const dtpMap = new Map<string, Record<string, unknown>>();
+        (masterDTPs as unknown as Record<string, unknown>[]).forEach((dtp: Record<string, unknown>) => {
+            if (dtp.tsId) {
+                dtpMap.set(String(dtp.tsId), dtp);
+            }
+        });
+
+        const tenderMap = new Map<string, Record<string, unknown>>();
+        (masterTenders as unknown as Record<string, unknown>[]).forEach((tender: Record<string, unknown>) => {
+            if (tender.packageId) {
+                tenderMap.set(String(tender.packageId), tender);
+            }
+        });
+
+        const approvalMap = new Map<string, Record<string, unknown>>();
+        (masterApprovals as unknown as Record<string, unknown>[]).forEach((app: Record<string, unknown>) => {
+            if (app.tenderId) {
+                approvalMap.set(String(app.tenderId), app);
+            }
+        });
+
+        const loaMap = new Map<string, Record<string, unknown>>();
+        (masterLOAs as unknown as Record<string, unknown>[]).forEach((loa: Record<string, unknown>) => {
+            if (loa.tenderId) {
+                loaMap.set(String(loa.tenderId), loa);
+            }
+        });
+
+        const woMap = new Map<string, Record<string, unknown>>();
+        (masterWorkOrders as unknown as Record<string, unknown>[]).forEach((wo: Record<string, unknown>) => {
+            if (wo.loaId) {
+                woMap.set(String(wo.loaId), wo);
+            }
+        });
+
+        serializedMasterWorks = (masterWorks as unknown as (MasterWorkDoc & Record<string, unknown>)[]).map((w: MasterWorkDoc & Record<string, unknown>) => {
+            const normalizedName = normalizeString(w.workName);
+            const ts = tsMap.get(normalizedName) || {};
+            const pkg = workToPkgMap.get(normalizedName) || {};
+            const pkgIdStr = pkg._id ? String(pkg._id) : null;
+            const dtp = pkgIdStr ? dtpMap.get(pkgIdStr) || {} : {};
+            const tender = pkgIdStr ? tenderMap.get(pkgIdStr) || {} : {};
+            const tenderIdStr = tender._id ? String(tender._id) : null;
+            const approval = tenderIdStr ? approvalMap.get(tenderIdStr) || {} : {};
+            const loa = tenderIdStr ? loaMap.get(tenderIdStr) || {} : {};
+            const loaIdStr = loa._id ? String(loa._id) : null;
+            const wo = loaIdStr ? woMap.get(loaIdStr) || {} : {};
+
+            const item: MasterRow = {
+                ...w,
+                _id: w._id.toString(),
+                jobNumberApprovalDate: w.jobNumberApprovalDate ? new Date(w.jobNumberApprovalDate as string | number | Date).toISOString() : null,
+                createdAt: w.createdAt ? new Date(w.createdAt as string | number | Date).toISOString() : null,
+                updatedAt: w.updatedAt ? new Date(w.updatedAt as string | number | Date).toISOString() : null,
+            };
+
+            // TS properties
+            item.ts_dateSendingTS = toISO(ts.dateSendingTS);
+            item.ts_tsAuthority = ts.tsAuthority || null;
+            item.ts_tsAmount = ts.tsAmount || null;
+            item.ts_tsNumber = ts.tsNumber || null;
+            item.ts_tsDate = toISO(ts.tsDate);
+            item.ts_remarks = ts.remarks || null;
+
+            // Package properties
+            item.pkg_packageName = pkg.packageName || null;
+
+            // DTP properties
+            item.dtp_dtpSendingNo = dtp.dtpSendingNo || null;
+            item.dtp_dtpSendingDate = toISO(dtp.dtpSendingDate);
+            item.dtp_dtpApprovingAuthority = dtp.dtpApprovingAuthority || null;
+            item.dtp_dtpApprovalNo = dtp.dtpApprovalNo || null;
+            item.dtp_dtpApprovalDate = toISO(dtp.dtpApprovalDate);
+            item.dtp_tenderAmount = dtp.tenderAmount || null;
+            item.dtp_remarks = dtp.remarks || null;
+
+            // Tender properties
+            item.tender_tenderId = tender.tenderId || null;
+            item.tender_tenderNoticeYear = tender.tenderNoticeYear || null;
+            item.tender_noticeNo = tender.noticeNo || null;
+            item.tender_srNo = tender.srNo || null;
+            item.tender_trialNo = tender.trialNo || null;
+            item.tender_tenderCreationDate = toISO(tender.tenderCreationDate);
+            item.tender_lastDateOfSubmission = toISO(tender.lastDateOfSubmission);
+            item.tender_tenderOpeningDate = toISO(tender.tenderOpeningDate);
+            item.tender_tenderValidityDate = toISO(tender.tenderValidityDate);
+            item.tender_estimatedAmount = tender.estimatedAmount || dtp.tenderAmount || null;
+            item.tender_reInvite = tender.reInvite !== undefined ? tender.reInvite : null;
+            item.tender_cancelled = tender.cancelled !== undefined ? tender.cancelled : null;
+            item.tender_cancellationReason = tender.cancellationReason || null;
+            item.tender_contractorName = tender.contractorName || null;
+            item.tender_contractPrice = tender.contractPrice || null;
+            item.tender_aboveBelowPercentage = tender.aboveBelowPercentage || null;
+            item.tender_aboveBelowInWord = tender.aboveBelowInWord || null;
+            item.tender_proposalDate = toISO(tender.proposalDate);
+            item.tender_tenderApprovalOffice = tender.tenderApprovalOffice || null;
+            item.tender_tenderApprovalNo = tender.tenderApprovalNo || null;
+            item.tender_tenderApprovalDate = toISO(tender.tenderApprovalDate);
+            item.tender_workDurationMonths = tender.workDurationMonths || null;
+            item.tender_acceptanceLetterWorksheetNo = tender.acceptanceLetterWorksheetNo || null;
+            item.tender_acceptanceLetterDate = toISO(tender.acceptanceLetterDate);
+            item.tender_agreementYear = tender.agreementYear || null;
+            item.tender_agreementNo = tender.agreementNo || null;
+            item.tender_agreementDate = toISO(tender.agreementDate);
+            item.tender_securityDepositType = tender.securityDepositType || null;
+            item.tender_securityDepositBankName = tender.securityDepositBankName || null;
+            item.tender_securityDepositNumber = tender.securityDepositNumber || null;
+            item.tender_securityDepositAmount = tender.securityDepositAmount || null;
+            item.tender_securityDepositDate = toISO(tender.securityDepositDate);
+            item.tender_additionalSecurityDepositType = tender.additionalSecurityDepositType || null;
+            item.tender_additionalSecurityDepositBankName = tender.additionalSecurityDepositBankName || null;
+            item.tender_additionalSecurityDepositNumber = tender.additionalSecurityDepositNumber || null;
+            item.tender_additionalSecurityDepositAmount = tender.additionalSecurityDepositAmount || null;
+            item.tender_additionalSecurityDepositDate = toISO(tender.additionalSecurityDepositDate);
+            item.tender_workOrderWorksheetNo = tender.workOrderWorksheetNo || null;
+            item.tender_workOrderDate = toISO(tender.workOrderDate);
+            item.tender_remarks = tender.remarks || null;
+
+            // Approval properties
+            const isApprovalNotRequired = approval.notRequired === true || (
+                (tender.estimatedAmount !== undefined && tender.estimatedAmount !== null)
+                    ? Number(tender.estimatedAmount) < 5000000
+                    : (tender.contractPrice !== undefined && Number(tender.contractPrice) < 5000000)
+            );
+            item.approval_notRequired = isApprovalNotRequired;
+            item.approval_proposalDate = toISO(approval.proposalDate);
+            item.approval_tenderApprovalOffice = approval.tenderApprovalOffice || null;
+            item.approval_tenderApprovalNo = approval.tenderApprovalNo || null;
+            item.approval_tenderApprovalDate = toISO(approval.tenderApprovalDate);
+
+            // LOA properties
+            item.loa_stampDuty = loa.stampDuty || null;
+            item.loa_defectLiabilityPeriod = loa.defectLiabilityPeriod || null;
+            item.loa_workDurationMonths = loa.workDurationMonths || null;
+            item.loa_acceptanceLetterWorksheetNo = loa.acceptanceLetterWorksheetNo || null;
+            item.loa_acceptanceLetterDate = toISO(loa.acceptanceLetterDate);
+
+            // Work Order properties
+            item.wo_agreementYear = wo.agreementYear || null;
+            item.wo_agreementNo = wo.agreementNo || null;
+            item.wo_agreementDate = toISO(wo.agreementDate);
+            item.wo_securityDepositType = wo.securityDepositType || null;
+            item.wo_securityDepositBankName = wo.securityDepositBankName || null;
+            item.wo_securityDepositNumber = wo.securityDepositNumber || null;
+            item.wo_securityDepositAmount = wo.securityDepositAmount || null;
+            item.wo_securityDepositDate = toISO(wo.securityDepositDate);
+            item.wo_additionalSecurityDepositType = wo.additionalSecurityDepositType || null;
+            item.wo_additionalSecurityDepositBankName = wo.additionalSecurityDepositBankName || null;
+            item.wo_additionalSecurityDepositNumber = wo.additionalSecurityDepositNumber || null;
+            item.wo_additionalSecurityDepositAmount = wo.additionalSecurityDepositAmount || null;
+            item.wo_additionalSecurityDepositDate = toISO(wo.additionalSecurityDepositDate);
+            item.wo_workOrderWorksheetNo = wo.workOrderWorksheetNo || null;
+            item.wo_workOrderDate = toISO(wo.workOrderDate);
+            item.wo_timeLimitStartsFrom = toISO(wo.timeLimitStartsFrom);
+            item.wo_stipulatedCompletionDate = toISO(wo.stipulatedCompletionDate);
+
+            return item;
+        });
+    }
 
     // ── Weekly Work Order Report (always loaded — single-week query) ──────
     // All week math is done on the IST calendar: "today" is the IST date, and
@@ -531,6 +752,46 @@ export default async function ReportsPage({ searchParams }: Props) {
                     )}
                 </div>
 
+                {/* Master Report (Approved Works) */}
+                <div className="bg-white p-6 shadow-sm rounded-xl border border-slate-100 space-y-4">
+                    <div className="flex justify-between items-start">
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-3">
+                                <h2 className="text-lg font-bold text-slate-800 tracking-tight">Master Report (Approved Works)</h2>
+                                {loadMaster && (
+                                    <Link
+                                        href={getQueryString({ loadMaster: null })}
+                                        className="text-[11px] font-semibold text-rose-600 hover:text-rose-800 border border-rose-200 px-2 py-1 rounded-md hover:bg-rose-50 transition-colors"
+                                    >
+                                        Hide Report
+                                    </Link>
+                                )}
+                            </div>
+                            <p className="text-xs text-slate-500 font-medium">All columns of Approved Works — Filtered: {filterLabelText}</p>
+                        </div>
+                        {loadMaster && (
+                            <div className="flex items-center gap-3">
+                                <Suspense fallback={null}>
+                                    <WorkTypeFilter workTypes={workTypes} />
+                                </Suspense>
+                            </div>
+                        )}
+                    </div>
+
+                    {loadMaster ? (
+                        <MasterReportTable data={serializedMasterWorks as unknown as ComponentProps<typeof MasterReportTable>['data']} />
+                    ) : (
+                        <div className="flex flex-col items-center justify-center py-10 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 space-y-3">
+                            <p className="text-xs font-semibold text-slate-500">Master Report data is not loaded.</p>
+                            <Link
+                                href={getQueryString({ loadMaster: 'true' })}
+                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm hover:shadow transition-all cursor-pointer"
+                            >
+                                Load Master Report
+                            </Link>
+                        </div>
+                    )}
+                </div>
 
             </div>
         </div>

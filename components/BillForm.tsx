@@ -210,6 +210,11 @@ export default function BillForm({
     // Number, so a manual selection afterwards isn't overwritten.
     const autoBillNoForWorkOrder = useRef<string | null>(null);
 
+    // Deduction fields the officer has typed into. Their value is kept across
+    // later auto-recalculations (e.g. editing a quantity); the "Re-Calculate"
+    // button clears this and restores the auto values.
+    const manuallySetDeductions = useRef<Set<string>>(new Set());
+
     const sanitized = Object.fromEntries(
         Object.entries(initialData).map(([k, v]) => [k, v == null ? '' : v])
     ) as unknown as Record<string, string | number | undefined>;
@@ -456,7 +461,10 @@ export default function BillForm({
         const priceAdj = parseFloat(String(nextData.priceAdjustment)) || 0;
         const priceAdjType = nextData.priceAdjustmentType || 'Payable';
         const priceAdjSign = priceAdjType === 'Deductible' ? -1 : 1;
-        const manualDeductionFields = new Set(updatedFields ? Object.keys(updatedFields) : []);
+        const manualDeductionFields = new Set<string>([
+            ...(updatedFields ? Object.keys(updatedFields) : []),
+            ...manuallySetDeductions.current,
+        ]);
         // Administrative Approval = IF((Gross - sanctioned works total) < 0, 0, Gross - sanctioned works total).
         // Manual entry (if just typed) always wins; when no sanctioned total is
         // known the stored/manual value is kept as before.
@@ -679,6 +687,7 @@ export default function BillForm({
     }, [initialWorks]);
 
     const handleWorkOrderSelect = async (id: string) => {
+        manuallySetDeductions.current.clear();
         const selectedWorkOrderObj = workOrders.find((wo) => wo._id === id);
         const pkgWorks = selectedWorkOrderObj?.loaId?.tenderId?.packageId?.works || [];
         const mappedWorks = pkgWorks.map((pw, i: number) => ({
@@ -847,6 +856,11 @@ export default function BillForm({
     };
 
     const recalculateAuditMemo = (updatedFields: Partial<typeof formData>, forceRecalculate?: boolean) => {
+        if (forceRecalculate) {
+            manuallySetDeductions.current.clear();
+        } else {
+            Object.keys(updatedFields).forEach((k) => manuallySetDeductions.current.add(k));
+        }
         setFormData((prev) => {
             const nextData = { ...prev, ...updatedFields };
             return recalculateAuditMemoInternal(nextData, updatedFields, undefined, undefined, undefined, forceRecalculate);
@@ -963,11 +977,11 @@ export default function BillForm({
                     </div>
                 </div>
             )}
-            <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') e.preventDefault(); }} className="space-y-6 bg-emerald-50/30 rounded-2xl transition-all duration-300">
+            <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') e.preventDefault(); }} className="bill-form space-y-6 bg-emerald-50/30 rounded-2xl transition-all duration-300">
             
             {/* General Information Section */}
             <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
-                <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                <div className="px-4 py-3 sm:px-6 sm:py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                         <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
                             <Receipt className="w-4 h-4" />
@@ -975,7 +989,7 @@ export default function BillForm({
                         <h3 className="font-bold text-slate-800">Bill Details</h3>
                     </div>
                 </div>
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                     {!initialWorkOrderId && (
                         <div className="mb-4">
                             <SearchableSelect 
@@ -1149,7 +1163,7 @@ export default function BillForm({
 
             {/* Abstract Section */}
             <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
-                <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                <div className="px-4 py-3 sm:px-6 sm:py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center space-x-3">
                         <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
                             <Layers className="w-4 h-4" />
@@ -1219,7 +1233,7 @@ export default function BillForm({
                         )}
                     </div>
                 </div>
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                     <div className="overflow-x-auto border border-emerald-300 rounded-xl shadow-2xs">
                     <table className="excel-table">
                         <thead>
@@ -1556,7 +1570,7 @@ export default function BillForm({
 
             {/* Work-wise Expenditure Table */}
             <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
-                <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                <div className="px-4 py-3 sm:px-6 sm:py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center space-x-3">
                         <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
                             <Layers className="w-4 h-4" />
@@ -1589,7 +1603,7 @@ export default function BillForm({
                     )}
                 </div>
                 {isWorkWiseExpanded && (
-                    <div className="p-6">
+                    <div className="p-4 sm:p-6">
                     <div className="overflow-x-auto border border-emerald-300 rounded-xl shadow-2xs">
                         <table className="excel-table">
                             <thead>
@@ -1686,7 +1700,7 @@ export default function BillForm({
 
             {/* Excess / Saving Statement Section */}
             <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
-                <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                <div className="px-4 py-3 sm:px-6 sm:py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-3">
                         <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
                             <TrendingUp className="w-4 h-4" />
@@ -1720,7 +1734,7 @@ export default function BillForm({
                 </div>
                 
                 {isExcessSavingExpanded && (
-                    <div className="p-6 overflow-x-auto">
+                    <div className="p-4 sm:p-6 overflow-x-auto">
                         <table className="excel-table">
                         <thead>
                             <tr className="bg-emerald-100/90 text-emerald-950">
@@ -1871,7 +1885,7 @@ export default function BillForm({
 
             {/* Audit Memo Section */}
             <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
-                <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                <div className="px-4 py-3 sm:px-6 sm:py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                         <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
                             <Receipt className="w-4 h-4" />
@@ -2491,7 +2505,7 @@ export default function BillForm({
             </div>
 
             {/* Footer / Summary Section */}
-            <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md p-6">
+            <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md p-4 sm:p-6">
                 <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                     <div className="sm:col-span-6">
                         <label htmlFor="remarks" className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Remarks</label>

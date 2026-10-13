@@ -1985,7 +1985,7 @@ export default function PackageDetailClient({
     }, [selectedTrialId, tenders]);
 
     return (
-        <div className="space-y-5 pb-16">
+        <div className="pkg-detail space-y-5 pb-16">
             {/* Top Toolbar */}
             <div className="bg-emerald-600 border border-emerald-700 p-4 rounded-2xl shadow-sm text-white">
                 <div className="flex items-center gap-3 min-w-0">
@@ -2024,7 +2024,7 @@ export default function PackageDetailClient({
 
                 {/* 1. Package Overview Card (Full Width) */}
                 <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden hover:shadow-md transition-all">
-                    <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                    <div className="px-4 py-3 sm:px-6 sm:py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2">
                         <h3 className="font-bold text-slate-800">Package Identification & Works</h3>
                         {editingSection !== 'package' && (
                             <button onClick={() => handleStartEdit('package')} className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all cursor-pointer">
@@ -2032,7 +2032,7 @@ export default function PackageDetailClient({
                             </button>
                         )}
                     </div>
-                    <div className="p-6">
+                    <div className="p-4 sm:p-6">
                         {editingSection === 'package' ? (
                             <form onSubmit={handleSavePackage} className="space-y-4">
                                 <div className="overflow-x-auto">
@@ -2522,13 +2522,13 @@ export default function PackageDetailClient({
                 
                 {/* 1B. Assigned Works Map */}
                 <div className="bg-white border-2 border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                    <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
                         <h3 className="font-bold text-slate-800">Assigned Works on Map</h3>
                         <span className="text-[11px] font-semibold text-slate-400">
                             {(pkg.works?.length || 0)} work{(pkg.works?.length || 0) === 1 ? '' : 's'}
                         </span>
                     </div>
-                    <div className="p-6">
+                    <div className="p-4 sm:p-6">
                         <WorksMap
                             works={(pkg.works || []).map((w) => w?.workName).filter((wn): wn is string => Boolean(wn))}
                             subDivision={pkg.subDivision}
@@ -2540,7 +2540,7 @@ export default function PackageDetailClient({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
                     {/* 2. DTP Approval Section */}
                     <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md flex flex-col h-full">
-                        <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                        <div className="px-4 py-3 sm:px-6 sm:py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                                 <h3 className="font-bold text-slate-800">DTP Approval Details</h3>
                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -2670,7 +2670,7 @@ export default function PackageDetailClient({
 
                     {/* 3. Tender Section */}
                     <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md flex flex-col h-full">
-                        <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                        <div className="px-4 py-3 sm:px-6 sm:py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                                 <h3 className="font-bold text-slate-800">Tender Details</h3>
                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -2980,7 +2980,7 @@ export default function PackageDetailClient({
                                                     Manage Tender Fees
                                                 </button>
                                             </div>
-                                            <div className="border border-emerald-200 rounded-xl overflow-hidden shadow-2xs">
+                                            <div className="border border-emerald-200 rounded-xl overflow-x-auto shadow-2xs">
                                                 <table className="w-full text-left border-collapse text-xs">
                                                     <thead>
                                                         <tr className="bg-emerald-100/90 text-emerald-950 font-bold border-b border-emerald-200">
@@ -3033,7 +3033,7 @@ export default function PackageDetailClient({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
                     {/* 4. Tender Approval Section */}
                     <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md flex flex-col h-full">
-                        <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                        <div className="px-4 py-3 sm:px-6 sm:py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                                 <h3 className="font-bold text-slate-800">Tender Approval</h3>
                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -3153,7 +3153,7 @@ export default function PackageDetailClient({
 
                     {/* 5. LOA Issued Section */}
                     <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md flex flex-col h-full">
-                        <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                        <div className="px-4 py-3 sm:px-6 sm:py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                                 <h3 className="font-bold text-slate-800">Letter of Acceptance (LOA)</h3>
                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -3241,7 +3241,7 @@ export default function PackageDetailClient({
                             )}
                             {loa && (
                                 <div className="mt-4 pt-4 border-t border-emerald-200/60">
-                                    <div className="flex items-center justify-between mb-3">
+                                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                                         <h4 className="font-bold text-slate-700 text-sm">Notice</h4>
                                         {editingSection !== 'loaNotice' && (
                                             <button
@@ -3254,7 +3254,7 @@ export default function PackageDetailClient({
                                     </div>
                                     {(Array.isArray(loa.notices) ? loa.notices : []).map((notice, idx: number) => (
                                         <div key={notice?._id || idx} className="mb-3 border border-emerald-100 rounded-xl p-3 bg-white/60">
-                                            <div className="flex items-center justify-between mb-2">
+                                            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                                                 <span className="text-xs font-bold text-slate-600">{noticeOrdinal(idx)} Notice</span>
                                                 {editingSection !== 'loaNotice' && (
                                                     <div className="flex items-center gap-2">
@@ -3310,7 +3310,7 @@ export default function PackageDetailClient({
 
                 {/* 6. Work Order Section */}
                 <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
-                    <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                    <div className="px-4 py-3 sm:px-6 sm:py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                             <h3 className="font-bold text-slate-800">Work Order & Deposits</h3>
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -3331,7 +3331,7 @@ export default function PackageDetailClient({
                             </button>
                         )}
                     </div>
-                    <div className="p-6">
+                    <div className="p-4 sm:p-6">
                         {editingSection === 'workOrder' ? (
                             <form onSubmit={handleSaveWorkOrder} className="space-y-4">
                                 <div className="overflow-x-auto">
@@ -3608,11 +3608,11 @@ export default function PackageDetailClient({
 
                 {/* 6B. Progress & Site Diary (after Work Order) */}
                 <div className="bg-white border-2 border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                    <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
                         <h3 className="font-bold text-slate-800">Progress &amp; Site Diary</h3>
                         <span className="text-[11px] font-semibold text-slate-400">AAE / DEE site entries with photos</span>
                     </div>
-                    <div className="p-6">
+                    <div className="p-4 sm:p-6">
                         <ProgressSection
                             packageId={packageId}
                             works={(pkg.works || []).map((w) => w?.workName).filter((n): n is string => Boolean(n))}
@@ -3624,7 +3624,7 @@ export default function PackageDetailClient({
 
                 {/* Bill of Quantities (BOQ) Section */}
                 <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
-                    <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-3">
+                    <div className="px-4 py-3 sm:px-6 sm:py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                             <h3 className="font-bold text-slate-800">Bill of Quantities (BOQ)</h3>
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -3672,7 +3672,7 @@ export default function PackageDetailClient({
                         </div>
                     </div>
 
-                    <div className="p-6">
+                    <div className="p-4 sm:p-6">
                         {!tender ? (
                             <div className="text-center py-6 border border-dashed border-emerald-200 rounded-2xl bg-emerald-100/40">
                                 <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
@@ -3885,7 +3885,7 @@ export default function PackageDetailClient({
 
                 {/* 7. Billing & Financials Section */}
                 <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
-                    <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                    <div className="px-4 py-3 sm:px-6 sm:py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                             <h3 className="font-bold text-slate-800">Billing & Audit Memo</h3>
                             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-200">
@@ -3901,7 +3901,7 @@ export default function PackageDetailClient({
                         </button>
                     </div>
 
-                    <div className="p-6">
+                    <div className="p-4 sm:p-6">
                         {sortedBills && sortedBills.length > 0 ? (
                             <div className="overflow-x-auto">
                                 <table className="excel-table">
@@ -4049,7 +4049,7 @@ export default function PackageDetailClient({
 
                 {/* 8. Excess Proposal Section */}
                 <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
-                    <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex items-center justify-between">
+                    <div className="px-4 py-3 sm:px-6 sm:py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                             <h3 className="font-bold text-slate-800">Excess Proposal</h3>
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -4070,7 +4070,7 @@ export default function PackageDetailClient({
                             <Plus className="w-3.5 h-3.5" /> Add Excess Proposal
                         </button>
                     </div>
-                    <div className="p-6">
+                    <div className="p-4 sm:p-6">
                         {excessProposals.length > 0 ? (
                             <div className="overflow-x-auto border border-emerald-200 rounded-xl shadow-2xs">
                                 <table className="min-w-full divide-y divide-emerald-200 text-xs">
@@ -4166,7 +4166,7 @@ export default function PackageDetailClient({
 
                 {/* 9. Deposit Refund Section */}
                 <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
-                    <div className="px-6 py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-3">
+                    <div className="px-4 py-3 sm:px-6 sm:py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                             <h3 className="font-bold text-slate-800">Deposit Refund</h3>
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -4199,7 +4199,7 @@ export default function PackageDetailClient({
                         )}
                     </div>
 
-                    <div className="p-6">
+                    <div className="p-4 sm:p-6">
                         {editingSection === 'depositRefund' ? (
                             <form onSubmit={handleSaveAdditionalSdRefund} className="space-y-4">
                                 <div className="p-3 bg-emerald-100/60 border border-emerald-200 rounded-xl">
@@ -4333,8 +4333,8 @@ export default function PackageDetailClient({
                         ) : (
                             <div className="space-y-4">
                                 {/* Additional SD Refund Card */}
-                                <div className="bg-white border border-emerald-200 rounded-xl overflow-hidden shadow-2xs">
-                                    <div className="px-4 py-2.5 bg-emerald-100/70 border-b border-emerald-200 flex items-center justify-between">
+                                <div className="bg-white border border-emerald-200 rounded-xl overflow-x-auto shadow-2xs">
+                                    <div className="px-4 py-2.5 bg-emerald-100/70 border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2">
                                         <div className="flex items-center gap-2">
                                             <Receipt className="w-4 h-4 text-emerald-800" />
                                             <span className="text-xs font-bold text-emerald-950 uppercase tracking-wider">Additional Security Deposit (SD) Refund</span>
@@ -4442,7 +4442,7 @@ export default function PackageDetailClient({
             {isContractorModalOpen && (
                 <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100 flex flex-col animate-in fade-in zoom-in-95 duration-200">
-                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
+                        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
                             <h3 className="text-sm font-bold text-slate-800">{editingContractorId ? 'Edit Contractor' : 'Add New Contractor'}</h3>
                             <button type="button" onClick={handleCloseContractorModal} className="text-slate-400 hover:text-slate-600 p-1 rounded-full"><X className="w-5 h-5" /></button>
                         </div>
@@ -4459,7 +4459,7 @@ export default function PackageDetailClient({
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Address</label>
                                 <textarea rows={2} value={newContractor.address} onChange={(e) => setNewContractor(prev => ({ ...prev, address: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm resize-none" />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Mobile No.</label>
                                     <input type="tel" value={newContractor.mobileNo} onChange={(e) => setNewContractor(prev => ({ ...prev, mobileNo: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm" />
@@ -4496,7 +4496,7 @@ export default function PackageDetailClient({
             {isBankModalOpen && (
                 <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden border border-slate-100 flex flex-col animate-in fade-in zoom-in-95 duration-200">
-                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
+                        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
                             <h3 className="text-sm font-bold text-slate-800">Add New Bank</h3>
                             <button type="button" onClick={() => setIsBankModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full"><X className="w-5 h-5" /></button>
                         </div>
@@ -4521,7 +4521,7 @@ export default function PackageDetailClient({
             {isReTenderModalOpen && (
                 <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100 flex flex-col animate-in fade-in zoom-in-95 duration-200">
-                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
+                        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
                             <h3 className="text-sm font-bold text-slate-800">Confirm Re-Tender</h3>
                             <button type="button" onClick={() => setIsReTenderModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full"><X className="w-5 h-5" /></button>
                         </div>
@@ -4564,7 +4564,7 @@ export default function PackageDetailClient({
             {isBiddersModalOpen && (
                 <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden border border-slate-100 flex flex-col animate-in fade-in zoom-in-95 duration-200">
-                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
+                        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
                             <div>
                                 <h3 className="text-sm font-bold text-slate-800">Comparative Statement</h3>
                                 <p className="text-[10px] text-slate-400 mt-0.5">Tender ID: {parsedTenderInfo?.tenderId} &nbsp;|&nbsp; Notice: {parsedTenderInfo?.noticeNo} ({parsedTenderInfo?.noticeYear}) &nbsp;|&nbsp; Sr No: {parsedTenderInfo?.srNo} &nbsp;|&nbsp; ECV: ₹{parsedTenderInfo?.estimatedAmount ? parsedTenderInfo.estimatedAmount.toLocaleString('en-IN') : '-'}</p>
@@ -4572,7 +4572,7 @@ export default function PackageDetailClient({
                             <button type="button" onClick={() => setIsBiddersModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full"><X className="w-5 h-5" /></button>
                         </div>
                         <div className="p-6 max-h-[65vh] overflow-y-auto">
-                            <div className="border border-slate-200 rounded-xl overflow-hidden">
+                            <div className="border border-slate-200 rounded-xl overflow-x-auto">
                                 <table className="w-full text-left border-collapse text-xs">
                                     <thead>
                                         <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
@@ -4606,7 +4606,7 @@ export default function PackageDetailClient({
                                 </table>
                             </div>
                         </div>
-                        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/70 flex justify-end">
+                        <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-slate-100 bg-slate-50/70 flex justify-end">
                             <button
                                 type="button"
                                 onClick={() => setIsBiddersModalOpen(false)}
@@ -4623,7 +4623,7 @@ export default function PackageDetailClient({
             {isTenderFeeModalOpen && (
                 <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl overflow-hidden border border-slate-100 flex flex-col animate-in fade-in zoom-in-95 duration-200">
-                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
+                        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
                             <div>
                                 <h3 className="text-sm font-bold text-slate-800">Manage Tender Fee Details for Bidders</h3>
                                 <p className="text-[10px] text-slate-400 mt-0.5">Tender ID: {displayTender?.tenderId} &nbsp;|&nbsp; Trial #{displayTender?.trialNo}</p>
@@ -4654,7 +4654,7 @@ export default function PackageDetailClient({
 
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 text-xs">
                                                 <div>
-                                                    <div className="flex items-center justify-between mb-1">
+                                                    <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                                                         <label className="block text-[10px] font-bold text-slate-500 uppercase">Name of Bank</label>
                                                         <button 
                                                             type="button" 
@@ -4723,7 +4723,7 @@ export default function PackageDetailClient({
                                 })}
                             </div>
                         </div>
-                        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/70 flex justify-end gap-2">
+                        <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-slate-100 bg-slate-50/70 flex justify-end gap-2">
                             <button 
                                 type="button" 
                                 onClick={() => setIsTenderFeeModalOpen(false)} 
@@ -4747,9 +4747,9 @@ export default function PackageDetailClient({
 
             {/* EXCESS PROPOSAL MODAL */}
             {isExcessModalOpen && (
-                <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl border border-emerald-200 shadow-xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                        <div className="px-6 py-4 bg-emerald-50 border-b border-emerald-200 flex items-center justify-between">
+                        <div className="px-4 py-3 sm:px-6 sm:py-4 bg-emerald-50 border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                                 <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
                                     <TrendingUp className="w-4 h-4" />
@@ -4815,7 +4815,7 @@ export default function PackageDetailClient({
                                 <label className="block font-bold text-slate-700 mb-1">Proposal PDF</label>
                                 <div className="border border-dashed border-emerald-300 rounded-xl p-4 bg-emerald-50/40 text-center">
                                     {excessForm.pdfUrl ? (
-                                        <div className="flex items-center justify-between bg-white border border-emerald-200 p-2.5 rounded-lg">
+                                        <div className="flex flex-wrap items-center justify-between gap-2 bg-white border border-emerald-200 p-2.5 rounded-lg">
                                             <div className="flex items-center gap-2 overflow-hidden">
                                                 <FileText className="w-5 h-5 text-rose-600 flex-shrink-0" />
                                                 <span className="font-semibold text-slate-800 truncate">{excessForm.fileName || 'Attached Proposal PDF'}</span>

@@ -152,6 +152,65 @@ input[type="number"] {
   box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.15);
 }
 
+/* ===== Package detail page & bill form: mobile adaptations ===== */
+@media (max-width: 639px) {
+  /* iOS Safari auto-zooms the viewport when a focused control's font-size is
+     below 16px. Keep them at 1rem on phones so the layout doesn't jump. */
+  :is(.pkg-detail, .bill-form) input:not([type="checkbox"]):not([type="radio"]),
+  :is(.pkg-detail, .bill-form) select,
+  :is(.pkg-detail, .bill-form) textarea {
+    font-size: 1rem;
+  }
+
+  /* Fit the whole page at 100% zoom: label/value readout tables wrap to
+     the screen width instead of forcing a sideways scroll. Only genuinely
+     wide data tables (no label/value cells) keep their columns by
+     scrolling inside their wrapper. */
+  :is(.pkg-detail, .bill-form) .overflow-x-auto table:not(:has(td.excel-label)) {
+    min-width: 560px;
+  }
+
+  /* Label/value readout tables stack into label-over-value rows on phones so
+     fields stay full width and nothing is clipped or needs sideways scroll. */
+  :is(.pkg-detail, .bill-form) .excel-table:has(td.excel-label) {
+    display: block;
+    border: 0;
+    background: transparent;
+  }
+  :is(.pkg-detail, .bill-form) .excel-table:has(td.excel-label) tbody,
+  :is(.pkg-detail, .bill-form) .excel-table:has(td.excel-label) tr {
+    display: block;
+  }
+  :is(.pkg-detail, .bill-form) .excel-table:has(td.excel-label) tr {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    margin-bottom: 0.5rem;
+  }
+  :is(.pkg-detail, .bill-form) .excel-table:has(td.excel-label) td {
+    display: block;
+    width: auto;
+    border: 0;
+  }
+  :is(.pkg-detail, .bill-form) .excel-table:has(td.excel-label) td.excel-label {
+    background-color: rgba(0, 0, 0, 0.04);
+    padding-bottom: 2px;
+  }
+  :is(.pkg-detail, .bill-form) .excel-table:has(td.excel-label) td.excel-value {
+    padding-top: 2px;
+    padding-bottom: 0.5rem;
+  }
+
+  /* Thumb-friendly targets for standalone controls. Dense table cells stay
+     compact so the data itself doesn't balloon. */
+  :is(.pkg-detail, .bill-form) button,
+  :is(.pkg-detail, .bill-form) select {
+    min-height: 2.75rem;
+  }
+  :is(.pkg-detail, .bill-form) .excel-table button,
+  :is(.pkg-detail, .bill-form) .excel-table select {
+    min-height: 0;
+  }
+}
+
 /* ===== Global Print Reset ===== */
 @media print {
   /* Hide sidebar, mobile header, buttons, nav */
