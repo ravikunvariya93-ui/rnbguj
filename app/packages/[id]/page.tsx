@@ -9,6 +9,7 @@ import WorkOrder from '@/models/WorkOrder';
 import Bill from '@/models/Bill';
 import BOQ from '@/models/BOQ';
 import ExcessProposal from '@/models/ExcessProposal';
+import TimeLimitProposal from '@/models/TimeLimitProposal';
 import DepositRefund from '@/models/DepositRefund';
 import { notFound } from 'next/navigation';
 import PackageDetailClient from './PackageDetailClient';
@@ -155,6 +156,11 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
         .sort({ proposalDate: -1, createdAt: -1 })
         .lean() as unknown as RefLeanDoc[];
 
+    // Time Limit Proposals
+    const timeLimitProposals = await TimeLimitProposal.find({ packageId: pkg._id })
+        .sort({ proposalDate: -1, createdAt: -1 })
+        .lean() as unknown as RefLeanDoc[];
+
     // Deposit Refunds
     const depositRefunds = await DepositRefund.find({ packageId: pkg._id })
         .sort({ orderDate: -1, createdAt: -1 })
@@ -186,6 +192,7 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
             workOrder={(workOrder ? serialize(workOrder) : null) as unknown as DetailProps['workOrder']}
             bills={serialize(bills) as unknown as DetailProps['bills']}
             excessProposals={serialize(excessProposals) as unknown as DetailProps['excessProposals']}
+            timeLimitProposals={serialize(timeLimitProposals) as unknown as DetailProps['timeLimitProposals']}
             depositRefunds={serialize(depositRefunds) as unknown as DetailProps['depositRefunds']}
             maxAgreementNos={maxAgreementNos}
         />

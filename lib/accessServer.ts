@@ -63,6 +63,18 @@ export async function ensureAccessSeeded(): Promise<void> {
     { $addToSet: { modules: 'tasks' } }
   ).catch(() => null);
 
+  // Additive grant: Time Limit Proposal sits in the Bill group, so grant it
+  // to every role that can already reach the Bill / Excess Proposal modules.
+  await Role.updateMany(
+    {
+      $and: [
+        { $or: [{ modules: 'bills' }, { modules: 'excess-proposals' }] },
+        { modules: { $ne: 'time-limit-proposals' } },
+      ],
+    },
+    { $addToSet: { modules: 'time-limit-proposals' } }
+  ).catch(() => null);
+
   // Divisions first so sub-divisions can link parents.
   for (const seed of JURISDICTION_SEEDS.filter((s) => s.type === OFFICE_TYPES.DIVISION)) {
     await Jurisdiction.updateOne(

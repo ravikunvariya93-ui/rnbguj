@@ -2353,16 +2353,18 @@ export default function ApprovedWorkDetailClient({
                                             <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Agreement & Work Order</th>
                                         </tr>
                                         <tr>
-                                            <td className="excel-label">Agreement Year</td>
-                                            <td className="excel-value w-[30%]">{workOrder.agreementYear || '-'}</td>
                                             <td className="excel-label">Agreement Details</td>
-                                            <td className="excel-value w-[30%]">No: {workOrder.agreementNo || '-'} &nbsp;|&nbsp; Date: {workOrder.agreementDate ? new Date(workOrder.agreementDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
+                                            <td className="excel-value w-[30%]" colSpan={3}>No: {workOrder.agreementNo || '-'} &nbsp;|&nbsp; Date: {workOrder.agreementDate ? new Date(workOrder.agreementDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                         </tr>
                                         <tr>
                                             <td className="excel-label">Work Order Details</td>
-                                            <td className="excel-value font-mono">WS No: {workOrder.workOrderWorksheetNo || '-'} &nbsp;|&nbsp; Date: {workOrder.workOrderDate ? new Date(workOrder.workOrderDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
-                                            <td className="excel-label">Completion Target</td>
-                                            <td className="excel-value">{workOrder.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
+                                            <td className="excel-value font-mono" colSpan={3}>WS No: {workOrder.workOrderWorksheetNo || '-'} &nbsp;|&nbsp; Date: {workOrder.workOrderDate ? new Date(workOrder.workOrderDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
+                                        </tr>
+                                        <tr>
+                                            <td className="excel-label">Time Limit Starts From</td>
+                                            <td className="excel-value w-[30%]">{workOrder.timeLimitStartsFrom ? new Date(workOrder.timeLimitStartsFrom).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
+                                            <td className="excel-label">Stipulated Completion Date</td>
+                                            <td className="excel-value w-[30%]">{workOrder.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                         </tr>
                                         <tr className="bg-[#107c41]/10">
                                             <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-[#107c41] bg-[#107c41]/10 border-b border-slate-300 text-left uppercase">Security Deposits</th>

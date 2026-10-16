@@ -8,7 +8,7 @@ import {
     ArrowLeft, Save, Edit2, Plus, Trash2, CheckCircle2, XCircle, X, Loader2, 
     FileText, Check, ChevronDown, ChevronUp, Printer, 
     Receipt, Eye, AlertCircle, ClipboardCheck,
-    FileSpreadsheet, Upload, CreditCard, TrendingUp
+    FileSpreadsheet, Upload, CreditCard, TrendingUp, Clock
 } from 'lucide-react';
 import { parseDateStr, formatDate, formatDateForInput, formatShortDate } from '@/lib/dateUtils';
 import SearchableSelect from '@/components/SearchableSelect';
@@ -189,6 +189,17 @@ interface BillRef {
 }
 
 interface ExcessProposalDoc {
+    _id?: string;
+    proposalNo?: string;
+    proposalDate?: string;
+    pdfUrl?: string;
+    fileName?: string;
+    fileSize?: number | string;
+    remarks?: string;
+    status?: string;
+}
+
+interface TimeLimitProposalDoc {
     _id?: string;
     proposalNo?: string;
     proposalDate?: string;
@@ -393,6 +404,7 @@ interface PackageDetailClientProps {
     workOrder: WorkOrderDoc;
     bills: BillRef[];
     excessProposals?: ExcessProposalDoc[];
+    timeLimitProposals?: TimeLimitProposalDoc[];
     depositRefunds?: DepositRefundDoc[];
     maxAgreementNos?: Record<string, number>;
 }
@@ -412,6 +424,7 @@ export default function PackageDetailClient({
     workOrder: initialWorkOrder,
     bills: initialBills,
     excessProposals: initialExcessProposals = [],
+    timeLimitProposals: initialTimeLimitProposals = [],
     depositRefunds: initialDepositRefunds = [],
     maxAgreementNos = {},
 }: PackageDetailClientProps) {
@@ -432,6 +445,7 @@ export default function PackageDetailClient({
     const [workOrder, setWorkOrder] = useState(initialWorkOrder);
     const [bills, setBills] = useState(initialBills);
     const [excessProposals, setExcessProposals] = useState<ExcessProposalDoc[]>(initialExcessProposals || []);
+    const [timeLimitProposals, setTimeLimitProposals] = useState<TimeLimitProposalDoc[]>(initialTimeLimitProposals || []);
     const [depositRefunds, setDepositRefunds] = useState<DepositRefundDoc[]>(initialDepositRefunds || []);
 
     const additionalSdRefund = useMemo(() => {
@@ -459,6 +473,22 @@ export default function PackageDetailClient({
     const [savingExcessProposal, setSavingExcessProposal] = useState(false);
     const [deletingExcessId, setDeletingExcessId] = useState<string | null>(null);
     const [excessForm, setExcessForm] = useState({
+        proposalNo: '',
+        proposalDate: new Date().toISOString().split('T')[0],
+        pdfUrl: '',
+        fileName: '',
+        fileSize: 0,
+        remarks: '',
+        status: 'Submitted',
+    });
+
+    // Time Limit Proposal modal states
+    const [isTimeLimitModalOpen, setIsTimeLimitModalOpen] = useState(false);
+    const [editingTimeLimitProposal, setEditingTimeLimitProposal] = useState<TimeLimitProposalDoc | null>(null);
+    const [uploadingTimeLimitPdf, setUploadingTimeLimitPdf] = useState(false);
+    const [savingTimeLimitProposal, setSavingTimeLimitProposal] = useState(false);
+    const [deletingTimeLimitId, setDeletingTimeLimitId] = useState<string | null>(null);
+    const [timeLimitForm, setTimeLimitForm] = useState({
         proposalNo: '',
         proposalDate: new Date().toISOString().split('T')[0],
         pdfUrl: '',
@@ -606,8 +636,9 @@ export default function PackageDetailClient({
         setWorkOrder(initialWorkOrder);
         setBills(initialBills);
         setExcessProposals(initialExcessProposals || []);
+        setTimeLimitProposals(initialTimeLimitProposals || []);
         setDepositRefunds(initialDepositRefunds || []);
-    }, [initialPkg, initialDtp, initialTender, initialTenders, initialApproval, initialLoa, initialWorkOrder, initialBills, initialExcessProposals, initialDepositRefunds]);
+    }, [initialPkg, initialDtp, initialTender, initialTenders, initialApproval, initialLoa, initialWorkOrder, initialBills, initialExcessProposals, initialTimeLimitProposals, initialDepositRefunds]);
 
     // Sync selectedTrialId state when active tender or tenders change
     useEffect(() => {
@@ -1930,6 +1961,133 @@ export default function PackageDetailClient({
             showToast('error', err instanceof Error && err.message ? err.message : 'Error deleting proposal');
         } finally {
             setDeletingExcessId(null);
+        }
+    };
+
+    // TIME LIMIT PROPOSAL HANDLERS (mirror of Excess Proposal)
+    const handleOpenAddTimeLimitModal = () => {
+        setEditingTimeLimitProposal(null);
+        setTimeLimitForm({
+            proposalNo: '',
+            proposalDate: new Date().toISOString().split('T')[0],
+            pdfUrl: '',
+            fileName: '',
+            fileSize: 0,
+            remarks: '',
+            status: 'Submitted',
+        });
+        setIsTimeLimitModalOpen(true);
+    };
+
+    const handleOpenEditTimeLimitModal = (p: TimeLimitProposalDoc) => {
+        setEditingTimeLimitProposal(p);
+        setTimeLimitForm({
+            proposalNo: p.proposalNo || '',
+            proposalDate: p.proposalDate ? new Date(p.proposalDate).toISOString().split('T')[0] : '',
+            pdfUrl: p.pdfUrl || '',
+            fileName: p.fileName || '',
+            fileSize: Number(p.fileSize || 0),
+            remarks: p.remarks || '',
+            status: p.status || 'Submitted',
+        });
+        setIsTimeLimitModalOpen(true);
+    };
+
+    const handleTimeLimitPdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploadingTimeLimitPdf(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('folder', 'time-limit-proposals');
+
+            const res = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Failed to upload PDF');
+            }
+
+            setTimeLimitForm(prev => ({
+                ...prev,
+                pdfUrl: data.fileUrl,
+                fileName: data.fileName,
+                fileSize: data.fileSize,
+            }));
+            showToast('success', 'PDF uploaded successfully.');
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error && err.message ? err.message : 'Error uploading file');
+        } finally {
+            setUploadingTimeLimitPdf(false);
+        }
+    };
+
+    const handleSaveTimeLimitProposal = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        setSavingTimeLimitProposal(true);
+        try {
+            const url = editingTimeLimitProposal
+                ? `/api/time-limit-proposals/${editingTimeLimitProposal._id}`
+                : '/api/time-limit-proposals';
+            const method = editingTimeLimitProposal ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...timeLimitForm,
+                    packageId,
+                    workOrderId: workOrder?._id,
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Failed to save proposal');
+            }
+
+            if (editingTimeLimitProposal) {
+                setTimeLimitProposals(prev => prev.map(p => (p._id === editingTimeLimitProposal._id ? data.data : p)));
+                showToast('success', 'Time Limit Proposal updated successfully.');
+            } else {
+                setTimeLimitProposals(prev => [data.data, ...prev]);
+                showToast('success', 'Time Limit Proposal created successfully.');
+            }
+
+            setIsTimeLimitModalOpen(false);
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error && err.message ? err.message : 'Error saving proposal');
+        } finally {
+            setSavingTimeLimitProposal(false);
+        }
+    };
+
+    const handleDeleteTimeLimitProposal = async (id: string, proposalNo: string) => {
+        if (!confirm(`Are you sure you want to delete Time Limit Proposal "${proposalNo}"?`)) return;
+
+        setDeletingTimeLimitId(id);
+        try {
+            const res = await fetch(`/api/time-limit-proposals/${id}`, {
+                method: 'DELETE',
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Failed to delete proposal');
+            }
+
+            setTimeLimitProposals(prev => prev.filter(p => p._id !== id));
+            showToast('success', 'Time Limit Proposal deleted successfully.');
+        } catch (err: unknown) {
+            showToast('error', err instanceof Error && err.message ? err.message : 'Error deleting proposal');
+        } finally {
+            setDeletingTimeLimitId(null);
         }
     };
 
@@ -3536,16 +3694,18 @@ export default function PackageDetailClient({
                                                         <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-emerald-950 bg-emerald-100/90 border-b border-emerald-200 text-left uppercase tracking-wider">Agreement & Work Order</th>
                                                     </tr>
                                                     <tr>
-                                                        <td className="excel-label">Agreement Year</td>
-                                                        <td className="excel-value w-[30%]">{workOrder.agreementYear || '-'}</td>
                                                         <td className="excel-label">Agreement Details</td>
-                                                        <td className="excel-value w-[30%]">No: {workOrder.agreementNo || '-'} &nbsp;|&nbsp; Date: {workOrder.agreementDate ? new Date(workOrder.agreementDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
+                                                        <td className="excel-value w-[30%]" colSpan={3}>No: {workOrder.agreementNo || '-'} &nbsp;|&nbsp; Date: {workOrder.agreementDate ? new Date(workOrder.agreementDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                                     </tr>
                                                     <tr>
                                                         <td className="excel-label">Work Order Details</td>
-                                                        <td className="excel-value font-mono">WS No: {workOrder.workOrderWorksheetNo || '-'} &nbsp;|&nbsp; Date: {workOrder.workOrderDate ? new Date(workOrder.workOrderDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
-                                                        <td className="excel-label">Completion Target</td>
-                                                        <td className="excel-value">{workOrder.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
+                                                        <td className="excel-value font-mono" colSpan={3}>WS No: {workOrder.workOrderWorksheetNo || '-'} &nbsp;|&nbsp; Date: {workOrder.workOrderDate ? new Date(workOrder.workOrderDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="excel-label">Time Limit Starts From</td>
+                                                        <td className="excel-value w-[30%]">{workOrder.timeLimitStartsFrom ? new Date(workOrder.timeLimitStartsFrom).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
+                                                        <td className="excel-label">Stipulated Completion Date</td>
+                                                        <td className="excel-value w-[30%]">{workOrder.stipulatedCompletionDate ? new Date(workOrder.stipulatedCompletionDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}</td>
                                                     </tr>
                                                     <tr className="bg-emerald-100/90">
                                                         <th colSpan={4} className="px-4 py-1.5 text-xs font-bold text-emerald-950 bg-emerald-100/90 border-b border-emerald-200 text-left uppercase tracking-wider">Security Deposits</th>
@@ -4158,6 +4318,123 @@ export default function PackageDetailClient({
                                     className="mt-3 inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
                                 >
                                     <Plus className="w-3.5 h-3.5" /> Submit Excess Proposal
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* 8A. Time Limit Proposal Section */}
+                <div className="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl shadow-xs overflow-hidden transition-all duration-300 hover:shadow-md">
+                    <div className="px-4 py-3 sm:px-6 sm:py-4 bg-transparent border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-slate-800">Time Limit Proposal</h3>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                timeLimitProposals.length > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                            }`}>
+                                {timeLimitProposals.length > 0 ? '✅ Submitted' : '⏳ Pending'}
+                            </span>
+                            {timeLimitProposals.length > 0 && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+                                    {timeLimitProposals.length} {timeLimitProposals.length === 1 ? 'proposal' : 'proposals'}
+                                </span>
+                            )}
+                        </div>
+                        <button
+                            onClick={handleOpenAddTimeLimitModal}
+                            className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-all cursor-pointer"
+                        >
+                            <Plus className="w-3.5 h-3.5" /> Add Time Limit Proposal
+                        </button>
+                    </div>
+                    <div className="p-4 sm:p-6">
+                        {timeLimitProposals.length > 0 ? (
+                            <div className="overflow-x-auto border border-emerald-200 rounded-xl shadow-2xs">
+                                <table className="min-w-full divide-y divide-emerald-200 text-xs">
+                                    <thead className="bg-emerald-100/90 text-emerald-950">
+                                        <tr>
+                                            <th className="px-4 py-2.5 text-left font-bold uppercase tracking-wider w-16">Sr.</th>
+                                            <th className="px-4 py-2.5 text-left font-bold uppercase tracking-wider">Proposal No.</th>
+                                            <th className="px-4 py-2.5 text-left font-bold uppercase tracking-wider">Proposal Date</th>
+                                            <th className="px-4 py-2.5 text-center font-bold uppercase tracking-wider">Status</th>
+                                            <th className="px-4 py-2.5 text-center font-bold uppercase tracking-wider">Attached PDF</th>
+                                            <th className="px-4 py-2.5 text-left font-bold uppercase tracking-wider">Remarks</th>
+                                            <th className="px-4 py-2.5 text-center font-bold uppercase tracking-wider w-24">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 bg-white">
+                                        {timeLimitProposals.map((p, idx) => (
+                                            <tr key={p._id} className="hover:bg-emerald-50/40 transition-colors">
+                                                <td className="px-4 py-2.5 text-slate-500 font-mono font-bold">{idx + 1}</td>
+                                                <td className="px-4 py-2.5 font-mono font-bold text-slate-900">{p.proposalNo || '-'}</td>
+                                                <td className="px-4 py-2.5 text-slate-600">
+                                                    {p.proposalDate ? new Date(p.proposalDate).toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata' }) : '-'}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-center">
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                                        p.status === 'Approved'
+                                                            ? 'bg-emerald-100 text-emerald-800'
+                                                            : p.status === 'Rejected'
+                                                            ? 'bg-rose-100 text-rose-800'
+                                                            : 'bg-amber-100 text-amber-800'
+                                                    }`}>
+                                                        {p.status || 'Submitted'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-2.5 text-center">
+                                                    {p.pdfUrl ? (
+                                                        <a
+                                                            href={blobViewUrl(p.pdfUrl)}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-1 text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                                                            title="View attached PDF"
+                                                        >
+                                                            <FileText className="w-3.5 h-3.5 text-rose-600" />
+                                                            <span>View PDF</span>
+                                                        </a>
+                                                    ) : (
+                                                        <span className="text-slate-400 italic text-[11px]">No PDF</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-slate-600">{p.remarks || '-'}</td>
+                                                <td className="px-4 py-2.5 text-center">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button
+                                                            onClick={() => handleOpenEditTimeLimitModal(p)}
+                                                            className="p-1 text-blue-600 hover:bg-blue-50 rounded-md cursor-pointer transition-colors"
+                                                            title="Edit Proposal"
+                                                        >
+                                                            <Edit2 className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteTimeLimitProposal(p._id || '', p.proposalNo || '')}
+                                                            disabled={deletingTimeLimitId === p._id}
+                                                            className="p-1 text-rose-600 hover:bg-rose-50 rounded-md cursor-pointer transition-colors disabled:opacity-50"
+                                                            title="Delete Proposal"
+                                                        >
+                                                            {deletingTimeLimitId === p._id ? (
+                                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                            ) : (
+                                                                <Trash2 className="w-4 h-4" />
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="text-center py-6 border border-dashed border-emerald-200 rounded-2xl bg-emerald-100/40">
+                                <AlertCircle className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
+                                <p className="text-slate-500 font-semibold text-sm">No time limit proposal submitted for this package yet.</p>
+                                <button
+                                    onClick={handleOpenAddTimeLimitModal}
+                                    className="mt-3 inline-flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                                >
+                                    <Plus className="w-3.5 h-3.5" /> Submit Time Limit Proposal
                                 </button>
                             </div>
                         )}
@@ -4891,6 +5168,159 @@ export default function PackageDetailClient({
                                 >
                                     {savingExcessProposal ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                                     {editingExcessProposal ? 'Update Proposal' : 'Save Proposal'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* TIME LIMIT PROPOSAL MODAL */}
+            {isTimeLimitModalOpen && (
+                <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl border border-emerald-200 shadow-xl max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        <div className="px-4 py-3 sm:px-6 sm:py-4 bg-emerald-50 border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
+                                    <Clock className="w-4 h-4" />
+                                </span>
+                                <h3 className="text-sm font-bold text-slate-800">
+                                    {editingTimeLimitProposal ? 'Edit Time Limit Proposal' : 'Add Time Limit Proposal'}
+                                </h3>
+                            </div>
+                            <button
+                                onClick={() => setIsTimeLimitModalOpen(false)}
+                                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 cursor-pointer"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveTimeLimitProposal} className="p-6 space-y-4 text-xs">
+                            {/* Proposal No. & Date */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block font-bold text-slate-700 mb-1">
+                                        Proposal No.
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. TL/2026/01 (optional)"
+                                        value={timeLimitForm.proposalNo}
+                                        onChange={(e) => setTimeLimitForm((prev) => ({ ...prev, proposalNo: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block font-bold text-slate-700 mb-1">
+                                        Proposal Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={timeLimitForm.proposalDate}
+                                        onChange={(e) => setTimeLimitForm((prev) => ({ ...prev, proposalDate: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Status */}
+                            <div>
+                                <label className="block font-bold text-slate-700 mb-1">Status</label>
+                                <select
+                                    value={timeLimitForm.status}
+                                    onChange={(e) => setTimeLimitForm((prev) => ({ ...prev, status: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                >
+                                    <option value="Submitted">Submitted</option>
+                                    <option value="Approved">Approved</option>
+                                    <option value="Draft">Draft</option>
+                                    <option value="Rejected">Rejected</option>
+                                </select>
+                            </div>
+
+                            {/* PDF Upload */}
+                            <div>
+                                <label className="block font-bold text-slate-700 mb-1">Proposal PDF</label>
+                                <div className="border border-dashed border-emerald-300 rounded-xl p-4 bg-emerald-50/40 text-center">
+                                    {timeLimitForm.pdfUrl ? (
+                                        <div className="flex flex-wrap items-center justify-between gap-2 bg-white border border-emerald-200 p-2.5 rounded-lg">
+                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                <FileText className="w-5 h-5 text-rose-600 flex-shrink-0" />
+                                                <span className="font-semibold text-slate-800 truncate">{timeLimitForm.fileName || 'Attached Proposal PDF'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <a
+                                                    href={blobViewUrl(timeLimitForm.pdfUrl)}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-1 text-emerald-700 hover:bg-emerald-50 rounded"
+                                                    title="Preview PDF"
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                </a>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setTimeLimitForm((prev) => ({ ...prev, pdfUrl: '', fileName: '', fileSize: 0 }))}
+                                                    className="p-1 text-rose-600 hover:bg-rose-50 rounded cursor-pointer"
+                                                    title="Remove PDF"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <label className="cursor-pointer flex flex-col items-center justify-center py-2">
+                                            {uploadingTimeLimitPdf ? (
+                                                <Loader2 className="w-6 h-6 text-emerald-600 animate-spin mb-1" />
+                                            ) : (
+                                                <Upload className="w-6 h-6 text-emerald-600 mb-1" />
+                                            )}
+                                            <span className="font-bold text-emerald-800">
+                                                {uploadingTimeLimitPdf ? 'Uploading PDF...' : 'Click to Upload Proposal PDF'}
+                                            </span>
+                                            <span className="text-[10px] text-slate-400 mt-0.5">Accepts .pdf files</span>
+                                            <input
+                                                type="file"
+                                                accept=".pdf"
+                                                onChange={handleTimeLimitPdfUpload}
+                                                disabled={uploadingTimeLimitPdf}
+                                                className="hidden"
+                                            />
+                                        </label>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Remarks */}
+                            <div>
+                                <label className="block font-bold text-slate-700 mb-1">Remarks / Notes</label>
+                                <textarea
+                                    rows={2}
+                                    placeholder="Optional notes or details about the time extension..."
+                                    value={timeLimitForm.remarks}
+                                    onChange={(e) => setTimeLimitForm((prev) => ({ ...prev, remarks: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsTimeLimitModalOpen(false)}
+                                    className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-50 cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={savingTimeLimitProposal || uploadingTimeLimitPdf}
+                                    className="inline-flex items-center gap-1.5 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                                >
+                                    {savingTimeLimitProposal ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                    {editingTimeLimitProposal ? 'Update Proposal' : 'Save Proposal'}
                                 </button>
                             </div>
                         </form>

@@ -7,7 +7,7 @@ import { memo, useEffect, useMemo, useState } from 'react';
 import {
     Building2, FileText, Home, CheckCircle,
     Package, Layers, X, User, LogOut, Users, ClipboardList, TrendingUp, Landmark, BarChart3,
-    Shield, MapPin, ChevronDown, BookOpen, ListTodo
+    Shield, MapPin, ChevronDown, BookOpen, ListTodo, Clock
 } from 'lucide-react';
 import { ROLE_LABELS } from '@/lib/roles';
 import { MODULES, canAccessModule } from '@/lib/access';
@@ -37,6 +37,7 @@ const MODULE_ICONS: Record<string, typeof Home> = {
     agreements: ClipboardList,
     bills: FileText,
     'excess-proposals': TrendingUp,
+    'time-limit-proposals': Clock,
     contractors: User,
     reports: BarChart3,
 };
@@ -52,18 +53,14 @@ export default memo(function Sidebar({ isOpen, onClose }: SidebarProps) {
     const { data: session } = useSession();
     const sessionUser = session?.user as SessionUser | undefined;
 
-    // Server-side identity fallback: the client JWT can predate access
-    // updates (roles/modules), and next-auth never refreshes those fields
-    // on its own. Resolve the truth from /api/me (DB-backed, keyed by the
-    // stable token sub) so the menu works without forcing a re-login.
+    // Server-side identity is the source of truth for access. The client JWT
+    // freezes roles/modules at sign-in and next-auth never refreshes them, so
+    // reconcile with /api/me (DB-backed, keyed by the stable token sub) on
+    // every mount. This lets access changes — including newly granted modules
+    // — appear without forcing a re-login.
     const [serverIdentity, setServerIdentity] = useState<SessionUser | null>(null);
     useEffect(() => {
         if (!sessionUser) return;
-        if (
-            sessionUser.role ||
-            (Array.isArray(sessionUser.roles) && sessionUser.roles.length > 0) ||
-            (Array.isArray(sessionUser.modules) && sessionUser.modules.length > 0)
-        ) return;
         let cancelled = false;
         fetch('/api/me')
             .then((r) => (r.ok ? r.json() : null))
@@ -109,8 +106,8 @@ export default memo(function Sidebar({ isOpen, onClose }: SidebarProps) {
     const PB_KEYS = ['approved-works', 'technical-sanctions'];
     // Tender group: Package + Committee + Tender + Agreement + Contractor List
     const TENDER_KEYS = ['packages', 'committee', 'tenders', 'agreements', 'contractors'];
-    // Bill group: Bill + Excess Proposal
-    const BILL_KEYS = ['bills', 'excess-proposals'];
+    // Bill group: Bill + Excess Proposal + Time Limit Proposal
+    const BILL_KEYS = ['bills', 'excess-proposals', 'time-limit-proposals'];
     const pbNavigation = filteredNavigation.filter((item) => PB_KEYS.includes(item.moduleKey));
     const tenderNavigation = filteredNavigation.filter((item) => TENDER_KEYS.includes(item.moduleKey));
     const billNavigation = filteredNavigation.filter((item) => BILL_KEYS.includes(item.moduleKey));
