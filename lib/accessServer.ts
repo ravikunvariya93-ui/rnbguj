@@ -63,6 +63,12 @@ export async function ensureAccessSeeded(): Promise<void> {
     { $addToSet: { modules: 'tasks' } }
   ).catch(() => null);
 
+  // Additive grant: the Knowledge Center is open to every signed-in user.
+  await Role.updateMany(
+    { modules: { $ne: 'knowledge' } },
+    { $addToSet: { modules: 'knowledge' } }
+  ).catch(() => null);
+
   // Additive grant: Time Limit Proposal sits in the Bill group, so grant it
   // to every role that can already reach the Bill / Excess Proposal modules.
   await Role.updateMany(

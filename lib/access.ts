@@ -26,6 +26,7 @@ export const MODULES: AccessModule[] = [
   { key: 'excess-proposals',    label: 'Excess Proposal', href: '/excess-proposals' },
   { key: 'time-limit-proposals', label: 'Time Limit Proposal', href: '/time-limit-proposals' },
   { key: 'contractors',         label: 'Contractor List', href: '/contractors' },
+  { key: 'knowledge',           label: 'Knowledge Center', href: '/knowledge' },
   { key: 'reports',             label: 'Reports',         href: '/reports' },
   { key: 'admin',               label: 'Administration',  href: '/admin/users' },
 ];

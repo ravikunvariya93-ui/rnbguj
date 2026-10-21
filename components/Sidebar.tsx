@@ -7,7 +7,7 @@ import { memo, useEffect, useMemo, useState } from 'react';
 import {
     Building2, FileText, Home, CheckCircle,
     Package, Layers, X, User, LogOut, Users, ClipboardList, TrendingUp, Landmark, BarChart3,
-    Shield, MapPin, ChevronDown, BookOpen, ListTodo, Clock
+    Shield, MapPin, ChevronDown, BookOpen, ListTodo, Clock, GraduationCap
 } from 'lucide-react';
 import { ROLE_LABELS } from '@/lib/roles';
 import { MODULES, canAccessModule } from '@/lib/access';
@@ -39,6 +39,7 @@ const MODULE_ICONS: Record<string, typeof Home> = {
     'excess-proposals': TrendingUp,
     'time-limit-proposals': Clock,
     contractors: User,
+    knowledge: GraduationCap,
     reports: BarChart3,
 };
 
