@@ -210,6 +210,10 @@ export default function BillForm({
     // Number, so a manual selection afterwards isn't overwritten.
     const autoBillNoForWorkOrder = useRef<string | null>(null);
 
+    // Remembers the bill/work order for which we already merged BOQ extra items,
+    // so the merge runs once per edited bill instead of on every render.
+    const mergedExtrasFor = useRef<string | null>(null);
+
     // Deduction fields the officer has typed into. Their value is kept across
     // later auto-recalculations (e.g. editing a quantity); the "Re-Calculate"
     // button clears this and restores the auto values.
@@ -337,6 +341,37 @@ export default function BillForm({
             }));
         }
     }, [initialData, isEditing]);
+
+    // Existing bills keep the items saved at creation time. Extra items added to
+    // the BOQ afterwards (e.g. E1, E2…) must still be fetched when editing, so
+    // merge any BOQ extra items that are missing from the saved bill. Saved
+    // items are left untouched to preserve their quantities and payments.
+    useEffect(() => {
+        if (!isEditing || !formData.workOrderId) return;
+        const mergeKey = `${String(initialData._id || '')}|${formData.workOrderId}`;
+        if (mergedExtrasFor.current === mergeKey) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await fetch(`/api/bills/abstract?workOrderId=${formData.workOrderId}`, { cache: 'no-store' });
+                const data = await res.json();
+                if (cancelled || !data.success || !Array.isArray(data.data)) return;
+                mergedExtrasFor.current = mergeKey;
+                setFormData((prev) => {
+                    const itemKey = (it: IBillItem) => `${it.itemType || 'Standard'}|${String(it.itemNo || '').trim().toLowerCase()}`;
+                    const existing = new Set((prev.items || []).map(itemKey));
+                    const missingExtras = (data.data as IBillItem[]).filter(
+                        (it) => it.itemType === 'Extra' && !existing.has(itemKey(it))
+                    );
+                    if (missingExtras.length === 0) return prev;
+                    return { ...prev, items: [...(prev.items || []), ...missingExtras] };
+                });
+            } catch (err) {
+                console.error('Failed to fetch BOQ extra items', err);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [isEditing, formData.workOrderId, initialData._id]);
 
     useEffect(() => {
         if (formData.workOrderId && workOrders.length > 0) {
