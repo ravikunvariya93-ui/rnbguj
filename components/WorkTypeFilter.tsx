@@ -33,7 +33,8 @@ export default function WorkTypeFilter({
     } else if (paramValue === 'all') {
         selectedTypes = workTypes;
     } else if (paramValue) {
-        selectedTypes = paramValue.split(',').filter(Boolean);
+        // 'none' is the sentinel for an empty selection, not a real work type
+        selectedTypes = paramValue.split(',').filter((t) => Boolean(t) && t !== 'none');
     } else {
         selectedTypes = [];
     }

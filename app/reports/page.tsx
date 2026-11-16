@@ -182,7 +182,8 @@ export default async function ReportsPage({ searchParams }: Props) {
             activeWorkTypes = [];
         } else {
             shouldFilter = true;
-            activeWorkTypes = rawWorkType.split(',').filter(Boolean);
+            // 'none' is a sentinel for "nothing selected" — never a real work type
+            activeWorkTypes = rawWorkType.split(',').filter((t) => Boolean(t) && t !== 'none');
         }
     }
 
@@ -214,7 +215,8 @@ export default async function ReportsPage({ searchParams }: Props) {
         masterTenders,
         masterApprovals,
         masterLOAs,
-        masterWorkOrders
+        masterWorkOrders,
+        allApprovedWorkNames
     ] = await Promise.all([
         ApprovedWork.distinct('workType').then((r: unknown) => r as string[]),
         loadSummary ? ApprovedWork.find(approvedWorkQuery as unknown as Parameters<typeof ApprovedWork.find>[0]).select('_id workName approvalYear workType').lean() : Promise.resolve([]),
@@ -228,7 +230,8 @@ export default async function ReportsPage({ searchParams }: Props) {
         loadMaster ? Tender.find({}).lean() : Promise.resolve([]),
         loadMaster ? Approval.find({}).lean() : Promise.resolve([]),
         loadMaster ? LOA.find({}).lean() : Promise.resolve([]),
-        loadMaster ? WorkOrder.find({}).lean() : Promise.resolve([])
+        loadMaster ? WorkOrder.find({}).lean() : Promise.resolve([]),
+        loadMaster ? ApprovedWork.distinct('workName').then((r: unknown) => r as string[]) : Promise.resolve([])
     ]);
 
     const workTypes = Array.from(new Set([...PREDEFINED_WORK_TYPES, ...distinctWorkTypes])).filter(Boolean).sort();
@@ -297,10 +300,13 @@ export default async function ReportsPage({ searchParams }: Props) {
             }
         });
 
-        serializedMasterWorks = (masterWorks as unknown as (MasterWorkDoc & Record<string, unknown>)[]).map((w: MasterWorkDoc & Record<string, unknown>) => {
+        const buildMasterRow = (
+            w: MasterWorkDoc & Record<string, unknown>,
+            pkg: Record<string, unknown>,
+            rowId: string
+        ): MasterRow => {
             const normalizedName = normalizeString(w.workName);
             const ts = tsMap.get(normalizedName) || {};
-            const pkg = workToPkgMap.get(normalizedName) || {};
             const pkgIdStr = pkg._id ? String(pkg._id) : null;
             const dtp = pkgIdStr ? dtpMap.get(pkgIdStr) || {} : {};
             const tender = pkgIdStr ? tenderMap.get(pkgIdStr) || {} : {};
@@ -312,7 +318,7 @@ export default async function ReportsPage({ searchParams }: Props) {
 
             const item: MasterRow = {
                 ...w,
-                _id: w._id.toString(),
+                _id: rowId,
                 jobNumberApprovalDate: w.jobNumberApprovalDate ? new Date(w.jobNumberApprovalDate as string | number | Date).toISOString() : null,
                 createdAt: w.createdAt ? new Date(w.createdAt as string | number | Date).toISOString() : null,
                 updatedAt: w.updatedAt ? new Date(w.updatedAt as string | number | Date).toISOString() : null,
@@ -419,7 +425,40 @@ export default async function ReportsPage({ searchParams }: Props) {
             item.wo_stipulatedCompletionDate = toISO(wo.stipulatedCompletionDate);
 
             return item;
-        });
+        };
+
+        const awRows = (masterWorks as unknown as (MasterWorkDoc & Record<string, unknown>)[]).map((w) =>
+            buildMasterRow(w, workToPkgMap.get(normalizeString(w.workName)) || {}, w._id.toString())
+        );
+
+        // Standalone works: a package with an empty works[] is itself the work
+        // (single-work packages) and has no ApprovedWork record behind it.
+        const approvedNames = new Set((allApprovedWorkNames as string[]).map((n) => normalizeString(n)));
+        const standaloneRows = (masterPackages as unknown as PkgDoc[])
+            .filter((p) => {
+                if ((p.works?.length ?? 0) > 0) return false;
+                const name = normalizeString(p.packageName);
+                if (!name || approvedNames.has(name)) return false;
+                if (shouldFilter && !activeWorkTypes.includes(String(p.workType ?? ''))) return false;
+                if (isAuditor && auditorSubDivision && normalizeString(p.subDivision as string) !== normalizeString(auditorSubDivision)) return false;
+                return true;
+            })
+            .map((p) => {
+                const estimatedAmount = p.estimatedAmount;
+                const syntheticWork = {
+                    _id: p._id,
+                    workName: p.packageName,
+                    workType: p.workType,
+                    subDivision: p.subDivision,
+                    budgetHead: p.budgetHead,
+                    buildingType: p.buildingType,
+                    jobNumberAmount: typeof estimatedAmount === 'number' ? estimatedAmount / 100000 : null,
+                    updatedAt: p.updatedAt,
+                } as unknown as MasterWorkDoc & Record<string, unknown>;
+                return buildMasterRow(syntheticWork, p as unknown as Record<string, unknown>, `pkg:${p._id.toString()}`);
+            });
+
+        serializedMasterWorks = [...awRows, ...standaloneRows];
     }
 
     // ── Weekly Work Order Report (always loaded — single-week query) ──────
