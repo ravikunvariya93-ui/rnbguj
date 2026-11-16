@@ -95,6 +95,7 @@ const ALL_COLUMNS: ColumnConfig[] = [
     { key: 'tender_cancelled', label: 'Tender Cancelled?', category: 'tender', defaultVisible: false, isBoolean: true, minWidth: '120px' },
     { key: 'tender_cancellationReason', label: 'Cancellation Reason', category: 'tender', defaultVisible: false, minWidth: '180px' },
     { key: 'tender_contractorName', label: 'Contractor Name', category: 'tender', defaultVisible: true, minWidth: '180px' },
+    { key: 'tender_contractorMobile', label: 'Contractor Mobile', category: 'tender', defaultVisible: true, minWidth: '140px' },
     { key: 'tender_contractPrice', label: 'Contract Price (Lakh)', category: 'tender', defaultVisible: true, align: 'right', minWidth: '150px' },
     { key: 'tender_aboveBelowPercentage', label: 'Above/Below %', category: 'tender', defaultVisible: false, align: 'right', minWidth: '120px' },
     { key: 'tender_aboveBelowInWord', label: 'Above/Below (At Par)', category: 'tender', defaultVisible: false, minWidth: '150px' },
@@ -160,6 +161,7 @@ interface MasterReportRow {
     _id?: string;
     workName?: string;
     tender_contractorName?: string;
+    tender_contractorMobile?: string;
     pkg_packageName?: string;
     [key: string]: string | number | boolean | null | undefined;
 }
@@ -226,8 +228,9 @@ export default function MasterReportTable({ data }: MasterReportTableProps) {
         return data.filter(row => {
             const workNameMatch = String(row.workName || '').toLowerCase().includes(q);
             const contractorMatch = String(row.tender_contractorName || '').toLowerCase().includes(q);
+            const contractorMobileMatch = String(row.tender_contractorMobile || '').toLowerCase().includes(q);
             const packageMatch = String(row.pkg_packageName || '').toLowerCase().includes(q);
-            return workNameMatch || contractorMatch || packageMatch;
+            return workNameMatch || contractorMatch || contractorMobileMatch || packageMatch;
         });
     }, [data, rowSearch]);
 

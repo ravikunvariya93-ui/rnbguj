@@ -1,6 +1,7 @@
 import { Suspense, type ComponentProps } from 'react';
 import dbConnect from '@/lib/db';
 import ApprovedWork from '@/models/ApprovedWork';
+import Agency from '@/models/Agency';
 import Package from '@/models/Package';
 import TechnicalSanction from '@/models/TechnicalSanction';
 import DTP from '@/models/DTP';
@@ -216,7 +217,8 @@ export default async function ReportsPage({ searchParams }: Props) {
         masterApprovals,
         masterLOAs,
         masterWorkOrders,
-        allApprovedWorkNames
+        allApprovedWorkNames,
+        allAgencies
     ] = await Promise.all([
         ApprovedWork.distinct('workType').then((r: unknown) => r as string[]),
         loadSummary ? ApprovedWork.find(approvedWorkQuery as unknown as Parameters<typeof ApprovedWork.find>[0]).select('_id workName approvalYear workType').lean() : Promise.resolve([]),
@@ -231,7 +233,8 @@ export default async function ReportsPage({ searchParams }: Props) {
         loadMaster ? Approval.find({}).lean() : Promise.resolve([]),
         loadMaster ? LOA.find({}).lean() : Promise.resolve([]),
         loadMaster ? WorkOrder.find({}).lean() : Promise.resolve([]),
-        loadMaster ? ApprovedWork.distinct('workName').then((r: unknown) => r as string[]) : Promise.resolve([])
+        loadMaster ? ApprovedWork.distinct('workName').then((r: unknown) => r as string[]) : Promise.resolve([]),
+        loadMaster ? Agency.find({}).select('name mobileNo').lean() : Promise.resolve([])
     ]);
 
     const workTypes = Array.from(new Set([...PREDEFINED_WORK_TYPES, ...distinctWorkTypes])).filter(Boolean).sort();
@@ -300,6 +303,11 @@ export default async function ReportsPage({ searchParams }: Props) {
             }
         });
 
+        const agencyMobileMap = new Map<string, string>();
+        (allAgencies as unknown as { name?: string; mobileNo?: string }[]).forEach((a) => {
+            if (a.name && a.mobileNo) agencyMobileMap.set(normalizeString(a.name), a.mobileNo);
+        });
+
         const buildMasterRow = (
             w: MasterWorkDoc & Record<string, unknown>,
             pkg: Record<string, unknown>,
@@ -359,6 +367,7 @@ export default async function ReportsPage({ searchParams }: Props) {
             item.tender_cancelled = tender.cancelled !== undefined ? tender.cancelled : null;
             item.tender_cancellationReason = tender.cancellationReason || null;
             item.tender_contractorName = tender.contractorName || null;
+            item.tender_contractorMobile = (tender.contractorName ? agencyMobileMap.get(normalizeString(String(tender.contractorName))) : null) || tender.contractorMobile || null;
             item.tender_contractPrice = tender.contractPrice || null;
             item.tender_aboveBelowPercentage = tender.aboveBelowPercentage || null;
             item.tender_aboveBelowInWord = tender.aboveBelowInWord || null;
