@@ -131,7 +131,7 @@ export default async function UnmatchedTSPage({ searchParams }: Props) {
             />
             {totalPages > 1 && (
                 <div className="mt-4">
-                    <Pagination currentPage={page} totalPages={totalPages} />
+                    <Pagination currentPage={page} totalPages={totalPages} totalItems={totalItems} />
                 </div>
             )}
         </ListPageLayout>

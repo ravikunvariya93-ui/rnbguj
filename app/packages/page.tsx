@@ -409,7 +409,7 @@ export default async function PackagesListPage({ searchParams }: Props) {
                 actions={renderActions}
             />
             <Suspense fallback={<div className="h-10 w-full bg-gray-50 animate-pulse mt-4 rounded-md" />}>
-                <Pagination currentPage={page} totalPages={totalPages} />
+                <Pagination currentPage={page} totalPages={totalPages} totalItems={totalItems} />
             </Suspense>
         </ListPageLayout>
     );

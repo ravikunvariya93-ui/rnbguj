@@ -663,6 +663,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
         if (params.toDate) p.set('toDate', params.toDate);
         if (params.sort) p.set('sort', params.sort);
         if (params.order) p.set('order', params.order);
+        if (params.limit) p.set('limit', params.limit);
         if (filterVal) p.set('filter', filterVal);
         const qs = p.toString();
         return qs ? `/committee?${qs}` : '/committee';
@@ -772,7 +773,7 @@ export default async function CommitteeListPage({ searchParams }: Props) {
                 actions={renderActions}
             />
             <Suspense fallback={<div className="h-10 w-full bg-gray-50 animate-pulse mt-4 rounded-md" />}>
-                <Pagination currentPage={page} totalPages={totalPages} />
+                <Pagination currentPage={page} totalPages={totalPages} totalItems={totalItems} />
             </Suspense>
         </ListPageLayout>
     );

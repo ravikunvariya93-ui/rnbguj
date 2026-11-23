@@ -75,11 +75,16 @@ export async function buildDashboardFilter(params: ListPageSearchParams): Promis
     return { hasFilter: false };
 }
 
+export const SHOW_ALL_LIMIT = 100000;
+
 export function parsePagination(params: { page?: string; limit?: string }): {
     page: number;
     limit: number;
     skip: number;
 } {
+    if (params.limit === 'all') {
+        return { page: 1, limit: SHOW_ALL_LIMIT, skip: 0 };
+    }
     // Delegate to the shared capped implementation; keep this wrapper so
     // existing callers don't need to change.
     const fakeUrl = `http://localhost/?page=${params.page || '1'}&limit=${params.limit || '100'}`;

@@ -779,6 +779,7 @@ export default async function TendersListPage({ searchParams }: Props) {
         if (filterValue) sp.set('filter', filterValue);
         if (fromBoundStr) sp.set('fromDate', fromBoundStr);
         if (toBoundStr) sp.set('toDate', toBoundStr);
+        if (params.limit) sp.set('limit', params.limit);
         const s = sp.toString();
         return s ? `/tenders?${s}` : '/tenders';
     };
@@ -856,7 +857,7 @@ export default async function TendersListPage({ searchParams }: Props) {
                 theme="emerald"
             />
             <Suspense fallback={<div className="h-10 w-full bg-gray-50 animate-pulse mt-4 rounded-md" />}>
-                <Pagination currentPage={page} totalPages={totalPages} />
+                <Pagination currentPage={page} totalPages={totalPages} totalItems={totalItems} />
             </Suspense>
         </ListPageLayout>
     );
