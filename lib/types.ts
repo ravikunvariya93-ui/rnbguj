@@ -18,6 +18,8 @@ export interface ListPageSearchParams {
   contractorName?: string;
   trialNo?: string;
   percentage?: string;
+  amount?: string;
+  amountDirection?: string;
   budgetHead?: string;
   dtpConsultant?: string;
   hasWorks?: string;

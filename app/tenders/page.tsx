@@ -110,7 +110,7 @@ export default async function TendersListPage({ searchParams }: Props) {
     const params = await searchParams;
 
     // Fetch agencies, years, sub-divisions, work types, approved works, and building types for inference
-    const [rawAgencies, years, rawSubDivisions, rawWorkTypesAw, rawWorkTypesPkg, allApprovedWorks, rawBuildingTypesAw, rawBuildingTypesPkg] = await Promise.all([
+    const [rawAgencies, years, rawSubDivisions, rawWorkTypesAw, rawWorkTypesPkg, allApprovedWorks, rawBuildingTypesAw, rawBuildingTypesPkg, rawBudgetHeadsAw, rawBudgetHeadsPkg] = await Promise.all([
         Agency.find({}).select('name mobileNo').sort({ name: 1 }).lean(),
         Tender.distinct('tenderNoticeYear') as Promise<string[]>,
         Package.distinct('subDivision') as Promise<string[]>,
@@ -118,7 +118,9 @@ export default async function TendersListPage({ searchParams }: Props) {
         Package.distinct('workType') as Promise<string[]>,
         ApprovedWork.find({}).select('workName workType buildingType').lean(),
         ApprovedWork.distinct('buildingType') as Promise<string[]>,
-        Package.distinct('buildingType') as Promise<string[]>
+        Package.distinct('buildingType') as Promise<string[]>,
+        ApprovedWork.distinct('budgetHead') as Promise<string[]>,
+        Package.distinct('budgetHead') as Promise<string[]>
     ]);
     const agencies = rawAgencies.map((a) => ({
         ...a,
@@ -131,6 +133,9 @@ export default async function TendersListPage({ searchParams }: Props) {
         .filter(Boolean)
         .sort();
     const buildingTypes = Array.from(new Set([...rawBuildingTypesAw, ...rawBuildingTypesPkg]))
+        .filter(Boolean)
+        .sort() as string[];
+    const budgetHeads = Array.from(new Set(['Pending', ...rawBudgetHeadsAw, ...rawBudgetHeadsPkg]))
         .filter(Boolean)
         .sort() as string[];
 
@@ -429,6 +434,38 @@ export default async function TendersListPage({ searchParams }: Props) {
         }
     }
 
+    if (params.budgetHead === 'Pending') {
+        const worksInBudgetHead = await ApprovedWork.find({
+            $or: [
+                { budgetHead: 'Pending' },
+                { budgetHead: { $exists: false } },
+                { budgetHead: null },
+                { budgetHead: '' }
+            ]
+        }).select('workName').lean();
+        const workNames = worksInBudgetHead.map((aw) => aw.workName).filter(Boolean);
+        packageFilters.push({
+            $or: [
+                { budgetHead: 'Pending' },
+                { budgetHead: { $exists: false } },
+                { budgetHead: null },
+                { budgetHead: '' },
+                { 'works.workName': { $in: workNames } }
+            ]
+        });
+        filterLabels.push('Budget Head: Pending');
+    } else if (params.budgetHead) {
+        const worksInBudgetHead = await ApprovedWork.find({ budgetHead: params.budgetHead }).select('workName').lean();
+        const workNames = worksInBudgetHead.map((aw) => aw.workName).filter(Boolean);
+        packageFilters.push({
+            $or: [
+                { budgetHead: params.budgetHead },
+                { 'works.workName': { $in: workNames } }
+            ]
+        });
+        filterLabels.push(`Budget Head: ${params.budgetHead}`);
+    }
+
     if (packageFilters.length > 0) {
         const matchingPackages = await Package.find({ $and: packageFilters }).distinct('_id');
         const matchingPkgIdStrs = matchingPackages.map(toIdStr);
@@ -474,6 +511,26 @@ export default async function TendersListPage({ searchParams }: Props) {
         if (directions) {
             query.aboveBelowInWord = { $in: directions };
             filterLabels.push(`Percentage: ${params.percentage}`);
+        }
+    }
+
+    if (params.amount) {
+        const amountValue = Number(params.amount);
+        if (Number.isFinite(amountValue)) {
+            const op = params.amountDirection === 'Below' ? '$lte' : '$gte';
+            const amountMatch = { [op]: amountValue };
+            query.$and = [
+                ...(Array.isArray(query.$and) ? (query.$and as MongoFilter[]) : []),
+                {
+                    $or: [
+                        { estimatedAmount: amountMatch },
+                        { estimatedAmount: null, contractPrice: amountMatch }
+                    ]
+                }
+            ];
+            filterLabels.push(
+                `Tender Amount: ${params.amountDirection === 'Below' ? 'Below' : 'Above'} ₹${amountValue.toLocaleString('en-IN')}`
+            );
         }
     }
 
@@ -733,10 +790,10 @@ export default async function TendersListPage({ searchParams }: Props) {
             addHref="/tenders/new"
             addLabel="Add New Tender"
             searchPlaceholder="Search by Tender ID, Package, or Contractor..."
-            filterActive={!!params.filter || !!params.search || !!params.noticeYear || !!params.noticeNo || !!params.contractorName || !!params.trialNo || !!params.percentage || !!params.subDivision || !!params.workType || !!params.buildingType || !!fromBoundStr || !!toBoundStr}
+            filterActive={!!params.filter || !!params.search || !!params.noticeYear || !!params.noticeNo || !!params.contractorName || !!params.trialNo || !!params.percentage || !!params.subDivision || !!params.workType || !!params.buildingType || !!params.budgetHead || !!params.amount || !!fromBoundStr || !!toBoundStr}
             clearFiltersHref="/tenders"
         >
-            <TendersFilterBar agencies={agencies} years={years} subDivisions={subDivisions} workTypes={workTypes} buildingTypes={buildingTypes} />
+            <TendersFilterBar agencies={agencies} years={years} subDivisions={subDivisions} workTypes={workTypes} buildingTypes={buildingTypes} budgetHeads={budgetHeads} />
             <div className="mb-4 flex flex-wrap items-center gap-2">
                 <Link
                     href={tabHref(null)}

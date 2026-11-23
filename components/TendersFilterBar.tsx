@@ -15,9 +15,10 @@ interface TendersFilterBarProps {
     subDivisions: string[];
     workTypes?: string[];
     buildingTypes?: string[];
+    budgetHeads?: string[];
 }
 
-export default function TendersFilterBar({ agencies, years, subDivisions, workTypes = [], buildingTypes = [] }: TendersFilterBarProps) {
+export default function TendersFilterBar({ agencies, years, subDivisions, workTypes = [], buildingTypes = [], budgetHeads = [] }: TendersFilterBarProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -29,7 +30,10 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
     const [subDivision, setSubDivision] = useState(searchParams.get('subDivision') || '');
     const [workType, setWorkType] = useState(searchParams.get('workType') || '');
     const [buildingType, setBuildingType] = useState(searchParams.get('buildingType') || '');
+    const [budgetHead, setBudgetHead] = useState(searchParams.get('budgetHead') || '');
     const [percentage, setPercentage] = useState(searchParams.get('percentage') || '');
+    const [amount, setAmount] = useState(searchParams.get('amount') || '');
+    const [amountDirection, setAmountDirection] = useState(searchParams.get('amountDirection') || 'Above');
     const [isWorkTypeOpen, setIsWorkTypeOpen] = useState(false);
     const [isBuildingTypeOpen, setIsBuildingTypeOpen] = useState(false);
 
@@ -58,7 +62,10 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
         setSubDivision(searchParams.get('subDivision') || '');
         setWorkType(searchParams.get('workType') || '');
         setBuildingType(searchParams.get('buildingType') || '');
+        setBudgetHead(searchParams.get('budgetHead') || '');
         setPercentage(searchParams.get('percentage') || '');
+        setAmount(searchParams.get('amount') || '');
+        setAmountDirection(searchParams.get('amountDirection') || 'Above');
     }, [searchParams]);
 
     const handleApplyFilters = () => {
@@ -88,8 +95,19 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
         if (buildingType) params.set('buildingType', buildingType);
         else params.delete('buildingType');
 
+        if (budgetHead) params.set('budgetHead', budgetHead);
+        else params.delete('budgetHead');
+
         if (percentage) params.set('percentage', percentage);
         else params.delete('percentage');
+
+        if (amount) {
+            params.set('amount', amount);
+            params.set('amountDirection', amountDirection);
+        } else {
+            params.delete('amount');
+            params.delete('amountDirection');
+        }
 
         router.push(`${pathname}?${params.toString()}`);
     };
@@ -103,7 +121,10 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
         params.delete('subDivision');
         params.delete('workType');
         params.delete('buildingType');
+        params.delete('budgetHead');
         params.delete('percentage');
+        params.delete('amount');
+        params.delete('amountDirection');
         params.set('page', '1');
 
         setNoticeYear('');
@@ -113,12 +134,15 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
         setSubDivision('');
         setWorkType('');
         setBuildingType('');
+        setBudgetHead('');
         setPercentage('');
+        setAmount('');
+        setAmountDirection('Above');
 
         router.push(`${pathname}?${params.toString()}`);
     };
 
-    const hasActiveFilters = !!(noticeYear || noticeNo || contractorName || trialNo || subDivision || workType || buildingType || percentage);
+    const hasActiveFilters = !!(noticeYear || noticeNo || contractorName || trialNo || subDivision || workType || buildingType || budgetHead || percentage || amount);
     const selectedWorkTypes = workType ? workType.split(',').filter(Boolean) : [];
     const selectedBuildingTypes = buildingType ? buildingType.split(',').filter(Boolean) : [];
 
@@ -246,6 +270,22 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                     )}
                 </div>
 
+                {/* Budget Head */}
+                <div>
+                    <label htmlFor="filterBudgetHead" className="block text-xs font-bold text-emerald-900 uppercase tracking-wider mb-1">Budget Head</label>
+                    <select
+                        id="filterBudgetHead"
+                        value={budgetHead}
+                        onChange={(e) => setBudgetHead(e.target.value)}
+                        className="block w-full rounded-xl border-emerald-200 bg-white/90 text-emerald-950 py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 border focus:border-emerald-500 shadow-2xs transition-all"
+                    >
+                        <option value="">All Budget Heads</option>
+                        {budgetHeads.map(bh => (
+                            <option key={bh} value={bh}>{bh}</option>
+                        ))}
+                    </select>
+                </div>
+
                 {/* Notice Year */}
                 <div>
                     <label htmlFor="filterNoticeYear" className="block text-xs font-bold text-emerald-900 uppercase tracking-wider mb-1">Notice Year</label>
@@ -323,6 +363,34 @@ export default function TendersFilterBar({ agencies, years, subDivisions, workTy
                         <option value="Below">Below</option>
                         <option value="At Par">At Par</option>
                     </select>
+                </div>
+
+                {/* Tender Amount */}
+                <div className="sm:col-span-2">
+                    <label htmlFor="filterAmount" className="block text-xs font-bold text-emerald-900 uppercase tracking-wider mb-1">Tender Amount</label>
+                    <div className="flex items-stretch overflow-hidden rounded-xl border border-emerald-200 bg-white/90 shadow-2xs transition-all focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500">
+                        <select
+                            id="filterAmountDirection"
+                            aria-label="Amount direction"
+                            value={amountDirection}
+                            onChange={(e) => setAmountDirection(e.target.value)}
+                            className="shrink-0 cursor-pointer border-0 border-r border-emerald-200 bg-emerald-50/70 py-2.5 pl-2.5 pr-1.5 text-xs font-semibold text-emerald-800 focus:outline-none"
+                        >
+                            <option value="Above">Above</option>
+                            <option value="Below">Below</option>
+                        </select>
+                        <span className="flex items-center pl-2 text-sm font-semibold text-emerald-600/80">₹</span>
+                        <input
+                            type="number"
+                            id="filterAmount"
+                            inputMode="numeric"
+                            min="0"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            placeholder="0"
+                            className="min-w-0 flex-1 border-0 bg-transparent py-2.5 pl-1 pr-2 text-sm text-emerald-950 placeholder:text-emerald-600/50 focus:outline-none"
+                        />
+                    </div>
                 </div>
             </div>
 
